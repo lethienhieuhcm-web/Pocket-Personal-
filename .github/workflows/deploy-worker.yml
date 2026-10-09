@@ -1,0 +1,45 @@
+name: Deploy Worker
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'worker/**'
+      - 'js/**'
+      - '*.html'
+      - '*.css'
+      - '*.json'
+      - 'icons/**'
+  workflow_dispatch:
+
+jobs:
+  build-and-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: JS syntax check (8b)
+        run: |
+          FAILED=0
+          for f in $(find worker/src js -name "*.js" 2>/dev/null); do
+            if ! node --check "$f"; then
+              echo "FAILED: $f"
+              FAILED=1
+            fi
+          done
+          [ $FAILED -eq 1 ] && exit 1 || echo "JS check passed"
+
+      - name: Build worker bundle
+        run: |
+          cd worker
+          npx --yes esbuild src/index.js --bundle --format=esm --outfile=worker.js
+          echo "Build OK"
+
+      # Deploy tự động TẠM TẮT: cf_deploy.py dùng path local (/home/hatch/...)
+      # Khi nào refactor script deploy thành standalone sẽ bật lại.
+      # Hiện tại deploy bằng tay từ VM: python3 ~/workspace/skills/cloudflare/bin/cf_deploy.py

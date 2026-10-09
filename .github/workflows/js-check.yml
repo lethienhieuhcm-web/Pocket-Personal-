@@ -1,0 +1,52 @@
+name: JS Syntax Check
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '**.js'
+      - '**.html'
+  pull_request:
+    paths:
+      - '**.js'
+      - '**.html'
+
+jobs:
+  node-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Check all JS files
+        run: |
+          FAILED=0
+          # Check worker source files
+          for f in $(find worker/src -name "*.js" 2>/dev/null); do
+            if ! node --check "$f"; then
+              echo "FAILED: $f"
+              FAILED=1
+            fi
+          done
+          # Check frontend JS files
+          for f in $(find js -name "*.js" 2>/dev/null); do
+            if ! node --check "$f"; then
+              echo "FAILED: $f"
+              FAILED=1
+            fi
+          done
+          # Check stock-app JS if present
+          for f in $(find . -maxdepth 3 -name "*.js" -not -path "./node_modules/*" -not -path "./.git/*" 2>/dev/null | grep -v "worker/src" | grep -v "^./js/"); do
+            if ! node --check "$f" 2>/dev/null; then
+              echo "WARNING (skip): $f"
+            fi
+          done
+          if [ $FAILED -eq 1 ]; then
+            echo "JS syntax check FAILED"
+            exit 1
+          fi
+          echo "All JS files passed node --check"
