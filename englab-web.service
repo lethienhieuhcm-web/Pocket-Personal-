@@ -1,0 +1,13 @@
+[Unit]
+Description=English Lab web preview (port 8901)
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/hatch/workspace/english-lab
+ExecStart=/usr/bin/python3 -m http.server 8901 --bind 127.0.0.1
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<script>/* Auto cache-buster: reload if this HTML is stale (build ID mismatch) */
+(function(){var B="__BUILD__";function c(){try{fetch(location.pathname,{method:"HEAD",cache:"no-store"}).then(function(r){var l=r.headers.get("x-build-id");if(l&&l!==B){location.reload();}}).catch(function(){})}catch(e){}}if(document.readyState==="complete"){setTimeout(c,2000);}else{window.addEventListener("load",function(){setTimeout(c,2000);});}})();
+</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Upgrade — Pocket Personal</title>
+<link rel="stylesheet" href="/design-system.css?v=1791347000">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--pp-bg);color:var(--pp-ink);padding:12px;max-width:640px;margin:0 auto;min-height:100dvh}
+.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.topbar a{color:var(--pp-mut);text-decoration:none;font-size:14px;font-weight:600}
+.lang-pill{display:inline-flex;border:1px solid var(--pp-line);border-radius:20px;overflow:hidden}
+.lang-pill button{border:none;background:transparent;padding:6px 12px;font-size:12px;font-weight:700;color:var(--pp-mut);cursor:pointer}
+.lang-pill button.on{background:var(--pp-accent);color:#fff}
+.card{background:var(--pp-card);border:1px solid var(--pp-line);border-radius:16px;padding:16px;margin-bottom:12px}
+.hint{color:var(--pp-mut);font-size:13px;line-height:1.5}
+.btn{display:inline-block;padding:12px 16px;border:1px solid var(--pp-line);border-radius:12px;background:var(--pp-card);color:var(--pp-ink);font-size:15px;font-weight:600;cursor:pointer;text-decoration:none;text-align:center}
+.btn.primary{background:var(--pp-grad);color:#fff;border:none}
+.plan-grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+.plan-card{position:relative;text-align:center;padding:20px 12px}
+.plan-card.hot{border:2px solid var(--pp-accent)}
+.plan-name{font-weight:700;font-size:17px}
+.plan-price{font-size:26px;font-weight:800;color:var(--pp-accent);margin:8px 0}
+.plan-price .per{font-size:13px;font-weight:600;color:var(--pp-mut)}
+.plan-feats{text-align:left;margin:0 0 12px;padding:0;list-style:none}
+.plan-feats li{font-size:13px;color:var(--pp-ink);line-height:1.5;margin-bottom:6px;padding-left:16px;position:relative}
+.plan-feats li::before{content:"";position:absolute;left:2px;top:8px;width:6px;height:6px;border-radius:50%;background:var(--pp-accent)}
+.pop-badge{position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:var(--pp-accent);color:#fff;font-size:11px;font-weight:700;padding:2px 10px;border-radius:10px;white-space:nowrap}
+.kv{margin-bottom:8px;font-size:14px}
+.kv b{color:var(--pp-mut);font-weight:600}
+code.transfer{background:var(--pp-bg);padding:4px 10px;border-radius:6px;font-size:14px;font-weight:700}
+.status-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--pp-accent);margin-right:6px}
+h2{font-size:18px;margin-bottom:10px}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <a href="/hub">← Pocket Personal</a>
+  <div class="pp-langdrop" id="langDrop">
+    <button class="pp-langdrop-btn" aria-label="Language">
+      <svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+      <span class="pp-langdrop-cur">VI</span>
+      <svg class="chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+    </button>
+    <div class="pp-langdrop-menu" role="listbox">
+      <button class="pp-langdrop-item" data-lang="vi"><span class="code">VI</span><span class="name">Tiếng Việt</span></button>
+      <button class="pp-langdrop-item" data-lang="en"><span class="code">EN</span><span class="name">English</span></button>
+      <button class="pp-langdrop-item" data-lang="zh"><span class="code">中文</span><span class="name">中文</span></button>
+      <button class="pp-langdrop-item" data-lang="ko"><span class="code">한국어</span><span class="name">한국어</span></button>
+    </div>
+  </div>
+</div>
+
+<div id="loginPrompt" class="card" style="display:none;text-align:center">
+  <p class="hint" style="margin-bottom:12px" data-i18n="needLogin">Bạn cần đăng nhập để nâng cấp.</p>
+  <a class="btn primary" href="/login" data-i18n="loginBtn">Đăng nhập</a>
+</div>
+
+<div id="main" style="display:none">
+  <div class="card">
+    <h2 data-i18n="currentPlan">Gói hiện tại</h2>
+    <div id="planStatus" class="hint">…</div>
+  </div>
+
+  <div class="card">
+    <h2 data-i18n="choosePlan">Chọn gói</h2>
+    <div class="plan-grid" id="planCards"></div>
+  </div>
+
+  <div class="card" id="payInfo" style="display:none">
+    <h2 data-i18n="payTitle">Thông tin chuyển khoản</h2>
+    <div id="payDetails"></div>
+  </div>
+</div>
+
+<script>
+const PLANS = [
+  {id:"free",     price:"0đ",      hot:false, feats:["f_free_1","f_free_2","f_free_3"]},
+  {id:"hocsinh",  price:"29.000đ", hot:false, feats:["f_hs_1","f_hs_2","f_hs_3"]},
+  {id:"sinhvien", price:"49.000đ", hot:true,  feats:["f_sv_1","f_sv_2","f_sv_3"]},
+  {id:"dilam",    price:"99.000đ", hot:false, feats:["f_dl_1","f_dl_2","f_dl_3","f_dl_4"]},
+  {id:"nhadautu", price:"149.000đ",hot:false, feats:["f_ndt_1","f_ndt_2","f_ndt_3","f_ndt_4"]},
+];
+let currentPlanId = "free";
+const PAY = {bank:"Vietcombank", account:"XXXXXXXXXX", name:"LE THANH DONG", notePrefix:"POCKET"};
+
+const I18N = {
+vi:{title:"Nâng cấp",needLogin:"Bạn cần đăng nhập để nâng cấp.",loginBtn:"Đăng nhập",
+currentPlan:"Gói hiện tại",choosePlan:"Chọn gói",payTitle:"Thông tin chuyển khoản",
+p_free:"Miễn phí",p_hocsinh:"Học sinh",p_sinhvien:"Sinh viên",p_dilam:"Người đi làm",p_nhadautu:"Nhà đầu tư",p_admin:"Quản trị",
+perMonth:"/tháng",
+f_free_1:"Chess, Music",f_free_2:"English Lab: 5 lượt scan/ngày",f_free_3:"Nhập text 1.000 ký tự/lần",
+f_hs_1:"Thêm: English Lab đầy đủ hơn",f_hs_2:"50 lượt scan/ngày",f_hs_3:"Upload 3 file/tháng",
+f_sv_1:"Thêm: Voice",f_sv_2:"English Lab: 100 scan/ngày",f_sv_3:"Voice: 30.000 ký tự/ngày",
+f_dl_1:"Thêm: Stocks cơ bản",f_dl_2:"English Lab: 200 scan/ngày",f_dl_3:"Voice: 100.000 ký tự/ngày",f_dl_4:"Stocks: xem giá + Watchlist",
+f_ndt_1:"Stocks đầy đủ",f_ndt_2:"English Lab: 500 scan/ngày",f_ndt_3:"Voice: 300.000 ký tự/ngày",f_ndt_4:"Portfolio, backtest, cảnh báo giá",
+popular:"PHỔ BIẾN",choose:"Chọn",usingNow:"Đang dùng",
+freePlan:"Gói miễn phí",adminUnlimited:"{p} — không giới hạn",paidUntil:"Gói {p}, còn {d} ngày",expired:"Gói {p} đã hết hạn",
+lblPlan:"Gói",lblBank:"Ngân hàng",lblAccount:"Số tài khoản",lblName:"Chủ tài khoản",lblNote:"Nội dung chuyển khoản",
+activateNote:"Sau khi chuyển khoản, quản trị viên sẽ kích hoạt gói cho bạn. Thường mất vài giờ.",
+loginFirst:"Vui lòng đăng nhập để xem thông tin chuyển khoản."},
+en:{title:"Upgrade",needLogin:"Please log in to upgrade.",loginBtn:"Log in",
+currentPlan:"Current plan",choosePlan:"Choose a plan",payTitle:"Payment info",
+p_free:"Free",p_hocsinh:"Student",p_sinhvien:"University",p_dilam:"Professional",p_nhadautu:"Investor",p_admin:"Admin",
+perMonth:"/month",
+f_free_1:"Chess, Music",f_free_2:"English Lab: 5 scans/day",f_free_3:"Text input 1,000 chars each",
+f_hs_1:"Plus: fuller English Lab",f_hs_2:"50 scans/day",f_hs_3:"Upload 3 files/month",
+f_sv_1:"Plus: Voice",f_sv_2:"English Lab: 100 scans/day",f_sv_3:"Voice: 30,000 chars/day",
+f_dl_1:"Plus: basic Stocks",f_dl_2:"English Lab: 200 scans/day",f_dl_3:"Voice: 100,000 chars/day",f_dl_4:"Stocks: prices + Watchlist",
+f_ndt_1:"Full Stocks",f_ndt_2:"English Lab: 500 scans/day",f_ndt_3:"Voice: 300,000 chars/day",f_ndt_4:"Portfolio, backtest, price alerts",
+popular:"POPULAR",choose:"Choose",usingNow:"Current",
+freePlan:"Free plan",adminUnlimited:"{p} — unlimited",paidUntil:"{p} plan, {d} days left",expired:"{p} plan expired",
+lblPlan:"Plan",lblBank:"Bank",lblAccount:"Account",lblName:"Account name",lblNote:"Transfer note",
+activateNote:"After transfer, admin will activate your plan. It usually takes a few hours.",
+loginFirst:"Please log in to see payment info."},
+zh:{title:"升级",needLogin:"请登录后升级。",loginBtn:"登录",
+currentPlan:"当前套餐",choosePlan:"选择套餐",payTitle:"付款信息",
+p_free:"免费",p_hocsinh:"中学生",p_sinhvien:"大学生",p_dilam:"上班族",p_nhadautu:"投资者",p_admin:"管理",
+perMonth:"/月",
+f_free_1:"象棋、音乐",f_free_2:"English Lab：每天5次扫描",f_free_3:"每次输入1,000字符",
+f_hs_1:"新增：更完整的 English Lab",f_hs_2:"每天50次扫描",f_hs_3:"每月上传3个文件",
+f_sv_1:"新增：Voice",f_sv_2:"English Lab：每天100次扫描",f_sv_3:"Voice：每天30,000字符",
+f_dl_1:"新增：基础 Stocks",f_dl_2:"English Lab：每天200次扫描",f_dl_3:"Voice：每天100,000字符",f_dl_4:"Stocks：行情 + 自选",
+f_ndt_1:"完整 Stocks",f_ndt_2:"English Lab：每天500次扫描",f_ndt_3:"Voice：每天300,000字符",f_ndt_4:"投资组合、回测、价格提醒",
+popular:"热门",choose:"选择",usingNow:"使用中",
+freePlan:"免费套餐",adminUnlimited:"{p}——无限制",paidUntil:"{p}套餐，剩余{d}天",expired:"{p}套餐已过期",
+lblPlan:"套餐",lblBank:"银行",lblAccount:"账号",lblName:"户名",lblNote:"转账备注",
+activateNote:"转账后，管理员将为您开通套餐，通常需要几个小时。",
+loginFirst:"请登录后查看付款信息。"},
+ko:{title:"업그레이드",needLogin:"업그레이드하려면 로그인해 주세요.",loginBtn:"로그인",
+currentPlan:"현재 요금제",choosePlan:"요금제 선택",payTitle:"결제 정보",
+p_free:"무료",p_hocsinh:"중고생",p_sinhvien:"대학생",p_dilam:"직장인",p_nhadautu:"투자자",p_admin:"관리",
+perMonth:"/월",
+f_free_1:"체스, 음악",f_free_2:"English Lab: 일 5회 스캔",f_free_3:"회당 1,000자 입력",
+f_hs_1:"추가: English Lab 확장",f_hs_2:"일 50회 스캔",f_hs_3:"월 3개 파일 업로드",
+f_sv_1:"추가: Voice",f_sv_2:"English Lab: 일 100회 스캔",f_sv_3:"Voice: 일 30,000자",
+f_dl_1:"추가: 기본 Stocks",f_dl_2:"English Lab: 일 200회 스캔",f_dl_3:"Voice: 일 100,000자",f_dl_4:"Stocks: 시세 + 관심종목",
+f_ndt_1:"전체 Stocks",f_ndt_2:"English Lab: 일 500회 스캔",f_ndt_3:"Voice: 일 300,000자",f_ndt_4:"포트폴리오, 백테스트, 가격 알림",
+popular:"인기",choose:"선택",usingNow:"이용 중",
+freePlan:"무료 요금제",adminUnlimited:"{p} — 무제한",paidUntil:"{p} 요금제, {d}일 남음",expired:"{p} 요금제 만료됨",
+lblPlan:"요금제",lblBank:"은행",lblAccount:"계좌번호",lblName:"예금주",lblNote:"송금 메모",
+activateNote:"송금 후 관리자가 요금제를 활성화해 드립니다. 보통 몇 시간이 걸립니다.",
+loginFirst:"결제 정보를 보려면 로그인해 주세요。"}};
+
+let LANG = "vi";
+try{ const v = localStorage.getItem("elab_uiLang"); if(v) LANG = JSON.parse(v); }catch(e){}
+const t = k => (I18N[LANG] && I18N[LANG][k]) || I18N.en[k] || k;
+
+function getAuth(){
+  let token = null, email = "";
+  try{ token = localStorage.getItem("elab_authToken")||null; }catch(e){}
+  try{ const u = JSON.parse(localStorage.getItem("elab_authUser")||"null"); if(u && u.email) email = u.email; }catch(e){}
+  return {token, email};
+}
+
+function renderPlans(){
+  const box = document.getElementById("planCards");
+  box.innerHTML = PLANS.map(p=>{
+    const isCurrent = (p.id === currentPlanId) || (p.id === "free" && !currentPlanId);
+    const feats = (p.feats||[]).map(k=>`<li>${t(k)}</li>`).join("");
+    const per = p.id === "free" ? "" : `<span class="per">${t("perMonth")}</span>`;
+    let btn = "";
+    if(p.id === "free"){
+      if(isCurrent) btn = `<button class="btn" disabled style="width:100%;opacity:.6">${t("usingNow")}</button>`;
+    }else if(isCurrent){
+      btn = `<button class="btn" disabled style="width:100%;opacity:.6">${t("usingNow")}</button>`;
+    }else{
+      btn = `<button class="btn ${p.hot?'primary':''} choose-plan" data-plan="${p.id}" style="width:100%">${t("choose")}</button>`;
+    }
+    return `
+    <div class="card plan-card ${p.hot?'hot':''}">
+      ${p.hot?`<div class="pop-badge">${t("popular")}</div>`:""}
+      <div class="plan-name">${t("p_"+p.id)}</div>
+      <div class="plan-price">${p.price}${per}</div>
+      <ul class="plan-feats">${feats}</ul>
+      ${btn}
+    </div>`;
+  }).join("");
+  box.querySelectorAll(".choose-plan").forEach(b=>{
+    b.onclick = ()=>{
+      const p = PLANS.find(x=>x.id===b.dataset.plan);
+      const {email} = getAuth();
+      const payBox = document.getElementById("payInfo");
+      payBox.style.display = "block";
+      document.getElementById("payDetails").innerHTML = `
+        <div class="kv"><b>${t("lblPlan")}:</b> ${t("p_"+p.id)} — ${p.price}${p.id==="free"?"":t("perMonth")}</div>
+        <div class="kv"><b>${t("lblBank")}:</b> ${PAY.bank}</div>
+        <div class="kv"><b>${t("lblAccount")}:</b> ${PAY.account}</div>
+        <div class="kv"><b>${t("lblName")}:</b> ${PAY.name}</div>
+        <div class="kv" style="margin-bottom:12px"><b>${t("lblNote")}:</b>
+          ${email ? `<code class="transfer">${PAY.notePrefix} ${email}</code>` : `<span class="hint">${t("loginFirst")}</span>`}
+        </div>
+        <div class="hint">${t("activateNote")}</div>`;
+      payBox.scrollIntoView({behavior:"smooth"});
+    };
+  });
+}
+
+async function loadPlanStatus(){
+  const {token} = getAuth();
+  const el = document.getElementById("planStatus");
+  currentPlanId = "free";
+  if(!token){ el.textContent = t("freePlan"); renderPlans(); return; }
+  try{
+    const r = await fetch("/api/user/plan", {headers:{"Authorization":"Bearer "+token}});
+    if(!r.ok) throw 0;
+    const j = await r.json();
+    if(!j.plan || j.plan==="free"){ el.textContent = t("freePlan"); renderPlans(); return; }
+    currentPlanId = j.plan;
+    const name = t("p_"+j.plan) || j.plan;
+    let status;
+    if(j.plan === "admin") status = t("adminUnlimited").replace("{p}", name);
+    else if(j.days_left > 0) status = t("paidUntil").replace("{p}",name).replace("{d}",j.days_left);
+    else status = t("expired").replace("{p}",name);
+    el.innerHTML = `<span class="status-dot"></span>` + status;
+  }catch(e){ el.textContent = t("freePlan"); }
+  renderPlans();
+}
+
+function applyLang(l){
+  LANG = l;
+  try{ localStorage.setItem("elab_uiLang", JSON.stringify(l)); }catch(e){}
+  document.documentElement.lang = l;
+  document.title = t("title") + " — Pocket Personal";
+  document.querySelectorAll("[data-i18n]").forEach(el=>{ const v = t(el.dataset.i18n); if(v!==el.dataset.i18n) el.textContent = v; });
+  ["vi","en","zh","ko"].forEach(x=>{ const b=document.getElementById("lang"+x[0].toUpperCase()+x[1]); if(b) b.classList.toggle("on", l===x); });
+  renderPlans();
+  loadPlanStatus();
+}
+// Expose for lang-dropdown.js
+window.__elabSetLang = applyLang;
+
+
+(function init(){
+  const {token} = getAuth();
+  document.getElementById("loginPrompt").style.display = token ? "none" : "block";
+  document.getElementById("main").style.display = token ? "block" : "none";
+  applyLang(LANG);
+})();
+</script>
+<script src="/english/js/lang-dropdown.js?v=__BUILD__"></script>
+</body>
+</html>

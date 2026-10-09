@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>/* Auto cache-buster: reload if this HTML is stale (build ID mismatch) */
+(function(){var B="__BUILD__";function c(){try{fetch(location.pathname+"?cb="+Date.now(),{cache:"no-store"}).then(function(r){return r.text();}).then(function(t){var m=t.match(/var B="(\d+)"/);if(m&&m[1]&&m[1]!==B){location.href=location.pathname+"?v="+m[1]+location.hash;}}).catch(function(){})}catch(e){}}if(document.readyState==="complete"){setTimeout(c,2000);}else{window.addEventListener("load",function(){setTimeout(c,2000);});}setInterval(c,30000);})();
+</script>
+<meta charset="UTF-8">
+<script>if(location.protocol==="http:")location.replace("https://"+location.host+location.pathname+location.search+location.hash);</script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Read & Learn</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0d9d6c">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/icon-english-192.png">
+<link rel="stylesheet" href="/design-system.css?v=1791286989">
+<style>
+/* Map legacy vars to design system */
+:root{--bg:var(--pp-bg);--card:var(--pp-card);--card2:var(--pp-bg2);--ink:var(--pp-ink);
+  --mut:var(--pp-mut);--line:var(--pp-line);--accent:var(--pp-accent)}
+/* pp tokens from design-system.css apply (see :root mapping above) */
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Inter",sans-serif;color:var(--ink);padding-bottom:90px;min-height:100vh;background-color:var(--bg)}
+.read-layout{display:grid;grid-template-columns:280px minmax(0,1fr);gap:16px;align-items:start}
+.read-layout.no-vocab{grid-template-columns:minmax(0,1fr)}
+.vocab-sidebar{max-height:80vh;overflow-y:auto;position:sticky;top:70px;grid-column:1;grid-row:1}
+#readResultCard{min-width:0;grid-column:2;grid-row:1}
+.read-layout.no-vocab #readResultCard{grid-column:1}
+#readEmptyState{min-width:0;grid-column:2;grid-row:1}
+.read-layout.no-vocab #readEmptyState{grid-column:1}
+@media(max-width:900px){
+  .read-layout{grid-template-columns:minmax(0,1fr)}
+  .vocab-sidebar{max-height:none;position:static;grid-column:1;grid-row:2}
+  #readResultCard{grid-column:1;grid-row:1}
+  #readEmptyState{grid-column:1;grid-row:1}
+}
+#tabRead{background-color:var(--card2);background-image:linear-gradient(rgba(66,133,244,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(66,133,244,.08) 1px,transparent 1px);background-size:28px 28px;min-height:100vh}
+.tabpage{display:none}
+.tabpage.active{display:block}
+/* Kid mode: bigger, rounder, playful */
+body.kid-mode{font-size:17px}
+body.kid-mode .card{border-radius:28px;padding:24px}
+body.kid-mode .btn{border-radius:20px;padding:16px 24px;font-size:17px}
+body.kid-mode .btn.big{padding:20px 28px;font-size:19px}
+body.kid-mode .rsent{border-radius:20px;font-size:18px;border-width:2px}
+body.kid-mode .cefr{font-size:13px;padding:4px 12px}
+.kid-mascot{font-size:48px;text-align:center;margin:8px 0;animation:bounce 2s infinite}
+@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+
+header{position:sticky;top:0;z-index:50;background:var(--card);color:var(--ink);padding:6px 12px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line)}
+header h1{margin:0;font-size:19px;font-weight:700;letter-spacing:-.3px;display:flex;align-items:center;gap:6px}
+.iconbtn{background:none;border:none;color:var(--ink);font-size:18px;width:32px;height:32px;cursor:pointer;padding:0}
+main{max-width:640px;margin:0 auto;padding:18px 16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px;margin-bottom:16px;box-shadow:0 4px 16px rgba(20,24,31,.08)}
+.card h3{margin:0 0 8px;font-size:18px;font-weight:700;color:var(--ink)}
+.hint{color:var(--mut);font-size:14px;line-height:1.65}
+.row{display:flex;gap:8px;align-items:center}
+.btn{border:none;background:var(--card2);color:var(--ink);border-radius:12px;padding:13px 20px;font-size:15px;font-weight:600;cursor:pointer;transition:transform .1s}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--accent);color:#fff;box-shadow:0 4px 12px rgba(13,157,108,.3)}
+.btn.ghost{background:transparent;border:1px solid var(--line)}
+.btn.big{font-size:16px;padding:15px 24px}
+.btn:disabled{opacity:.5}
+label{display:block;font-size:13px;color:var(--ink);margin:10px 0 4px;font-weight:600}
+select{width:100%;border:1px solid var(--line);border-radius:10px;padding:12px;font-size:15px;background:var(--card);color:var(--ink)}
+.rsent{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 16px;margin-bottom:10px;line-height:2.1;font-size:17px;font-family:Georgia,"Times New Roman",serif;color:var(--ink);overflow:hidden;position:relative;transform:translateZ(0);word-break:break-word;overflow-wrap:break-word;box-shadow:0 4px 14px rgba(20,24,31,.08)}
+.rsent .rbody{padding-right:36px;word-break:break-word;overflow-wrap:break-word}
+.rsent .rdel{position:absolute;top:8px;right:8px;padding:4px 8px;font-size:12px;color:#ef4444}
+.rword{padding:3px 2px;border-radius:6px;cursor:pointer;border-bottom:2px dotted var(--line)}
+.rsent .rplay{margin-right:10px;padding:8px 12px;font-size:15px;vertical-align:middle;background:var(--card);border:1px solid var(--line);border-radius:10px}
+.rword{padding:3px 2px;border-radius:6px;cursor:pointer;border-bottom:2px dotted var(--line)}
+.rword:active{background:var(--accent);color:#fff}
+/* Article reading view: like a book page */
+.segbtn{display:flex;gap:4px}
+.segbtn button{border:none;background:none;padding:7px 12px;border-radius:9px;font-size:16px;cursor:pointer;color:var(--mut)}
+.segbtn button.active{background:none;color:var(--accent)}
+.ticonbtn{display:inline-flex!important;align-items:center;justify-content:center;width:36px!important;height:36px!important;padding:0!important;background:none!important;border:none!important;box-shadow:none!important}
+.ic{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.ic.big{width:30px;height:30px}
+button .ic{pointer-events:none}
+.tico{display:inline-flex}
+.ic-h{width:.6em!important;height:.6em!important;vertical-align:-.02em;flex:none}
+.vocab-list{display:flex;flex-direction:column;gap:10px}
+.vocab-item{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.v-head{font-size:16px;margin-bottom:4px}
+.v-phon{color:var(--mut);font-size:14px;margin:0 6px}
+.v-pos{background:var(--card2);color:var(--accent);font-size:12px;padding:2px 8px;border-radius:10px;font-style:italic}
+.v-mean{font-size:15px;color:var(--ink);margin:4px 0}
+.v-ex{font-size:13px;color:var(--mut);margin-top:6px;padding-top:6px;border-top:1px dashed var(--line)}
+.v-ex-vi{color:var(--mut);font-style:italic}
+.tico .ic{width:24px;height:24px}
+.iconbtn{display:inline-flex!important;align-items:center;justify-content:center}
+.segbtn button{display:inline-flex;align-items:center;justify-content:center;min-width:48px;min-height:42px}
+.menugrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.menutile{display:flex;flex-direction:column;align-items:center;gap:8px;padding:20px 10px;border:1px solid var(--line);border-radius:16px;background:var(--card2);font-size:14px;font-weight:700;color:var(--ink);cursor:pointer}
+.menutile:active{transform:scale(.96)}
+.mtileic{display:flex;align-items:center;justify-content:center;width:58px;height:58px;border-radius:20px}
+.rv{display:none}
+.rv.on{display:block}
+#readArticle{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:28px 30px;margin-top:12px;font-family:Georgia,"Times New Roman",serif;font-size:18.5px;line-height:2.05;color:var(--ink);text-align:left;box-shadow:0 8px 26px rgba(20,24,31,.08),inset 0 0 46px rgba(20,24,31,.03)}
+#readArticle .rword{border-bottom:1px dotted var(--line);padding:1px;cursor:pointer}
+#readArticle .rword:hover{border-bottom-color:var(--accent);background:rgba(13,157,108,.1)}
+.asent{cursor:pointer;border-radius:6px;padding:1px;transition:background .15s}
+.asent:hover{background:rgba(13,157,108,.08)}
+.asent.sel{background:rgba(13,157,108,.16);box-shadow:0 0 0 2px rgba(13,157,108,.35)}
+.apara{margin:0 0 1.1em;text-indent:1.8em}
+.apara:first-of-type{text-indent:0}
+.apara:first-of-type::first-letter{font-size:3.3em;float:left;line-height:.85;padding:5px 10px 0 0;font-weight:700;color:var(--mut)}
+.apara:first-of-type{text-indent:0}
+.apara:last-child{margin-bottom:0}
+.bookhead{text-align:center;margin-bottom:1.4em;border-bottom:2px solid var(--line);padding-bottom:.9em}
+.bookhead .btitle{font-size:1.4em;font-weight:700;color:var(--ink);letter-spacing:.5px}
+.bookhead .bsub{font-size:.78em;color:var(--mut);margin-top:6px}
+.bplay{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:50%;border:none;background:var(--accent);color:#fff;font-size:20px;cursor:pointer;box-shadow:0 4px 12px rgba(13,157,108,.35);vertical-align:middle;margin-right:10px}
+.bplay:active{transform:scale(.94)}
+#scanHistRow{margin-top:10px}
+#scanHistSel{width:100%;border:1px solid var(--line);border-radius:10px;padding:10px;font-size:14px;background:var(--card);color:var(--ink);font-family:Georgia,serif}
+#unlockCard{border:1px solid #f59e0b;background:#fffbeb}
+@media (max-width:480px){
+  #readArticle{padding:20px 18px;font-size:17.5px}
+}
+#sentBar{position:fixed;left:16px;right:16px;bottom:96px;z-index:80;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:14px;padding:10px 14px;display:none;align-items:center;gap:10px;box-shadow:0 8px 28px rgba(20,24,31,.08)}
+#sentBar.show{display:flex}
+#sentBarClose{color:var(--ink)!important}
+#sentBar .cefr{flex:none}
+/* Desktop layout */
+@media (min-width:900px){
+  .scan-cols{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;align-items:start}
+  .scan-cols .scan-col{width:100%}
+  .scan-divider{margin-top:12px;border-top:none;padding-top:0;border-left:1px solid var(--line);padding-left:20px}
+  body{padding-top:76px}
+  header{position:static}
+  main{max-width:1140px;padding:26px 36px 60px}
+  #readArticle{max-width:68ch;margin:14px auto 0;font-size:19.5px;line-height:2.05}
+  #readSents.rv.on{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start}
+  #readSents.rv.on .rsent{margin-bottom:0}
+  #bankList{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start}
+  #bankList .rsent{margin-bottom:0}
+  #sentBar{left:50%;right:auto;transform:translateX(-50%);width:min(620px,92vw);bottom:24px}
+  #settingsCard{max-width:560px;border-radius:16px;margin:0 auto}
+  .dashcols{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+  .dashcols .card{margin-bottom:0}
+}
+/* Progress dashboard */
+.statgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 8px;text-align:center;box-shadow:0 2px 8px rgba(20,24,31,.08)}
+.statnum{font-size:26px;font-weight:800;color:var(--accent)}
+.statlbl{font-size:12px;color:var(--mut);margin-top:2px}
+.dashcols .card{margin-bottom:14px}
+#bankSearch{background:var(--card);color:var(--ink)}
+#bankFilter{background:var(--card);color:var(--ink)}
+.cefr{display:inline-block;font-size:11px;font-weight:800;padding:2px 8px;border-radius:999px;margin-left:8px;vertical-align:middle;color:#fff}
+.cefr.A1{background:#4ade80}.cefr.A2{background:#a3e635;color:#1e1b4b}.cefr.B1{background:#facc15;color:#1e1b4b}
+.cefr.B2{background:#fb923c}.cefr.C1{background:#f87171}.cefr.C2{background:#c084fc}
+.bankitem{padding:10px 12px;border-bottom:1px solid var(--line);font-size:15.5px;line-height:1.8}
+.bankitem:last-child{border-bottom:none}
+.pathlevel{display:flex;align-items:center;gap:12px;margin:12px 0}
+.pathbadge{font-size:28px;font-weight:800;color:#fff;border-radius:16px;padding:10px 18px}
+.pathbar{flex:1;background:var(--card2);border-radius:10px;height:16px;overflow:hidden}
+.pathbar>div{height:100%;border-radius:10px;background:var(--pp-grad);transition:width .5s}
+.rec{background:var(--card2);border-radius:12px;padding:10px 14px;margin:8px 0;font-size:14.5px;line-height:1.6}
+#settingsBox,#authBox{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;align-items:flex-end;justify-content:center;z-index:100}
+/* Auth: ChatGPT-style minimal full page */
+#authBox{align-items:stretch;padding:0;background:var(--bg)}
+#authCard{max-width:none;max-height:none;width:100%;height:100%;border:none;border-radius:0;box-shadow:none;padding:0;background:var(--bg);overflow-y:auto;position:relative}
+.gptWrap{max-width:400px;margin:0 auto;padding:24px 24px 40px;min-height:100vh;display:flex;flex-direction:column;justify-content:center}
+.gptLogo{font-size:44px;text-align:center;margin-bottom:20px}
+.gptH1{font-size:30px;font-weight:600;text-align:center;margin:0 0 26px;color:var(--ink);letter-spacing:-.3px}
+.gptLabel{display:block;font-size:14px;color:var(--ink);margin:0 0 6px}
+.gptInput{width:100%;height:52px;border:1px solid var(--line);border-radius:6px;padding:0 14px;font-size:16px;margin:0 0 14px;color:var(--ink);background:#fff}
+.gptInput:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(13,157,108,.15)}
+.gptBtn{width:100%;height:52px;background:var(--accent);color:#fff;border:none;border-radius:6px;font-size:16px;font-weight:500;cursor:pointer;margin-top:10px}
+.gptBtn:hover{background:var(--pp-accent-hover)}
+.gptBtnGhost{width:100%;height:52px;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:6px;font-size:16px;cursor:pointer;margin-top:10px}
+.gptBtnGhost:hover{background:var(--card2)}
+.gptSwitch{text-align:center;margin-top:18px;font-size:14px;color:var(--mut)}
+.gptSwitch a{color:var(--accent);cursor:pointer;text-decoration:none;font-weight:600}
+.gptFoot{text-align:center;font-size:12px;color:var(--mut);margin-top:34px}
+.gptFoot a{color:var(--mut);text-decoration:none;margin:0 6px}
+.gptX{position:absolute;top:14px;right:14px;z-index:5;background:var(--card2);border:1px solid var(--line);color:var(--ink);font-size:15px;width:36px;height:36px;border-radius:50%;cursor:pointer}
+.gptAvatarBig{width:72px;height:72px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:700;margin:0 auto 14px}
+.gptHint{text-align:center;font-size:13px;color:var(--mut);margin:0 0 14px;line-height:1.5}
+#settingsCard{background:var(--card);width:100%;max-width:640px;max-height:85vh;overflow-y:auto;border-radius:16px 16px 0 0;padding:22px;box-shadow:0 -8px 32px rgba(0,0,0,.25);border:1px solid var(--line)}
+.profileitem{display:flex;align-items:center;gap:12px;padding:12px;border:2px solid var(--line);border-radius:14px;margin:8px 0;cursor:pointer}
+.profileitem:active{background:var(--card2)}
+.profileavatar{width:44px;height:44px;border-radius:50%;background:var(--pp-grad);color:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800}
+/* Dictionary popup — appears near the tapped word */
+.srvrow{display:flex;align-items:center;gap:6px;padding:10px 4px;border-bottom:1px dashed var(--line)}
+.srvrow:last-child{border-bottom:none}
+.srvrow .btn{padding:8px 10px;font-size:15px}
+#dictBox{position:fixed;z-index:130;display:none;width:min(400px,94vw);background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:0 14px 44px rgba(0,0,0,.22);max-height:72vh;overflow-y:auto}
+#dictBox.show{display:block}
+.dbox-head{position:sticky;top:0;background:var(--card2);color:var(--ink);padding:11px 12px 11px 16px;display:flex;align-items:center;gap:8px;border-radius:14px 14px 0 0;z-index:2;border-bottom:1px solid var(--line)}
+.dword{font-size:22px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dphon{font-size:12.5px;opacity:.82;margin-top:2px}
+.diconbtn{background:var(--card);border:1px solid var(--line);color:var(--ink);font-size:15px;min-width:38px;height:38px;border-radius:50%;cursor:pointer;flex:none}
+.dbox-sec{padding:4px 16px 12px}
+.dvi{margin:10px 0 2px}
+.dvi .vimean{display:block;margin:4px 0;color:var(--ink);font-weight:700;font-size:15.5px;line-height:1.5}
+.dpos{font-weight:800;color:var(--accent);margin:12px 0 2px;font-size:13px;text-transform:uppercase;letter-spacing:.8px}
+.ddef{margin:7px 0;font-size:15.5px;line-height:1.6;color:var(--ink)}
+.ddef .n{color:var(--accent);font-weight:800;margin-right:6px}
+.dex{color:var(--mut);font-style:italic;margin:4px 0 4px 22px;font-size:14px;line-height:1.55}
+.dexvi{display:block;font-style:normal;color:var(--mut);font-size:13.5px;margin-top:1px}
+.synrow{margin:10px 0 2px;font-size:14px;color:var(--mut)}
+.synlbl{font-weight:700;font-size:12.5px;text-transform:uppercase;letter-spacing:.6px;color:var(--accent)}
+.synchip{display:inline-block;background:var(--card2);border:1px solid var(--line);color:var(--ink);border-radius:999px;padding:5px 12px;margin:5px 6px 0 0;font-size:13.5px;font-weight:600;cursor:pointer}
+.synchip:active{background:var(--accent);color:#fff}
+.dfoot{padding:8px 16px 12px;font-size:11.5px;color:var(--mut);border-top:1px dashed var(--line);margin-top:6px}
+.dloading{padding:26px;text-align:center;color:var(--mut);font-size:15px}
+#confirmBar{position:fixed;left:16px;right:16px;bottom:96px;z-index:210;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:14px;padding:12px 14px;display:none;align-items:center;gap:10px;box-shadow:0 8px 28px rgba(0,0,0,.18);font-size:14px}
+#toast{position:fixed;left:50%;bottom:40px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:13px 22px;border-radius:999px;font-size:14px;font-weight:600;display:none;z-index:200;max-width:90vw;text-align:center;box-shadow:0 4px 16px rgba(0,0,0,.3)}
+
+/* ---------- article audio player ---------- */
+#artPlayer{position:sticky;top:8px;z-index:95;background:#1c1c1e;color:#fff;border-radius:16px;padding:10px 14px 12px;display:none;box-shadow:0 10px 30px rgba(0,0,0,.4);margin-bottom:10px}
+#artPlayer.show{display:block}
+.ap-top{display:flex;align-items:center;gap:4px}
+.ap-btn{background:none;border:none;color:#fff;font-size:20px;cursor:pointer;padding:6px;min-width:40px;text-align:center;line-height:1}
+.ap-btn sub{font-size:10px}
+.ap-play{font-size:26px;min-width:48px}
+.ap-small{font-size:16px;opacity:.9;min-width:36px}
+.ap-time{font-size:13px;color:var(--mut);margin:0 4px;white-space:nowrap}
+.ap-seek{position:relative;height:22px;margin-top:2px;cursor:pointer;touch-action:none}
+.ap-seek::before{content:"";position:absolute;left:0;right:0;top:10px;height:3px;background:#3a3a3c;border-radius:2px}
+.ap-fill{position:absolute;left:0;top:10px;height:3px;background:var(--accent);border-radius:2px;width:0%}
+.ap-knob{position:absolute;top:11px;width:11px;height:11px;background:var(--accent);border-radius:50%;transform:translate(-50%,-50%);left:0%}
+.ap-status{font-size:12.5px;color:var(--mut);text-align:center;margin-top:4px}
+@media (min-width:900px){
+}
+
+/* ---------- dark theme ---------- */
+/* pp dark tokens apply via :root mapping above */
+body.dark{background-color:var(--bg);background-image:linear-gradient(rgba(255,255,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.03) 1px,transparent 1px),linear-gradient(180deg,var(--bg) 0%,var(--bg) 100%)}
+body.dark header{background:var(--card)}
+body.dark .iconbtn{background:none}
+body.dark .card{box-shadow:0 4px 16px rgba(0,0,0,.35)}
+body.dark .rsent{background:var(--card);border-color:var(--line);color:var(--ink)}
+body.dark .rsent .rword{border-bottom-color:var(--line)}
+body.dark #readArticle{background:var(--card);border-color:var(--line);color:var(--ink);box-shadow:0 8px 26px rgba(0,0,0,.4)}
+body.dark #readArticle .rword{border-bottom-color:var(--line)}
+body.dark .bookhead{border-bottom-color:var(--line)}
+body.dark .bookhead .btitle{color:var(--ink)}
+body.dark .bookhead .bsub{color:var(--mut)}
+body.dark .apara:first-of-type::first-letter{color:var(--mut)}
+body.dark #scanHistSel{background:var(--card);color:var(--ink);border-color:var(--line)}
+body.dark select{background:var(--card);color:var(--ink)}
+body.dark #bankSearch,body.dark #bankFilter{background:var(--card);color:var(--ink)}
+body.dark #readTextInput{background:var(--card) !important;color:var(--ink) !important}
+body.dark #sentBar{background:var(--card)}
+body.dark .segbtn button.active{background:var(--line)}
+body.dark .stat{background:var(--card)}
+body.dark #dictBox{background:var(--card);border-color:var(--line)}
+body.dark .dbox-head{background:var(--card2);color:var(--ink);border-bottom-color:var(--line)}
+body.dark .dword{color:var(--ink)}
+body.dark .diconbtn{background:var(--card2);border-color:var(--line);color:var(--ink)}
+body.dark .ddef{color:var(--ink)}
+body.dark .dvi .vimean{color:var(--ink)}
+body.dark .synchip{background:var(--card2);border-color:var(--line);color:var(--ink)}
+body.dark #settingsCard{background:var(--card)}
+body.dark .profileitem{border-color:var(--line)}
+body.dark #authBox{background:var(--bg)}
+body.dark #authCard{background:var(--bg)}
+body.dark .gptH1{color:var(--ink)}
+body.dark .gptLabel{color:var(--ink)}
+body.dark .gptInput{background:var(--card);border-color:var(--line);color:var(--ink)}
+body.dark .gptBtnGhost{background:var(--card);border-color:var(--line);color:var(--ink)}
+body.dark .gptSwitch{color:var(--mut)}
+body.dark .gptX{background:var(--card2);border-color:var(--line);color:var(--ink)}
+/* stock */
+.stkidx{display:inline-block;min-width:110px;margin:0 8px 8px 0;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--card2)}
+.stkidx-sym{font-size:12px;font-weight:700;color:var(--mut)}
+.stkidx-px{font-size:18px;font-weight:800;margin:2px 0}
+.stkidx-chg{font-size:13px;font-weight:700}
+.up{color:#0d8a66}.dn{color:#d33}
+.stkres{padding:10px 12px;border-bottom:1px solid var(--line);cursor:pointer}
+.stkres:active{background:var(--card2)}
+.stkq{display:flex;align-items:baseline;gap:12px;margin:8px 0}
+.stkq-px{font-size:28px;font-weight:800}
+.stkq-chg{font-size:16px;font-weight:700}
+.stktbl{width:100%;border-collapse:collapse;font-size:14px}
+.stktbl th,.stktbl td{padding:8px 6px;border-bottom:1px solid var(--line);text-align:right}
+.stktbl th:first-child,.stktbl td:first-child{text-align:left}
+.stktbl tr[data-sym]{cursor:pointer}
+#stkChart{width:100%;height:300px}
+.stktab{padding:8px 14px;border-radius:20px}
+.stktab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+#pfCostChart{width:100%;height:220px}
+.stknews{padding:8px 0;border-bottom:1px solid var(--line)}
+.stknews a{color:var(--ink);text-decoration:none}
+.stknews a:hover{text-decoration:underline}
+.stkev{padding:8px 0;border-bottom:1px solid var(--line)}
+.stkfund{display:flex;flex-wrap:wrap;gap:12px;font-size:14px}
+.stkfund span{white-space:nowrap}
+.scan-cols{margin-top:4px}.scan-col{min-width:0}.scan-divider{margin-top:16px;border-top:1px solid var(--line);padding-top:12px}
+</style>
+</head>
+<body>
+<!-- thin-line SVG icon sprite -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+<symbol id="i-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></symbol>
+<symbol id="i-trash" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></symbol>
+<symbol id="i-back" viewBox="0 0 24 24"><path d="M19 12H5m7-7-7 7 7 7"/></symbol>
+<symbol id="i-unlock" viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.9-.8"/></symbol>
+<symbol id="i-logout" viewBox="0 0 24 24"><path d="M9 21H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3"/><path d="m16 17 5-5-5-5M21 12H9"/></symbol>
+<symbol id="i-cloud" viewBox="0 0 24 24"><path d="M17.5 19a4.5 4.5 0 0 0 .42-8.98 6 6 0 0 0-11.7 1.62A4 4 0 0 0 6 19h11.5z"/></symbol>
+<symbol id="i-book" viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></symbol>
+<symbol id="i-camera" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></symbol>
+<symbol id="i-headphones" viewBox="0 0 24 24"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/></symbol>
+<symbol id="i-chart" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></symbol>
+<symbol id="i-crown" viewBox="0 0 24 24"><path d="M3 8l3.6 3L12 5l5.4 6L21 8l-1.7 11.2a1 1 0 0 1-1 .8H5.7a1 1 0 0 1-1-.8z"/></symbol>
+<symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></symbol>
+<symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+<symbol id="i-user" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></symbol>
+<symbol id="i-lock" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+<symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></symbol>
+<symbol id="i-volume" viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor" stroke="none"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.6 5.4a9 9 0 0 1 0 13.2"/></symbol>
+<symbol id="i-refresh" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.5 15a9 9 0 1 1-1.4-8.4L23 10"/></symbol>
+<symbol id="i-edit" viewBox="0 0 24 24"><path d="M17 3a2.8 2.8 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z"/></symbol>
+<symbol id="i-bookmark" viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></symbol>
+<symbol id="i-compass" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polygon points="16.2 7.8 13.4 13.4 7.8 16.2 10.6 10.6 16.2 7.8"/></symbol>
+<symbol id="i-doc" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></symbol>
+<symbol id="i-back10" viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></symbol>
+<symbol id="i-fwd10" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></symbol>
+<symbol id="i-repeat" viewBox="0 0 24 24"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></symbol>
+<symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></symbol>
+<symbol id="i-upload" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></symbol>
+<symbol id="i-layers" viewBox="0 0 24 24"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></symbol>
+<symbol id="i-key" viewBox="0 0 24 24"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></symbol>
+<symbol id="i-pause" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></symbol>
+</defs></svg>
+<header>
+  <div style="display:flex;align-items:center;gap:10px;min-width:0">
+    <a href="/hub" style="color:var(--mut);text-decoration:none;font-size:13px;white-space:nowrap">← Pocket Personal</a>
+    <h1 id="homeBtn" title="Home" style="cursor:pointer"><svg class="ic ic-h"><use href="#i-camera"/></svg> Read & Learn</h1>
+  </div>
+  <div class="row">
+    <button class="iconbtn" id="langBtn" title="Language" style="font-size:15px;font-weight:800">EN</button>
+    <button class="iconbtn" id="themeBtn" title="Theme"><svg class="ic"><use href="#i-moon"/></svg></button>
+    <button class="iconbtn" id="userBtn" title="Account"><svg class="ic"><use href="#i-user"/></svg></button>
+    <button class="iconbtn" id="settingsBtn" title="Settings"><svg class="ic"><use href="#i-gear"/></svg></button>
+  </div>
+</header>
+
+<!-- auth page: full screen (built by renderAuthMain) -->
+<div id="authBox">
+  <div id="authCard">
+    <div id="authBody"></div>
+  </div>
+</div>
+
+<main>
+<div class="tabpage active" id="tabScan">
+  <div class="kid-mascot" id="mascot" style="display:none">🦉</div>
+  <div class="card">
+    <h3 id="snapTitle"><svg class="ic ic-h"><use href="#i-camera"/></svg> <span id="snapTitleLbl">Snap a page</span></h3>
+    <div class="hint" id="snapHint">Take a photo of any English text → tap <svg class="ic" style="width:16px;height:16px;vertical-align:-3px"><use href="#i-volume"/></svg> to hear a sentence, tap any <b>word</b> for pronunciation + dictionary.</div>
+    <div class="scan-cols">
+      <div class="scan-col">
+        <div class="row" style="margin-top:12px">
+          <label class="btn primary big" id="readCamera" style="flex:1;cursor:pointer;justify-content:center"><svg class="ic"><use href="#i-camera"/></svg>&nbsp;<span id="readCameraLbl">Take photo</span><input type="file" id="readFileCam" accept="image/*" capture="environment" style="position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;pointer-events:none" tabindex="-1"></label>
+          <label class="btn ghost" id="readGallery" style="cursor:pointer;justify-content:center"><svg class="ic"><use href="#i-image"/></svg>&nbsp;<span id="readGalleryLbl">Gallery</span><input type="file" id="readFileLib" accept="image/*" style="position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;pointer-events:none" tabindex="-1"></label>
+        </div>
+        <img id="readPreview" style="display:none; width:100%; border-radius:10px; margin-top:12px;" alt="preview">
+        <div id="readProg" style="display:none; margin-top:10px">
+          <div style="background:var(--card2);border-radius:8px;height:12px;overflow:hidden">
+            <div id="readBar" style="height:100%;width:0%;background:var(--accent);transition:width .3s"></div>
+          </div>
+          <div class="hint" id="readStatus">Loading…</div>
+        </div>
+      </div>
+      <div class="scan-col">
+        <div class="scan-divider">
+          <label style="margin:0 0 6px;display:flex;align-items:center;gap:6px" id="pasteLbl"><svg class="ic" style="width:18px;height:18px"><use href="#i-edit"/></svg><span id="pasteLblTxt">Or paste text instead</span></label>
+          <textarea id="readTextInput" rows="6" placeholder="Paste English text here…" style="width:100%;border:1px solid var(--line);border-radius:10px;padding:12px;font-size:15px;font-family:inherit;resize:vertical;background:var(--card);color:var(--ink)"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <button class="btn primary big" id="readGo" disabled style="flex:1"><svg class="ic" id="readGoIco"><use href="#i-book" id="readGoUse"/></svg>&nbsp;<span id="readGoLbl">Create reading</span></button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 style="margin:0" id="menuTitle"><svg class="ic ic-h"><use href="#i-compass"/></svg> <span id="menuTitleLbl">Explore</span></h3>
+    <div class="menugrid">
+      <button class="menutile" data-go="read"><span class="mtileic" style="background:var(--card2);color:var(--accent)"><svg class="ic big"><use href="#i-book"/></svg></span><span id="menuRead">Read</span></button>
+      <button class="menutile" data-go="audio"><span class="mtileic" style="background:var(--card2);color:var(--accent)"><svg class="ic big"><use href="#i-headphones"/></svg></span><span id="menuAudio">Audio</span></button>
+      <button class="menutile" data-go="books"><span class="mtileic" style="background:var(--card2);color:var(--accent)"><svg class="ic big"><use href="#i-bookmark"/></svg></span><span id="menuBooks">Books</span></button>
+      <button class="menutile" data-go="progress"><span class="mtileic" style="background:var(--card2);color:var(--accent)"><svg class="ic big"><use href="#i-chart"/></svg></span><span id="menuProgress">My progress</span></button>
+      <button class="menutile" data-go="settings"><span class="mtileic" style="background:var(--card2);color:var(--accent)"><svg class="ic big"><use href="#i-gear"/></svg></span><span id="menuSettings">Settings</span></button>
+      <button class="menutile" data-go="profile"><span class="mtileic" style="background:var(--card2);color:var(--accent)"><svg class="ic big"><use href="#i-user"/></svg></span><span id="menuProfile">Profile</span></button>
+      <button class="menutile" data-go="admin" id="menuAdminTile" style="display:none"><span class="mtileic" style="background:var(--card2);color:var(--accent)"><svg class="ic big"><use href="#i-crown"/></svg></span><span id="menuAdmin">Admin</span></button>
+    </div>
+  </div>
+</div>
+
+<!-- floating sentence toolbar (article view) -->
+<div id="sentBar">
+  <button class="btn primary" id="sentBarPlay" style="padding:9px 16px"><svg class="ic big"><use href="#i-play"/></svg></button>
+  <span id="sentBarLevel"></span>
+  <span id="sentBarText" style="flex:1;font-size:13px;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></span>
+  <button class="btn ghost" id="sentBarClose" style="padding:8px 12px"><svg class="ic"><use href="#i-close"/></svg></button>
+</div>
+
+<!-- article audio player -->
+<div id="artPlayer">
+  <div class="ap-top">
+    <button class="ap-btn" id="apBack" title="Back 10s"><svg class="ic" style="width:24px;height:24px;stroke:#fff"><use href="#i-back10"/></svg></button>
+    <button class="ap-btn ap-play" id="apPlay" title="Play/Pause"><svg class="ic" style="width:28px;height:28px"><use href="#i-play"/></svg></button>
+    <button class="ap-btn" id="apFwd" title="Forward 10s"><svg class="ic" style="width:24px;height:24px;stroke:#fff"><use href="#i-fwd10"/></svg></button>
+    <span class="ap-time"><span id="apCur">0:00</span> / <span id="apDur">0:00</span></span>
+    <button class="ap-btn ap-small" id="apLoop" title="Loop" style="opacity:.4"><svg class="ic" style="width:20px;height:20px;stroke:#fff"><use href="#i-repeat"/></svg></button>
+    <button class="ap-btn ap-small" id="apSpeed" title="Speed">1x</button>
+    <button class="ap-btn ap-small" id="apDl" title="Download MP3"><svg class="ic" style="width:20px;height:20px;stroke:#fff"><use href="#i-download"/></svg></button>
+    <button class="ap-btn ap-small" id="apClose" title="Close"><svg class="ic" style="width:20px;height:20px;stroke:#fff"><use href="#i-close"/></svg></button>
+  </div>
+  <div class="ap-seek" id="apSeek"><div class="ap-fill" id="apFill"></div><div class="ap-knob" id="apKnob"></div></div>
+  <div class="ap-status" id="apStatus" style="display:none"></div>
+</div>
+
+<div class="tabpage" id="tabRead">
+  <button class="btn ghost" id="readBackBtn" style="margin-bottom:12px;padding:8px 12px">← Scan</button>
+  <div class="read-layout">
+  <div class="vocab-sidebar card" id="autoVocab" style="display:none"></div>
+  <div class="card" id="readEmptyState">
+    <div style="text-align:center;padding:32px 16px;color:var(--mut)">
+      <div style="margin-bottom:12px;color:var(--mut)"><svg class="ic" style="width:48px;height:48px"><use href="#i-book"/></svg></div>
+      <div style="font-size:16px;font-weight:700;color:var(--ink);margin-bottom:8px">No reading yet</div>
+      <div style="font-size:14px">Go to the Scan tab to snap a photo or paste text,<br>then your article will appear here.</div>
+    </div>
+  </div>
+  <div class="card" id="readResultCard" style="display:none">
+
+    <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:10px">
+    <h3 style="margin:0" id="readResultTitle"><svg class="ic ic-h"><use href="#i-edit"/></svg> <span id="readResultTitleLbl">Learn</span></h3>
+    <div class="row" style="gap:4px;flex-wrap:nowrap">
+      <button class="btn primary ticonbtn" id="readPlayAll" title="Listen to the whole article"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M8 5.5v13l11-6.5z"/></svg></button>
+      <button class="btn ghost ticonbtn" id="readMakeMp3" title="Create MP3 file"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>
+      <div class="segbtn">
+        <button id="viewArticle" class="active" title="Article view"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg></button>
+        <button id="viewCards" title="Cards view"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg></button>
+      </div>
+      <button class="btn ghost ticonbtn" id="readQuizBtn" title="Create quiz"><svg class="ic"><use href="#i-compass"/></svg></button>
+      <button class="btn ghost ticonbtn" id="readClear" title="Clear all"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+    </div>
+    </div>
+    <div class="hint" id="readResultHint"><svg class="ic" style="width:16px;height:16px;vertical-align:-3px"><use href="#i-volume"/></svg> hear sentence · tap <b>word</b> = pronunciation + dictionary</div>
+    <div class="row" id="scanHistRow" style="display:none"><select id="scanHistSel"></select></div>
+    <div id="readArticle" class="rv on" style="margin-top:10px"></div>
+    <div id="readSents" class="rv" style="margin-top:10px"></div>
+    <div id="readQuiz" style="display:none;margin-top:12px"></div>
+  </div>
+
+  <div class="card" id="serverReadingsCard" style="display:none">
+    <div class="row" style="justify-content:space-between;align-items:center">
+      <h3 style="margin:0"><svg class="ic ic-h"><use href="#i-cloud"/></svg> <span id="srvReadTitle">My readings</span></h3>
+      <button class="btn ghost" id="srvReadRefresh" style="padding:8px 12px" title="Refresh"><svg class="ic"><use href="#i-refresh"/></svg></button>
+    </div>
+    <div class="hint" id="srvReadHint">Articles saved in your account — listen or download anytime.</div>
+    <div id="serverReadings" style="margin-top:8px"></div>
+  </div>
+</div>
+
+<div class="tabpage" id="tabAudio">
+  <div class="card">
+    <div class="row" style="justify-content:space-between;align-items:center">
+      <h3 style="margin:0"><svg class="ic ic-h"><use href="#i-headphones"/></svg> <span id="audioLibTitle">Audio library</span></h3>
+      <button class="btn ghost" id="audioLibRefresh" style="padding:8px 12px" title="Refresh"><svg class="ic"><use href="#i-refresh"/></svg></button>
+    </div>
+    <div class="hint" id="audioLibHint"></div>
+    <audio id="audioLibPlayer" controls style="width:100%;display:none;margin-top:10px"></audio>
+    <div id="audioLib" style="margin-top:8px">
+      <div class="card" id="audioEmptyState" style="text-align:center;padding:32px 16px">
+        <div style="margin-bottom:12px;color:var(--mut)"><svg class="ic" style="width:48px;height:48px"><use href="#i-headphones"/></svg></div>
+        <div style="font-size:16px;font-weight:700;margin-bottom:8px">No audio yet</div>
+        <div class="hint">Tap ▶️ on any reading to generate its MP3,<br>then find it here to listen anytime.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="tabpage" id="tabProgress">
+  <div class="card" id="unlockCard" style="display:none">
+    <h3><svg class="ic ic-h"><use href="#i-lock"/></svg> <span id="unlockTitle">Unlock your data</span></h3>
+    <div class="hint" id="unlockHint">Your session was restored but your data is encrypted. Enter your password to unlock it.</div>
+    <input class="authinput" id="unlockPass" type="password" placeholder="Password" style="margin-top:10px" autocomplete="current-password">
+    <button class="btn primary" id="unlockBtn" style="width:100%;margin-top:8px"><svg class="ic"><use href="#i-unlock"/></svg> Unlock</button>
+  </div>
+  <div id="emptyBankCard" class="card" style="text-align:center;padding:32px 16px">
+    <div style="margin-bottom:12px;color:var(--mut)"><svg class="ic" style="width:48px;height:48px"><use href="#i-chart"/></svg></div>
+    <div style="font-size:16px;font-weight:700;margin-bottom:8px">No progress yet</div>
+    <div class="hint">Scan some pages and your stats will appear here —<br>sentences read, level estimate, and learning path.</div>
+  </div>
+
+  <div id="progressDash" style="display:none">
+    <!-- stat tiles -->
+    <div class="statgrid">
+      <div class="stat"><div class="statnum" id="stSent">0</div><div class="statlbl" id="stSentLbl">Sentences</div></div>
+      <div class="stat"><div class="statnum" id="stLevel">–</div><div class="statlbl" id="stLevelLbl">Level</div></div>
+      <div class="stat"><div class="statnum" id="stDays">0</div><div class="statlbl" id="stDaysLbl">Days</div></div>
+      <div class="stat"><div class="statnum" id="stWords">0</div><div class="statlbl" id="stWordsLbl">Words read</div></div>
+    </div>
+    <!-- vocab review flashcards -->
+    <div class="card" id="vocabCard" style="margin-top:12px">
+      <h3 style="margin-top:0"><svg class="ic ic-h"><use href="#i-book"/></svg> <span data-i18n="vocabReview">Ôn từ vựng</span></h3>
+      <div id="vocabBox">
+        <div class="hint" id="vocabHint">Bấm bắt đầu để ôn từ đến hạn</div>
+        <button class="btn primary" id="vocabStart" style="width:100%;margin-top:8px"><span data-i18n="vocabStartBtn">Bắt đầu ôn</span></button>
+      </div>
+    </div>
+    <!-- profile + path side by side on desktop -->
+    <div class="dashcols">
+      <div class="card" id="statsCard">
+        <h3 style="margin-top:0"><svg class="ic ic-h"><use href="#i-chart"/></svg> <span id="profileTitle">Reading profile</span></h3>
+        <div class="hint" id="levelEstimate" style="margin-bottom:8px"></div>
+        <div id="levelBars"></div>
+      </div>
+      <div class="card" id="pathCard">
+        <h3 style="margin-top:0"><svg class="ic ic-h"><use href="#i-compass"/></svg> <span id="pathTitle">Learning path</span></h3>
+        <div id="pathContent"></div>
+      </div>
+    </div>
+    <!-- bank -->
+    <div class="card" id="bankCard">
+      <div class="row" style="justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+        <h3 style="margin:0"><svg class="ic ic-h"><use href="#i-layers"/></svg> <span id="bankTitle">Sentence bank</span> (<span id="bankCount">0</span>)</h3>
+        <div class="row" style="gap:8px">
+          <input id="bankSearch" placeholder="Search…" style="width:140px;border:2px solid var(--line);border-radius:10px;padding:8px 10px;font-size:14px">
+          <select id="bankFilter" style="width:auto;border:2px solid var(--line);border-radius:10px;padding:8px;font-size:14px">
+            <option value="">All levels</option>
+          </select>
+          <button class="btn ghost" id="bankClear" style="padding:8px 12px" title="Clear bank"><svg class="ic"><use href="#i-trash"/></svg></button>
+        </div>
+      </div>
+      <div class="hint"><svg class="ic" style="width:16px;height:16px;vertical-align:-3px"><use href="#i-volume"/></svg> hear sentence · tap <b>word</b> = pronunciation + dictionary</div>
+      <div id="bankList" style="margin-top:10px"></div>
+    </div>
+  </div>
+</div>
+
+
+<div class="tabpage" id="tabProfile">
+  <div class="card">
+    <h3 style="margin:0 0 16px"><svg class="ic ic-h"><use href="#i-user"/></svg> <span id="userProfileTitle">Profile</span></h3>
+    <div id="profileContent"><div class="hint">Loading…</div></div>
+  </div>
+</div>
+
+<div class="tabpage" id="tabAdmin">
+  <div class="card">
+    <h3><svg class="ic ic-h"><use href="#i-crown"/></svg> Admin panel</h3>
+    <div class="hint">Full access: manage users, view corpus.</div>
+    <div id="adminContent" style="margin-top:12px"></div>
+  </div>
+</div>
+
+<div class="tabpage" id="tabBooks">
+  <div class="card">
+    <div class="row" style="justify-content:space-between;align-items:center">
+      <h3 style="margin:0"><svg class="ic ic-h"><use href="#i-book"/></svg> My books</h3>
+      <label class="btn primary" id="bookUploadBtn" style="padding:10px 16px;cursor:pointer"><svg class="ic"><use href="#i-upload"/></svg> Upload PDF<input type="file" id="bookFile" accept="application/pdf,application/epub+zip,.epub" style="position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;pointer-events:none" tabindex="-1"></label>
+    </div>
+    <div class="hint">Upload a book → auto-split into lessons → tap to read & learn.</div>
+    <div class="row" id="bookTitleRow" style="display:none;margin-top:12px">
+      <input id="bookTitleInput" class="gptInput" style="flex:1;margin:0" maxlength="120" data-i18n-ph="bookTitlePh">
+      <button class="btn primary" id="bookTitleGo" style="padding:12px 18px;flex:none" data-i18n="uploadBtn">Upload</button>
+      <button class="btn ghost" id="bookTitleCancel" style="padding:12px 14px;flex:none" aria-label="Cancel">✕</button>
+    </div>
+    <div id="bookList" style="margin-top:12px">
+      <div class="card" id="bookEmptyState" style="text-align:center;padding:32px 16px">
+        <div style="margin-bottom:12px;color:var(--mut)"><svg class="ic" style="width:48px;height:48px"><use href="#i-book"/></svg></div>
+        <div style="font-size:16px;font-weight:700;margin-bottom:8px">No books yet</div>
+        <div class="hint">Upload a PDF or EPUB book above,<br>it will be split into lessons for you to read.</div>
+      </div>
+    </div>
+  </div>
+  <div class="card" id="bookDetailCard" style="display:none">
+    <div class="row" style="justify-content:space-between;align-items:center">
+      <h3 style="margin:0" id="bookDetailTitle"><svg class="ic ic-h"><use href="#i-book"/></svg> <span id="bookDetailTitleTxt"></span></h3>
+      <button class="btn ghost" id="bookBack" style="padding:8px 12px"><svg class="ic"><use href="#i-back"/></svg> Back</button>
+    </div>
+    <div id="bookChapters" style="margin-top:12px"></div>
+  </div>
+  <div class="card" id="chapterCard" style="display:none">
+    <div class="row" style="justify-content:space-between;align-items:center">
+      <h3 style="margin:0" id="chapterTitle"><svg class="ic ic-h"><use href="#i-doc"/></svg> <span id="chapterTitleTxt"></span></h3>
+      <button class="btn ghost" id="chapterBack" style="padding:8px 12px"><svg class="ic"><use href="#i-back"/></svg> Back</button>
+    </div>
+    <div class="hint"><svg class="ic" style="width:16px;height:16px;vertical-align:-3px"><use href="#i-volume"/></svg> hear sentence · tap <b>word</b> = pronunciation + dictionary</div>
+    <div id="chapterSents" style="margin-top:10px"></div>
+  </div>
+</div>
+  </div>
+
+<div class="tabpage" id="tabSettings">
+  <div class="card">
+    <h3 style="margin:0 0 16px"><svg class="ic ic-h"><use href="#i-gear"/></svg> <span id="settingsTitle">Voice settings</span></h3>
+
+    <label>Voice</label>
+    <div class="row">
+      <select id="voiceSel" style="flex:1"></select>
+      <button class="btn ghost" id="reloadVoices"><svg class="ic"><use href="#i-refresh"/></svg></button>
+    </div>
+    <label>Model</label>
+    <select id="modelSel">
+      <option value="eleven_turbo_v2_5">Turbo v2.5 — fast, fewer credits</option>
+      <option value="eleven_multilingual_v2">Multilingual v2 — best quality</option>
+    </select>
+    <div class="hint" id="quotaLine" style="margin-top:12px"></div>
+    <label style="margin-top:16px"><svg class="ic"><use href="#i-cloud"/></svg> Google Drive</label>
+    <div class="row" style="align-items:center">
+      <div class="hint" style="flex:1" id="driveStatus">Checking...</div>
+      <button class="btn ghost" id="driveConnect" style="display:none">Connect</button>
+      <button class="btn ghost" id="driveDisconnect" style="display:none">Disconnect</button>
+    </div>
+    <div class="hint" style="margin-top:4px">Store your books & audio on your own Google Drive (15GB free).</div>
+    <label style="margin-top:16px"><svg class="ic"><use href="#i-chart"/></svg> Help improve the app</label>
+    <div class="row" style="align-items:flex-start">
+      <input type="checkbox" id="analyticsOpt" style="width:20px;height:20px;margin-top:2px">
+      <div class="hint" style="flex:1">Share <b>anonymous</b> word frequencies to build a learner corpus. Never sends your sentences or personal data. <a href="#" id="insightsLink" style="color:var(--accent)">See what's collected</a>
+  </div>
+</div>
+</div>
+</div>
+</main>
+
+<!-- settings moved to tabSettings -->
+
+<!-- dictionary popup (appears near the tapped word) -->
+<div id="dictBox" role="dialog" aria-label="Dictionary">
+  <div id="dictBoxBody"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+<audio id="player" style="display:none"></audio>
+
+<nav class="pp-tabbar" id="mainTabbar" aria-label="Main navigation">
+  <button id="tabBtnScan"><svg class="pp-ic"><use href="#i-camera"/></svg><span id="tbScan">Scan</span></button>
+  <button id="tabBtnRead"><svg class="pp-ic"><use href="#i-book"/></svg><span id="tbRead">Read</span></button>
+  <button id="tabBtnAudio"><svg class="pp-ic"><use href="#i-headphones"/></svg><span id="tbAudio">Audio</span></button>
+  <button id="tabBtnBooks"><svg class="pp-ic"><use href="#i-bookmark"/></svg><span id="tbBooks">Books</span></button>
+  <button id="tabBtnProgress"><svg class="pp-ic"><use href="#i-chart"/></svg><span id="tbProgress">Progress</span></button>
+</nav>
+
+<script type="module" src="js/main.js?v=1791286989"></script>
+
+
+
+<script>
+(function(){
+  function $(id){ return document.getElementById(id); }
+  function switchTab(name){
+    ["scan","read","audio","books","progress","settings","profile","admin"].forEach(function(n){
+      var el = $("tab"+n.charAt(0).toUpperCase()+n.slice(1)) || $("tab-"+n);
+      if(el) el.classList.toggle("active", n===name);
+    });
+    try{ window.scrollTo(0,0); }catch(e){}
+  }
+  window._elabSwitchTab = switchTab;
+  var ti = $("readTextInput"), go = $("readGo");
+  if(ti && go){
+    ti.addEventListener("input", function(){ go.disabled = !ti.value.trim(); });
+    go.addEventListener("click", function(){
+      var t = ti.value.trim();
+      if(!t) return;
+      var done = false;
+      try{ if(window._elabGo){ window._elabGo(t); done = true; } }catch(e){}
+      if(!done){
+        try{
+          var artBox = $("readArticle"); var sentsBox = $("readSents"); var box = artBox || sentsBox;
+          if(box){
+            var parts = t.split(/([.!?]+\s+)/);
+            var html = "";
+            for(var i=0; i<parts.length; i+=2){
+              var s = ((parts[i]||"") + (parts[i+1]||"")).trim();
+              if(s){
+                s = s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+                html += '<div class="sent" style="padding:12px;border-bottom:1px solid #eee">'+s+'</div>';
+              }
+            }
+            box.innerHTML = html; if(artBox){ artBox.classList.add("on"); } if(sentsBox){ sentsBox.innerHTML = html; }
+          }
+          var es = $("readEmptyState"); if(es) es.style.display = "none";
+          var rc = $("readResultCard"); if(rc) rc.style.display = "block";
+        }catch(e){}
+        switchTab("read");
+      }
+    });
+  }
+  document.querySelectorAll(".menutile").forEach(function(b){
+    b.addEventListener("click", function(){
+      var name = b.getAttribute("data-go") || "scan";
+      switchTab(name);
+    });
+  });
+  var rbb = $("readBackBtn");
+  if(rbb){ rbb.addEventListener("click", function(e){ e.preventDefault(); switchTab("scan"); }); }
+  var themeBtn = $("themeBtn");
+  if(themeBtn){
+    themeBtn.addEventListener("click", function(){
+      try{
+        var isDark = document.documentElement.classList.toggle("dark");
+        try{ localStorage.setItem("elab_theme", isDark ? "dark" : "light"); }catch(e){}
+      }catch(e){}
+    });
+  }
+  var langBtn = $("langBtn");
+  if(langBtn){
+    langBtn.addEventListener("click", function(){
+      try{
+        var langs = ["en","vi","zh","ko"];
+        var labels = {en:"EN", vi:"VI", zh:"\u4e2d\u6587", ko:"\ud55c\uad6d\uc5b4"};
+        var cur = "en";
+        try{ cur = localStorage.getItem("elab_uiLang") || "en"; }catch(e){}
+        var nxt = langs[(langs.indexOf(cur)+1) % langs.length];
+        try{ localStorage.setItem("elab_uiLang", nxt); }catch(e){}
+        langBtn.textContent = labels[nxt];
+      }catch(e){}
+    });
+  }
+})();
+</script>
+</body></body>
+</html>

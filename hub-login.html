@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<script>/* Auto cache-buster: reload if this HTML is stale (build ID mismatch) */
+(function(){var B="__BUILD__";function c(){try{fetch(location.pathname,{method:"HEAD",cache:"no-store"}).then(function(r){var l=r.headers.get("x-build-id");if(l&&l!==B){location.reload();}}).catch(function(){})}catch(e){}}if(document.readyState==="complete"){setTimeout(c,2000);}else{window.addEventListener("load",function(){setTimeout(c,2000);});}})();
+</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title data-i18n="doc_title">Pocket Personal - Đăng nhập</title>
+<link rel="stylesheet" href="/design-system.css?v=1">
+<style>
+/* Layout riêng của trang login — màu sắc dùng token design-system (Tinh gọn) */
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:var(--pp-font);
+  color:var(--pp-ink); min-height:100vh;
+  background-color:var(--pp-bg);
+  display:flex;align-items:center;justify-content:center;
+  padding:24px;
+}
+.theme-btn{
+  position:fixed;top:16px;right:16px;
+  width:44px;height:44px;border-radius:50%;
+  background:var(--pp-card);border:1px solid var(--pp-line);
+  cursor:pointer;color:var(--pp-ink);
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:var(--pp-shadow);
+}
+.theme-btn svg{width:20px;height:20px}
+.login-card{max-width:400px;width:100%;padding:24px}
+h1{font-size:30px;text-align:center;margin-bottom:32px;font-weight:700;letter-spacing:-.5px}
+.input-row{display:flex;gap:8px;margin-bottom:16px}
+.input-row input{flex:1}
+label{display:block;font-size:14px;margin-bottom:6px;font-weight:500}
+input{
+  width:100%;height:52px;border:1px solid var(--pp-line);border-radius:var(--pp-r-md);
+  padding:0 14px;font-size:16px;
+  background:var(--pp-card);color:var(--pp-ink);
+}
+input:focus{outline:none;border-color:var(--pp-accent);box-shadow:0 0 0 3px rgba(13,157,108,.15)}
+.arrow-btn{
+  width:52px;height:52px;min-width:52px;border-radius:var(--pp-r-md);
+  background:var(--pp-grad);color:#fff;border:none;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:var(--pp-shadow);
+}
+.arrow-btn:hover{filter:brightness(1.05)}
+.arrow-btn:active{transform:scale(.96)}
+.arrow-btn:disabled{opacity:.5;cursor:not-allowed}
+.arrow-btn svg{width:22px;height:22px}
+.error{color:var(--pp-danger);font-size:14px;margin-bottom:16px;display:none}
+.switch{margin-top:20px;text-align:center;font-size:14px;color:var(--pp-mut)}
+.switch a{color:var(--pp-accent);cursor:pointer;text-decoration:none}
+#passWrap{display:none}
+.user-email{
+  display:flex;align-items:center;gap:8px;
+  background:var(--pp-card);border:1px solid var(--pp-line);border-radius:var(--pp-r-md);
+  padding:12px 14px;margin-bottom:16px;font-size:15px;
+}
+.user-email svg{width:18px;height:18px;color:var(--pp-mut)}
+.user-email .edit{margin-left:auto;color:var(--pp-accent);cursor:pointer;font-size:13px}
+.divider{display:flex;align-items:center;gap:12px;margin:20px 0}
+.divider div{flex:1;height:1px;background:var(--pp-line)}
+.divider span{color:var(--pp-mut);font-size:13px}
+.lang-pill{display:inline-flex;border:1px solid var(--pp-line);border-radius:20px;overflow:hidden;background:var(--pp-card)}
+.lang-pill button{border:none;background:transparent;padding:6px 10px;font-size:11px;font-weight:700;color:var(--pp-mut);cursor:pointer}
+.lang-pill button.on{background:var(--pp-accent);color:#fff}
+/* Nút Google: giữ brand Google (nền trắng theo guideline) */
+.google-btn{
+  width:100%;padding:14px;border:1px solid var(--pp-line);border-radius:var(--pp-r-md);
+  background:#fff;color:#1a1a1a;font-size:15px;font-weight:600;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:10px;
+  box-shadow:var(--pp-shadow);font-family:var(--pp-font);
+}
+.google-btn:active{transform:scale(.98)}
+</style>
+</head>
+<body>
+<div class="pp-langdrop" id="langDrop" style="position:fixed;top:16px;left:16px;z-index:10">
+  <button class="pp-langdrop-btn" aria-label="Language">
+    <svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+    <span class="pp-langdrop-cur">VI</span>
+    <svg class="chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+  </button>
+  <div class="pp-langdrop-menu" role="listbox">
+    <button class="pp-langdrop-item" data-lang="vi"><span class="code">VI</span><span class="name">Tiếng Việt</span></button>
+    <button class="pp-langdrop-item" data-lang="en"><span class="code">EN</span><span class="name">English</span></button>
+    <button class="pp-langdrop-item" data-lang="zh"><span class="code">中文</span><span class="name">中文</span></button>
+    <button class="pp-langdrop-item" data-lang="ko"><span class="code">한국어</span><span class="name">한국어</span></button>
+  </div>
+</div>
+<button class="theme-btn" id="themeBtn" title="Theme">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+</button>
+<div class="login-card">
+
+  <h1 id="title" data-i18n="title_login">Chào mừng trở lại</h1>
+  <div class="error" id="error"></div>
+
+  <!-- Step 1: Email -->
+  <div id="emailStep">
+    <label data-i18n="email_label">Địa chỉ email</label>
+    <div class="input-row">
+      <input type="email" id="email" data-i18n-ph="email_ph" placeholder="you@example.com" autocomplete="email" onkeydown="if(event.key==='Enter')emailNext()">
+      <button class="arrow-btn" id="emailBtn" onclick="emailNext()" title="Continue">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </button>
+    </div>
+    <div class="switch" data-i18n="no_account">Chưa có tài khoản? <a onclick="toggleMode()">Đăng ký</a></div>
+    <div class="divider"><div></div><span data-i18n="or">hoặc</span><div></div></div>
+    <button class="google-btn" onclick="googleLogin()">
+      <svg width="20" height="20" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.1c-.22-.66-.35-1.36-.35-2.1s.13-1.44.35-2.1V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
+      <span data-i18n="google_btn">Đăng nhập bằng Google</span>
+    </button>
+  </div>
+
+  <!-- Step 2: Password (shown after email) -->
+  <div id="passStep" style="display:none">
+    <div class="user-email">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><path d="M22 6l-10 7L2 6"/></svg>
+      <span id="shownEmail"></span>
+      <span class="edit" onclick="backToEmail()" data-i18n="edit">Sửa</span>
+    </div>
+    <label data-i18n="password_label">Mật khẩu</label>
+    <div class="input-row">
+      <input type="password" id="password" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+      <button class="arrow-btn" id="loginBtn" onclick="doLogin()" title="Sign in">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </button>
+    </div>
+    <div class="divider"><div></div><span data-i18n="or">hoặc</span><div></div></div>
+    <button class="google-btn" onclick="googleLogin()">
+      <svg width="20" height="20" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.1c-.22-.66-.35-1.36-.35-2.1s.13-1.44.35-2.1V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
+      <span data-i18n="google_btn">Đăng nhập bằng Google</span>
+    </button>
+  </div>
+
+  <!-- Register form: Step 1 - Gmail -->
+  <div id="regForm" style="display:none">
+    <div id="regStep1">
+      <label data-i18n="gmail_label">Địa chỉ Gmail</label>
+      <div class="input-row">
+        <input type="email" id="regEmail" data-i18n-ph="gmail_ph" placeholder="you@gmail.com" onkeydown="if(event.key==='Enter')sendCode()">
+        <button class="arrow-btn" id="sendCodeBtn" onclick="sendCode()" title="Send code">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </button>
+      </div>
+      <p style="font-size:13px;color:var(--mut);margin-bottom:16px" data-i18n="send_hint">Chúng tôi sẽ gửi mã xác minh đến Gmail của bạn.</p>
+    </div>
+    <div id="regStep2" style="display:none">
+      <label data-i18n="code_label">Mã xác minh</label>
+      <div class="input-row">
+        <input type="text" id="verCode" data-i18n-ph="code_ph" placeholder="Mã 6 chữ số" maxlength="6" inputmode="numeric" onkeydown="if(event.key==='Enter')verifyCode()">
+        <button class="arrow-btn" id="verifyBtn" onclick="verifyCode()" title="Verify">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </button>
+      </div>
+      <p style="font-size:13px;color:var(--mut);margin-bottom:16px" data-i18n="check_inbox">Kiểm tra hộp thư Gmail. <a onclick="sendCode()" style="color:var(--accent);cursor:pointer">Gửi lại</a></p>
+    </div>
+    <div id="regStep3" style="display:none">
+      <label data-i18n="password_label">Mật khẩu</label>
+      <div class="input-row">
+        <input type="password" id="regPass" placeholder="••••••••">
+      </div>
+      <label data-i18n="dob_label">Ngày sinh</label>
+      <div class="input-row">
+        <input type="date" id="regDob">
+        <button class="arrow-btn" id="regBtn" onclick="doRegister()" title="Create account">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="switch" data-i18n="have_account">Đã có tài khoản? <a onclick="toggleMode()">Đăng nhập</a></div>
+  </div>
+</div>
+<script>
+const I18N = {
+vi:{doc_title:"Pocket Personal - Đăng nhập",title_login:"Chào mừng trở lại",title_register:"Tạo tài khoản",
+email_label:"Địa chỉ email",email_ph:"you@example.com",
+no_account:'Chưa có tài khoản? <a onclick="toggleMode()">Đăng ký</a>',or:"hoặc",google_btn:"Đăng nhập bằng Google",
+edit:"Sửa",password_label:"Mật khẩu",gmail_label:"Địa chỉ Gmail",gmail_ph:"you@gmail.com",
+send_hint:"Chúng tôi sẽ gửi mã xác minh đến Gmail của bạn.",code_label:"Mã xác minh",code_ph:"Mã 6 chữ số",
+check_inbox:'Kiểm tra hộp thư Gmail. <a onclick="sendCode()" style="color:var(--accent);cursor:pointer">Gửi lại</a>',
+dob_label:"Ngày sinh",have_account:'Đã có tài khoản? <a onclick="toggleMode()">Đăng nhập</a>',
+err_email:"Nhập email của bạn",err_email_valid:"Nhập email hợp lệ",err_password:"Nhập mật khẩu của bạn",
+err_gmail_only:"Chỉ chấp nhận địa chỉ Gmail",err_code:"Nhập mã xác minh",err_fields:"Điền đầy đủ các trường",
+err_google:"Đăng nhập Google hiện không khả dụng",err_failed:"Thất bại",
+err_login:"Đăng nhập thất bại",err_send:"Không gửi được mã",err_code_invalid:"Mã không đúng",err_register:"Đăng ký thất bại"},
+en:{doc_title:"Pocket Personal - Login",title_login:"Welcome back",title_register:"Create account",
+email_label:"Email address",email_ph:"you@example.com",
+no_account:'No account? <a onclick="toggleMode()">Sign up</a>',or:"or",google_btn:"Sign in with Google",
+edit:"Edit",password_label:"Password",gmail_label:"Gmail address",gmail_ph:"you@gmail.com",
+send_hint:"We'll send a verification code to your Gmail.",code_label:"Verification code",code_ph:"6-digit code",
+check_inbox:'Check your Gmail inbox. <a onclick="sendCode()" style="color:var(--accent);cursor:pointer">Resend</a>',
+dob_label:"Birth date",have_account:'Have an account? <a onclick="toggleMode()">Sign in</a>',
+err_email:"Enter your email",err_email_valid:"Enter a valid email",err_password:"Enter your password",
+err_gmail_only:"Only Gmail addresses allowed",err_code:"Enter the code",err_fields:"Fill all fields",
+err_google:"Google sign-in unavailable",err_failed:"Failed",
+err_login:"Login failed",err_send:"Failed to send code",err_code_invalid:"Invalid code",err_register:"Registration failed"},
+zh:{doc_title:"Pocket Personal - 登录",title_login:"欢迎回来",title_register:"创建账户",
+email_label:"电子邮箱",email_ph:"you@example.com",
+no_account:'没有账户？<a onclick="toggleMode()">注册</a>',or:"或",google_btn:"使用 Google 登录",
+edit:"修改",password_label:"密码",gmail_label:"Gmail 地址",gmail_ph:"you@gmail.com",
+send_hint:"我们将向您的 Gmail 发送验证码。",code_label:"验证码",code_ph:"6 位验证码",
+check_inbox:'请查看您的 Gmail 收件箱。<a onclick="sendCode()" style="color:var(--accent);cursor:pointer">重新发送</a>',
+dob_label:"出生日期",have_account:'已有账户？<a onclick="toggleMode()">登录</a>',
+err_email:"请输入您的邮箱",err_email_valid:"请输入有效的邮箱",err_password:"请输入您的密码",
+err_gmail_only:"仅支持 Gmail 地址",err_code:"请输入验证码",err_fields:"请填写所有字段",
+err_google:"Google 登录暂不可用",err_failed:"失败",
+err_login:"登录失败",err_send:"发送验证码失败",err_code_invalid:"验证码无效",err_register:"注册失败"},
+ko:{doc_title:"Pocket Personal - 로그인",title_login:"다시 오신 것을 환영합니다",title_register:"계정 만들기",
+email_label:"이메일 주소",email_ph:"you@example.com",
+no_account:'계정이 없으신가요? <a onclick="toggleMode()">가입하기</a>',or:"또는",google_btn:"Google로 로그인",
+edit:"수정",password_label:"비밀번호",gmail_label:"Gmail 주소",gmail_ph:"you@gmail.com",
+send_hint:"Gmail로 인증 코드를 보내드립니다.",code_label:"인증 코드",code_ph:"6자리 코드",
+check_inbox:'Gmail 받은편지함을 확인하세요. <a onclick="sendCode()" style="color:var(--accent);cursor:pointer">다시 보내기</a>',
+dob_label:"생년월일",have_account:'이미 계정이 있으신가요? <a onclick="toggleMode()">로그인</a>',
+err_email:"이메일을 입력하세요",err_email_valid:"유효한 이메일을 입력하세요",err_password:"비밀번호를 입력하세요",
+err_gmail_only:"Gmail 주소만 사용할 수 있습니다",err_code:"코드를 입력하세요",err_fields:"모든 항목을 입력하세요",
+err_google:"Google 로그인을 현재 사용할 수 없습니다",err_failed:"실패",
+err_login:"로그인 실패",err_send:"코드 전송 실패",err_code_invalid:"코드가 올바르지 않습니다",err_register:"가입 실패"}
+};
+let LANG = "vi";
+try{ const v = localStorage.getItem("elab_uiLang"); if(v) LANG = JSON.parse(v); }catch(e){}
+function applyLang(l){
+  LANG = l;
+  try{ localStorage.setItem("elab_uiLang", JSON.stringify(l)); }catch(e){}
+  document.documentElement.lang = l;
+  const t = I18N[l] || I18N.en;
+  document.title = t.doc_title;
+  document.querySelectorAll("[data-i18n]").forEach(el=>{
+    const v = t[el.dataset.i18n];
+    if(v !== undefined){ if(/<[a-z][\s>]/i.test(v)) el.innerHTML = v; else el.textContent = v; }
+  });
+  document.querySelectorAll("[data-i18n-ph]").forEach(el=>{
+    const v = t[el.dataset.i18nPh];
+    if(v !== undefined) el.placeholder = v;
+  });
+  ["vi","en","zh","ko"].forEach(x=>document.getElementById("lang"+x[0].toUpperCase()+x[1]).classList.toggle("on", l===x));
+  document.getElementById("title").textContent = isReg ? t.title_register : t.title_login;
+}
+// Expose for lang-dropdown.js
+window.__elabSetLang = applyLang;
+
+const themeBtn = document.getElementById('themeBtn');
+const savedTheme = localStorage.getItem('hub_theme') || 'light';
+if(savedTheme === 'dark'){
+  document.body.classList.add('dark');
+  themeBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>';
+}
+themeBtn.onclick = ()=>{
+  const dark = document.body.classList.toggle('dark');
+  themeBtn.innerHTML = dark
+    ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>'
+    : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
+  localStorage.setItem('hub_theme', dark ? 'dark' : 'light');
+};
+
+let isReg = false, pendingEmail = '';
+function toggleMode(){
+  isReg = !isReg;
+  document.getElementById('emailStep').style.display = isReg ? 'none' : 'block';
+  document.getElementById('passStep').style.display = 'none';
+  document.getElementById('regForm').style.display = isReg ? 'block' : 'none';
+  applyLang(LANG);
+  hideError();
+}
+function showError(msg){
+  const e = document.getElementById('error');
+  e.textContent = msg; e.style.display = 'block';
+}
+function hideError(){ document.getElementById('error').style.display = 'none'; }
+
+function emailNext(){
+  hideError();
+  const email = document.getElementById('email').value.trim().toLowerCase();
+  if(!email){ showError(I18N[LANG].err_email); return; }
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)){ showError(I18N[LANG].err_email_valid); return; }
+  pendingEmail = email;
+  document.getElementById('shownEmail').textContent = email;
+  document.getElementById('emailStep').style.display = 'none';
+  document.getElementById('passStep').style.display = 'block';
+  document.getElementById('password').focus();
+}
+function backToEmail(){
+  document.getElementById('passStep').style.display = 'none';
+  document.getElementById('emailStep').style.display = 'block';
+  document.getElementById('email').focus();
+}
+
+async function googleLogin(){
+    try{
+      const r = await fetch("/api/auth/google");
+      const j = await r.json().catch(()=>({}));
+      if(j.url) location.href = j.url;
+      else showError(j.error || I18N[LANG].err_google);
+    }catch(e){ showError(I18N[LANG].err_failed); }
+  }
+async function doLogin(){
+  hideError();
+  const password = document.getElementById('password').value;
+  if(!password){ showError(I18N[LANG].err_password); return; }
+  const btn = document.getElementById('loginBtn');
+  btn.disabled = true;
+  try{
+    const r = await fetch('/api/auth/login', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({email: pendingEmail, password})
+    });
+    const j = await r.json().catch(()=>({}));
+    if(!r.ok) throw new Error(j.error || I18N[LANG].err_login);
+    localStorage.setItem('elab_authToken', j.token);
+    localStorage.setItem('elab_authUser', JSON.stringify({email: j.email, role: j.role, ageGroup: j.ageGroup}));
+    location.href = '/hub.html';
+  }catch(e){ showError(e.message); }
+  btn.disabled = false;
+}
+
+let regEmail = '';
+async function sendCode(){
+  hideError();
+  const email = document.getElementById('regEmail').value.trim().toLowerCase();
+  if(!/^[a-zA-Z0-9._%+-]+@gmail\.com$/.test(email)){ showError(I18N[LANG].err_gmail_only); return; }
+  const btn = document.getElementById('sendCodeBtn');
+  btn.disabled = true;
+  try{
+    const r = await fetch('/api/auth/send-code', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({email})
+    });
+    const j = await r.json().catch(()=>({}));
+    if(!r.ok) throw new Error(j.error || I18N[LANG].err_send);
+    regEmail = email;
+    document.getElementById('regStep1').style.display = 'none';
+    document.getElementById('regStep2').style.display = 'block';
+    document.getElementById('verCode').focus();
+  }catch(e){ showError(e.message); }
+  btn.disabled = false;
+}
+async function verifyCode(){
+  hideError();
+  const code = document.getElementById('verCode').value.trim();
+  if(!code){ showError(I18N[LANG].err_code); return; }
+  const btn = document.getElementById('verifyBtn');
+  btn.disabled = true;
+  try{
+    const r = await fetch('/api/auth/verify-code', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({email: regEmail, code})
+    });
+    const j = await r.json().catch(()=>({}));
+    if(!r.ok) throw new Error(j.error || I18N[LANG].err_code_invalid);
+    document.getElementById('regStep2').style.display = 'none';
+    document.getElementById('regStep3').style.display = 'block';
+    document.getElementById('regPass').focus();
+  }catch(e){ showError(e.message); }
+  btn.disabled = false;
+}
+async function doRegister(){
+  hideError();
+  const password = document.getElementById('regPass').value;
+  const dob = document.getElementById('regDob').value;
+  if(!password || !dob){ showError(I18N[LANG].err_fields); return; }
+  const btn = document.getElementById('regBtn');
+  btn.disabled = true;
+  try{
+    const r = await fetch('/api/auth/register', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({email: regEmail, password, dob})
+    });
+    const j = await r.json().catch(()=>({}));
+    if(!r.ok) throw new Error(j.error || I18N[LANG].err_register);
+    // Auto-login
+    pendingEmail = regEmail;
+    document.getElementById('password').value = password;
+    document.getElementById('shownEmail').textContent = regEmail;
+    toggleMode();
+    document.getElementById('emailStep').style.display = 'none';
+    document.getElementById('passStep').style.display = 'block';
+    doLogin();
+  }catch(e){ showError(e.message); }
+  btn.disabled = false;
+}
+
+applyLang(LANG);
+// If already logged in, go to hub
+(async ()=>{
+  const token = localStorage.getItem('elab_authToken');
+  if(token){
+    try{
+      const r = await fetch('/api/auth/me', {headers:{'Authorization':'Bearer '+token}});
+      if(r.ok) location.href = '/hub.html';
+    }catch(e){}
+  }
+})();
+</script>
+<script src="/english/js/lang-dropdown.js?v=__BUILD__"></script>
+</body>
+</html>

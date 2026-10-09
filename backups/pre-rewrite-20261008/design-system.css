@@ -1,0 +1,179 @@
+/* ============================================================
+   POCKET PERSONAL — UNIFIED DESIGN SYSTEM (Tinh gọn / Refined)
+   Version: 2.0 | Date: 2026-10-06
+   Direction: multi-platform neutral — soft depth, gradient accents,
+   floating glass surfaces. All new pages MUST use this file.
+   ============================================================ */
+
+:root{
+  /* Colors - Light (default) */
+  --pp-bg:#f6f7f9;
+  --pp-bg2:#eef0f4;
+  --pp-card:#ffffff;
+  --pp-ink:#14181f;
+  --pp-mut:#6b7280;
+  --pp-line:#e8ebf0;
+  --pp-accent:#0d9d6c;
+  --pp-accent-hover:#0b7a56;
+  --pp-danger:#ef4444;
+  --pp-warning:#f59e0b;
+
+  /* Accent gradient (primary actions) */
+  --pp-grad:linear-gradient(135deg,var(--pp-accent),var(--pp-accent-hover));
+
+  /* Spacing (8px grid) */
+  --pp-s1:8px; --pp-s2:16px; --pp-s3:24px; --pp-s4:32px;
+
+  /* Radius */
+  --pp-r-sm:10px; --pp-r-md:14px; --pp-r-lg:20px; --pp-r-full:999px;
+
+  /* Font */
+  --pp-font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+
+  /* Shadow - soft, layered */
+  --pp-shadow:0 1px 2px rgba(20,24,31,.04),0 4px 16px rgba(20,24,31,.06);
+  --pp-shadow-lg:0 2px 4px rgba(20,24,31,.05),0 12px 32px rgba(20,24,31,.12);
+}
+
+/* Dark mode - same layout, inverted colors.
+   body.pp-dark = design-system pages; body.dark = English Lab's own theme */
+body.pp-dark, body.dark{
+  --pp-bg:#101418;
+  --pp-bg2:#1a2029;
+  --pp-card:#1a2029;
+  --pp-ink:#eceef2;
+  --pp-mut:#9aa3b2;
+  --pp-line:#26303d;
+  --pp-shadow:0 2px 8px rgba(0,0,0,.35);
+  --pp-shadow-lg:0 8px 28px rgba(0,0,0,.5);
+}
+
+/* Base */
+.pp-body{font-family:var(--pp-font);background:var(--pp-bg);color:var(--pp-ink);
+  min-height:100vh;margin:0;-webkit-font-smoothing:antialiased}
+
+/* Header - consistent across all pages */
+.pp-header{display:flex;align-items:center;gap:12px;padding:12px 16px;
+  border-bottom:1px solid var(--pp-line);position:sticky;top:0;z-index:10;
+  background:var(--pp-bg)}
+.pp-back{color:var(--pp-accent);text-decoration:none;font-weight:600;font-size:15px;
+  display:flex;align-items:center;gap:4px}
+.pp-title{font-size:18px;font-weight:700;margin:0}
+.pp-header-actions{margin-left:auto;display:flex;gap:8px}
+
+/* Layout */
+.pp-main{max-width:768px;margin:0 auto;padding:var(--pp-s2)}
+.pp-main.wide{max-width:1024px}
+
+/* Card */
+.pp-card{background:var(--pp-card);border:1px solid var(--pp-line);
+  border-radius:var(--pp-r-lg);padding:var(--pp-s2);margin-bottom:var(--pp-s2)}
+
+/* Buttons */
+.pp-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  padding:10px 18px;border-radius:var(--pp-r-md);font-size:15px;font-weight:600;
+  cursor:pointer;border:1px solid var(--pp-line);background:var(--pp-card);color:var(--pp-ink);
+  font-family:var(--pp-font);transition:all .15s}
+.pp-btn:active{transform:scale(.97)}
+.pp-btn.primary{background:var(--pp-grad);border-color:transparent;color:#fff;box-shadow:var(--pp-shadow)}
+.pp-btn.primary:hover{filter:brightness(1.05)}
+.pp-btn.danger{background:var(--pp-danger);border-color:var(--pp-danger);color:#fff}
+.pp-btn.block{width:100%}
+.pp-btn.sm{padding:6px 12px;font-size:13px}
+.pp-btn:disabled{opacity:.5;cursor:not-allowed}
+
+/* Inputs */
+.pp-input{width:100%;padding:12px 14px;border:1px solid var(--pp-line);border-radius:var(--pp-r-md);
+  font-size:15px;font-family:var(--pp-font);background:var(--pp-card);color:var(--pp-ink);outline:none}
+.pp-input:focus{border-color:var(--pp-accent)}
+.pp-select{padding:10px 12px;border:1px solid var(--pp-line);border-radius:var(--pp-r-md);
+  font-size:15px;background:var(--pp-card);color:var(--pp-ink);font-family:var(--pp-font)}
+.pp-label{display:block;font-size:13px;font-weight:600;color:var(--pp-mut);margin:0 0 6px}
+
+/* Icons - SVG outline only, NO emoji in UI */
+.pp-ic{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2;
+  stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+.pp-ic.lg{width:24px;height:24px}
+
+/* Lists */
+.pp-list{display:flex;flex-direction:column;gap:2px}
+.pp-item{display:flex;align-items:center;gap:12px;padding:12px;border-radius:var(--pp-r-md);cursor:pointer}
+.pp-item:hover{background:var(--pp-bg2)}
+.pp-item .pp-item-body{flex:1;min-width:0}
+.pp-item .pp-item-title{font-weight:600;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pp-item .pp-item-sub{font-size:13px;color:var(--pp-mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* Tabs */
+.pp-tabs{display:flex;gap:8px;margin-bottom:var(--pp-s2);overflow-x:auto;padding-bottom:4px}
+.pp-tab{padding:8px 18px;border-radius:var(--pp-r-full);border:1px solid var(--pp-line);
+  background:var(--pp-card);color:var(--pp-mut);font-size:14px;font-weight:600;cursor:pointer;
+  white-space:nowrap;font-family:var(--pp-font)}
+.pp-tab.active{background:var(--pp-accent);border-color:var(--pp-accent);color:#fff}
+
+/* Hint / empty state */
+.pp-hint{font-size:13px;color:var(--pp-mut);line-height:1.5}
+.pp-empty{text-align:center;padding:48px 24px;color:var(--pp-mut)}
+.pp-empty .pp-empty-ic{font-size:48px;margin-bottom:12px;opacity:.5}
+.pp-empty h3{color:var(--pp-ink);margin:0 0 8px;font-size:16px}
+
+/* Toast */
+.pp-toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);
+  background:#1a1a1a;color:#fff;padding:12px 20px;border-radius:var(--pp-r-md);font-size:14px;
+  opacity:0;pointer-events:none;transition:all .3s;z-index:100;max-width:90vw;text-align:center}
+.pp-toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* Responsive breakpoints */
+/* Mobile: < 640px (default styles) */
+/* Tablet: 640px - 1024px */
+@media(min-width:640px){
+  .pp-main{padding:var(--pp-s3)}
+}
+/* Desktop: > 1024px */
+@media(min-width:1024px){
+  .pp-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:var(--pp-s2)}
+  .pp-grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--pp-s2)}
+}
+
+/* Floating glass tabbar (Liquid-Glass principles, CSS-only, cross-platform) */
+.pp-tabbar{position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));
+  max-width:540px;margin:0 auto;z-index:60;display:flex;padding:8px 6px;border-radius:26px;
+  border:1px solid var(--pp-line);box-shadow:var(--pp-shadow-lg);
+  background:color-mix(in srgb, var(--pp-card) 78%, transparent);
+  -webkit-backdrop-filter:blur(20px) saturate(1.5);backdrop-filter:blur(20px) saturate(1.5)}
+.pp-tabbar button{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;
+  background:none;border:none;cursor:pointer;padding:7px 2px;border-radius:18px;
+  color:var(--pp-mut);font-family:var(--pp-font);font-size:10.5px;font-weight:700;
+  min-height:52px;justify-content:center}
+.pp-tabbar button:active{transform:scale(.94)}
+.pp-tabbar button .pp-ic{width:22px;height:22px}
+.pp-tabbar button.active{color:var(--pp-accent)}
+.pp-tabbar button.active .pp-ic{filter:drop-shadow(0 2px 6px rgba(13,157,108,.4))}
+/* page bottom spacing for tabbar */
+.pp-has-tabbar{padding-bottom:110px}
+
+/* Microinteractions */
+.pp-btn:active{transform:scale(.97)}
+.btn:active{transform:scale(.96)}
+.pp-tabbar button:active{transform:scale(.94)}
+.pp-app-card:active{transform:scale(.98)}
+
+/* Skeleton shimmer (loading placeholders) */
+.pp-skeleton{position:relative;overflow:hidden;background:var(--pp-bg2);border-radius:var(--pp-r-md);min-height:16px}
+.pp-skeleton::after{content:"";position:absolute;inset:0;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.55),transparent);
+  animation:pp-shimmer 1.4s infinite}
+body.pp-dark .pp-skeleton::after,body.dark .pp-skeleton::after{
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.08),transparent)}
+@keyframes pp-shimmer{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
+
+/* Fine pointer (desktop mouse): slightly denser touch targets */
+@media (pointer:fine){
+  .pp-btn{min-height:40px}
+  .pp-tabbar button{min-height:48px}
+}
+
+/* Utility */
+.pp-row{display:flex;gap:8px;align-items:center}
+.pp-center{text-align:center}
+.pp-mt{margin-top:var(--pp-s2)}
+.pp-mb{margin-bottom:var(--pp-s2)}

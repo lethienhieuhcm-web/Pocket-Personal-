@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "com.lethanhdong.englab",
+        "sha256_cert_fingerprints": ["AE:3E:6A:46:20:08:23:59:43:F2:DA:C1:BA:52:8F:AD:FF:1A:76:83:5A:67:A6:91:DE:C9:10:08:EE:EF:A7:F9"]
+      }
+    }]

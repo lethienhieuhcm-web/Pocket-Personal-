@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>/* Auto cache-buster: reload if this HTML is stale (build ID mismatch) */
+(function(){var B="__BUILD__";function c(){try{fetch(location.pathname,{method:"HEAD",cache:"no-store"}).then(function(r){var l=r.headers.get("x-build-id");if(l&&l!==B){location.reload();}}).catch(function(){})}catch(e){}}if(document.readyState==="complete"){setTimeout(c,2000);}else{window.addEventListener("load",function(){setTimeout(c,2000);});}})();
+</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pocket Personal</title>
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#0d9d6c">
+<link rel="stylesheet" href="/design-system.css?v=1791286992">
+<style>
+.pp-hub{min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:48px 20px 32px;max-width:600px;margin:0 auto;width:100%}
+.pp-hub h1{font-size:30px;margin-bottom:6px;font-weight:800;letter-spacing:-.3px}
+.pp-hub .subtitle{color:var(--pp-mut);margin-bottom:24px;font-size:14px}
+#installBtn{margin-bottom:20px;width:100%;justify-content:center}
+.pp-apps{display:flex;flex-direction:column;gap:10px;width:100%}
+.pp-app-row{display:flex;align-items:center;gap:14px;background:var(--pp-card);border:1px solid var(--pp-line);
+  border-radius:var(--pp-r-lg);padding:13px 14px;text-decoration:none;color:var(--pp-ink);
+  transition:transform .15s,box-shadow .15s}
+.pp-app-row:hover{box-shadow:var(--pp-shadow)}
+.pp-app-row:active{transform:scale(.98)}
+img.pp-app-ic{object-fit:cover;padding:0}
+.pp-app-ic{width:46px;height:46px;border-radius:14px;display:flex;align-items:center;justify-content:center;
+  color:#fff;font-weight:800;font-size:20px;flex-shrink:0}
+.pp-app-tx{flex:1;min-width:0}
+.pp-app-name{font-weight:700;font-size:16px}
+.pp-app-desc{color:var(--pp-mut);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pp-app-go{color:var(--pp-mut);font-size:22px;font-weight:700;flex-shrink:0}
+.pp-top-btns{position:fixed;top:16px;right:16px;display:flex;gap:8px;align-items:center}
+.lang-pill{display:inline-flex;border:1px solid var(--pp-line);border-radius:20px;overflow:hidden;background:var(--pp-card)}
+.lang-pill button{border:none;background:transparent;padding:8px 10px;font-size:11px;font-weight:700;color:var(--pp-mut);cursor:pointer}
+.lang-pill button.on{background:var(--pp-accent);color:#fff}
+</style>
+</head>
+<body class="pp-body">
+<div class="pp-top-btns">
+  <div class="pp-langdrop" id="langDrop">
+    <button class="pp-langdrop-btn" aria-label="Language">
+      <svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+      <span class="pp-langdrop-cur">VI</span>
+      <svg class="chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+    </button>
+    <div class="pp-langdrop-menu" role="listbox">
+      <button class="pp-langdrop-item" data-lang="vi"><span class="code">VI</span><span class="name">Tiếng Việt</span></button>
+      <button class="pp-langdrop-item" data-lang="en"><span class="code">EN</span><span class="name">English</span></button>
+      <button class="pp-langdrop-item" data-lang="zh"><span class="code">中文</span><span class="name">中文</span></button>
+      <button class="pp-langdrop-item" data-lang="ko"><span class="code">한국어</span><span class="name">한국어</span></button>
+    </div>
+  </div>
+  <button class="pp-btn sm" id="devicesBtn" title="Devices" style="border-radius:50%;width:44px;height:44px;padding:0">
+    <svg class="pp-ic" viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/></svg>
+  </button>
+  <button class="pp-btn sm" id="logoutBtn" title="Logout" style="border-radius:50%;width:44px;height:44px;padding:0">
+    <svg class="pp-ic" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5M21 12H9"/></svg>
+  </button>
+  <button class="pp-btn sm" id="themeBtn" title="Theme" style="border-radius:50%;width:44px;height:44px;padding:0">
+    <svg class="pp-ic" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+  </button>
+</div>
+<div class="pp-hub">
+  <h1>Pocket Personal</h1>
+  <p class="subtitle" data-i18n="subtitle">Choose an app to continue</p>
+  <button class="pp-btn primary" id="installBtn" style="display:none">
+    <svg class="pp-ic" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5M12 15V3"/></svg>
+    &nbsp;<span data-i18n="install">Cài app ra màn hình chính</span>
+  </button>
+  <div class="pp-apps" id="appList">
+    <a class="pp-app-row" href="/english/" data-app="english">
+      <img class="pp-app-ic" src="/english/icons/icon-english-192.png" alt="">
+      <div class="pp-app-tx"><div class="pp-app-name">English Lab</div><div class="pp-app-desc" data-i18n="d_english">Học tiếng Anh: đọc, từ điển, sổ câu</div></div>
+      <div class="pp-app-go">›</div>
+    </a>
+    <a class="pp-app-row" href="/stocks/" data-app="stocks">
+      <img class="pp-app-ic" src="/english/icons/icon-stocks-192.png" alt="">
+      <div class="pp-app-tx"><div class="pp-app-name">Stocks</div><div class="pp-app-desc" data-i18n="d_stocks">Chứng khoán VN: giá, portfolio, cảnh báo</div></div>
+      <div class="pp-app-go">›</div>
+    </a>
+    <a class="pp-app-row" href="/chess/" data-app="chess">
+      <img class="pp-app-ic" src="/english/icons/icon-chess-192.png" alt="">
+      <div class="pp-app-tx"><div class="pp-app-name">Chess</div><div class="pp-app-desc" data-i18n="d_chess">Chơi cờ với AI</div></div>
+      <div class="pp-app-go">›</div>
+    </a>
+    <a class="pp-app-row" href="/music/" data-app="music">
+      <img class="pp-app-ic" src="/english/icons/icon-music-192.png" alt="">
+      <div class="pp-app-tx"><div class="pp-app-name">Music</div><div class="pp-app-desc" data-i18n="d_music">Nghe nhạc, playlist</div></div>
+      <div class="pp-app-go">›</div>
+    </a>
+    <a class="pp-app-row" href="/voice/" data-app="voice">
+      <img class="pp-app-ic" src="/english/icons/icon-voice-192.png" alt="">
+      <div class="pp-app-tx"><div class="pp-app-name">Voice</div><div class="pp-app-desc" data-i18n="d_voice">Text to speech Việt/Anh</div></div>
+      <div class="pp-app-go">›</div>
+    </a>
+    <a class="pp-app-row" href="/admin/" data-app="admin" style="display:none">
+      <svg class="pp-app-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="background:var(--pp-accent)"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      <div class="pp-app-tx"><div class="pp-app-name" data-i18n="admin">Admin</div><div class="pp-app-desc" data-i18n="d_admin">Quản trị hệ thống</div></div>
+      <div class="pp-app-go">›</div>
+    </a>
+    <a class="pp-app-row" href="/upgrade" data-app="upgrade">
+      <svg class="pp-app-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg>
+      <div class="pp-app-tx"><div class="pp-app-name" data-i18n="upgrade">Upgrade</div><div class="pp-app-desc" data-i18n="d_upgrade">Xem các gói & thanh toán</div></div>
+      <div class="pp-app-go">›</div>
+    </a>
+  </div>
+  
+</div>
+<script>
+const themeBtn = document.getElementById('themeBtn');
+if(localStorage.getItem('hub_theme')==='dark'){
+  document.body.classList.add('pp-dark');
+}
+themeBtn.onclick = ()=>{
+  const dark = document.body.classList.toggle('pp-dark');
+  localStorage.setItem('hub_theme', dark?'dark':'light');
+};
+// Service worker (hub PWA)
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('/sw.js',{scope:'/'}).then(function(reg){
+    reg.addEventListener('updatefound', function(){
+      var newWorker = reg.installing;
+      newWorker.addEventListener('statechange', function(){
+        if(newWorker.state === 'installed' && navigator.serviceWorker.controller){
+          showUpdateBanner(newWorker);
+        }
+      });
+    });
+  }).catch(()=>{});
+}
+// Banner "Có bản mới" - hiện inline, không popup/modal (chuẩn big tech)
+function showUpdateBanner(newWorker){
+  if(document.getElementById('sw-update-banner')) return;
+  var lang = (window.elab_uiLang || 'vi').toLowerCase();
+  var t = (typeof I18N !== 'undefined' && I18N[lang]) ? I18N[lang] : (typeof I18N !== 'undefined' ? I18N.vi : {});
+  var banner = document.createElement('div');
+  banner.id = 'sw-update-banner';
+  banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;background:var(--pp-accent,#0d9d6c);color:#fff;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:14px;box-shadow:0 2px 8px rgba(0,0,0,.15);';
+  var msg = document.createElement('span');
+  msg.textContent = t.update_available || 'Có bản mới';
+  var btns = document.createElement('div');
+  btns.style.cssText = 'display:flex;gap:8px;flex-shrink:0;';
+  var btnUpdate = document.createElement('button');
+  btnUpdate.textContent = t.update_btn || 'Cập nhật';
+  btnUpdate.style.cssText = 'background:#fff;color:var(--pp-accent,#0d9d6c);border:none;border-radius:8px;padding:6px 14px;font-weight:600;cursor:pointer;';
+  btnUpdate.addEventListener('click', function(){
+    if(newWorker) newWorker.postMessage({type: 'SKIP_WAITING'});
+    location.reload();
+  });
+  var btnLater = document.createElement('button');
+  btnLater.textContent = t.update_later || 'Để sau';
+  btnLater.style.cssText = 'background:transparent;color:#fff;border:1px solid rgba(255,255,255,.5);border-radius:8px;padding:6px 14px;cursor:pointer;';
+  btnLater.addEventListener('click', function(){ banner.remove(); });
+  btns.appendChild(btnUpdate);
+  btns.appendChild(btnLater);
+  banner.appendChild(msg);
+  banner.appendChild(btns);
+  document.body.prepend(banner);
+}
+// Install prompt
+let deferredPrompt=null;
+const installBtn=document.getElementById('installBtn');
+window.addEventListener('beforeinstallprompt',e=>{
+  e.preventDefault(); deferredPrompt=e; installBtn.style.display='';
+});
+installBtn.onclick=async()=>{
+  if(!deferredPrompt) return;
+  deferredPrompt.prompt();
+  await deferredPrompt.userChoice;
+  deferredPrompt=null; installBtn.style.display='none';
+};
+(async ()=>{
+  // Pick up token from Google OAuth callback
+  const m = location.hash.match(/token=([A-Za-z0-9_-]+)/);
+  if(m){
+    localStorage.setItem('elab_authToken', m[1]);
+    history.replaceState(null, "", location.pathname);
+  }
+  const token = localStorage.getItem('elab_authToken');
+  if(!token){ location.href='/login'; return; }
+  try{
+    const r = await fetch('/api/auth/me',{headers:{'Authorization':'Bearer '+token}});
+    if(r.status === 401){
+      localStorage.removeItem('elab_authToken');
+      location.href='/login';
+    }
+    // Other errors (500, network) - don't logout, just continue
+  }catch(e){
+    // Network error - don't logout, just continue
+  }
+})();
+// Onboarding for first-time users
+function onboardNext(n){
+  for(let i=1;i<=3;i++) document.getElementById('onboardStep'+i).style.display = i===n?'':'none';
+}
+function onboardDone(){
+  document.getElementById('onboardPanel').style.display='none';
+  try{ localStorage.setItem('pp_onboarded','1'); }catch(e){}
+}
+// Show onboarding if first login (has token but never onboarded)
+try{
+  if(localStorage.getItem('elab_authToken') && !localStorage.getItem('pp_onboarded')){
+    document.getElementById('onboardPanel').style.display='flex';
+  }
+}catch(e){}
+document.getElementById('devicesBtn').onclick = async ()=>{
+  const p = document.getElementById('devicesPanel');
+  p.style.display = 'flex';
+  const list = document.getElementById('devicesList');
+  list.innerHTML = '<div class="hint">Loading...</div>';
+  try{
+    const r = await fetch('/api/auth/sessions', {headers: {'Authorization': 'Bearer '+localStorage.getItem('elab_authToken')}});
+    const j = await r.json();
+    if(!j.sessions || !j.sessions.length){ list.innerHTML = '<div class="hint">No devices</div>'; return; }
+    list.innerHTML = j.sessions.map(s=>
+      '<div class="pp-app" style="padding:12px;margin-bottom:8px">'+
+      '<div style="flex:1"><div style="font-weight:600">'+(s.current?'This device':(s.ua||'Unknown device').slice(0,40))+'</div>'+
+      '<div style="font-size:12px;color:var(--pp-mut)">'+(s.ip||'')+'</div></div>'+
+      (s.current?'<span style="font-size:12px;color:var(--pp-accent)">Current</span>':'<button class="pp-btn sm" data-revoke="'+s.token+'">Revoke</button>')+
+      '</div>').join('');
+    list.querySelectorAll('[data-revoke]').forEach(b=>b.onclick=async()=>{
+      if(!confirm('Revoke this device?')) return;
+      await fetch('/api/auth/sessions/revoke', {method:'POST', headers:{'Authorization':'Bearer '+localStorage.getItem('elab_authToken'),'Content-Type':'application/json'}, body: JSON.stringify({token_prefix: b.dataset.revoke})});
+      document.getElementById('devicesBtn').click();
+    });
+  }catch(e){ list.innerHTML = '<div class="hint">Load failed</div>'; }
+};
+document.getElementById('devicesClose').onclick = ()=>{ document.getElementById('devicesPanel').style.display='none'; };
+document.getElementById('logoutBtn').addEventListener('click', ()=>{
+  const tok = localStorage.getItem('elab_authToken');
+  if(tok){ fetch('/api/auth/logout', {method:'POST', headers:{'Authorization':'Bearer '+tok}}).catch(()=>{}); }
+  localStorage.removeItem('elab_authToken');
+  localStorage.removeItem('elab_authUser');
+  location.href='/';
+});
+</script>
+
+<script>
+const I18N = {
+vi:{subtitle:"Chọn một ứng dụng để tiếp tục",install:"Cài app ra màn hình chính",
+d_english:"Học tiếng Anh: đọc, từ điển, sổ câu",d_stocks:"Chứng khoán VN: giá, portfolio, cảnh báo",
+d_chess:"Chơi cờ với AI",d_music:"Nghe nhạc, playlist",d_voice:"Text to speech Việt/Anh",upgrade:"Nâng cấp",d_upgrade:"Xem các gói & thanh toán",admin:"Quản trị",d_admin:"Quản trị hệ thống",
+},
+en:{subtitle:"Choose an app to continue",install:"Install app to home screen",
+d_english:"Learn English: reading, dictionary, sentence bank",d_stocks:"VN stocks: prices, portfolio, alerts",
+d_chess:"Play chess vs AI",d_music:"Music, playlists",d_voice:"Vietnamese/English text to speech",upgrade:"Upgrade",d_upgrade:"See plans & payment",admin:"Admin",d_admin:"System administration",
+},
+zh:{subtitle:"选择一个应用继续",install:"安装应用到主屏幕",
+d_english:"学英语：阅读、词典、句子库",d_stocks:"越南股票：行情、组合、提醒",
+d_chess:"与 AI 下象棋",d_music:"音乐、播放列表",d_voice:"越南语/英语文字转语音",upgrade:"升级",d_upgrade:"查看套餐与付款",admin:"管理",d_admin:"系统管理",
+},
+ko:{subtitle:"계속할 앱을 선택하세요",install:"홈 화면에 앱 설치",
+d_english:"영어 학습: 읽기, 사전, 문장 은행",d_stocks:"베트남 주식: 시세, 포트폴리오, 알림",
+d_chess:"AI와 체스",d_music:"음악, 플레이리스트",d_voice:"베트남어/영어 텍스트 음성 변환",upgrade:"업그레이드",d_upgrade:"요금제 및 결제 보기",admin:"관리",d_admin:"시스템 관리",
+}};
+function applyHubLang(l){
+  try{ localStorage.setItem("elab_uiLang", JSON.stringify(l)); }catch(e){}
+  document.documentElement.lang = l;
+  document.querySelectorAll("[data-i18n]").forEach(el=>{
+    const v = I18N[l][el.dataset.i18n]; if(v) el.textContent = v;
+  });
+}
+// Expose for lang-dropdown.js
+window.__elabSetLang = applyHubLang;
+(function(){ try{ const v = localStorage.getItem("elab_uiLang"); applyHubLang(v?JSON.parse(v):"vi"); }catch(e){ applyHubLang("vi"); } })();
+</script>
+<script src="/english/js/lang-dropdown.js?v=__BUILD__"></script>
+
+<script>
+// Hide apps not included in user's plan
+(function(){
+  const PLAN_APPS = {
+    free: ["english","chess","music"],
+    hocsinh: ["english","chess","music"],
+    sinhvien: ["english","chess","music","voice"],
+    dilam: ["english","chess","music","voice","stocks"],
+    nhadautu: ["english","chess","music","voice","stocks"],
+    admin: ["english","chess","music","voice","stocks","admin"]
+  };
+  function applyPlan(plan){
+    const apps = PLAN_APPS[plan] || PLAN_APPS.free;
+    document.querySelectorAll(".pp-app-row[data-app]").forEach(el=>{
+      const app = el.dataset.app;
+      if(app==="upgrade") return; // always show upgrade
+      if(!apps.includes(app)) el.style.display="none";
+    });
+  }
+  const tok = localStorage.getItem("elab_authToken");
+  if(!tok){ applyPlan("free"); return; }
+  fetch("/api/user/plan", {headers:{"Authorization":"Bearer "+tok}})
+    .then(r=>r.ok?r.json():null)
+    .then(j=>{
+      applyPlan(j && j.plan ? j.plan : "free");
+    }).catch(()=>{ applyPlan("free"); });
+})();
+</script>
+<div id="onboardPanel" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;align-items:center;justify-content:center">
+  <div class="pp-card" style="max-width:400px;width:90%;padding:24px;text-align:center">
+    <div id="onboardStep1">
+      <h3 data-i18n="ob1t">Welcome to Pocket Personal</h3>
+      <p data-i18n="ob1d">Your personal hub for learning, investing, and more.</p>
+      <button class="pp-btn primary" onclick="onboardNext(2)">Next</button>
+    </div>
+    <div id="onboardStep2" style="display:none">
+      <h3 data-i18n="ob2t">Choose your apps</h3>
+      <p data-i18n="ob2d">Tap an app below to get started. Your plan determines which apps are available.</p>
+      <button class="pp-btn primary" onclick="onboardNext(3)">Next</button>
+    </div>
+    <div id="onboardStep3" style="display:none">
+      <h3 data-i18n="ob3t">You're all set</h3>
+      <p data-i18n="ob3d">Your free plan includes English, Chess, and Music. Upgrade anytime for more.</p>
+      <button class="pp-btn primary" onclick="onboardDone()">Get started</button>
+    </div>
+  </div>
+</div>
+<div id="devicesPanel" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99;align-items:center;justify-content:center">
+  <div class="pp-card" style="max-width:400px;width:90%;max-height:80vh;overflow:auto;padding:20px">
+    <h3 data-i18n="devices">Devices</h3>
+    <div id="devicesList"><div class="hint">Loading...</div></div>
+    <button class="pp-btn" id="devicesClose" style="margin-top:12px">Close</button>
+  </div>
+</div>
+</body>
+</html>

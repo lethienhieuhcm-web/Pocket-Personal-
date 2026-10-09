@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<script>/* Auto cache-buster: reload if this HTML is stale (build ID mismatch) */
+(function(){var B="__BUILD__";function c(){try{fetch(location.pathname,{method:"HEAD",cache:"no-store"}).then(function(r){var l=r.headers.get("x-build-id");if(l&&l!==B){location.reload();}}).catch(function(){})}catch(e){}}if(document.readyState==="complete"){setTimeout(c,2000);}else{window.addEventListener("load",function(){setTimeout(c,2000);});}})();
+</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title data-i18n="doc_title">Chứng khoán — Pocket Personal</title>
+<link rel="manifest" href="/stocks/manifest.json">
+<meta name="theme-color" content="#0d9d6c">
+<link rel="stylesheet" href="/design-system.css?v=1791286992">
+<link rel="preconnect" href="https://cdn.ably.com">
+<style>
+:root{--bg:var(--pp-bg);--card:var(--pp-card);--card2:var(--pp-bg2);--ink:var(--pp-ink);
+  --mut:var(--pp-mut);--line:var(--pp-line);--accent:var(--pp-accent)}
+/* dark mode: hub tokens from design-system.css (body.dark) */
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);padding:12px;max-width:800px;margin:0 auto;padding-bottom:110px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:12px}
+h3{margin-bottom:8px;font-size:18px}
+h4{font-size:15px}
+.hint{color:var(--mut);font-size:13px}
+.row{display:flex;gap:8px;align-items:center}
+.btn{padding:10px 16px;border:1px solid var(--line);border-radius:12px;background:var(--card2);color:var(--ink);font-size:14px;font-weight:600;cursor:pointer}
+.btn.primary{background:var(--pp-grad,var(--accent));color:#fff;border-color:transparent}
+.btn.ghost{background:transparent}
+.gptInput{padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);font-size:14px}
+.up{color:var(--pp-accent)}.dn{color:var(--pp-danger)}
+/* stock */
+.stkidx{display:inline-block;min-width:110px;margin:0 8px 8px 0;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--card2)}
+.stkidx-sym{font-size:12px;font-weight:700;color:var(--mut)}
+.stkidx-px{font-size:18px;font-weight:800;margin:2px 0}
+.stkidx-chg{font-size:13px;font-weight:700}
+.stkres{padding:10px 12px;border-bottom:1px solid var(--line);cursor:pointer}
+.stkres:active{background:var(--card2)}
+.stkq{display:flex;align-items:baseline;gap:12px;margin:8px 0;flex-wrap:wrap}
+.stkq-px{font-size:28px;font-weight:800}
+.stkq-chg{font-size:16px;font-weight:700}
+.stktbl{width:100%;border-collapse:collapse;font-size:14px}
+.stktbl th,.stktbl td{padding:8px 6px;border-bottom:1px solid var(--line);text-align:right}
+.stktbl th:first-child,.stktbl td:first-child{text-align:left}
+.stktbl tr[data-sym]{cursor:pointer}
+#stkChart{width:100%;height:300px}
+.fadpx{font-size:32px;font-weight:800;letter-spacing:-.5px}
+.fadchg{font-size:15px;font-weight:700}
+.prow{display:flex;border:1px solid var(--line);border-radius:12px;overflow:hidden;margin:10px 0;background:var(--card2)}
+.pcell{flex:1;text-align:center;padding:8px 2px;border-right:1px solid var(--line);min-width:0}
+.pcell:last-child{border-right:none}
+.pcell .pl{font-size:11px;color:var(--mut);font-weight:700}
+.pcell .pv{font-size:13px;font-weight:800;white-space:nowrap}
+.sgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}
+.scell{display:flex;justify-content:space-between;align-items:center;border:1px solid var(--line);border-radius:10px;padding:9px 12px;background:var(--card2)}
+.scell .sl{font-size:12px;color:var(--mut)}
+.scell .sv{font-size:15px;font-weight:800}
+.fadtabs{display:flex;gap:6px;overflow-x:auto;margin:6px 0 10px;padding-bottom:2px}
+.frow{display:flex;align-items:center;gap:8px}
+.stktab{padding:8px 14px;border-radius:20px}
+.btn.stktab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+#pfCostChart{width:100%;height:220px}
+.stknews{padding:8px 0;border-bottom:1px solid var(--line)}
+.stknews a{color:var(--ink);text-decoration:none}
+.stknews a:hover{text-decoration:underline}
+.stkev{padding:8px 0;border-bottom:1px solid var(--line)}
+.stkfund{display:flex;flex-wrap:wrap;gap:12px;font-size:14px}
+.stkfund span{white-space:nowrap}
+.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.topbar a{color:var(--mut);text-decoration:none;font-size:14px}
+#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:10px 20px;border-radius:20px;display:none;z-index:1000}
+.lang-pill{display:inline-flex;border:1px solid var(--pp-line);border-radius:20px;overflow:hidden}
+.lang-pill button{border:none;background:transparent;padding:6px 10px;font-size:11px;font-weight:700;color:var(--pp-mut);cursor:pointer}
+.lang-pill button.on{background:var(--pp-accent);color:#fff}
+</style>
+</head>
+<body>
+<!-- PIN lock overlay -->
+<div id="pinLock" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:9999;align-items:center;justify-content:center">
+  <div class="card" style="width:320px;text-align:center">
+    <h3 data-i18n="pin_title">Nhập PIN</h3>
+    <input id="pinInput" class="gptInput" type="password" inputmode="numeric" maxlength="6" data-i18n-ph="pin_ph" placeholder="4-6 chữ số" style="width:100%;margin:12px 0;text-align:center;font-size:20px;letter-spacing:8px">
+    <button class="btn primary" id="pinUnlockBtn" style="width:100%" data-i18n="unlock">Mở khóa</button>
+    <div class="hint" id="pinErr" style="color:var(--pp-danger);margin-top:8px"></div>
+  </div>
+</div>
+
+<div class="topbar">
+  <a href="/hub">← Pocket Personal</a>
+  <div class="row" style="gap:8px">
+    <div class="pp-langdrop" id="langDrop">
+      <button class="pp-langdrop-btn" aria-label="Language">
+        <svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+        <span class="pp-langdrop-cur">VI</span>
+        <svg class="chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      <div class="pp-langdrop-menu" role="listbox">
+        <button class="pp-langdrop-item" data-lang="vi"><span class="code">VI</span><span class="name">Tiếng Việt</span></button>
+        <button class="pp-langdrop-item" data-lang="en"><span class="code">EN</span><span class="name">English</span></button>
+        <button class="pp-langdrop-item" data-lang="zh"><span class="code">中文</span><span class="name">中文</span></button>
+        <button class="pp-langdrop-item" data-lang="ko"><span class="code">한국어</span><span class="name">한국어</span></button>
+      </div>
+    </div>
+    <button class="btn ghost" id="pinBtn" style="padding:6px 12px" data-i18n="pin_btn">PIN</button>
+    <button class="btn ghost" id="logoutBtn" style="padding:6px 12px" data-i18n="logout">Đăng xuất</button>
+  </div>
+</div>
+
+<!-- PIN settings panel (inline, no popups) -->
+<div class="card" id="pinPanel" style="display:none">
+  <h3 data-i18n="pin_setup">Cài đặt PIN</h3>
+  <div id="pinCurRow" style="display:none">
+    <label data-i18n="pin_cur_label">PIN hiện tại</label>
+    <input id="pinCurInput" class="gptInput" type="password" inputmode="numeric" maxlength="6" data-i18n-ph="pin_ph" placeholder="4-6 chữ số" style="width:100%;margin:4px 0 12px;text-align:center;font-size:20px;letter-spacing:8px">
+  </div>
+  <label data-i18n="pin_new_label">PIN mới</label>
+  <input id="pinNewInput" class="gptInput" type="password" inputmode="numeric" maxlength="6" data-i18n-ph="pin_ph" placeholder="4-6 chữ số" style="width:100%;margin:4px 0 12px;text-align:center;font-size:20px;letter-spacing:8px">
+  <div class="hint" id="pinPanelErr" style="color:var(--pp-danger);margin-bottom:8px;min-height:18px"></div>
+  <div class="row" style="gap:8px;flex-wrap:wrap">
+    <button class="btn primary" id="pinSaveBtn" data-i18n="pin_save">Lưu</button>
+    <button class="btn ghost" id="pinRemoveBtn" data-i18n="pin_remove" style="display:none;color:var(--pp-danger)">Gỡ PIN</button>
+    <button class="btn ghost" id="pinCancelBtn" data-i18n="pin_cancel">Hủy</button>
+  </div>
+</div>
+
+<div class="card">
+  <h3 data-i18n="stocks_title">Chứng khoán</h3>
+  <div class="hint" id="stkUpd"></div>
+</div>
+
+<div id="stkTabMarket">
+  <div class="card"><div id="stkIndices"></div></div>
+  <div class="card">
+    <h3 data-i18n="search_symbol">Tìm mã</h3>
+    <div class="row">
+      <input id="stkSearch" class="gptInput" data-i18n-ph="search_ph" placeholder="ví dụ: HPG, VCB…" style="flex:1" autocomplete="off">
+      <button class="btn primary" id="stkSearchBtn" data-i18n="search_btn">Tìm</button>
+    </div>
+    <div id="stkSearchRes"></div>
+  </div>
+  <div class="card" id="stkDetail" style="display:none">
+    <div class="frow">
+      <button class="btn ghost" id="stkBack" style="padding:6px 12px">‹</button>
+      <div><b id="stkDetailSym" style="font-size:17px"></b> <span class="hint" id="stkDetailEx"></span></div>
+    </div>
+    <div class="frow" style="align-items:baseline;gap:10px;margin-top:6px;flex-wrap:wrap">
+      <span class="fadpx" id="stkPx">—</span>
+      <span class="fadchg" id="stkChg"></span>
+    </div>
+    <div class="hint" id="stkTime" style="margin:2px 0 4px"></div>
+    <div class="fadtabs" id="fadTabs">
+      <button class="btn stktab active" data-ft="ov" data-i18n="ft_ov">Tổng quan</button>
+      <button class="btn stktab" data-ft="news" data-i18n="ft_news">Tin tức</button>
+      <button class="btn stktab" data-ft="fund" data-i18n="ft_fund">Cơ bản</button>
+      <button class="btn stktab" data-ft="bt" data-i18n="ft_bt">Backtest</button>
+    </div>
+    <div id="fadOv">
+      <div class="frow" style="gap:8px;margin:8px 0;flex-wrap:wrap">
+        <button class="btn stktab active" data-iv="1D" data-i18n="iv_day">Ngày</button>
+        <button class="btn stktab" data-iv="1H">1H</button>
+        <button class="btn stktab" data-iv="15m">15m</button>
+        <button class="btn ghost" id="indToggle" style="margin-left:auto" data-i18n="indicators">fx Chỉ báo</button>
+      </div>
+      <div id="stkChart"></div>
+      <div id="stkPerf" class="prow"></div>
+      <div id="stkStats" class="sgrid"></div>
+      <div class="frow" style="gap:8px;margin-top:10px">
+        <button class="btn" id="wlToggle2" data-i18n="wl_add">+ Theo dõi</button>
+        <button class="btn" id="alGoBtn" data-i18n="alert_go">Cảnh báo</button>
+      </div>
+    </div>
+    <div id="fadNews" style="display:none">
+      <h4 style="margin:10px 0 6px" data-i18n="news_h">Tin tức</h4>
+      <div id="stkNews"></div>
+      <h4 style="margin:12px 0 6px" data-i18n="events_h">Sự kiện</h4>
+      <div id="stkEvents"></div>
+    </div>
+    <div id="fadFund" style="display:none">
+      <h4 style="margin:10px 0 6px" data-i18n="fund_h">Cơ bản</h4>
+      <div id="stkFund"></div>
+    </div>
+    <div id="fadBt" style="display:none">
+      <h4 style="margin:10px 0 6px" data-i18n="bt_h">Backtest MA</h4>
+      <div class="row" style="gap:8px">
+        <input id="btFast" class="gptInput" type="number" value="20" style="width:70px" title="Fast MA">
+        <input id="btSlow" class="gptInput" type="number" value="50" style="width:70px" title="Slow MA">
+        <button class="btn primary" id="btRunBtn" data-i18n="bt_run">Chạy</button>
+      </div>
+      <div id="btResult" style="margin-top:8px"></div>
+    </div>
+  </div>
+  <div class="card">
+    <h3 data-i18n="top_scored">Điểm cao nhất</h3>
+    <div class="row" style="gap:8px;flex-wrap:wrap;margin-bottom:8px">
+      <select id="scrEx" class="gptInput"><option value="" data-i18n="all_ex">Tất cả các sàn</option><option value="HOSE">HOSE</option><option value="HNX">HNX</option><option value="UPCOM">UPCOM</option></select>
+      <input id="scrMinPct" class="gptInput" type="number" data-i18n-ph="min_pct_ph" placeholder="% tối thiểu" style="width:80px">
+      <input id="scrMinScore" class="gptInput" type="number" data-i18n-ph="min_score_ph" placeholder="Điểm tối thiểu" style="width:90px">
+      <button class="btn primary" id="scrBtn" data-i18n="filter">Lọc</button>
+    </div>
+    <div id="stkScreener"></div>
+  </div>
+  <div class="card">
+    <h3 data-i18n="compare_h">So sánh mã</h3>
+    <div class="row">
+      <input id="cmpSyms" class="gptInput" data-i18n-ph="cmp_ph" placeholder="ví dụ: HPG,VCB,SSI (tối đa 5)" style="flex:1" autocomplete="off">
+      <button class="btn primary" id="cmpBtn" data-i18n="cmp_btn">So sánh</button>
+    </div>
+    <div id="cmpChart" style="width:100%;height:280px;margin-top:12px"></div>
+    <div class="hint" data-i18n="cmp_hint">% thay đổi từ đầu kỳ.</div>
+  </div>
+</div>
+
+<div id="stkTabWatch" style="display:none">
+  <div class="card">
+    <h3 data-i18n="watch_h">Theo dõi</h3>
+    <div class="row">
+      <input id="wlAddSym" class="gptInput" data-i18n-ph="wl_ph" placeholder="Mã, ví dụ HPG" style="flex:1" autocomplete="off">
+      <button class="btn primary" id="wlAddBtn" data-i18n="wl_addbtn">+ Thêm</button>
+    </div>
+    <div id="wlList" style="margin-top:12px"></div>
+  </div>
+</div>
+
+<div id="stkTabPort" style="display:none">
+  <div class="card">
+    <h3 data-i18n="port_ov">Tổng quan</h3>
+    <div id="pfSum"></div>
+  </div>
+  <div class="card">
+    <h3 data-i18n="port_pos">Vị thế</h3>
+    <div id="pfPos"></div>
+    <div id="pfCostChart" style="display:none;margin-top:12px"></div>
+  </div>
+  <div class="card">
+    <h3 data-i18n="txn_add">Thêm giao dịch</h3>
+    <div class="row" style="gap:8px;flex-wrap:wrap">
+      <input id="txnSym" class="gptInput" data-i18n-ph="txn_sym_ph" placeholder="Mã" style="width:80px" autocomplete="off">
+      <select id="txnSide" class="gptInput"><option value="BUY" data-i18n="txn_buy">Mua</option><option value="SELL" data-i18n="txn_sell">Bán</option></select>
+      <input id="txnPrice" class="gptInput" type="number" data-i18n-ph="txn_price_ph" placeholder="Giá" style="width:100px">
+      <input id="txnQty" class="gptInput" type="number" data-i18n-ph="txn_qty_ph" placeholder="Số lượng" style="width:90px">
+      <input id="txnDate" class="gptInput" type="date" style="width:150px">
+    </div>
+    <input id="txnNote" class="gptInput" data-i18n-ph="txn_note_ph" placeholder="Lý do (ví dụ: vượt MA20)" style="width:100%;margin-top:8px">
+    <button class="btn primary" id="txnAddBtn" style="margin-top:8px" data-i18n="txn_save">Lưu giao dịch</button>
+    <div class="hint" data-i18n="txn_fee_hint">Phí tự tính nếu để trống (mua 0,15%, bán 0,25%).</div>
+  </div>
+  <div class="card">
+    <h3 data-i18n="hist_h">Lịch sử</h3>
+    <div id="pfHist"></div>
+  </div>
+  <div class="card">
+    <h3 data-i18n="export_h">Xuất</h3>
+    <div class="row" style="gap:8px">
+      <button class="btn" id="expPosBtn" data-i18n="exp_pos">CSV Vị thế</button>
+      <button class="btn" id="expTxnBtn" data-i18n="exp_txn">CSV Giao dịch</button>
+    </div>
+  </div>
+</div>
+
+<div id="stkTabAlert" style="display:none">
+  <div class="card">
+    <h3 data-i18n="alert_h">Cảnh báo giá</h3>
+    <div class="row" style="gap:8px;flex-wrap:wrap">
+      <input id="alSym" class="gptInput" data-i18n-ph="al_sym_ph" placeholder="Mã" style="width:80px" autocomplete="off">
+      <select id="alDir" class="gptInput"><option value="ABOVE" data-i18n="al_above">≥ (vượt lên)</option><option value="BELOW" data-i18n="al_below">≤ (rơi xuống)</option></select>
+      <input id="alPrice" class="gptInput" type="number" data-i18n-ph="al_price_ph" placeholder="Giá" style="width:100px">
+      <button class="btn primary" id="alAddBtn" data-i18n="al_add">+ Thêm</button>
+    </div>
+    <div id="alList" style="margin-top:12px"></div>
+    <div class="hint" data-i18n="al_hint">Bạn sẽ nhận cảnh báo khi giá chạm mục tiêu.</div>
+  </div>
+  <div class="card">
+    <h3 data-i18n="tp_sl_h">Mục tiêu chốt lời / cắt lỗ</h3>
+    <div id="tgList"></div>
+  </div>
+</div>
+
+<div id="stkTabAgent" style="display:none">
+  <div class="card">
+    <h3 data-i18n="agent_h">AI Chat</h3>
+    <div class="hint" data-i18n="agent_hint">Ask about Vietnam stocks. Example: "What is the price of VCB?"</div>
+    <div id="agentMsgs" style="max-height:400px;overflow-y:auto;margin:12px 0;display:flex;flex-direction:column;gap:8px"></div>
+    <div class="row" style="gap:8px">
+      <input id="agentInput" class="gptInput" data-i18n-ph="agent_ph" placeholder="Ask about stocks..." style="flex:1" autocomplete="off" maxlength="1000">
+      <button class="btn primary" id="agentSendBtn" data-i18n="agent_send">Send</button>
+    </div>
+    <div class="hint" data-i18n="agent_disclaimer" style="margin-top:8px">This is not investment advice. Please do your own research.</div>
+  </div>
+</div>
+
+<div id="stkMain"></div>
+<div id="toast"></div>
+
+<script src="/english/js/vendor/lightweight-charts.js?v=1791286992"></script>
+<script defer src="https://cdn.ably.com/lib/ably.min-1.js?v=1791286992"></script>
+<script type="module">
+// Service Worker update flow (big tech pattern):
+// 1. Register SW (browser checks for updates automatically on navigation)
+// 2. Listen for 'updatefound' -> new SW is installing
+// 3. When new SW reaches 'installed' state and there's an existing controller,
+//    it means an update is waiting -> show banner
+// 4. User clicks "Update" -> post SKIP_WAITING to the waiting SW -> it activates
+// 5. Page reloads to get fresh content
+if("serviceWorker" in navigator){
+  navigator.serviceWorker.register("/stocks/sw.js",{scope:"/stocks/"}).then(function(reg){
+    reg.addEventListener("updatefound", function(){
+      var newWorker = reg.installing;
+      newWorker.addEventListener("statechange", function(){
+        if(newWorker.state === "installed" && navigator.serviceWorker.controller){
+          showUpdateBanner(newWorker);
+        }
+      });
+    });
+  }).catch(()=>{});
+}
+// Banner "Có bản mới" - hiện inline, không popup/modal (chuẩn big tech)
+function showUpdateBanner(newWorker){
+  if(document.getElementById("sw-update-banner")) return; // đã hiện rồi
+  const lang = (window.elab_uiLang || "vi").toLowerCase();
+  const t = (I18N[lang] || I18N.vi);
+  const banner = document.createElement("div");
+  banner.id = "sw-update-banner";
+  banner.style.cssText = "position:fixed;top:0;left:0;right:0;z-index:9999;background:var(--pp-accent,#0d9d6c);color:#fff;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:14px;box-shadow:0 2px 8px rgba(0,0,0,.15);";
+  const msg = document.createElement("span");
+  msg.textContent = t.update_available || "Có bản mới";
+  const btns = document.createElement("div");
+  btns.style.cssText = "display:flex;gap:8px;flex-shrink:0;";
+  const btnUpdate = document.createElement("button");
+  btnUpdate.textContent = t.update_btn || "Cập nhật";
+  btnUpdate.style.cssText = "background:#fff;color:var(--pp-accent,#0d9d6c);border:none;border-radius:8px;padding:6px 14px;font-weight:600;cursor:pointer;";
+  btnUpdate.addEventListener("click", function(){
+    // Tell the waiting SW to activate, then reload to get fresh content
+    if(newWorker) newWorker.postMessage({type: "SKIP_WAITING"});
+    location.reload();
+  });
+  const btnLater = document.createElement("button");
+  btnLater.textContent = t.update_later || "Để sau";
+  btnLater.style.cssText = "background:transparent;color:#fff;border:1px solid rgba(255,255,255,.5);border-radius:8px;padding:6px 14px;cursor:pointer;";
+  btnLater.addEventListener("click", function(){ banner.remove(); });
+  btns.appendChild(btnUpdate);
+  btns.appendChild(btnLater);
+  banner.appendChild(msg);
+  banner.appendChild(btns);
+  document.body.prepend(banner);
+}
+import { state } from '/english/js/core/state.js';
+import { store, toast } from '/english/js/core/dom.js';
+import { bindStock, renderStock, refreshMarketOnPush, setStockLang } from '/english/js/features/stock.js';
+
+const I18N = {
+vi:{doc_title:"Chứng khoán — Pocket Personal",
+pin_title:"Nhập PIN",pin_ph:"4-6 chữ số",unlock:"Mở khóa",pin_btn:"PIN",logout:"Đăng xuất",
+stocks_title:"Chứng khoán",tab_market:"Thị trường",tab_watch:"Theo dõi",tab_port:"Danh mục",tab_alert:"Cảnh báo",
+search_symbol:"Tìm mã",search_ph:"ví dụ: HPG, VCB…",search_btn:"Tìm",
+ft_ov:"Tổng quan",ft_news:"Tin tức",ft_fund:"Cơ bản",ft_bt:"Backtest",
+iv_day:"Ngày",indicators:"fx Chỉ báo",wl_add:"+ Theo dõi",alert_go:"Cảnh báo",
+news_h:"Tin tức",events_h:"Sự kiện",fund_h:"Cơ bản",bt_h:"Backtest MA",bt_run:"Chạy",
+top_scored:"Điểm cao nhất",all_ex:"Tất cả các sàn",min_pct_ph:"% tối thiểu",min_score_ph:"Điểm tối thiểu",filter:"Lọc",
+compare_h:"So sánh mã",cmp_ph:"ví dụ: HPG,VCB,SSI (tối đa 5)",cmp_btn:"So sánh",cmp_hint:"% thay đổi từ đầu kỳ.",
+watch_h:"Theo dõi",wl_ph:"Mã, ví dụ HPG",wl_addbtn:"+ Thêm",
+port_ov:"Tổng quan",port_pos:"Vị thế",txn_add:"Thêm giao dịch",
+txn_sym_ph:"Mã",txn_buy:"Mua",txn_sell:"Bán",txn_price_ph:"Giá",txn_qty_ph:"Số lượng",
+txn_note_ph:"Lý do (ví dụ: vượt MA20)",txn_save:"Lưu giao dịch",
+txn_fee_hint:"Phí tự tính nếu để trống (mua 0,15%, bán 0,25%).",
+hist_h:"Lịch sử",export_h:"Xuất",exp_pos:"CSV Vị thế",exp_txn:"CSV Giao dịch",
+alert_h:"Cảnh báo giá",al_sym_ph:"Mã",al_above:"≥ (vượt lên)",al_below:"≤ (rơi xuống)",
+al_price_ph:"Giá",al_add:"+ Thêm",
+al_hint:"Bạn sẽ nhận cảnh báo khi giá chạm mục tiêu.",
+tp_sl_h:"Mục tiêu chốt lời / cắt lỗ",
+pin_wrong:"Sai PIN",market_updated:"Đã cập nhật dữ liệu thị trường",
+pin_cur:"PIN hiện tại (để trống để gỡ PIN):",pin_remove_q:"Gỡ khóa PIN?",
+pin_removed:"Đã gỡ PIN",pin_new:"PIN mới (4-6 chữ số):",pin_set:"Đặt PIN (4-6 chữ số):",
+pin_digits:"PIN phải có 4-6 chữ số",pin_saved:"Đã lưu PIN",pin_err:"Lỗi: ",pin_setup:"Cài đặt PIN",pin_cur_label:"PIN hiện tại",pin_new_label:"PIN mới",pin_save:"Lưu",pin_remove:"Gỡ PIN",pin_cancel:"Hủy",pin_confirm_remove:"Chắc chắn gỡ?",pin_cur_required:"Nhập PIN hiện tại",
+tab_agent:"AI Chat",agent_h:"AI Chat",agent_hint:"Hỏi về chứng khoán Việt Nam. Ví dụ: \"Giá VCB bao nhiêu?\"",agent_ph:"Hỏi về cổ phiếu...",agent_send:"Gửi",agent_disclaimer:"Đây không phải lời khuyên đầu tư. Vui lòng tự nghiên cứu.",agent_too_long:"Tin nhắn quá dài (tối đa 1000 ký tự)",
+update_available:"Có bản mới",update_btn:"Cập nhật",update_later:"Để sau"},
+en:{doc_title:"Stocks — Pocket Personal",
+pin_title:"Enter PIN",pin_ph:"4-6 digits",unlock:"Unlock",pin_btn:"PIN",logout:"Logout",
+stocks_title:"Stocks",tab_market:"Market",tab_watch:"Watchlist",tab_port:"Portfolio",tab_alert:"Alerts",
+search_symbol:"Search symbol",search_ph:"e.g. HPG, VCB…",search_btn:"Search",
+ft_ov:"Overview",ft_news:"News",ft_fund:"Fundamentals",ft_bt:"Backtest",
+iv_day:"Day",indicators:"fx Indicators",wl_add:"+ Watch",alert_go:"Alerts",
+news_h:"News",events_h:"Events",fund_h:"Fundamentals",bt_h:"MA Backtest",bt_run:"Run",
+top_scored:"Top scored",all_ex:"All exchanges",min_pct_ph:"Min %",min_score_ph:"Min score",filter:"Filter",
+compare_h:"Compare symbols",cmp_ph:"e.g. HPG,VCB,SSI (max 5)",cmp_btn:"Compare",cmp_hint:"% change from start of period.",
+watch_h:"Watchlist",wl_ph:"Symbol, e.g. HPG",wl_addbtn:"+ Add",
+port_ov:"Overview",port_pos:"Positions",txn_add:"Add transaction",
+txn_sym_ph:"Symbol",txn_buy:"Buy",txn_sell:"Sell",txn_price_ph:"Price",txn_qty_ph:"Qty",
+txn_note_ph:"Reason (e.g. MA20 breakout)",txn_save:"Save transaction",
+txn_fee_hint:"Fee auto-calculated if empty (buy 0.15%, sell 0.25%).",
+hist_h:"History",export_h:"Export",exp_pos:"Positions CSV",exp_txn:"Transactions CSV",
+alert_h:"Price alerts",al_sym_ph:"Symbol",al_above:"≥ (above)",al_below:"≤ (below)",
+al_price_ph:"Price",al_add:"+ Add",
+al_hint:"You'll get an alert when the price hits your target.",
+tp_sl_h:"Take profit / Stop loss targets",
+pin_wrong:"Wrong PIN",market_updated:"Market data updated",
+pin_cur:"Current PIN (leave empty to remove PIN):",pin_remove_q:"Remove PIN lock?",
+pin_removed:"PIN removed",pin_new:"New PIN (4-6 digits):",pin_set:"Set PIN (4-6 digits):",
+pin_digits:"PIN must be 4-6 digits",pin_saved:"PIN saved",pin_err:"Error: ",pin_setup:"PIN settings",pin_cur_label:"Current PIN",pin_new_label:"New PIN",pin_save:"Save",pin_remove:"Remove PIN",pin_cancel:"Cancel",pin_confirm_remove:"Confirm remove?",pin_cur_required:"Enter current PIN",
+tab_agent:"AI Chat",agent_h:"AI Chat",agent_hint:"Ask about Vietnam stocks. Example: \"What is the price of VCB?\"",agent_ph:"Ask about stocks...",agent_send:"Send",agent_disclaimer:"This is not investment advice. Please do your own research.",agent_too_long:"Message too long (max 1000 chars)",update_available:"New version available",update_btn:"Update",update_later:"Later"},
+zh:{doc_title:"股票 — Pocket Personal",
+pin_title:"输入 PIN",pin_ph:"4-6 位数字",unlock:"解锁",pin_btn:"PIN",logout:"退出登录",
+stocks_title:"股票",tab_market:"行情",tab_watch:"自选",tab_port:"投资组合",tab_alert:"提醒",
+search_symbol:"搜索代码",search_ph:"例如：HPG, VCB…",search_btn:"搜索",
+ft_ov:"概况",ft_news:"新闻",ft_fund:"基本面",ft_bt:"回测",
+iv_day:"日",indicators:"fx 指标",wl_add:"+ 自选",alert_go:"提醒",
+news_h:"新闻",events_h:"事件",fund_h:"基本面",bt_h:"MA 回测",bt_run:"运行",
+top_scored:"高分精选",all_ex:"全部交易所",min_pct_ph:"最小 %",min_score_ph:"最低分",filter:"筛选",
+compare_h:"对比代码",cmp_ph:"例如：HPG,VCB,SSI（最多 5 个）",cmp_btn:"对比",cmp_hint:"自周期开始的涨跌幅。",
+watch_h:"自选",wl_ph:"代码，例如 HPG",wl_addbtn:"+ 添加",
+port_ov:"总览",port_pos:"持仓",txn_add:"添加交易",
+txn_sym_ph:"代码",txn_buy:"买入",txn_sell:"卖出",txn_price_ph:"价格",txn_qty_ph:"数量",
+txn_note_ph:"原因（例如突破 MA20）",txn_save:"保存交易",
+txn_fee_hint:"留空则自动计算费用（买入 0.15%，卖出 0.25%）。",
+hist_h:"历史",export_h:"导出",exp_pos:"持仓 CSV",exp_txn:"交易 CSV",
+alert_h:"价格提醒",al_sym_ph:"代码",al_above:"≥（上穿）",al_below:"≤（下穿）",
+al_price_ph:"价格",al_add:"+ 添加",
+al_hint:"当价格触及目标时您会收到提醒。",
+tp_sl_h:"止盈 / 止损目标",
+pin_wrong:"PIN 错误",market_updated:"行情数据已更新",
+pin_cur:"当前 PIN（留空则移除 PIN）：",pin_remove_q:"移除 PIN 锁？",
+pin_removed:"已移除 PIN",pin_new:"新 PIN（4-6 位数字）：",pin_set:"设置 PIN（4-6 位数字）：",
+pin_digits:"PIN 必须为 4-6 位数字",pin_saved:"PIN 已保存",pin_err:"错误：",pin_setup:"PIN 设置",pin_cur_label:"当前 PIN",pin_new_label:"新 PIN",pin_save:"保存",pin_remove:"移除 PIN",pin_cancel:"取消",pin_confirm_remove:"确认移除？",pin_cur_required:"请输入当前 PIN",
+tab_agent:"AI 聊天",agent_h:"AI 聊天",agent_hint:"咨询越南股票。例如：\"VCB 的价格是多少？\"",agent_ph:"咨询股票...",agent_send:"发送",agent_disclaimer:"这不是投资建议。请自行研究。",agent_too_long:"消息太长（最多1000个字符）",update_available:"有新版本",update_btn:"更新",update_later:"稍后"},
+ko:{doc_title:"주식 — Pocket Personal",
+pin_title:"PIN 입력",pin_ph:"4-6자리 숫자",unlock:"잠금 해제",pin_btn:"PIN",logout:"로그아웃",
+stocks_title:"주식",tab_market:"시장",tab_watch:"관심 목록",tab_port:"포트폴리오",tab_alert:"알림",
+search_symbol:"종목 검색",search_ph:"예: HPG, VCB…",search_btn:"검색",
+ft_ov:"개요",ft_news:"뉴스",ft_fund:"펀더멘털",ft_bt:"백테스트",
+iv_day:"일",indicators:"fx 지표",wl_add:"+ 관심",alert_go:"알림",
+news_h:"뉴스",events_h:"이벤트",fund_h:"펀더멘털",bt_h:"MA 백테스트",bt_run:"실행",
+top_scored:"고득점 종목",all_ex:"전체 거래소",min_pct_ph:"최소 %",min_score_ph:"최소 점수",filter:"필터",
+compare_h:"종목 비교",cmp_ph:"예: HPG,VCB,SSI (최대 5개)",cmp_btn:"비교",cmp_hint:"기간 시작 대비 변동률.",
+watch_h:"관심 목록",wl_ph:"종목 코드 (예: HPG)",wl_addbtn:"+ 추가",
+port_ov:"개요",port_pos:"보유 종목",txn_add:"거래 추가",
+txn_sym_ph:"종목",txn_buy:"매수",txn_sell:"매도",txn_price_ph:"가격",txn_qty_ph:"수량",
+txn_note_ph:"사유 (예: MA20 돌파)",txn_save:"거래 저장",
+txn_fee_hint:"비워 두면 수수료 자동 계산 (매수 0.15%, 매도 0.25%).",
+hist_h:"내역",export_h:"내보내기",exp_pos:"보유 종목 CSV",exp_txn:"거래 CSV",
+alert_h:"가격 알림",al_sym_ph:"종목",al_above:"≥ (상향 돌파)",al_below:"≤ (하향 돌파)",
+al_price_ph:"가격",al_add:"+ 추가",
+al_hint:"가격이 목표에 도달하면 알림을 받습니다.",
+tp_sl_h:"익절 / 손절 목표",
+pin_wrong:"PIN이 올바르지 않습니다",market_updated:"시장 데이터가 업데이트되었습니다",
+pin_cur:"현재 PIN (비워 두면 PIN 제거):",pin_remove_q:"PIN 잠금을 해제하시겠습니까?",
+pin_removed:"PIN이 제거되었습니다",pin_new:"새 PIN (4-6자리 숫자):",pin_set:"PIN 설정 (4-6자리 숫자):",
+pin_digits:"PIN은 4-6자리 숫자여야 합니다",pin_saved:"PIN이 저장되었습니다",pin_err:"오류: ",pin_setup:"PIN 설정",pin_cur_label:"현재 PIN",pin_new_label:"새 PIN",pin_save:"저장",pin_remove:"PIN 제거",pin_cancel:"취소",pin_confirm_remove:"제거를 확인하시겠습니까?",pin_cur_required:"현재 PIN을 입력하세요",
+tab_agent:"AI 채팅",agent_h:"AI 채팅",agent_hint:"베트남 주식에 대해 물어보세요. 예: \"VCB 가격이 얼마인가요?\"",agent_ph:"주식에 대해 물어보세요...",agent_send:"전송",agent_disclaimer:"투자 조언이 아닙니다. 직접 조사하시기 바랍니다.",agent_too_long:"메시지가 너무 깁니다 (최대 1000자)",update_available:"새 버전 있음",update_btn:"업데이트",update_later:"나중에"}
+};
+let LANG = "vi";
+try{ const v = localStorage.getItem("elab_uiLang"); if(v) LANG = JSON.parse(v); }catch(e){}
+let stockReady = false;
+function applyLang(l){
+  LANG = l;
+  try{ localStorage.setItem("elab_uiLang", JSON.stringify(l)); }catch(e){}
+  document.documentElement.lang = l;
+  const t = I18N[l] || I18N.en;
+  document.title = t.doc_title;
+  document.querySelectorAll("[data-i18n]").forEach(el=>{
+    const v = t[el.dataset.i18n];
+    if(v !== undefined) el.textContent = v;
+  });
+  document.querySelectorAll("[data-i18n-ph]").forEach(el=>{
+    const v = t[el.dataset.i18nPh];
+    if(v !== undefined) el.placeholder = v;
+  });
+  ["vi","en","zh","ko"].forEach(x=>{ const b=document.getElementById("lang"+x[0].toUpperCase()+x[1]); if(b) b.classList.toggle("on", l===x); });
+  if(stockReady){ try{ setStockLang(l); }catch(e){} }
+  // Reset armed PIN-remove state on language switch (button text was re-rendered by data-i18n)
+  try{ if(typeof _pinRemoveArmed !== 'undefined' && _pinRemoveArmed){ _pinRemoveArmed = false; var _rb = document.getElementById('pinRemoveBtn'); if(_rb) _rb.textContent = (I18N[l]||I18N.en).pin_remove; } }catch(e){}
+}
+// Expose for lang-dropdown.js
+window.__elabSetLang = applyLang;
+
+
+
+// Auth: reuse English Lab token from localStorage (same domain)
+// Hub luu token dang chuoi tho, English Lab luu dang JSON — xu ly ca 2
+let _tok = localStorage.getItem("elab_authToken");
+if(_tok){
+  try{ const p = JSON.parse(_tok); if(typeof p==="string") _tok = p; }catch(e){}
+}
+state.authToken = _tok || null;
+try{ state.authUser = JSON.parse(localStorage.getItem("elab_authUser")||"null"); }catch(e){ state.authUser = null; }
+if(!state.authToken){
+  location.href = "/";
+}else{
+  // Validate token: if expired/invalid, clear and redirect to login
+  try{
+    const _v = await fetch('/api/stock/version', {headers:{'Authorization':'Bearer '+state.authToken}}).then(r=>r.status);
+    if(_v === 401){ localStorage.removeItem("elab_authToken"); localStorage.removeItem("elab_authUser"); location.href = "/"; }
+  }catch(e){}
+  if(localStorage.getItem('hub_theme')==='dark') document.body.classList.add('dark');
+  applyLang(LANG);
+
+  const apiHeaders = ()=>({'Authorization':'Bearer '+state.authToken, 'Content-Type':'application/json'});
+
+  // PIN lock check
+  const pinStatus = await fetch('/api/stock/pin/status', {headers:apiHeaders()}).then(r=>r.json()).catch(()=>({has_pin:false}));
+  if(pinStatus.has_pin && !sessionStorage.getItem('stock_unlocked')){
+    const lock = document.getElementById('pinLock');
+    lock.style.display = 'flex';
+    const tryUnlock = async ()=>{
+      const pin = document.getElementById('pinInput').value;
+      const r = await fetch('/api/stock/pin/verify', {method:'POST', headers:apiHeaders(), body:JSON.stringify({pin})}).then(r=>r.json()).catch(()=>({ok:false}));
+      if(r.ok){
+        sessionStorage.setItem('stock_unlocked','1');
+        lock.style.display = 'none';
+        initApp();
+      }else{
+        document.getElementById('pinErr').textContent = I18N[LANG].pin_wrong;
+        document.getElementById('pinInput').value = '';
+      }
+    };
+    document.getElementById('pinUnlockBtn').onclick = tryUnlock;
+    document.getElementById('pinInput').onkeydown = e=>{ if(e.key==='Enter') tryUnlock(); };
+  }else{
+    initApp();
+  }
+
+  // PIN setup/change
+  // PIN setup/change — inline panel (no popups)
+  let _pinHasPin = false, _pinRemoveArmed = false;
+  const pinPanel = document.getElementById('pinPanel');
+  const pinCurRow = document.getElementById('pinCurRow');
+  const pinCurInput = document.getElementById('pinCurInput');
+  const pinNewInput = document.getElementById('pinNewInput');
+  const pinPanelErr = document.getElementById('pinPanelErr');
+  const pinRemoveBtn = document.getElementById('pinRemoveBtn');
+  document.getElementById('pinBtn').onclick = async ()=>{
+    if(pinPanel.style.display === 'none'){
+      _pinHasPin = !!(await fetch('/api/stock/pin/status', {headers:apiHeaders()}).then(r=>r.json()).catch(()=>({}))).has_pin;
+      _pinRemoveArmed = false;
+      pinCurRow.style.display = _pinHasPin ? '' : 'none';
+      pinRemoveBtn.style.display = _pinHasPin ? '' : 'none';
+      pinRemoveBtn.textContent = I18N[LANG].pin_remove;
+      pinCurInput.value = ''; pinNewInput.value = ''; pinPanelErr.textContent = '';
+      pinPanel.style.display = '';
+      (_pinHasPin ? pinCurInput : pinNewInput).focus();
+    }else{
+      pinPanel.style.display = 'none';
+    }
+  };
+  document.getElementById('pinCancelBtn').onclick = ()=>{ pinPanel.style.display = 'none'; };
+  document.getElementById('pinSaveBtn').onclick = async ()=>{
+    const t = I18N[LANG];
+    const newPin = pinNewInput.value.trim();
+    if(_pinHasPin && !pinCurInput.value.trim()){ pinPanelErr.textContent = t.pin_cur_required; return; }
+    if(!/^\d{4,6}$/.test(newPin)){ pinPanelErr.textContent = t.pin_digits; return; }
+    pinPanelErr.textContent = '';
+    const r = await fetch('/api/stock/pin', {method:'POST', headers:apiHeaders(), body:JSON.stringify({pin:newPin, old_pin:pinCurInput.value.trim()})}).then(r=>r.json()).catch(e=>({error:e.message}));
+    if(r.ok){ toast(t.pin_saved); pinPanel.style.display = 'none'; }
+    else toast(t.pin_err + (r.error || 'unknown'));
+  };
+  pinRemoveBtn.onclick = async ()=>{
+    const t = I18N[LANG];
+    if(!_pinRemoveArmed){ _pinRemoveArmed = true; pinRemoveBtn.textContent = t.pin_confirm_remove; return; }
+    const r = await fetch('/api/stock/pin', {method:'DELETE', headers:apiHeaders()}).then(r=>r.json()).catch(e=>({error:e.message}));
+    if(r.ok !== false){ toast(t.pin_removed); pinPanel.style.display = 'none'; }
+    else toast(t.pin_err + (r.error || 'unknown'));
+  };
+
+  document.getElementById('logoutBtn').onclick = async ()=>{
+    try{ await fetch('/api/auth/logout',{method:'POST',headers:{'Authorization':'Bearer '+state.authToken}}); }catch(e){}
+    localStorage.removeItem('elab_authToken');
+    localStorage.removeItem('elab_authUser');
+    sessionStorage.removeItem('stock_unlocked');
+    location.href = '/';
+  };
+
+  function initApp(){
+    stockReady = true;
+    try{
+      bindStock();
+      renderStock();
+    }catch(e){ console.error("initApp", e); }
+    try{ initAblyPush(); }catch(e){}
+    try{ initPolling(); }catch(e){}
+  }
+
+  // Ably real-time: refresh market data when publisher pushes update
+  // Key "Subscribe only" (chi duoc subscribe, an toan de public trong JS)
+  const ABLY_SUB_KEY = "BCoQRw.261BNQ:zMoeJ490qo9LYfDF3__CvYz0I8ePbs3cKfOq9qgPM-s";
+  // Polling fallback: check version every 5 min, refresh if data changed
+  // (Ably push is primary when working; polling ensures updates regardless)
+  let lastVersion = null;
+  async function pollVersion(){
+    try{
+      const r = await fetch('/api/stock/version', {headers: apiHeaders()}).then(r=>r.json());
+      if(r.updated && lastVersion && r.updated !== lastVersion){
+        refreshMarketOnPush();
+        const t = document.getElementById("toast");
+        if(t){ t.textContent = I18N[LANG].market_updated; t.style.display="block"; setTimeout(()=>t.style.display="none", 2000); }
+      }
+      if(r.updated) lastVersion = r.updated;
+    }catch(e){ /* silent */ }
+  }
+  function initPolling(){
+    pollVersion(); // check immediately
+    setInterval(pollVersion, 5*60*1000); // every 5 min
+  }
+
+  function initAblyPush(){
+    if(ABLY_SUB_KEY.startsWith("__") || typeof Ably==="undefined") return; // chua cau hinh
+    try{
+      const ably = new Ably.Realtime({ key: ABLY_SUB_KEY });
+      const ch = ably.channels.get("market");
+      ch.subscribe("update", ()=>{
+        refreshMarketOnPush();
+        const t = document.getElementById("toast");
+        if(t){ t.textContent = I18N[LANG].market_updated; t.style.display="block"; setTimeout(()=>t.style.display="none", 2000); }
+      });
+    }catch(e){ /* silent */ }
+  }
+
+  // (PIN/Logout handlers moved above initApp)
+}
+</script>
+<nav class="pp-tabbar" id="stkBar" aria-label="Stocks navigation">
+  <button class="stktab" data-t="market"><svg class="pp-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3v4"/><rect x="4" y="7" width="4" height="7" rx="1"/><path d="M6 14v7"/><path d="M18 3v6"/><rect x="16" y="9" width="4" height="6" rx="1"/><path d="M18 15v6"/></svg><span data-i18n="tab_market">Thị trường</span></button>
+  <button class="stktab" data-t="watch"><svg class="pp-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z"/></svg><span data-i18n="tab_watch">Theo dõi</span></button>
+  <button class="stktab" data-t="port"><svg class="pp-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg><span data-i18n="tab_port">Danh mục</span></button>
+  <button class="stktab" data-t="alert"><svg class="pp-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg><span data-i18n="tab_alert">Cảnh báo</span></button>
+  <button class="stktab" data-t="agent"><svg class="pp-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span data-i18n="tab_agent">AI Chat</span></button>
+</nav>
+<script src="/english/js/lang-dropdown.js?v=__BUILD__"></script>
+</body>
+</html>

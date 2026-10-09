@@ -1,0 +1,1455 @@
+export default {
+  async fetch(request, env) {
+    const url = new URL(request.url);
+    // Force HTTPS: redirect plain-HTTP requests (fixes "not secure" warning in browsers)
+    let _scheme = url.protocol;
+    try { const _v = request.headers.get("CF-Visitor"); if (_v) _scheme = JSON.parse(_v).scheme + ":"; } catch (e) {}
+    if (_scheme === "http:") { url.protocol = "https:"; return Response.redirect(url.toString(), 301); }
+    if (url.pathname === "/api/tts" && request.method === "POST") return handleTTS(request, env);
+    if (url.pathname === "/api/voices" && request.method === "GET") return handleVoices(env);
+    if (url.pathname === "/api/quota" && request.method === "GET") return handleQuota(env);
+    if (url.pathname === "/api/translate" && request.method === "POST") return handleTranslate(request, env);
+    if (url.pathname === "/api/dict" && request.method === "GET") return handleDict(url, env);
+    if (url.pathname === "/api/analytics" && request.method === "POST") return handleAnalytics(request, env);
+    if (url.pathname === "/api/insights" && request.method === "GET") return handleInsights(url, env);
+    if (url.pathname === "/api/auth/register" && request.method === "POST") return handleRegister(request, env);
+    if (url.pathname === "/api/auth/send-code" && request.method === "POST") return handleSendCode(request, env);
+    if (url.pathname === "/api/auth/verify-code" && request.method === "POST") return handleVerifyCode(request, env);
+    if (url.pathname === "/api/auth/login" && request.method === "POST") return handleLogin(request, env);
+    if (url.pathname === "/api/auth/logout" && request.method === "POST") return handleLogout(request, env);
+    if (url.pathname === "/api/auth/me" && request.method === "GET") return handleMe(request, env);
+    if (url.pathname === "/api/bank" && request.method === "GET") return handleBankGet(request, env);
+    if (url.pathname === "/api/bank" && request.method === "POST") return handleBankPost(request, env);
+    if (url.pathname === "/api/readings" && request.method === "GET") return handleReadingsList(request, env);
+    if (url.pathname === "/api/readings" && request.method === "POST") return handleReadingsCreate(request, env);
+    if (url.pathname.startsWith("/api/readings/") && request.method === "GET") return handleReadingGet(request, env);
+    if (url.pathname.startsWith("/api/readings/") && request.method === "DELETE") return handleReadingDelete(request, env);
+    if (url.pathname.startsWith("/api/readings/") && request.method === "PUT") return handleReadingAudioPut(request, env);
+    if (url.pathname === "/api/admin/users" && request.method === "GET") return handleAdminUsers(request, env);
+    if (url.pathname === "/api/admin/role" && request.method === "POST") return handleAdminRole(request, env);
+    if (url.pathname.startsWith("/api/admin/users/") && request.method === "DELETE") return handleAdminDelete(request, env);
+    if (url.pathname === "/api/books/upload" && request.method === "POST") return handleBookUpload(request, env);
+    if (url.pathname === "/api/books" && request.method === "GET") return handleBookList(request, env);
+    if (url.pathname.startsWith("/api/books/") && request.method === "GET") return handleBookGet(request, env);
+    if (url.pathname === "/api/books/shared" && request.method === "GET") return handleBookShared(request, env);
+    if (url.pathname === "/api/admin/books/pending" && request.method === "GET") return handleAdminBooksPending(request, env);
+    if (url.pathname === "/api/admin/books/approve" && request.method === "POST") return handleAdminBooksApprove(request, env);
+    if (url.pathname.startsWith("/stocks/api/")) return handleStocksProxy(request, env);
+    if (url.pathname === "/api/books/result" && request.method === "POST") return handleBookResult(request, env);
+    /* --- stock (chung khoan VN) --- */
+    if (url.pathname === "/api/stock/indices" && request.method === "GET") return hStockIndices(request, env);
+    if (url.pathname === "/api/stock/quote" && request.method === "GET") return hStockQuote(request, env);
+    if (url.pathname === "/api/stock/ohlcv" && request.method === "GET") return hStockOhlcv(request, env);
+    if (url.pathname === "/api/stock/symbols" && request.method === "GET") return hStockSymbols(request, env);
+    if (url.pathname === "/api/stock/screener" && request.method === "GET") return hStockScreener(request, env);
+    if (url.pathname === "/api/stock/screener2" && request.method === "GET") return hStockScreener2(request, env);
+    if (url.pathname === "/api/stock/fundamentals" && request.method === "GET") return hStockFundamentals(request, env);
+    if (url.pathname === "/api/stock/news" && request.method === "GET") return hStockNews(request, env);
+    if (url.pathname === "/api/stock/events" && request.method === "GET") return hStockEvents(request, env);
+    if (url.pathname === "/api/stock/backtest" && request.method === "GET") return hStockBacktest(request, env);
+    if (url.pathname === "/api/stock/compare" && request.method === "GET") return hStockCompare(request, env);
+    if (url.pathname === "/api/stock/watchlist" && request.method === "GET") return hWatchlistGet(request, env);
+    if (url.pathname === "/api/stock/watchlist" && request.method === "POST") return hWatchlistAdd(request, env);
+    if (url.pathname.startsWith("/api/stock/watchlist/") && request.method === "DELETE") return hWatchlistDel(request, env);
+    if (url.pathname === "/api/stock/portfolio" && request.method === "GET") return hPortfolio(request, env);
+    if (url.pathname === "/api/stock/portfolio/txn" && request.method === "POST") return hTxnAdd(request, env);
+    if (url.pathname.startsWith("/api/stock/portfolio/txn/") && request.method === "DELETE") return hTxnDel(request, env);
+    if (url.pathname.startsWith("/api/stock/portfolio/txn/") && request.method === "PUT") return hTxnNote(request, env);
+    if (url.pathname === "/api/stock/portfolio/cost_history" && request.method === "GET") return hCostHistory(request, env);
+    if (url.pathname === "/api/stock/alerts" && request.method === "GET") return hAlertsGet(request, env);
+    if (url.pathname === "/api/stock/alerts" && request.method === "POST") return hAlertsAdd(request, env);
+    if (url.pathname.startsWith("/api/stock/alerts/") && request.method === "DELETE") return hAlertsDel(request, env);
+    if (url.pathname === "/api/stock/targets" && request.method === "GET") return hTargetsGet(request, env);
+    if (url.pathname === "/api/stock/targets" && request.method === "POST") return hTargetsSet(request, env);
+    if (url.pathname.startsWith("/api/stock/targets/") && request.method === "DELETE") return hTargetsDel(request, env);
+    if (url.pathname === "/api/stock/pin/status" && request.method === "GET") return hPinStatus(request, env);
+    if (url.pathname === "/api/stock/pin" && request.method === "POST") return hPinSet(request, env);
+    if (url.pathname === "/api/stock/pin/verify" && request.method === "POST") return hPinVerify(request, env);
+    if (url.pathname === "/api/stock/pin" && request.method === "DELETE") return hPinDel(request, env);
+    if (url.pathname === "/api/internal/stock-publish" && request.method === "POST") return hStockPublish(request, env);
+    if (url.pathname === "/api/internal/stock-report-data" && request.method === "GET") return hStockReportData(request, env);
+    if (url.pathname === "/api/internal/stock-alert-done" && request.method === "POST") return hStockAlertDone(request, env);
+    if (url.pathname === "/api/internal/stock-target-done" && request.method === "POST") return hStockTargetDone(request, env);
+    return env.ASSETS.fetch(request);
+  }
+};
+const rateMap = new Map();
+function checkRate(ip) {
+  const now = Date.now();
+  let rec = rateMap.get(ip);
+  if (!rec || now > rec.reset) rec = { count: 0, reset: now + 86400000 };
+  rec.count++;
+  rateMap.set(ip, rec);
+  if (rateMap.size > 2000) for (const [k, v] of rateMap) if (now > v.reset) rateMap.delete(k);
+  return rec.count <= 300;
+}
+function jerr(msg, status) {
+  return new Response(JSON.stringify({ error: msg }), { status, headers: { "Content-Type": "application/json" } });
+}
+async function handleTTS(request, env) {
+  const ip = request.headers.get("cf-connecting-ip") || "x";
+  if (!checkRate(ip)) return jerr("Rate limit exceeded (300/day)", 429);
+  const key = env.ELEVENLABS_API_KEY;
+  if (!key) return jerr("TTS not configured", 503);
+  let b;
+  try { b = await request.json(); } catch (e) { return jerr("Invalid JSON", 400); }
+  const text = (b.text || "").slice(0, 5000), voice_id = b.voice_id || "", model_id = b.model_id || "eleven_multilingual_v2";
+  if (!text || !voice_id) return jerr("Missing text/voice_id", 400);
+  const r = await fetch("https://api.elevenlabs.io/v1/text-to-speech/" + voice_id, {
+    method: "POST",
+    headers: { "xi-api-key": key, "Content-Type": "application/json" },
+    body: JSON.stringify({ text, model_id })
+  });
+  if (!r.ok) return jerr("TTS provider error", r.status);
+  const audio = await r.arrayBuffer();
+  return new Response(audio, { headers: { "Content-Type": "audio/mpeg", "Cache-Control": "no-store" } });
+}
+async function handleVoices(env) {
+  const key = env.ELEVENLABS_API_KEY;
+  if (!key) return jerr("TTS not configured", 503);
+  const r = await fetch("https://api.elevenlabs.io/v1/voices", { headers: { "xi-api-key": key } });
+  if (!r.ok) return jerr("Voice list error", r.status);
+  const j = await r.json();
+  const voices = (j.voices || []).map(v => ({ voice_id: v.voice_id, name: v.name, labels: v.labels }));
+  return new Response(JSON.stringify({ voices }), { headers: { "Content-Type": "application/json" } });
+}
+async function handleQuota(env) {
+  const key = env.ELEVENLABS_API_KEY;
+  if (!key) return jerr("TTS not configured", 503);
+  const r = await fetch("https://api.elevenlabs.io/v1/user", { headers: { "xi-api-key": key } });
+  if (!r.ok) return jerr("Quota error", r.status);
+  const j = await r.json();
+  return new Response(JSON.stringify({ subscription: j.subscription || {} }), { headers: { "Content-Type": "application/json" } });
+}
+/* ---------- translate proxy: same unofficial Google endpoint the app already
+   used client-side, moved server-side so ad-blockers can't break the UI ---------- */
+const translateCache = new Map(); // "target|text" -> {text, ts}
+async function handleTranslate(request, env){
+  const ip = request.headers.get("cf-connecting-ip") || "x";
+  if(!checkRate(ip)) return jerr("Rate limit exceeded (300/day)", 429);
+  let b;
+  try{ b = await request.json(); }catch(e){ return jerr("Invalid JSON", 400); }
+  const text = String(b.text||"").slice(0, 500).trim();
+  const target = String(b.target||"vi").slice(0, 5);
+  if(!text) return jerr("Empty text", 400);
+  const ck = target+"|"+text;
+  const c = translateCache.get(ck);
+  if(c && Date.now()-c.ts < 86400000)
+    return new Response(JSON.stringify({text:c.text}), {headers:{"Content-Type":"application/json"}});
+  const url = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl="
+    + encodeURIComponent(target) + "&dt=t&q=" + encodeURIComponent(text);
+  try{
+    const r = await fetchTimeout(url, 8000, {headers:{"User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"}});
+    if(!r.ok) return jerr("Translate upstream error", 502);
+    const j = await r.json();
+    const t = (j[0] && j[0][0] && j[0][0][0] || "").trim();
+    translateCache.set(ck, {text:t, ts:Date.now()});
+    if(translateCache.size > 2000){ const k = translateCache.keys().next().value; translateCache.delete(k); }
+    return new Response(JSON.stringify({text:t}), {headers:{"Content-Type":"application/json"}});
+  }catch(e){ return jerr("Translate failed", 502); }
+}
+/* ---------- fullstack dictionary: multi-source with fallback ---------- */
+const dictCache = new Map(); // word -> {data, ts}
+function fetchTimeout(url, ms, opts={}){
+  const ctl = new AbortController();
+  const t = setTimeout(()=>ctl.abort(), ms);
+  return fetch(url, {...opts, signal: ctl.signal}).finally(()=>clearTimeout(t));
+}
+function stripHtml(s){
+  return (s||"").replace(/<[^>]*>/g,"").replace(/&amp;/g,"&").replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&quot;/g,'"').replace(/&#39;/g,"'").trim();
+}
+async function handleDict(url, env){
+  const word = (url.searchParams.get("word")||"").trim().toLowerCase();
+  if(!word || !/^[a-z'-]{1,40}$/.test(word)) return jerr("Invalid word", 400);
+  const cached = dictCache.get(word);
+  if(cached && Date.now() - cached.ts < 86400000) {
+    return new Response(JSON.stringify(cached.data), { headers: { "Content-Type": "application/json", "X-Cache": "hit" } });
+  }
+  // Multi-source aggregator (2026-10-05): race ALL sources in parallel, merge results.
+  // Free (no key): Wiktionary, wiktapi.dev EN, wiktapi.dev VI
+  // Key-based (env.MW_KEY, env.WORDSAPI_KEY): Merriam-Webster, WordsAPI - skipped if no key
+  const UA = { "User-Agent": "EnglishLab/1.0 (https://lethanhdong.one)" };
+  const results = await Promise.allSettled([
+    // 1. Wiktionary (free)
+    (async ()=>{
+      const r = await fetchTimeout("https://en.wiktionary.org/api/rest_v1/page/definition/"+encodeURIComponent(word), 6000, {headers: UA});
+      if(!r.ok) throw new Error("wikt "+r.status);
+      return {src:"wiktionary", data: await r.json()};
+    })(),
+    // 2. wiktapi.dev EN (free)
+    (async ()=>{
+      const r = await fetchTimeout("https://api.wiktapi.dev/v1/en/word/"+encodeURIComponent(word)+"/definitions?lang=en", 6000, {headers: UA});
+      if(!r.ok) throw new Error("wiktapi "+r.status);
+      return {src:"wiktapi", data: await r.json()};
+    })(),
+    // 3. wiktapi.dev VI definitions (free)
+    (async ()=>{
+      const r = await fetchTimeout("https://api.wiktapi.dev/v1/vi/word/"+encodeURIComponent(word)+"/definitions?lang=en", 6000, {headers: UA});
+      if(!r.ok) throw new Error("wiktapi-vi "+r.status);
+      return {src:"wiktapi-vi", data: await r.json()};
+    })(),
+    // 4. Merriam-Webster Learner's Dictionary (env.MW_KEY)
+    (async ()=>{
+      if(!env.MW_KEY) throw new Error("no mw key");
+      const r = await fetchTimeout("https://www.dictionaryapi.com/api/v3/references/learners/json/"+encodeURIComponent(word)+"?key="+env.MW_KEY, 6000, {headers: UA});
+      if(!r.ok) throw new Error("mw "+r.status);
+      return {src:"mw", data: await r.json()};
+    })(),
+    // 4b. Merriam-Webster Intermediate Thesaurus (env.MW_THES_KEY) - synonyms/antonyms
+    (async ()=>{
+      if(!env.MW_THES_KEY) throw new Error("no mw thes key");
+      const r = await fetchTimeout("https://www.dictionaryapi.com/api/v3/references/ithesaurus/json/"+encodeURIComponent(word)+"?key="+env.MW_THES_KEY, 6000, {headers: UA});
+      if(!r.ok) throw new Error("mw-thes "+r.status);
+      return {src:"mw-thes", data: await r.json()};
+    })(),
+    // 5. WordsAPI via RapidAPI (needs env.WORDSAPI_KEY)
+    (async ()=>{
+      if(!env.WORDSAPI_KEY) throw new Error("no wordsapi key");
+      const r = await fetchTimeout("https://wordsapiv1.p.rapidapi.com/words/"+encodeURIComponent(word), 6000, {
+        headers: {"X-RapidAPI-Key": env.WORDSAPI_KEY, "X-RapidAPI-Host": "wordsapiv1.p.rapidapi.com", ...UA}
+      });
+      if(!r.ok) throw new Error("wordsapi "+r.status);
+      return {src:"wordsapi", data: await r.json()};
+    })(),
+  ]);
+  const ok = results.filter(x=>x.status==="fulfilled").map(x=>x.value);
+
+  let out = { word, phonetic:"", audio:"", meanings:[], sources:[] };
+  const seenDefs = new Set();
+  const addMeaning = (pos, d, exs)=>{
+    const txt = String(d||"").replace(/\s+/g," ").trim().slice(0,300);
+    if(!txt || txt.length<3) return;
+    const key = txt.toLowerCase().slice(0,60);
+    if(seenDefs.has(key)) return;
+    seenDefs.add(key);
+    let m = out.meanings.find(m=>m.pos===(pos||""));
+    if(!m){ m = {pos: pos||"", defs:[]}; out.meanings.push(m); }
+    if(m.defs.length<4) m.defs.push({d: txt, exs: (exs||[]).map(e=>({t:String(e).slice(0,200)})).slice(0,2)});
+  };
+  function mwAudioUrl(file){
+    if(!file) return "";
+    const sub = file.slice(0,3)==="bix" ? "bix" : file.slice(0,2)==="gg" ? "gg" : /^[a-z]/i.test(file[0]||"") ? file[0].toLowerCase() : "number";
+    return "https://media.merriam-webster.com/audio/prons/en/us/mp3/"+sub+"/"+file+".mp3";
+  }
+  // Parse in quality order: MW > wiktapi > wiktionary > wordsapi
+  const bySrc = s => ok.find(x=>x.src===s);
+  const mw = bySrc("mw"), wikt = bySrc("wiktapi"), wik = bySrc("wiktionary"), wapi = bySrc("wordsapi"), wvi = bySrc("wiktapi-vi");
+  if(mw){
+    out.sources.push("merriam-webster");
+    try{
+      for(const e of (mw.data||[]).slice(0,4)){
+        if(typeof e !== "object" || !e) continue;
+        const pos = e.fl || "";
+        const prs0 = e.hwi && e.hwi.prs && e.hwi.prs[0];
+        if(!out.phonetic && prs0 && (prs0.ipa || prs0.mw)) out.phonetic = prs0.ipa || prs0.mw;
+        if(!out.audio && prs0 && prs0.sound && prs0.sound.audio) out.audio = mwAudioUrl(prs0.sound.audio);
+        for(const sd of (e.shortdef||[]).slice(0,4)) addMeaning(pos, sd, []);
+      }
+    }catch(e){}
+  }
+  const mthes = bySrc("mw-thes");
+  if(mthes){
+    out.sources.push("mw-thesaurus");
+    // collect {wd} words under a given list key (syn_list / ant_list) anywhere in sseq
+    const collectWds = (node, key, arr)=>{
+      if(!node) return;
+      if(Array.isArray(node)){ node.forEach(n=>collectWds(n,key,arr)); return; }
+      if(typeof node !== "object") return;
+      if(node[key] && Array.isArray(node[key])){
+        const pull = x=>{
+          if(Array.isArray(x)){ x.forEach(pull); return; }
+          if(x && typeof x.wd === "string"){
+            const c = x.wd.replace(/\*/g,"").trim();
+            if(c && !arr.includes(c)) arr.push(c);
+          }
+        };
+        node[key].forEach(pull);
+        return;
+      }
+      Object.values(node).forEach(v=>collectWds(v,key,arr));
+    };
+    try{
+      for(const e of (mthes.data||[]).slice(0,2)){
+        if(typeof e !== "object" || !e) continue;
+        const syns = [], ants = [];
+        (e.def||[]).forEach(d=>{
+          collectWds(d.sseq, "syn_list", syns);
+          collectWds(d.sseq, "ant_list", ants);
+        });
+        if(syns.length || ants.length){
+          if(!out.thesaurus) out.thesaurus = [];
+          out.thesaurus.push({syn: syns.slice(0,10), ant: ants.slice(0,10)});
+        }
+        // thesaurus shortdef can also add meanings
+        for(const sd of (e.shortdef||[]).slice(0,2)) addMeaning(e.fl||"", sd, []);
+      }
+    }catch(e){}
+  }
+  if(wikt){
+    out.sources.push("wiktapi");
+    try{
+      for(const d of (wikt.data.definitions||[]).slice(0,4)){
+        for(const s of (d.senses||[]).slice(0,3)){
+          const exs = (s.examples||[]).map(x=>x.text).filter(Boolean).slice(0,2);
+          for(const g of (s.glosses||[]).slice(0,2))
+            addMeaning(d.pos||"", g, exs);
+        }
+      }
+    }catch(e){}
+  }
+  if(wik){
+    out.sources.push("wiktionary");
+    try{
+      for(const e of (wik.data.en||[]).slice(0,4)){
+        for(const d of (e.definitions||[]).slice(0,3)){
+          const txt = stripHtml(d.definition||"");
+          if(txt) addMeaning(e.partOfSpeech||"", txt, []);
+        }
+      }
+    }catch(e){}
+  }
+  if(wapi){
+    out.sources.push("wordsapi");
+    try{
+      const d = wapi.data||{};
+      if(!out.phonetic && d.pronunciation){
+        out.phonetic = typeof d.pronunciation === "string" ? d.pronunciation : (d.pronunciation.all||"");
+      }
+      for(const r of (d.results||[]).slice(0,4)){
+        addMeaning(r.partOfSpeech||"", r.definition||"", (r.examples||[]).slice(0,2));
+        // synonyms as extra value
+        if(r.synonyms && r.synonyms.length && out.meanings.length){
+          const m0 = out.meanings[0];
+          if(!m0.syn) m0.syn = [...new Set(r.synonyms)].slice(0,6);
+        }
+      }
+    }catch(e){}
+  }
+  // VI definitions from wiktapi-vi
+  let viDefs = [];
+  if(wvi){
+    try{
+      (wvi.data.definitions||[]).forEach(d=>{
+        (d.senses||[]).forEach(s=>{
+          (s.glosses||[]).slice(0,2).forEach(g=>{
+            if(g && viDefs.length<4) viDefs.push({pos: d.pos||"", d: String(g).slice(0,200)});
+          });
+        });
+      });
+    }catch(e){}
+  }
+  if(!out.meanings.length) return jerr("Not found", 404);
+  if(viDefs.length) out.viMeanings = viDefs;
+  dictCache.set(word, {data: out, ts: Date.now()});
+  if(dictCache.size > 2000){ const k = dictCache.keys().next().value; dictCache.delete(k); }
+  return new Response(JSON.stringify(out), { headers: { "Content-Type": "application/json", "X-Cache": "miss" } });
+}
+/* ---------- server auth + RBAC (R2-backed) ---------- */
+// Account DB (separate R2 bucket "english-lab-auth", binding AUTHDB):
+//   users/{email}.json {email, salt, hash, role, created}
+//   sessions/{token}.json {email, exp}
+//   bank/{email}.json (encrypted blob, server can't read)
+// Content DB (bucket "english-lab-data", binding DATA): books, uploads, jobs, analytics
+const te = new TextEncoder();
+async function pbkdf2Hash(password, saltB64){
+  const salt = Uint8Array.from(atob(saltB64), c=>c.charCodeAt(0));
+  const km = await crypto.subtle.importKey("raw", te.encode(password), "PBKDF2", false, ["deriveBits"]);
+  const bits = await crypto.subtle.deriveBits({name:"PBKDF2", salt, iterations:100000, hash:"SHA-256"}, km, 256);
+  return btoa(String.fromCharCode(...new Uint8Array(bits)));
+}
+function randToken(n=32){
+  const b = crypto.getRandomValues(new Uint8Array(n));
+  return [...b].map(x=>x.toString(16).padStart(2,"0")).join("");
+}
+async function getSession(request, env){
+  const auth = request.headers.get("Authorization") || "";
+  const m = auth.match(/^Bearer (.+)$/);
+  if(!m) return null;
+  try{
+    const obj = await env.AUTHDB.get("sessions/"+m[1]+".json");
+    if(!obj) return null;
+    const s = await obj.json();
+    if(s.exp < Date.now()){ await env.AUTHDB.delete("sessions/"+m[1]+".json"); return null; }
+    return s; // {email, exp, token}
+  }catch(e){ return null; }
+}
+async function getUser(env, email){
+  try{
+    const obj = await env.AUTHDB.get("users/"+String(email).toLowerCase()+".json");
+    return obj ? await obj.json() : null;
+  }catch(e){ return null; }
+}
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+async function handleSendCode(request, env){
+  let d; try{ d = await request.json(); }catch(e){ return jerr("Bad JSON", 400); }
+  const email = String(d.email||"").trim().toLowerCase();
+  // Only Gmail allowed
+  if(!/^[a-zA-Z0-9._%+-]+@gmail\.com$/.test(email)) return jerr("Only Gmail addresses allowed", 400);
+  // Check if already registered
+  const existing = await getUser(env, email);
+  if(existing) return jerr("Email already registered", 400);
+  // Generate 6-digit code
+  const code = String(Math.floor(100000 + Math.random()*900000));
+  const exp = Date.now() + 10*60*1000; // 10 minutes
+  await env.AUTHDB.put(`verify/${email}.json`, JSON.stringify({code, exp, attempts: 0}), {
+    httpMetadata: {contentType: "application/json"}
+  });
+  // Send via Resend (API key in env.RESEND_API_KEY)
+  if(env.RESEND_API_KEY){
+    try{
+      await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${env.RESEND_API_KEY}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          from: "Pocket Personal <noreply@lethanhdong.one>",
+          to: email,
+          subject: "Your verification code",
+          html: `<p>Your verification code is:</p><h1 style="font-size:32px;letter-spacing:8px">${code}</h1><p>Valid for 10 minutes.</p>`
+        })
+      });
+    }catch(e){
+      console.error("Email send failed:", e);
+      // Don't fail the request, code is stored - user can try resend
+    }
+  }
+  return new Response(JSON.stringify({ok:true, sent: !!env.RESEND_API_KEY}), {headers:{"Content-Type":"application/json"}});
+}
+async function handleVerifyCode(request, env){
+  let d; try{ d = await request.json(); }catch(e){ return jerr("Bad JSON", 400); }
+  const email = String(d.email||"").trim().toLowerCase();
+  const code = String(d.code||"").trim();
+  const obj = await env.AUTHDB.get(`verify/${email}.json`);
+  if(!obj) return jerr("No code sent. Request a new one.", 400);
+  const v = await obj.json();
+  if(Date.now() > v.exp){
+    await env.AUTHDB.delete(`verify/${email}.json`);
+    return jerr("Code expired. Request a new one.", 400);
+  }
+  if(v.attempts >= 5){
+    await env.AUTHDB.delete(`verify/${email}.json`);
+    return jerr("Too many attempts. Request a new one.", 400);
+  }
+  if(v.code !== code){
+    v.attempts++;
+    await env.AUTHDB.put(`verify/${email}.json`, JSON.stringify(v), {httpMetadata:{contentType:"application/json"}});
+    return jerr("Invalid code", 400);
+  }
+  // Code valid - mark verified (delete the code, create verified marker)
+  await env.AUTHDB.delete(`verify/${email}.json`);
+  await env.AUTHDB.put(`verified/${email}.json`, JSON.stringify({email, ts: Date.now()}), {
+    httpMetadata: {contentType: "application/json"}
+  });
+  return new Response(JSON.stringify({ok:true}), {headers:{"Content-Type":"application/json"}});
+}
+async function handleRegister(request, env){
+  let d; try{ d = await request.json(); }catch(e){ return jerr("Bad JSON", 400); }
+  const email = String(d.email||"").trim().toLowerCase().slice(0,80);
+  const pw = String(d.password||"");
+  const dob = String(d.dob||""); // YYYY-MM-DD
+  if(!EMAIL_RE.test(email)) return jerr("Enter a valid email address", 400);
+  if(pw.length < 4) return jerr("Password min 4 chars", 400);
+  // Validate DOB and calculate age group
+  let ageGroup = "adult";
+  if(dob){
+    const m = dob.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if(!m) return jerr("Invalid birth date", 400);
+    const birth = new Date(+m[1], +m[2]-1, +m[3]);
+    if(isNaN(birth.getTime()) || birth > new Date()) return jerr("Invalid birth date", 400);
+    const age = Math.floor((Date.now() - birth.getTime()) / 31557600000);
+    if(age < 0 || age > 120) return jerr("Invalid birth date", 400);
+    ageGroup = age < 18 ? "kid" : "adult";
+  }
+  if(await getUser(env, email)) return jerr("Email already registered", 409);
+  // First user becomes admin
+  const list = await env.AUTHDB.list({prefix:"users/"});
+  const role = list.objects.length === 0 ? "admin" : "user";
+  const salt = btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(16))));
+  const hash = await pbkdf2Hash(pw, salt);
+  await env.AUTHDB.put("users/"+email+".json", JSON.stringify({
+    email, salt, hash, role, dob: dob||null, ageGroup, created: Date.now()
+  }), {httpMetadata:{contentType:"application/json"}});
+  return new Response(JSON.stringify({ok:true, role, ageGroup, email}), {headers:{"Content-Type":"application/json"}});
+}
+async function handleLogin(request, env){
+  let d; try{ d = await request.json(); }catch(e){ return jerr("Bad JSON", 400); }
+  const email = String(d.email||"").trim().toLowerCase();
+  const u = await getUser(env, email);
+  if(!u) return jerr("Invalid credentials", 401);
+  const hash = await pbkdf2Hash(String(d.password||""), u.salt);
+  if(hash !== u.hash) return jerr("Invalid credentials", 401);
+  const token = randToken();
+  await env.AUTHDB.put("sessions/"+token+".json", JSON.stringify({
+    email: u.email, exp: Date.now()+30*86400000, token
+  }), {httpMetadata:{contentType:"application/json"}});
+  return new Response(JSON.stringify({token, email: u.email, role: u.role, ageGroup: u.ageGroup||"adult"}), {headers:{"Content-Type":"application/json"}});
+}
+async function handleLogout(request, env){
+  const s = await getSession(request, env);
+  if(s) await env.AUTHDB.delete("sessions/"+s.token+".json");
+  return new Response(JSON.stringify({ok:true}), {headers:{"Content-Type":"application/json"}});
+}
+/* ---------- book upload + processing pipeline ---------- */
+// Flow: POST /api/books/upload (PDF) -> R2 uploads/{user}/{id}.pdf
+//   VM cron processes -> R2 books/{user}/{id}.json {title, chapters:[{title, sentences, cefr}]}
+//   Vocab/stats auto-merged into shared corpus (no opt-in per owner decision)
+async function handleBookUpload(request, env){
+  const s = await getSession(request, env);
+  if(!s) return jerr("Not logged in", 401);
+  const ct = request.headers.get("content-type") || "";
+  const isPdf = ct.includes("application/pdf");
+  const isEpub = ct.includes("application/epub") || ct.includes("application/epub+zip");
+  if(!isPdf && !isEpub) return jerr("PDF or EPUB only", 400);
+  const buf = await request.arrayBuffer();
+  if(buf.byteLength > 50*1024*1024) return jerr("Max 50MB", 413);
+  if(buf.byteLength < 100) return jerr("Empty file", 400);
+  const bookId = randToken(16);
+  const title = (request.headers.get("x-book-title") || "Untitled").slice(0,100);
+  const ext = isEpub ? "epub" : "pdf";
+  const mime = isEpub ? "application/epub+zip" : "application/pdf";
+  const key = `uploads/${s.email}/${bookId}.${ext}`;
+  await env.DATA.put(key, buf, {
+    httpMetadata: {contentType: mime},
+    customMetadata: {title, uploader: s.email, ts: String(Date.now())},
+  });
+  // Create job marker
+  await env.DATA.put(`jobs/${bookId}.json`, JSON.stringify({
+    bookId, user: s.email, title, status: "pending", ts: Date.now()
+  }), {httpMetadata:{contentType:"application/json"}});
+  return new Response(JSON.stringify({ok:true, bookId, title}), {headers:{"Content-Type":"application/json"}});
+}
+async function handleBookList(request, env){
+  const s = await getSession(request, env);
+  if(!s) return jerr("Not logged in", 401);
+  const list = await env.DATA.list({prefix: `books/${s.email}/`});
+  const books = [];
+  for(const o of list.objects){
+    if(!o.key.endsWith(".json")) continue;
+    try{
+      const obj = await env.DATA.get(o.key);
+      const b = await obj.json();
+      books.push({id: o.key.split("/").pop().replace(".json",""), title: b.title, chapters: b.chapters.length, ts: b.ts, status: b.status});
+    }catch(e){}
+  }
+  // Also include pending uploads
+  const jobs = await env.DATA.list({prefix: "jobs/"});
+  for(const o of jobs.objects){
+    try{
+      const obj = await env.DATA.get(o.key);
+      const j = await obj.json();
+      if(j.user === s.email && j.status === "pending"){
+        books.push({id: j.bookId, title: j.title, chapters: 0, ts: j.ts, status: "processing"});
+      }
+    }catch(e){}
+  }
+  books.sort((a,b)=>b.ts-a.ts);
+  return new Response(JSON.stringify({books}), {headers:{"Content-Type":"application/json"}});
+}
+async function handleBookGet(request, env){
+  const s = await getSession(request, env);
+  if(!s) return jerr("Not logged in", 401);
+  const id = request.url.split("/").pop().split("?")[0];
+  if(!/^[a-f0-9]{32}$/.test(id)) return jerr("Invalid id", 400);
+  try{
+    const obj = await env.DATA.get(`books/${s.email}/${id}.json`);
+    if(!obj) return jerr("Not found", 404);
+    return new Response(await obj.text(), {headers:{"Content-Type":"application/json"}});
+  }catch(e){ return jerr("Read error", 500); }
+}
+async function handleBookShared(request, env){
+  // Shared library: books admin has published
+  const list = await env.DATA.list({prefix: "shared/"});
+  const books = [];
+  for(const o of list.objects){
+    if(!o.key.endsWith(".json")) continue;
+    try{
+      const obj = await env.DATA.get(o.key);
+      const b = await obj.json();
+      books.push({id: o.key.split("/").pop().replace(".json",""), title: b.title, chapters: b.chapters.length, ts: b.ts});
+    }catch(e){}
+  }
+  return new Response(JSON.stringify({books}), {headers:{"Content-Type":"application/json"}});
+}
+async function handleAdminBooksPending(request, env){
+  const s = await getSession(request, env);
+  if(!s) return jerr("Not logged in", 401);
+  const u = await getUser(env, s.email);
+  if(!u || u.role !== "admin") return jerr("Admin only", 403);
+  // List all processed books (not yet in shared/)
+  const shared = await env.DATA.list({prefix: "shared/"});
+  const sharedIds = new Set(shared.objects.map(o=>o.key.split("/").pop().replace(".json","")));
+  const books = [];
+  // List from all users' books
+  const all = await env.DATA.list({prefix: "books/"});
+  for(const o of all.objects){
+    if(!o.key.endsWith(".json")) continue;
+    const id = o.key.split("/").pop().replace(".json","");
+    if(sharedIds.has(id)) continue;
+    try{
+      const obj = await env.DATA.get(o.key);
+      const b = await obj.json();
+      const user = o.key.split("/")[1];
+      books.push({id, title: b.title, user, chapters: b.chapters.length, ts: b.ts});
+    }catch(e){}
+  }
+  return new Response(JSON.stringify({books}), {headers:{"Content-Type":"application/json"}});
+}
+async function handleAdminBooksApprove(request, env){
+  const s = await getSession(request, env);
+  if(!s) return jerr("Not logged in", 401);
+  const u = await getUser(env, s.email);
+  if(!u || u.role !== "admin") return jerr("Admin only", 403);
+  let d; try{ d = await request.json(); }catch(e){ return jerr("Bad JSON", 400); }
+  const {bookId, user} = d;
+  if(!bookId || !user) return jerr("Missing bookId/user", 400);
+  const srcKey = `books/${user}/${bookId}.json`;
+  const obj = await env.DATA.get(srcKey);
+  if(!obj) return jerr("Book not found", 404);
+  const data = await obj.arrayBuffer();
+  await env.DATA.put(`shared/${bookId}.json`, data, {
+    httpMetadata: {contentType: "application/json"},
+    customMetadata: {title: d.title||"Untitled", approvedBy: s.email, ts: String(Date.now())},
+  });
+  return new Response(JSON.stringify({ok:true}), {headers:{"Content-Type":"application/json"}});
+}
+async function handleStocksProxy(request, env){
+  // Proxy Stock App API calls to VM backend (via tunnel)
+  // Backend URL configured via STOCKAPP_BACKEND env var
+  const backend = env.STOCKAPP_BACKEND || "http://localhost:8903";
+  const path = new URL(request.url).pathname.replace("/stocks/api", "/api");
+  const target = backend + path + new URL(request.url).search;
+  try{
+    const resp = await fetch(target, {
+      method: request.method,
+      headers: request.headers,
+      body: request.method !== "GET" && request.method !== "HEAD" ? await request.arrayBuffer() : null,
+    });
+    return new Response(resp.body, {status: resp.status, headers: resp.headers});
+  }catch(e){
+    return new Response(JSON.stringify({error: "Backend unavailable", detail: "Stock App backend not reachable. Tunnel may be down."}), 
+      {status: 502, headers: {"Content-Type": "application/json"}});
+  }
+}
+async function handleBookResult(request, env){
+  // VM processor posts results here (protected by secret)
+  const secret = request.headers.get("x-processor-secret");
+  if(secret !== env.PROCESSOR_SECRET) return jerr("Forbidden", 403);
+  let d; try{ d = await request.json(); }catch(e){ return jerr("Bad JSON", 400); }
+  const {bookId, user, book} = d;
+  if(!bookId || !user || !book) return jerr("Missing fields", 400);
+  await env.DATA.put(`books/${user}/${bookId}.json`, JSON.stringify(book), {
+    httpMetadata: {contentType: "application/json"}
+  });
+  await env.DATA.put(`jobs/${bookId}.json`, JSON.stringify({bookId, user, status: "done", ts: Date.now()}), {
+    httpMetadata: {contentType: "application/json"}
+  });
+  // Auto-merge vocab into shared corpus (per owner: no opt-in)
+  try{
+    const corpus = await loadCorpus(env);
+    const words = d.words || {};
+    for(const w in words){
+      if(/^[a-z'-]{2,30}$/.test(w)) corpus.wordFreq[w] = (corpus.wordFreq[w]||0) + Math.min(100, words[w]|0);
+    }
+    corpus.scans++;
+    await saveCorpus(env, corpus);
+  }catch(e){}
+  return new Response(JSON.stringify({ok:true}), {headers:{"Content-Type":"application/json"}});
+}
+async function handleMe(request, env){
+  const s = await getSession(request, env);
+  if(!s) return jerr("Not logged in", 401);
+  const u = await getUser(env, s.email);
+  return new Response(JSON.stringify({email: u.email, role: u.role, ageGroup: u.ageGroup||"adult"}), {headers:{"Content-Type":"application/json"}});
+}
+async function requireAdmin(request, env){
+  const s = await getSession(request, env);
+  if(!s) return {err: jerr("Not logged in", 401)};
+  const u = await getUser(env, s.email);
+  if(!u || u.role !== "admin") return {err: jerr("Admin only", 403)};
+  return {user: u, session: s};
+}
+async function handleBankGet(request, env){
+  const s = await getSession(request, env);
+  if(!s) return jerr("Not logged in", 401);
+  try{
+    const obj = await env.AUTHDB.get("bank/"+s.email+".json");
+    if(!obj) return new Response(JSON.stringify({bank:null}), {headers:{"Content-Type":"application/json"}});
+    return new Response(await obj.text(), {headers:{"Content-Type":"application/json"}});
+  }catch(e){ return jerr("Read error", 500); }
+}
+async function handleBankPost(request, env){
+  const s = await getSession(request, env);
+  if(!s) return jerr("Not logged in", 401);
+  const body = await request.text();
+  if(body.length > 500000) return jerr("Too large", 413);
+  await env.AUTHDB.put("bank/"+s.email+".json", body, {httpMetadata:{contentType:"application/json"}});
+  return new Response(JSON.stringify({ok:true}), {headers:{"Content-Type":"application/json"}});
+}
+/* ---------- saved readings: article text + MP3 per user (AUTHDB) ---------- */
+function parseReadingPath(pathname){
+  const rest = pathname.slice("/api/readings/".length);
+  const parts = rest.split("/");
+  const id = parts[0]||"";
+  if(!/^[0-9a-f]{16}$/.test(id)) return null;
+  return {id, sub: parts[1]||""};
+}
+async function handleReadingsCreate(request, env){
+  const s = await getSession(request, env);
+  if(!s) return jerr("Not logged in", 401);
+  let b;
+  try{ b = await request.json(); }catch(e){ return jerr("Invalid JSON", 400); }
+  const text = String(b.text||"").slice(0, 30000).trim();
+  if(!text) return jerr("Empty text", 400);
+  const email = s.email, prefix = "readings/"+email+"/";
+  const id = randToken(8);
+  const words = text.split(/\s+/).filter(Boolean).length;
+  const rec = {id, text, words, sentences: Math.max(1, (b.sentences|0)||text.split(/(?<=[.!?])\s+/).length),
+    src: String(b.src||"text").slice(0,8), ts: Date.now(), hasAudio:false};
+  await env.AUTHDB.put(prefix+id+".json", JSON.stringify(rec), {httpMetadata:{contentType:"application/json"}});
+  // cap 100 readings per user: delete oldest
+  try{
+    const list = await env.AUTHDB.list({prefix});
+    const metas = [];
+    for(const o of (list.objects||[])) if(o.key.endsWith(".json")) metas.push(o.key);
+    if(metas.length > 100){
+      const recs = [];
+      for(const k of metas){ const o = await env.AUTHDB.get(k); if(o) recs.push({key:k, ts:(await o.json()).ts||0}); }
+      recs.sort((a,b)=>a.ts-b.ts);
+      for(const r of recs.slice(0, recs.length-100)){
+        await env.AUTHDB.delete(r.key);
+        await env.AUTHDB.delete(r.key.replace(/\.json$/, ".mp3"));
+      }
+    }
+  }catch(e){}
+  return new Response(JSON.stringify({ok:true, id}), {headers:{"Content-Type":"application/json"}});
+}
+async function handleReadingsList(request, env){
+  const s = await getSession(request, env);
+  if(!s) return jerr("Not logged in", 401);
+  const prefix = "readings/"+s.email+"/";
+  const list = await env.AUTHDB.list({prefix});
+  const out = [];
+  for(const o of (list.objects||[])){
+    if(!o.key.endsWith(".json")) continue;
+    try{
+      const obj = await env.AUTHDB.get(o.key);
+      if(!obj) continue;
+      const r = await obj.json();
+      out.push({id:r.id, ts:r.ts, words:r.words, sentences:r.sentences, src:r.src, hasAudio:!!r.hasAudio});
+    }catch(e){}
+    if(out.length >= 100) break;
+  }
+  out.sort((a,b)=>b.ts-a.ts);
+  return new Response(JSON.stringify({readings:out}), {headers:{"Content-Type":"application/json"}});
+}
+async function handleReadingGet(request, env){
+  const s = await getSession(request, env);
+  if(!s) return jerr("Not logged in", 401);
+  const p = parseReadingPath(new URL(request.url).pathname);
+  if(!p) return jerr("Invalid id", 400);
+  const prefix = "readings/"+s.email+"/"+p.id;
+  if(p.sub === "audio"){
+    const obj = await env.AUTHDB.get(prefix+".mp3");
+    if(!obj) return jerr("No audio", 404);
+    return new Response(obj.body, {headers:{"Content-Type":"audio/mpeg","Content-Disposition":'attachment; filename="reading-'+p.id+'.mp3"'}});
+  }
+  if(p.sub) return jerr("Not found", 404);
+  const obj = await env.AUTHDB.get(prefix+".json");
+  if(!obj) return jerr("Not found", 404);
+  return new Response(await obj.text(), {headers:{"Content-Type":"application/json"}});
+}
+async function handleReadingDelete(request, env){
+  const s = await getSession(request, env);
+  if(!s) return jerr("Not logged in", 401);
+  const p = parseReadingPath(new URL(request.url).pathname);
+  if(!p) return jerr("Invalid id", 400);
+  const prefix = "readings/"+s.email+"/"+p.id;
+  if(p.sub === "audio"){
+    await env.AUTHDB.delete(prefix+".mp3");
+    try{
+      const metaObj = await env.AUTHDB.get(prefix+".json");
+      if(metaObj){
+        const rec = await metaObj.json(); rec.hasAudio = false;
+        await env.AUTHDB.put(prefix+".json", JSON.stringify(rec), {httpMetadata:{contentType:"application/json"}});
+      }
+    }catch(e){}
+    return new Response(JSON.stringify({ok:true}), {headers:{"Content-Type":"application/json"}});
+  }
+  if(p.sub) return jerr("Invalid id", 400);
+  await env.AUTHDB.delete(prefix+".json");
+  await env.AUTHDB.delete(prefix+".mp3");
+  return new Response(JSON.stringify({ok:true}), {headers:{"Content-Type":"application/json"}});
+}
+async function handleReadingAudioPut(request, env){
+  const s = await getSession(request, env);
+  if(!s) return jerr("Not logged in", 401);
+  const p = parseReadingPath(new URL(request.url).pathname);
+  if(!p || p.sub !== "audio") return jerr("Invalid id", 400);
+  const ct = request.headers.get("content-type")||"";
+  if(!ct.includes("audio/")) return jerr("Expected audio upload", 400);
+  const buf = await request.arrayBuffer();
+  if(!buf.byteLength || buf.byteLength > 15728640) return jerr("Audio too large (max 15MB)", 413);
+  const prefix = "readings/"+s.email+"/"+p.id;
+  const metaObj = await env.AUTHDB.get(prefix+".json");
+  if(!metaObj) return jerr("Reading not found", 404);
+  await env.AUTHDB.put(prefix+".mp3", buf, {httpMetadata:{contentType:"audio/mpeg"}});
+  try{
+    const rec = await metaObj.json();
+    rec.hasAudio = true;
+    await env.AUTHDB.put(prefix+".json", JSON.stringify(rec), {httpMetadata:{contentType:"application/json"}});
+  }catch(e){}
+  return new Response(JSON.stringify({ok:true, bytes:buf.byteLength}), {headers:{"Content-Type":"application/json"}});
+}
+async function handleAdminUsers(request, env){
+  const {err} = await requireAdmin(request, env);
+  if(err) return err;
+  const list = await env.AUTHDB.list({prefix:"users/"});
+  const users = [];
+  for(const o of list.objects){
+    try{
+      const obj = await env.DATA.get(o.key);
+      const u = await obj.json();
+      users.push({email: u.email, role: u.role, created: u.created});
+    }catch(e){}
+  }
+  return new Response(JSON.stringify({users}), {headers:{"Content-Type":"application/json"}});
+}
+async function handleAdminRole(request, env){
+  // DISABLED: no user may be promoted to admin (policy 2026-10-05)
+  return jerr("Role changes disabled", 403);
+}
+async function handleAdminDelete(request, env){
+  const {err, user} = await requireAdmin(request, env);
+  if(err) return err;
+  const email = decodeURIComponent(request.url.split("/").pop()).toLowerCase();
+  if(email === user.email.toLowerCase()) return jerr("Can't delete self", 400);
+  await env.DATA.delete("users/"+email+".json");
+  await env.AUTHDB.delete("bank/"+email+".json");
+  // delete sessions
+  const sl = await env.AUTHDB.list({prefix:"sessions/"});
+  for(const o of sl.objects){
+    try{
+      const obj = await env.DATA.get(o.key);
+      const s = await obj.json();
+      if(String(s.email).toLowerCase() === email) await env.DATA.delete(o.key);
+    }catch(e){}
+  }
+  return new Response(JSON.stringify({ok:true}), {headers:{"Content-Type":"application/json"}});
+}
+// Privacy: only aggregated word frequencies + CEFR counts, never raw sentences.
+// Stored in R2 bucket "english-lab-data" -> analytics/corpus.json
+// Used to improve CEFR classifier, pre-cache dictionary, suggest vocabulary.
+async function loadCorpus(env){
+  try{
+    const obj = await env.DATA.get("analytics/corpus.json");
+    if(obj) return await obj.json();
+  }catch(e){}
+  return {wordFreq:{}, lookupFreq:{}, cefr:{A1:0,A2:0,B1:0,B2:0,C1:0,C2:0}, scans:0, learners:[]};
+}
+async function saveCorpus(env, corpus){
+  // prune to keep file small
+  const prune = (o, n)=>{
+    const e = Object.entries(o).sort((a,b)=>b[1]-a[1]).slice(0,n);
+    return Object.fromEntries(e);
+  };
+  corpus.wordFreq = prune(corpus.wordFreq, 3000);
+  corpus.lookupFreq = prune(corpus.lookupFreq, 3000);
+  corpus.learners = [...new Set(corpus.learners)].slice(-5000);
+  await env.DATA.put("analytics/corpus.json", JSON.stringify(corpus), {
+    httpMetadata: {contentType: "application/json"}
+  });
+}
+async function handleAnalytics(request, env){
+  let d;
+  try{ d = await request.json(); }catch(e){ return jerr("Bad JSON", 400); }
+  const corpus = await loadCorpus(env);
+  if(d.uid && !corpus.learners.includes(d.uid.slice(0,64))) corpus.learners.push(d.uid.slice(0,64));
+  if(d.words && typeof d.words === "object"){
+    for(const w in d.words){
+      const word = String(w).toLowerCase().slice(0,30);
+      if(/^[a-z'-]{2,30}$/.test(word)) corpus.wordFreq[word] = (corpus.wordFreq[word]||0) + Math.min(50, d.words[w]|0);
+    }
+  }
+  if(Array.isArray(d.lookups)) d.lookups.slice(0,50).forEach(w=>{
+    const word = String(w).toLowerCase().slice(0,30);
+    if(/^[a-z'-]{2,30}$/.test(word)) corpus.lookupFreq[word] = (corpus.lookupFreq[word]||0)+1;
+  });
+  if(d.cefr) for(const lv of ["A1","A2","B1","B2","C1","C2"]) corpus.cefr[lv] += (d.cefr[lv]|0);
+  if(d.words || d.lookups) corpus.scans++;
+  await saveCorpus(env, corpus);
+  return new Response(JSON.stringify({ok:true}), {headers:{"Content-Type":"application/json"}});
+}
+async function handleInsights(url, env){
+  const corpus = await loadCorpus(env);
+  const top = (o, n)=>Object.entries(o).sort((a,b)=>b[1]-a[1]).slice(0,n).map(([w,c])=>({w,c}));
+  const out = {
+    scans: corpus.scans, learners: corpus.learners.length, cefr: corpus.cefr,
+    topWords: top(corpus.wordFreq, 50),
+    topLookups: top(corpus.lookupFreq, 50),
+  };
+  return new Response(JSON.stringify(out), {headers:{"Content-Type":"application/json"}});
+}
+/* ================= STOCK (chung khoan VN, R2-backed) ================= */
+/* Market snapshots: stock/market/*.json — VM day len qua POST /api/internal/stock-publish
+   User data: stock/users/{email}/(watchlist|portfolio|alerts|targets).json
+   Auth: dung session English Lab (getSession). Khong can JWT rieng. */
+
+async function sGet(env, key){
+  try{ const o = await env.DATA.get("stock/"+key); return o ? await o.json() : null; }
+  catch(e){ return null; }
+}
+async function sPut(env, key, val){
+  await env.DATA.put("stock/"+key, JSON.stringify(val), {httpMetadata:{contentType:"application/json"}});
+}
+function sJson(data, status){
+  return new Response(JSON.stringify(data), {status: status||200, headers:{"Content-Type":"application/json"}});
+}
+const SKEY = e => "users/"+e+"/";
+
+/* ---------- tinh toan (port tu FastAPI) ---------- */
+function sCalcPositions(txns){
+  const pos = {}, realized = {};
+  const sorted = [...txns].sort((a,b)=> a.date<b.date?-1 : a.date>b.date?1 : a.id-b.id);
+  for(const t of sorted){
+    const p = pos[t.symbol] || (pos[t.symbol] = {qty:0, cost:0});
+    if(t.side==="BUY"){ p.qty += t.qty; p.cost += t.price*t.qty + t.fee; }
+    else{
+      const avg = p.qty ? p.cost/p.qty : 0;
+      realized[t.symbol] = (realized[t.symbol]||0) + (t.price-avg)*t.qty - t.fee;
+      p.qty -= t.qty; p.cost -= avg*t.qty;
+    }
+  }
+  return {pos, realized};
+}
+function sAutoFee(side, price, qty){
+  const v = price*qty;
+  return side==="SELL" ? v*0.0025 : v*0.0015;
+}
+function sPctRank(vals, v, higherBetter){
+  const xs = vals.filter(x=>x!=null).sort((a,b)=>a-b);
+  if(!xs.length || v==null || xs.length<2) return null;
+  const below = xs.filter(x=> higherBetter ? x<v : x>v).length;
+  return Math.round(below/(xs.length-1)*1000)/10;
+}
+const SCORE_W = {value:0.35, quality:0.35, momentum:0.20, liquidity:0.10};
+function sScoreRows(rows, funds, closes){
+  const pes=[], pbs=[], roes=[], nms=[], pcs=[], liqs=[], tmp=[];
+  for(const r of rows){
+    const sym = r.symbol, f = funds[sym]||{};
+    const close = closes[sym];
+    let pe=null, pb=null;
+    if(close && f.eps>0) pe = Math.round(close*1000/f.eps*100)/100;
+    if(close && f.bvps>0) pb = Math.round(close*1000/f.bvps*100)/100;
+    tmp.push([r,pe,pb,f.roe,f.net_margin,r.pct_change,r.value_vnd]);
+    pes.push(pe); pbs.push(pb); roes.push(f.roe); nms.push(f.net_margin);
+    pcs.push(r.pct_change); liqs.push(r.value_vnd);
+  }
+  for(const [r,pe,pb,roe,nm,pc,liq] of tmp){
+    const parts = {};
+    const vpe = sPctRank(pes,pe,false), vpb = sPctRank(pbs,pb,false);
+    const vv = [vpe,vpb].filter(x=>x!=null);
+    if(vv.length) parts.value = vv.reduce((a,b)=>a+b,0)/vv.length;
+    const qroe = sPctRank(roes,roe,true), qnm = sPctRank(nms,nm,true);
+    const qq = [qroe,qnm].filter(x=>x!=null);
+    if(qq.length) parts.quality = qq.reduce((a,b)=>a+b,0)/qq.length;
+    const qpc = sPctRank(pcs,pc,true);
+    if(qpc!=null) parts.momentum = qpc;
+    const qlq = sPctRank(liqs,liq,true);
+    if(qlq!=null) parts.liquidity = qlq;
+    const wsum = Object.keys(parts).reduce((a,k)=>a+SCORE_W[k],0);
+    r.score = wsum ? Math.round(Object.keys(parts).reduce((a,k)=>a+parts[k]*SCORE_W[k],0)/wsum*10)/10 : null;
+    r.pe = pe; r.pb = pb;
+  }
+  return rows;
+}
+function sBacktest(closes, times, fast, slow){
+  const n = closes.length;
+  const sma = (i,p)=>{ let s=0; for(let k=i-p+1;k<=i;k++) s+=closes[k]; return s/p; };
+  let pos=0, entryPx=0, entryT="", capital=1;
+  const trades=[], equity=[], bhEquity=[];
+  const baseBh = closes[slow];
+  for(let i=slow;i<n;i++){
+    const f=sma(i,fast), s=sma(i,slow), pf=sma(i-1,fast), ps=sma(i-1,slow), px=closes[i];
+    if(pos===0 && pf<=ps && f>s){ pos=1; entryPx=px; entryT=times[i]; }
+    else if(pos===1 && pf>=ps && f<s){
+      const ret=(px-entryPx)/entryPx; capital*=(1+ret);
+      trades.push({in:entryT, in_px:Math.round(entryPx*100)/100, out:times[i], out_px:Math.round(px*100)/100, ret:Math.round(ret*10000)/100});
+      pos=0;
+    }
+    equity.push({t:times[i], v:Math.round(capital*(pos?px/entryPx:1)*10000)/10000});
+    bhEquity.push({t:times[i], v: baseBh? Math.round(px/baseBh*10000)/10000 : 1});
+  }
+  if(pos){
+    const ret=(closes[n-1]-entryPx)/entryPx; capital*=(1+ret);
+    trades.push({in:entryT, in_px:Math.round(entryPx*100)/100, out:times[n-1], out_px:Math.round(closes[n-1]*100)/100, ret:Math.round(ret*10000)/100, open:true});
+  }
+  const wins = trades.filter(t=>t.ret>0).length;
+  let peak=0, mdd=0;
+  for(const p of equity){ peak=Math.max(peak,p.v); mdd=Math.min(mdd,(p.v-peak)/(peak||1)*100); }
+  const bh = closes[slow] ? (closes[n-1]-closes[slow])/closes[slow]*100 : 0;
+  return {trades, equity, bh_equity:bhEquity,
+    stats:{trades:trades.length, winrate: trades.length? Math.round(wins/trades.length*1000)/10:0,
+      strategy_ret:Math.round((capital-1)*10000)/100, bh_ret:Math.round(bh*100)/100,
+      max_drawdown:Math.round(mdd*100)/100},
+    note:"Excluding fees and taxes."};
+}
+
+/* ---------- market (doc tu R2 snapshot, can login) ---------- */
+async function hStockIndices(request, env){
+  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
+  const d = await sGet(env, "market/indices.json");
+  return sJson(d || {updated:null, rows:[]});
+}
+async function hStockQuote(request, env){
+  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
+  const sym = (new URL(request.url).searchParams.get("symbol")||"").toUpperCase();
+  if(!sym) return jerr("Symbol required", 400);
+  const d = await sGet(env, "market/quotes.json");
+  const q = d && d.by_symbol ? d.by_symbol[sym] : null;
+  if(!q) return jerr("No data for "+sym, 404);
+  return sJson(Object.assign({symbol:sym}, q));
+}
+async function hStockOhlcv(request, env){
+  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
+  const u = new URL(request.url);
+  const sym = (u.searchParams.get("symbol")||"").toUpperCase();
+  const count = Math.max(10, Math.min(parseInt(u.searchParams.get("count")||"120",10)||120, 500));
+  const iv = u.searchParams.get("interval")||"1D";
+  if(!sym) return jerr("Symbol required", 400);
+  let d;
+  if(iv==="1D"){
+    d = await sGet(env, "market/ohlcv/"+sym+".json");
+  }else if(iv==="1H" || iv==="15m"){
+    d = await sGet(env, "market/intraday/"+sym+"_"+iv+".json");
+  }else{
+    return jerr("Invalid interval (1D/1H/15m)", 400);
+  }
+  if(!d) return jerr("No data for "+sym+" ("+iv+")", 404);
+  return sJson({symbol:sym, interval:iv, rows:d.rows.slice(-count), count:d.rows.length, updated:d.updated});
+}
+async function hStockSymbols(request, env){
+  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
+  const d = await sGet(env, "market/symbols.json");
+  return sJson(d || {updated:null, rows:[]});
+}
+async function hStockScreener(request, env){
+  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
+  const u = new URL(request.url);
+  const d = await sGet(env, "market/screener.json");
+  let rows = (d && d.rows) || [];
+  const ex = (u.searchParams.get("exchange")||"").toUpperCase();
+  const minP = parseFloat(u.searchParams.get("min_pct")), maxP = parseFloat(u.searchParams.get("max_pct"));
+  const minV = parseFloat(u.searchParams.get("min_volume")), minVal = parseFloat(u.searchParams.get("min_value"));
+  if(ex) rows = rows.filter(r=>(r.exchange||"").toUpperCase()===ex);
+  if(!isNaN(minP)) rows = rows.filter(r=>r.pct_change!=null && r.pct_change>=minP);
+  if(!isNaN(maxP)) rows = rows.filter(r=>r.pct_change!=null && r.pct_change<=maxP);
+  if(!isNaN(minV)) rows = rows.filter(r=>(r.volume||0)>=minV);
+  if(!isNaN(minVal)) rows = rows.filter(r=>(r.value_vnd||0)>=minVal);
+  const sort = u.searchParams.get("sort")||"value_vnd", order = u.searchParams.get("order")||"desc";
+  rows = [...rows].sort((a,b)=>{ const av=a[sort]??-1e18, bv=b[sort]??-1e18; return order==="asc"? av-bv : bv-av; });
+  return sJson({updated:d?d.updated:null, count:rows.length, rows:rows.slice(0,500)});
+}
+async function hStockScreener2(request, env){
+  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
+  const u = new URL(request.url);
+  const sc = await sGet(env, "market/screener.json");
+  const fd = await sGet(env, "market/fundamentals.json");
+  const q = await sGet(env, "market/quotes.json");
+  let rows = (sc && sc.rows) || [];
+  const funds = (fd && fd.by_symbol) || {};
+  const closes = {};
+  if(q && q.by_symbol) for(const k of Object.keys(q.by_symbol)) closes[k]=q.by_symbol[k].close;
+  const ex = (u.searchParams.get("exchange")||"").toUpperCase();
+  if(ex) rows = rows.filter(r=>(r.exchange||"").toUpperCase()===ex);
+  rows = sScoreRows(rows.map(r=>Object.assign({},r)), funds, closes);
+  const minS = parseFloat(u.searchParams.get("min_score"));
+  if(!isNaN(minS)) rows = rows.filter(r=>r.score!=null && r.score>=minS);
+  rows.sort((a,b)=>(b.score??-1)-(a.score??-1));
+  return sJson({updated:sc?sc.updated:null, count:rows.length, rows:rows.slice(0,500)});
+}
+async function hStockFundamentals(request, env){
+  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
+  const sym = (new URL(request.url).searchParams.get("symbol")||"").toUpperCase();
+  if(!sym) return jerr("Symbol required", 400);
+  const d = await sGet(env, "market/fundamentals.json");
+  const f = d && d.by_symbol ? d.by_symbol[sym] : null;
+  if(!f) return jerr("No data for "+sym, 404);
+  return sJson(Object.assign({symbol:sym}, f));
+}
+async function hStockNews(request, env){
+  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
+  const sym = (new URL(request.url).searchParams.get("symbol")||"").toUpperCase();
+  const d = await sGet(env, "market/news/"+sym+".json");
+  return sJson(d || {symbol:sym, items:[], updated:null});
+}
+async function hStockEvents(request, env){
+  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
+  const sym = (new URL(request.url).searchParams.get("symbol")||"").toUpperCase();
+  const d = await sGet(env, "market/events/"+sym+".json");
+  return sJson(d || {symbol:sym, items:[], updated:null});
+}
+async function hStockBacktest(request, env){
+  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
+  const u = new URL(request.url);
+  const sym = (u.searchParams.get("symbol")||"").toUpperCase();
+  if(!sym) return jerr("Symbol required", 400);
+  const fast = Math.max(2, Math.min(parseInt(u.searchParams.get("fast")||"20",10)||20, 200));
+  const slow = Math.max(fast+1, Math.min(parseInt(u.searchParams.get("slow")||"50",10)||50, 300));
+  const d = await sGet(env, "market/ohlcv/"+sym+".json");
+  if(!d || !d.rows.length) return jerr("No data for "+sym, 404);
+  const rows = d.rows.slice(-500);
+  const closes = rows.map(r=>r.c), times = rows.map(r=>r.t);
+  if(closes.length < slow+5) return jerr("Not enough data", 400);
+  return sJson(Object.assign({symbol:sym, fast, slow}, sBacktest(closes, times, fast, slow)));
+}
+async function hStockCompare(request, env){
+  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
+  const u = new URL(request.url);
+  const syms = (u.searchParams.get("symbols")||"").toUpperCase().split(",").map(x=>x.trim()).filter(Boolean).slice(0,5);
+  if(!syms.length) return jerr("Symbol required", 400);
+  const count = Math.max(10, Math.min(parseInt(u.searchParams.get("count")||"120",10)||120, 500));
+  const out = {};
+  for(const sym of syms){
+    const d = await sGet(env, "market/ohlcv/"+sym+".json");
+    if(!d) continue;
+    const rows = d.rows.slice(-count);
+    const base = rows[0].c;
+    out[sym] = rows.map(r=>({t:r.t, v: base? Math.round(r.c/base*10000)/100-100 : 0}));
+  }
+  return sJson({series:out});
+}
+
+/* ---------- user data (theo email) ---------- */
+async function uGet(env, email, name, fallback){
+  const d = await sGet(env, SKEY(email)+name+".json");
+  return d==null ? fallback : d;
+}
+async function uPut(env, email, name, val){ return sPut(env, SKEY(email)+name+".json", val); }
+
+async function hWatchlistGet(request, env){
+  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
+  return sJson(await uGet(env, s.email, "watchlist", []));
+}
+async function hWatchlistAdd(request, env){
+  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
+  const body = await request.json().catch(()=>({}));
+  const sym = String(body.symbol||"").toUpperCase().trim();
+  if(!/^[A-Z]{3,10}$/.test(sym)) return jerr("Invalid symbol", 400);
+  const wl = await uGet(env, s.email, "watchlist", []);
+  if(!wl.includes(sym)){ wl.push(sym); await uPut(env, s.email, "watchlist", wl); }
+  return sJson({ok:true, watchlist:wl});
+}
+async function hWatchlistDel(request, env){
+  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
+  const sym = decodeURIComponent(new URL(request.url).pathname.split("/").pop()).toUpperCase();
+  const wl = (await uGet(env, s.email, "watchlist", [])).filter(x=>x!==sym);
+  await uPut(env, s.email, "watchlist", wl);
+  return sJson({ok:true, watchlist:wl});
+}
+async function hPortfolio(request, env){
+  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
+  const pf = await uGet(env, s.email, "portfolio", {txns:[]});
+  const calc = sCalcPositions(pf.txns||[]);
+  const pos = calc.pos, realized = calc.realized;
+  const q = await sGet(env, "market/quotes.json");
+  const byQ = (q && q.by_symbol) || {};
+  const positions=[]; let totalMv=0, totalCost=0;
+  for(const sym of Object.keys(pos)){
+    const p = pos[sym];
+    if(p.qty <= 1e-9) continue;
+    const qq = byQ[sym]||{};
+    const cur = qq.close != null ? qq.close : null;
+    const avg = p.cost/p.qty;
+    const mv = cur!=null ? cur*p.qty : null;
+    const unrl = cur!=null ? (cur-avg)*p.qty : null;
+    positions.push({symbol:sym, qty:Math.round(p.qty*100)/100, avg_cost:Math.round(avg*100)/100,
+      current:cur, market_value: mv!=null?Math.round(mv):null,
+      unrealized: unrl!=null?Math.round(unrl):null,
+      unrealized_pct: unrl!=null&&p.cost? Math.round(unrl/p.cost*10000)/100 : null,
+      realized:Math.round(realized[sym]||0)});
+    if(mv) totalMv+=mv; totalCost+=p.cost;
+  }
+  for(const x of positions) x.allocation = x.market_value&&totalMv? Math.round(x.market_value/totalMv*1000)/10 : null;
+  positions.sort((a,b)=>(b.market_value||0)-(a.market_value||0));
+  return sJson({positions, total_market_value:Math.round(totalMv), total_cost:Math.round(totalCost),
+    total_unrealized:Math.round(positions.reduce((a,x)=>a+(x.unrealized||0),0)),
+    total_realized:Math.round(Object.values(realized).reduce((a,b)=>a+b,0)), txns:pf.txns||[]});
+}
+async function hTxnAdd(request, env){
+  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
+  const b = await request.json().catch(()=>({}));
+  const sym = String(b.symbol||"").toUpperCase().trim();
+  const side = String(b.side||"").toUpperCase();
+  const price = parseFloat(b.price), qty = parseFloat(b.qty);
+  let fee = b.fee==null ? null : parseFloat(b.fee);
+  const date = String(b.date||""), note = String(b.note||"").slice(0,500);
+  if(!/^[A-Z]{3,10}$/.test(sym)) return jerr("Invalid symbol", 400);
+  if(side!=="BUY" && side!=="SELL") return jerr("side must be BUY/SELL", 400);
+  if(!(price>0) || !(qty>0)) return jerr("Price/qty must be > 0", 400);
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(date)) return jerr("Date must be YYYY-MM-DD", 400);
+  if(fee==null) fee = sAutoFee(side, price, qty);
+  if(!(fee>=0)) return jerr("Fee must be >= 0", 400);
+  const pf = await uGet(env, s.email, "portfolio", {txns:[]});
+  pf.txns = pf.txns||[];
+  if(side==="SELL"){
+    const held = (sCalcPositions(pf.txns).pos[sym]||{qty:0}).qty;
+    if(qty > held+1e-9) return jerr("Sell "+qty+" "+sym+" exceeds holding "+held+".", 400);
+  }
+  const id = pf.txns.reduce((m,t)=>Math.max(m,t.id||0),0)+1;
+  pf.txns.push({id, symbol:sym, side, price, qty, fee:Math.round(fee*100)/100, date, note});
+  await uPut(env, s.email, "portfolio", pf);
+  return sJson({id, fee:Math.round(fee*100)/100});
+}
+async function hTxnDel(request, env){
+  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
+  const id = parseInt(new URL(request.url).pathname.split("/").pop(),10);
+  const pf = await uGet(env, s.email, "portfolio", {txns:[]});
+  pf.txns = (pf.txns||[]).filter(t=>t.id!==id);
+  await uPut(env, s.email, "portfolio", pf);
+  return sJson({ok:true});
+}
+async function hTxnNote(request, env){
+  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
+  const id = parseInt(new URL(request.url).pathname.split("/").pop(),10);
+  const b = await request.json().catch(()=>({}));
+  const pf = await uGet(env, s.email, "portfolio", {txns:[]});
+  const t = (pf.txns||[]).find(x=>x.id===id);
+  if(!t) return jerr("Transaction not found", 404);
+  t.note = String(b.note||"").slice(0,500);
+  await uPut(env, s.email, "portfolio", pf);
+  return sJson({ok:true});
+}
+async function hCostHistory(request, env){
+  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
+  const sym = (new URL(request.url).searchParams.get("symbol")||"").toUpperCase();
+  const pf = await uGet(env, s.email, "portfolio", {txns:[]});
+  const txns = (pf.txns||[]).filter(t=>t.symbol===sym).sort((a,b)=> a.date<b.date?-1:a.date>b.date?1:a.id-b.id);
+  if(!txns.length) return jerr("No transactions", 404);
+  let qty=0, cost=0; const events=[];
+  for(const t of txns){
+    if(t.side==="BUY"){ qty+=t.qty; cost+=t.price*t.qty+t.fee; }
+    else{ const avg=qty?cost/qty:0; qty-=t.qty; cost-=avg*t.qty; }
+    if(qty>1e-9) events.push([t.date, Math.round(cost/qty*100)/100]);
+  }
+  if(!events.length) return sJson({symbol:sym, series:[]});
+  const d = await sGet(env, "market/ohlcv/"+sym+".json");
+  const rows = ((d&&d.rows)||[]).filter(r=>r.t>=events[0][0]);
+  const series=[]; let ei=0, curAvg=events[0][1];
+  for(const r of rows){
+    while(ei<events.length && events[ei][0]<=r.t){ curAvg=events[ei][1]; ei++; }
+    series.push({time:r.t, avg:curAvg, close:r.c});
+  }
+  return sJson({symbol:sym, series, events:events.map(e=>({date:e[0], avg:e[1]}))});
+}
+async function hAlertsGet(request, env){
+  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
+  return sJson(await uGet(env, s.email, "alerts", []));
+}
+async function hAlertsAdd(request, env){
+  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
+  const b = await request.json().catch(()=>({}));
+  const sym = String(b.symbol||"").toUpperCase().trim();
+  const dir = String(b.direction||"").toUpperCase();
+  const price = parseFloat(b.price);
+  if(!/^[A-Z]{3,10}$/.test(sym)) return jerr("Invalid symbol", 400);
+  if(dir!=="ABOVE" && dir!=="BELOW") return jerr("direction must be ABOVE/BELOW", 400);
+  if(!(price>0)) return jerr("Price must be > 0", 400);
+  const al = await uGet(env, s.email, "alerts", []);
+  const id = al.reduce((m,t)=>Math.max(m,t.id||0),0)+1;
+  al.push({id, symbol:sym, direction:dir, price, active:1});
+  await uPut(env, s.email, "alerts", al);
+  return sJson({id});
+}
+async function hAlertsDel(request, env){
+  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
+  const id = parseInt(new URL(request.url).pathname.split("/").pop(),10);
+  const al = (await uGet(env, s.email, "alerts", [])).filter(t=>t.id!==id);
+  await uPut(env, s.email, "alerts", al);
+  return sJson({ok:true});
+}
+async function hTargetsGet(request, env){
+  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
+  const tg = await uGet(env, s.email, "targets", []);
+  const pf = await uGet(env, s.email, "portfolio", {txns:[]});
+  const pos = sCalcPositions(pf.txns||[]).pos;
+  const q = await sGet(env, "market/quotes.json");
+  const byQ = (q && q.by_symbol) || {};
+  return sJson(tg.map(t=>{
+    const p = pos[t.symbol]; let unreal=null, cur=null;
+    if(p && p.qty>1e-9){
+      cur = byQ[t.symbol] ? byQ[t.symbol].close : null;
+      if(cur!=null){ const avg=p.cost/p.qty; unreal = Math.round((cur-avg)/avg*10000)/100; }
+    }
+    return Object.assign({}, t, {unrealized_pct:unreal, current:cur});
+  }));
+}
+async function hTargetsSet(request, env){
+  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
+  const b = await request.json().catch(()=>({}));
+  const sym = String(b.symbol||"").toUpperCase().trim();
+  const tp = b.take_profit_pct==null?null:parseFloat(b.take_profit_pct);
+  const sl = b.stop_loss_pct==null?null:parseFloat(b.stop_loss_pct);
+  if(!/^[A-Z]{3,10}$/.test(sym)) return jerr("Invalid symbol", 400);
+  if(tp==null && sl==null) return jerr("At least one target required", 400);
+  if(tp!=null && !(tp>0 && tp<=1000)) return jerr("Take profit: 0-1000%", 400);
+  if(sl!=null && !(sl>0 && sl<=100)) return jerr("Stop loss: 0-100%", 400);
+  const tg = await uGet(env, s.email, "targets", []);
+  const t = tg.find(x=>x.symbol===sym);
+  if(t){ if(tp!=null)t.take_profit_pct=tp; if(sl!=null)t.stop_loss_pct=sl; t.tp_done=0; t.sl_done=0; }
+  else tg.push({symbol:sym, take_profit_pct:tp, stop_loss_pct:sl, tp_done:0, sl_done:0});
+  await uPut(env, s.email, "targets", tg);
+  return sJson({ok:true});
+}
+async function hTargetsDel(request, env){
+  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
+  const sym = decodeURIComponent(new URL(request.url).pathname.split("/").pop()).toUpperCase();
+  const tg = (await uGet(env, s.email, "targets", [])).filter(t=>t.symbol!==sym);
+  await uPut(env, s.email, "targets", tg);
+  return sJson({ok:true});
+}
+
+/* ---------- PIN lock (UI-only, 4-6 digits, SHA-256 hash) ---------- */
+async function sha256hex(str){
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode("stockpin:"+str));
+  return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,"0")).join("");
+}
+async function hPinStatus(request, env){
+  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
+  const p = await uGet(env, s.email, "pin", null);
+  return sJson({has_pin: !!(p && p.hash)});
+}
+async function hPinSet(request, env){
+  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
+  const b = await request.json().catch(()=>({}));
+  const pin = String(b.pin||"");
+  if(!/^\d{4,6}$/.test(pin)) return jerr("PIN must be 4-6 digits", 400);
+  const cur = await uGet(env, s.email, "pin", null);
+  if(cur && cur.hash){
+    const oldPin = String(b.old_pin||"");
+    if(await sha256hex(oldPin)!==cur.hash) return jerr("Current PIN incorrect", 403);
+  }
+  await uPut(env, s.email, "pin", {hash: await sha256hex(pin), updated:new Date().toISOString()});
+  return sJson({ok:true});
+}
+async function hPinVerify(request, env){
+  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
+  const b = await request.json().catch(()=>({}));
+  const cur = await uGet(env, s.email, "pin", null);
+  if(!cur || !cur.hash) return sJson({ok:true}); // no PIN set
+  const ok = await sha256hex(String(b.pin||""))===cur.hash;
+  return sJson({ok});
+}
+async function hPinDel(request, env){
+  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
+  await uPut(env, s.email, "pin", null);
+  return sJson({ok:true});
+}
+
+/* ---------- VM day snapshot len (secret, khong can session) ---------- */
+async function hStockPublish(request, env){
+  const got = request.headers.get("X-Publish-Secret") || "";
+  if(!env.STOCK_PUBLISH_SECRET || got !== env.STOCK_PUBLISH_SECRET) return jerr("Forbidden", 403);
+  let body;
+  try{ body = await request.json(); }catch(e){ return jerr("Bad JSON", 400); }
+  const now = new Date().toISOString();
+  let n = 0;
+  const put1 = async (key, val)=>{
+    if(val===undefined) return;
+    await sPut(env, "market/"+key+".json", Object.assign({updated:now}, val));
+    n++;
+  };
+  if(body.indices) await put1("indices", {rows:body.indices});
+  if(body.quotes) await put1("quotes", {by_symbol:body.quotes});
+  if(body.screener) await put1("screener", {rows:body.screener});
+  if(body.fundamentals) await put1("fundamentals", {by_symbol:body.fundamentals});
+  if(body.symbols) await put1("symbols", {rows:body.symbols});
+  if(body.ohlcv) for(const sym of Object.keys(body.ohlcv)){
+    await sPut(env, "market/ohlcv/"+sym+".json", {updated:now, rows:body.ohlcv[sym]});
+    n++;
+  }
+  if(body.news) for(const sym of Object.keys(body.news)){
+    await sPut(env, "market/news/"+sym+".json", {updated:now, symbol:sym, items:body.news[sym]});
+    n++;
+  }
+  if(body.events) for(const sym of Object.keys(body.events)){
+    await sPut(env, "market/events/"+sym+".json", {updated:now, symbol:sym, items:body.events[sym]});
+    n++;
+  }
+  if(body.intraday) for(const key of Object.keys(body.intraday)){
+    await sPut(env, "market/intraday/"+key+".json", {updated:now, rows:body.intraday[key]});
+    n++;
+  }
+  return sJson({ok:true, written:n});
+}
+
+/* ---------- internal: du lieu cho script bao cao Telegram ---------- */
+async function hStockReportData(request, env){
+  const got = request.headers.get("X-Publish-Secret") || "";
+  if(!env.STOCK_PUBLISH_SECRET || got !== env.STOCK_PUBLISH_SECRET) return jerr("Forbidden", 403);
+  // Liet ke tat ca email co du lieu stock
+  const userEmails = new Set();
+  let cursor;
+  do{
+    const r = await env.DATA.list({prefix:"stock/users/", cursor});
+    for(const o of r.objects){
+      const parts = o.key.split("/");
+      if(parts.length>=3) userEmails.add(parts[2]);
+    }
+    cursor = r.truncated ? r.cursor : null;
+  }while(cursor);
+  const users = [];
+  for(const email of userEmails){
+    const [alerts, targets, txns, watchlist] = await Promise.all([
+      uGet(env, email, "alerts", []),
+      uGet(env, email, "targets", []),
+      uGet(env, email, "txns", []),
+      uGet(env, email, "watchlist", []),
+    ]);
+    if(alerts.length || targets.length || txns.length || watchlist.length){
+      users.push({email, alerts, targets, txns, watchlist});
+    }
+  }
+  // Gia hien tai cho cac ma can thiet
+  const symbols = new Set();
+  for(const u of users){
+    for(const a of u.alerts) symbols.add(a.symbol);
+    for(const t of u.targets) symbols.add(t.symbol);
+    for(const t of u.txns) symbols.add(t.symbol);
+    for(const w of u.watchlist) symbols.add(w.symbol||w);
+  }
+  const quotes = {};
+  const q = await sGet(env, "market/quotes.json");
+  if(q && q.by_symbol){
+    for(const sym of symbols){
+      if(q.by_symbol[sym]) quotes[sym] = q.by_symbol[sym];
+    }
+  }
+  return sJson({users, quotes});
+}
+async function hStockAlertDone(request, env){
+  const got = request.headers.get("X-Publish-Secret") || "";
+  if(!env.STOCK_PUBLISH_SECRET || got !== env.STOCK_PUBLISH_SECRET) return jerr("Forbidden", 403);
+  const b = await request.json().catch(()=>({}));
+  const email = String(b.email||"").toLowerCase();
+  const id = parseInt(b.id, 10);
+  if(!email || !id) return jerr("email and id required", 400);
+  const al = await uGet(env, email, "alerts", []);
+  const a = al.find(x=>x.id===id);
+  if(a){ a.active = 0; await uPut(env, email, "alerts", al); }
+  return sJson({ok:true});
+}
+async function hStockTargetDone(request, env){
+  const got = request.headers.get("X-Publish-Secret") || "";
+  if(!env.STOCK_PUBLISH_SECRET || got !== env.STOCK_PUBLISH_SECRET) return jerr("Forbidden", 403);
+  const b = await request.json().catch(()=>({}));
+  const email = String(b.email||"").toLowerCase();
+  const symbol = String(b.symbol||"").toUpperCase();
+  const field = b.field; // "tp_done" or "sl_done"
+  if(!email || !symbol || (field!=="tp_done" && field!=="sl_done")) return jerr("Bad params", 400);
+  const tg = await uGet(env, email, "targets", []);
+  const t = tg.find(x=>x.symbol===symbol);
+  if(t){ t[field] = 1; await uPut(env, email, "targets", tg); }
+  return sJson({ok:true});
+}

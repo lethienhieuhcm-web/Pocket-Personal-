@@ -1,0 +1,2432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<script>if(location.protocol==="http:")location.replace("https://"+location.host+location.pathname+location.search+location.hash);</script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Read & Learn</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#10a37f">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-180.png">
+<style>
+:root{
+  --bg:#ece0c3; --card:#fffdf6; --card2:#f3e8cf; --line:#ddcda6;
+  --ink:#2e2a20; --mut:#6b5f45; --accent:#10a37f; --accent2:#19c37d; --warm:#0d8a6c;
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:var(--ink);padding-bottom:90px;min-height:100vh;background-color:#ece0c3;background-image:linear-gradient(rgba(122,77,28,.07) 1px,transparent 1px),linear-gradient(90deg,rgba(122,77,28,.07) 1px,transparent 1px),linear-gradient(180deg,#f2e8cf 0%,#e6d6ae 100%);background-size:28px 28px,28px 28px,cover}
+.tabpage{display:none}
+.tabpage.active{display:block}
+/* Kid mode: bigger, rounder, playful */
+body.kid-mode{font-size:17px}
+body.kid-mode .card{border-radius:28px;padding:24px}
+body.kid-mode .btn{border-radius:20px;padding:16px 24px;font-size:17px}
+body.kid-mode .btn.big{padding:20px 28px;font-size:19px}
+body.kid-mode .rsent{border-radius:20px;font-size:18px;border-width:2px}
+body.kid-mode .cefr{font-size:13px;padding:4px 12px}
+.kid-mascot{font-size:48px;text-align:center;margin:8px 0;animation:bounce 2s infinite}
+@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+header{position:sticky;top:0;z-index:50;background:#fffdf6;color:var(--ink);padding:14px 18px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line)}
+header h1{margin:0;font-size:20px;font-weight:700;letter-spacing:-.3px}
+.iconbtn{background:#f3e8cf;border:1px solid var(--line);color:var(--ink);font-size:20px;width:42px;height:42px;border-radius:12px;cursor:pointer}
+main{max-width:640px;margin:0 auto;padding:18px 16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px;margin-bottom:16px;box-shadow:0 4px 16px rgba(80,65,35,.1)}
+.card h3{margin:0 0 8px;font-size:18px;font-weight:700;color:#2e2a20}
+.hint{color:#6b5f45;font-size:14px;line-height:1.65}
+.row{display:flex;gap:8px;align-items:center}
+.btn{border:none;background:var(--card2);color:var(--ink);border-radius:12px;padding:13px 20px;font-size:15px;font-weight:600;cursor:pointer;transition:transform .1s}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:#10a37f;color:#fff;box-shadow:0 4px 12px rgba(16,163,127,.3)}
+.btn.ghost{background:transparent;border:1px solid var(--line)}
+.btn.big{font-size:16px;padding:15px 24px}
+.btn:disabled{opacity:.5}
+label{display:block;font-size:13px;color:#4a3f2a;margin:10px 0 4px;font-weight:600}
+select{width:100%;border:1px solid var(--line);border-radius:10px;padding:12px;font-size:15px;background:#fffdf6;color:var(--ink)}
+.rsent{background:#fffdf6;border:1px solid #e7dab8;border-radius:10px;padding:12px 16px;margin-bottom:10px;line-height:2.1;font-size:17px;font-family:Georgia,"Times New Roman",serif;color:#2e2a24;overflow:hidden;position:relative;transform:translateZ(0);word-break:break-word;overflow-wrap:break-word;box-shadow:0 4px 14px rgba(80,65,35,.1)}
+.rsent .rbody{padding-right:36px;word-break:break-word;overflow-wrap:break-word}
+.rsent .rdel{position:absolute;top:8px;right:8px;padding:4px 8px;font-size:12px;color:#ef4444}
+.rword{padding:3px 2px;border-radius:6px;cursor:pointer;border-bottom:2px dotted #c9a35c}
+.rsent .rplay{margin-right:10px;padding:8px 12px;font-size:15px;vertical-align:middle;background:#fffdf6;border:1px solid var(--line);border-radius:10px}
+.rword{padding:3px 2px;border-radius:6px;cursor:pointer;border-bottom:2px dotted #c9a35c}
+.rword:active{background:var(--accent);color:#fff}
+/* Article reading view: like a book page */
+.segbtn{display:flex;background:var(--card2);border-radius:12px;padding:3px;gap:2px}
+.segbtn button{border:none;background:none;padding:7px 12px;border-radius:9px;font-size:16px;cursor:pointer;color:#6b5f45}
+.segbtn button.active{background:#fffdf6;color:var(--ink);box-shadow:0 2px 6px rgba(0,0,0,.12)}
+.ticonbtn{display:inline-flex!important;align-items:center;justify-content:center;width:48px;height:48px;padding:0!important}
+.ic{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.ic.big{width:30px;height:30px}
+button .ic{pointer-events:none}
+.tico{display:inline-flex}
+.ic-h{width:.82em!important;height:.82em!important;vertical-align:-.08em}
+.tico .ic{width:24px;height:24px}
+.iconbtn{display:inline-flex!important;align-items:center;justify-content:center}
+.segbtn button{display:inline-flex;align-items:center;justify-content:center;min-width:48px;min-height:42px}
+.menugrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.menutile{display:flex;flex-direction:column;align-items:center;gap:8px;padding:20px 10px;border:1px solid var(--line);border-radius:16px;background:var(--card2);font-size:14px;font-weight:700;color:var(--ink);cursor:pointer}
+.menutile:active{transform:scale(.96)}
+.mtileic{display:flex;align-items:center;justify-content:center;width:58px;height:58px;border-radius:20px}
+.rv{display:none}
+.rv.on{display:block}
+#readArticle{background:#fffdf6;border:1px solid #efe3c8;border-radius:10px;padding:28px 30px;margin-top:12px;font-family:Georgia,"Times New Roman",serif;font-size:18.5px;line-height:2.05;color:#2e2a24;text-align:left;box-shadow:0 8px 26px rgba(80,65,35,.12),inset 0 0 46px rgba(190,160,110,.05)}
+#readArticle .rword{border-bottom:1px dotted #d6c8a4;padding:1px;cursor:pointer}
+#readArticle .rword:hover{border-bottom-color:var(--accent);background:rgba(16,163,127,.1)}
+.asent{cursor:pointer;border-radius:6px;padding:1px;transition:background .15s}
+.asent:hover{background:rgba(16,163,127,.08)}
+.asent.sel{background:rgba(16,163,127,.16);box-shadow:0 0 0 2px rgba(16,163,127,.35)}
+.apara{margin:0 0 1.1em;text-indent:1.8em}
+.apara:first-of-type{text-indent:0}
+.apara:first-of-type::first-letter{font-size:3.3em;float:left;line-height:.85;padding:5px 10px 0 0;font-weight:700;color:#8a6d3b}
+.apara:first-of-type{text-indent:0}
+.apara:last-child{margin-bottom:0}
+.bookhead{text-align:center;margin-bottom:1.4em;border-bottom:2px solid #e7dab8;padding-bottom:.9em}
+.bookhead .btitle{font-size:1.4em;font-weight:700;color:#4a3f2a;letter-spacing:.5px}
+.bookhead .bsub{font-size:.78em;color:#9a8c6a;margin-top:6px}
+.bplay{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:50%;border:none;background:#10a37f;color:#fff;font-size:20px;cursor:pointer;box-shadow:0 4px 12px rgba(16,163,127,.35);vertical-align:middle;margin-right:10px}
+.bplay:active{transform:scale(.94)}
+#scanHistRow{margin-top:10px}
+#scanHistSel{width:100%;border:1px solid #e7dab8;border-radius:10px;padding:10px;font-size:14px;background:#fffdf6;color:#4a3f2a;font-family:Georgia,serif}
+#unlockCard{border:1px solid #f59e0b;background:#fffbeb}
+@media (max-width:480px){
+  #readArticle{padding:20px 18px;font-size:17.5px}
+}
+#sentBar{position:fixed;left:16px;right:16px;bottom:96px;z-index:80;background:#fffdf6;color:var(--ink);border:1px solid var(--line);border-radius:14px;padding:10px 14px;display:none;align-items:center;gap:10px;box-shadow:0 8px 28px rgba(80,65,35,.2)}
+#sentBar.show{display:flex}
+#sentBarClose{color:var(--ink)!important}
+#sentBar .cefr{flex:none}
+/* Desktop layout */
+@media (min-width:900px){
+  body{padding-top:76px}
+  header{position:static}
+  main{max-width:1140px;padding:26px 36px 60px}
+  #readArticle{max-width:68ch;margin:14px auto 0;font-size:19.5px;line-height:2.05}
+  #readSents.rv.on{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start}
+  #readSents.rv.on .rsent{margin-bottom:0}
+  #bankList{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start}
+  #bankList .rsent{margin-bottom:0}
+  #sentBar{left:50%;right:auto;transform:translateX(-50%);width:min(620px,92vw);bottom:24px}
+  #settingsCard{max-width:560px;border-radius:16px;margin:0 auto}
+  .dashcols{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+  .dashcols .card{margin-bottom:0}
+}
+/* Progress dashboard */
+.statgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+.stat{background:#fffdf6;border:1px solid var(--line);border-radius:14px;padding:14px 8px;text-align:center;box-shadow:0 2px 8px rgba(80,65,35,.1)}
+.statnum{font-size:26px;font-weight:800;color:var(--accent)}
+.statlbl{font-size:12px;color:#6b5f45;margin-top:2px}
+.dashcols .card{margin-bottom:14px}
+#bankSearch{background:#fffdf6;color:var(--ink)}
+#bankFilter{background:#fffdf6;color:var(--ink)}
+.cefr{display:inline-block;font-size:11px;font-weight:800;padding:2px 8px;border-radius:999px;margin-left:8px;vertical-align:middle;color:#fff}
+.cefr.A1{background:#4ade80}.cefr.A2{background:#a3e635;color:#1e1b4b}.cefr.B1{background:#facc15;color:#1e1b4b}
+.cefr.B2{background:#fb923c}.cefr.C1{background:#f87171}.cefr.C2{background:#c084fc}
+.bankitem{padding:10px 12px;border-bottom:1px solid var(--line);font-size:15.5px;line-height:1.8}
+.bankitem:last-child{border-bottom:none}
+.pathlevel{display:flex;align-items:center;gap:12px;margin:12px 0}
+.pathbadge{font-size:28px;font-weight:800;color:#fff;border-radius:16px;padding:10px 18px}
+.pathbar{flex:1;background:var(--card2);border-radius:10px;height:16px;overflow:hidden}
+.pathbar>div{height:100%;border-radius:10px;background:linear-gradient(90deg,#10a37f,#19c37d);transition:width .5s}
+.rec{background:var(--card2);border-radius:12px;padding:10px 14px;margin:8px 0;font-size:14.5px;line-height:1.6}
+#settingsBox,#authBox{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;align-items:flex-end;justify-content:center;z-index:100}
+/* Auth: ChatGPT-style minimal full page */
+#authBox{align-items:stretch;padding:0;background:#fff}
+#authCard{max-width:none;max-height:none;width:100%;height:100%;border:none;border-radius:0;box-shadow:none;padding:0;background:#fff;overflow-y:auto;position:relative}
+.gptWrap{max-width:400px;margin:0 auto;padding:24px 24px 40px;min-height:100vh;display:flex;flex-direction:column;justify-content:center}
+.gptLogo{font-size:44px;text-align:center;margin-bottom:20px}
+.gptH1{font-size:30px;font-weight:600;text-align:center;margin:0 0 26px;color:#0d0d0d;letter-spacing:-.3px}
+.gptLabel{display:block;font-size:14px;color:#0d0d0d;margin:0 0 6px}
+.gptInput{width:100%;height:52px;border:1px solid #c5c5d1;border-radius:6px;padding:0 14px;font-size:16px;margin:0 0 14px;color:#0d0d0d;background:#fff}
+.gptInput:focus{outline:none;border-color:#10a37f;box-shadow:0 0 0 3px rgba(16,163,127,.15)}
+.gptBtn{width:100%;height:52px;background:#10a37f;color:#fff;border:none;border-radius:6px;font-size:16px;font-weight:500;cursor:pointer;margin-top:10px}
+.gptBtn:hover{background:#0d8a6c}
+.gptBtnGhost{width:100%;height:52px;background:#fff;color:#0d0d0d;border:1px solid #c5c5d1;border-radius:6px;font-size:16px;cursor:pointer;margin-top:10px}
+.gptBtnGhost:hover{background:#f7f7f8}
+.gptSwitch{text-align:center;margin-top:18px;font-size:14px;color:#6e6e80}
+.gptSwitch a{color:#10a37f;cursor:pointer;text-decoration:none;font-weight:600}
+.gptFoot{text-align:center;font-size:12px;color:#acacbe;margin-top:34px}
+.gptFoot a{color:#6e6e80;text-decoration:none;margin:0 6px}
+.gptX{position:absolute;top:14px;right:14px;z-index:5;background:#f4f4f4;border:1px solid #e5e5e5;color:#0d0d0d;font-size:15px;width:36px;height:36px;border-radius:50%;cursor:pointer}
+.gptAvatarBig{width:72px;height:72px;border-radius:50%;background:#10a37f;color:#fff;display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:700;margin:0 auto 14px}
+.gptHint{text-align:center;font-size:13px;color:#6e6e80;margin:0 0 14px;line-height:1.5}
+#settingsCard{background:#fffdf6;width:100%;max-width:640px;max-height:85vh;overflow-y:auto;border-radius:16px 16px 0 0;padding:22px;box-shadow:0 -8px 32px rgba(0,0,0,.25);border:1px solid var(--line)}
+.profileitem{display:flex;align-items:center;gap:12px;padding:12px;border:2px solid var(--line);border-radius:14px;margin:8px 0;cursor:pointer}
+.profileitem:active{background:var(--card2)}
+.profileavatar{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#10a37f,#0d8a6c);color:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800}
+/* Dictionary popup — appears near the tapped word */
+.srvrow{display:flex;align-items:center;gap:6px;padding:10px 4px;border-bottom:1px dashed var(--line)}
+.srvrow:last-child{border-bottom:none}
+.srvrow .btn{padding:8px 10px;font-size:15px}
+#dictBox{position:fixed;z-index:130;display:none;width:min(400px,94vw);background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 14px 44px rgba(0,0,0,.22);max-height:72vh;overflow-y:auto}
+#dictBox.show{display:block}
+.dbox-head{position:sticky;top:0;background:#f4f4f4;color:#0d0d0d;padding:11px 12px 11px 16px;display:flex;align-items:center;gap:8px;border-radius:14px 14px 0 0;z-index:2;border-bottom:1px solid var(--line)}
+.dword{font-size:22px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dphon{font-size:12.5px;opacity:.82;margin-top:2px}
+.diconbtn{background:#fff;border:1px solid var(--line);color:#0d0d0d;font-size:15px;min-width:38px;height:38px;border-radius:50%;cursor:pointer;flex:none}
+.dbox-sec{padding:4px 16px 12px}
+.dvi{margin:10px 0 2px}
+.dvi .vimean{display:block;margin:4px 0;color:#0d0d0d;font-weight:700;font-size:15.5px;line-height:1.5}
+.dpos{font-weight:800;color:#10a37f;margin:12px 0 2px;font-size:13px;text-transform:uppercase;letter-spacing:.8px}
+.ddef{margin:7px 0;font-size:15.5px;line-height:1.6;color:#0d0d0d}
+.ddef .n{color:#10a37f;font-weight:800;margin-right:6px}
+.dex{color:#6e6e80;font-style:italic;margin:4px 0 4px 22px;font-size:14px;line-height:1.55}
+.dexvi{display:block;font-style:normal;color:#6e6e80;font-size:13.5px;margin-top:1px}
+.synrow{margin:10px 0 2px;font-size:14px;color:#6e6e80}
+.synlbl{font-weight:700;font-size:12.5px;text-transform:uppercase;letter-spacing:.6px;color:#10a37f}
+.synchip{display:inline-block;background:#e8f5f1;border:1px solid #bfe3d8;color:#0d0d0d;border-radius:999px;padding:5px 12px;margin:5px 6px 0 0;font-size:13.5px;font-weight:600;cursor:pointer}
+.synchip:active{background:#10a37f;color:#fff}
+.dfoot{padding:8px 16px 12px;font-size:11.5px;color:#acacbe;border-top:1px dashed #e5e5e5;margin-top:6px}
+.dloading{padding:26px;text-align:center;color:#6e6e80;font-size:15px}
+#toast{position:fixed;left:50%;bottom:40px;transform:translateX(-50%);background:#0d0d0d;color:#fff;padding:13px 22px;border-radius:999px;font-size:14px;font-weight:600;display:none;z-index:200;max-width:90vw;text-align:center;box-shadow:0 4px 16px rgba(0,0,0,.3)}
+
+/* ---------- article audio player ---------- */
+#artPlayer{position:sticky;top:8px;z-index:95;background:#1c1c1e;color:#fff;border-radius:16px;padding:10px 14px 12px;display:none;box-shadow:0 10px 30px rgba(0,0,0,.4);margin-bottom:10px}
+#artPlayer.show{display:block}
+.ap-top{display:flex;align-items:center;gap:4px}
+.ap-btn{background:none;border:none;color:#fff;font-size:20px;cursor:pointer;padding:6px;min-width:40px;text-align:center;line-height:1}
+.ap-btn sub{font-size:10px}
+.ap-play{font-size:26px;min-width:48px}
+.ap-small{font-size:16px;opacity:.9;min-width:36px}
+.ap-time{font-size:13px;color:#d8d8de;margin:0 4px;white-space:nowrap}
+.ap-seek{position:relative;height:22px;margin-top:2px;cursor:pointer;touch-action:none}
+.ap-seek::before{content:"";position:absolute;left:0;right:0;top:10px;height:3px;background:#3a3a3c;border-radius:2px}
+.ap-fill{position:absolute;left:0;top:10px;height:3px;background:#10a37f;border-radius:2px;width:0%}
+.ap-knob{position:absolute;top:11px;width:11px;height:11px;background:#10a37f;border-radius:50%;transform:translate(-50%,-50%);left:0%}
+.ap-status{font-size:12.5px;color:#b8b8c2;text-align:center;margin-top:4px}
+@media (min-width:900px){
+}
+
+/* ---------- dark theme ---------- */
+body.dark{--bg:#171310;--card:#23201a;--card2:#2d2820;--line:#3d352a;--ink:#ece4d2;--mut:#a89a80;--accent:#10a37f;--accent2:#19c37d;--warm:#10a37f}
+body.dark{background-color:#171310;background-image:linear-gradient(rgba(255,255,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.03) 1px,transparent 1px),linear-gradient(180deg,#1d1813 0%,#14110d 100%)}
+body.dark header{background:#23201a}
+body.dark .iconbtn{background:#2d2820}
+body.dark .card{box-shadow:0 4px 16px rgba(0,0,0,.35)}
+body.dark .rsent{background:#23201a;border-color:#3d352a;color:#ece4d2}
+body.dark .rsent .rword{border-bottom-color:#5a5245}
+body.dark #readArticle{background:#23201a;border-color:#3d352a;color:#ece4d2;box-shadow:0 8px 26px rgba(0,0,0,.4)}
+body.dark #readArticle .rword{border-bottom-color:#5a5245}
+body.dark .bookhead{border-bottom-color:#3d352a}
+body.dark .bookhead .btitle{color:#ece4d2}
+body.dark .bookhead .bsub{color:#a89a80}
+body.dark .apara:first-of-type::first-letter{color:#a89a80}
+body.dark #scanHistSel{background:#23201a;color:#ece4d2;border-color:#3d352a}
+body.dark select{background:#23201a;color:#ece4d2}
+body.dark #bankSearch,body.dark #bankFilter{background:#23201a;color:#ece4d2}
+body.dark #readTextInput{background:#23201a !important;color:#ece4d2 !important}
+body.dark #sentBar{background:#23201a}
+body.dark .segbtn button.active{background:#3d352a}
+body.dark .stat{background:#23201a}
+body.dark #dictBox{background:#23201a;border-color:#3d352a}
+body.dark .dbox-head{background:#2d2820;color:#ece4d2;border-bottom-color:#3d352a}
+body.dark .dword{color:#ece4d2}
+body.dark .diconbtn{background:#2d2820;border-color:#3d352a;color:#ece4d2}
+body.dark .ddef{color:#ece4d2}
+body.dark .dvi .vimean{color:#ece4d2}
+body.dark .synchip{background:#2d2820;border-color:#3d352a;color:#ece4d2}
+body.dark #settingsCard{background:#23201a}
+body.dark .profileitem{border-color:#3d352a}
+body.dark #authBox{background:#171310}
+body.dark #authCard{background:#171310}
+body.dark .gptH1{color:#ece4d2}
+body.dark .gptLabel{color:#ece4d2}
+body.dark .gptInput{background:#23201a;border-color:#3d352a;color:#ece4d2}
+body.dark .gptBtnGhost{background:#23201a;border-color:#3d352a;color:#ece4d2}
+body.dark .gptSwitch{color:#a89a80}
+body.dark .gptX{background:#2d2820;border-color:#3d352a;color:#ece4d2}
+</style>
+</head>
+<body>
+<!-- thin-line SVG icon sprite -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-pause" viewBox="0 0 24 24"><rect x="7" y="5" width="3.6" height="14" rx="1.2" fill="currentColor" stroke="none"/><rect x="13.4" y="5" width="3.6" height="14" rx="1.2" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+<symbol id="i-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></symbol>
+<symbol id="i-trash" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></symbol>
+<symbol id="i-back" viewBox="0 0 24 24"><path d="M19 12H5m7-7-7 7 7 7"/></symbol>
+<symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 16V5m0 0-5 5m5-5 5 5"/><path d="M5 21h14"/></symbol>
+<symbol id="i-unlock" viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.9-.8"/></symbol>
+<symbol id="i-logout" viewBox="0 0 24 24"><path d="M9 21H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3"/><path d="m16 17 5-5-5-5M21 12H9"/></symbol>
+<symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.9 5.7 3.9 9s-1.4 6.4-3.9 9c-2.5-2.6-3.9-5.7-3.9-9S9.5 5.6 12 3z"/></symbol>
+<symbol id="i-cloud" viewBox="0 0 24 24"><path d="M17.5 19a4.5 4.5 0 0 0 .42-8.98 6 6 0 0 0-11.7 1.62A4 4 0 0 0 6 19h11.5z"/></symbol>
+<symbol id="i-book" viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></symbol>
+<symbol id="i-layers" viewBox="0 0 24 24"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></symbol>
+<symbol id="i-camera" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></symbol>
+<symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></symbol>
+<symbol id="i-headphones" viewBox="0 0 24 24"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/></symbol>
+<symbol id="i-chart" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></symbol>
+<symbol id="i-crown" viewBox="0 0 24 24"><path d="M3 8l3.6 3L12 5l5.4 6L21 8l-1.7 11.2a1 1 0 0 1-1 .8H5.7a1 1 0 0 1-1-.8z"/></symbol>
+<symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></symbol>
+<symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.2" y1="4.2" x2="5.6" y2="5.6"/><line x1="18.4" y1="18.4" x2="19.8" y2="19.8"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.2" y1="19.8" x2="5.6" y2="18.4"/><line x1="18.4" y1="5.6" x2="19.8" y2="4.2"/></symbol>
+<symbol id="i-user" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></symbol>
+<symbol id="i-lock" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+<symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></symbol>
+<symbol id="i-volume" viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor" stroke="none"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.6 5.4a9 9 0 0 1 0 13.2"/></symbol>
+<symbol id="i-refresh" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.5 15a9 9 0 1 1-1.4-8.4L23 10"/></symbol>
+<symbol id="i-back10" viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.5 15a9 9 0 1 0 2-9.4L1 10"/></symbol>
+<symbol id="i-fwd10" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.5 15a9 9 0 1 1-2-9.4L23 10"/></symbol>
+<symbol id="i-repeat" viewBox="0 0 24 24"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></symbol>
+<symbol id="i-edit" viewBox="0 0 24 24"><path d="M17 3a2.8 2.8 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z"/></symbol>
+<symbol id="i-bookmark" viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></symbol>
+<symbol id="i-compass" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polygon points="16.2 7.8 13.4 13.4 7.8 16.2 10.6 10.6 16.2 7.8"/></symbol>
+<symbol id="i-doc" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></symbol>
+<symbol id="i-mic" viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></symbol>
+<symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="15" r="5"/><path d="M11.5 11.5L21 2m-3 3l3 3"/></symbol>
+</defs></svg>
+<header>
+  <h1 id="homeBtn" title="Home" style="cursor:pointer"><svg class="ic ic-h"><use href="#i-camera"/></svg> Read & Learn</h1>
+  <div class="row">
+    <button class="iconbtn" id="langBtn" title="Language" style="font-size:15px;font-weight:800">EN</button>
+    <button class="iconbtn" id="themeBtn" title="Theme"><svg class="ic"><use href="#i-moon"/></svg></button>
+    <button class="iconbtn" id="userBtn" title="Account"><svg class="ic"><use href="#i-user"/></svg></button>
+    <button class="iconbtn" id="settingsBtn" title="Settings"><svg class="ic"><use href="#i-gear"/></svg></button>
+  </div>
+</header>
+
+<!-- auth page: full screen (built by renderAuthMain) -->
+<div id="authBox">
+  <div id="authCard">
+    <div id="authBody"></div>
+  </div>
+</div>
+
+<main>
+<div class="tabpage active" id="tabScan">
+  <div class="kid-mascot" id="mascot" style="display:none">🦉</div>
+  <div class="card">
+    <h3 id="snapTitle"><svg class="ic ic-h"><use href="#i-camera"/></svg> <span id="snapTitleLbl">Snap a page</span></h3>
+    <div class="hint" id="snapHint">Take a photo of any English text → tap 🔊 to hear a sentence, tap any <b>word</b> for pronunciation + dictionary.</div>
+    <div class="row" style="margin-top:12px">
+      <button class="btn primary big" id="readCamera" style="flex:1"><svg class="ic"><use href="#i-camera"/></svg>&nbsp;<span id="readCameraLbl">Take photo</span></button>
+      <button class="btn ghost" id="readGallery"><svg class="ic"><use href="#i-image"/></svg>&nbsp;<span id="readGalleryLbl">Gallery</span></button>
+    </div>
+    <input type="file" id="readFileCam" accept="image/*" style="display:none">
+    <input type="file" id="readFileLib" accept="image/*" style="display:none">
+    <img id="readPreview" style="display:none; width:100%; border-radius:10px; margin-top:12px;" alt="preview">
+    <div id="readProg" style="display:none; margin-top:10px">
+      <div style="background:var(--card2);border-radius:8px;height:12px;overflow:hidden">
+        <div id="readBar" style="height:100%;width:0%;background:var(--accent);transition:width .3s"></div>
+      </div>
+      <div class="hint" id="readStatus">Loading…</div>
+    </div>
+    <div style="margin-top:16px;border-top:1px solid var(--line);padding-top:12px">
+      <label style="margin:0 0 6px;display:flex;align-items:center;gap:6px" id="pasteLbl"><svg class="ic" style="width:18px;height:18px"><use href="#i-edit"/></svg><span id="pasteLblTxt">Or paste text instead</span></label>
+      <textarea id="readTextInput" rows="4" placeholder="Paste English text here…" style="width:100%;border:1px solid var(--line);border-radius:10px;padding:12px;font-size:15px;font-family:inherit;resize:vertical;background:#fffdf6;color:var(--ink)"></textarea>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <button class="btn primary big" id="readGo" disabled style="flex:1"><svg class="ic" id="readGoIco"><use href="#i-book" id="readGoUse"/></svg>&nbsp;<span id="readGoLbl">Create reading</span></button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 style="margin:0" id="menuTitle"><svg class="ic ic-h"><use href="#i-compass"/></svg> <span id="menuTitleLbl">Explore</span></h3>
+    <div class="menugrid">
+      <button class="menutile" data-go="read"><span class="mtileic" style="background:#e6f4ef;color:#0d8a66"><svg class="ic big"><use href="#i-book"/></svg></span><span id="menuRead">Read</span></button>
+      <button class="menutile" data-go="audio"><span class="mtileic" style="background:#e8f0fe;color:#2b6cb0"><svg class="ic big"><use href="#i-headphones"/></svg></span><span id="menuAudio">Audio</span></button>
+      <button class="menutile" data-go="books"><span class="mtileic" style="background:#fdf3e3;color:#b7791f"><svg class="ic big"><use href="#i-bookmark"/></svg></span><span id="menuBooks">Books</span></button>
+      <button class="menutile" data-go="progress"><span class="mtileic" style="background:#f3e8fd;color:#7c3aed"><svg class="ic big"><use href="#i-chart"/></svg></span><span id="menuProgress">My progress</span></button>
+    </div>
+  </div>
+</div>
+
+<!-- floating sentence toolbar (article view) -->
+<div id="sentBar">
+  <button class="btn primary" id="sentBarPlay" style="padding:9px 16px"><svg class="ic big"><use href="#i-play"/></svg></button>
+  <span id="sentBarLevel"></span>
+  <span id="sentBarText" style="flex:1;font-size:13px;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></span>
+  <button class="btn ghost" id="sentBarClose" style="padding:8px 12px"><svg class="ic"><use href="#i-close"/></svg></button>
+</div>
+
+<!-- article audio player -->
+<div id="artPlayer">
+  <div class="ap-top">
+    <button class="ap-btn" id="apBack" title="Back 10s"><svg class="ic" style="width:24px;height:24px;stroke:#fff"><use href="#i-back10"/></svg></button>
+    <button class="ap-btn ap-play" id="apPlay" title="Play/Pause"><svg class="ic" style="width:28px;height:28px"><use href="#i-play"/></svg></button>
+    <button class="ap-btn" id="apFwd" title="Forward 10s"><svg class="ic" style="width:24px;height:24px;stroke:#fff"><use href="#i-fwd10"/></svg></button>
+    <span class="ap-time"><span id="apCur">0:00</span> / <span id="apDur">0:00</span></span>
+    <button class="ap-btn ap-small" id="apLoop" title="Loop" style="opacity:.4"><svg class="ic" style="width:20px;height:20px;stroke:#fff"><use href="#i-repeat"/></svg></button>
+    <button class="ap-btn ap-small" id="apSpeed" title="Speed">1x</button>
+    <button class="ap-btn ap-small" id="apDl" title="Download MP3"><svg class="ic" style="width:20px;height:20px;stroke:#fff"><use href="#i-download"/></svg></button>
+    <button class="ap-btn ap-small" id="apClose" title="Close"><svg class="ic" style="width:20px;height:20px;stroke:#fff"><use href="#i-close"/></svg></button>
+  </div>
+  <div class="ap-seek" id="apSeek"><div class="ap-fill" id="apFill"></div><div class="ap-knob" id="apKnob"></div></div>
+  <div class="ap-status" id="apStatus" style="display:none"></div>
+</div>
+
+<div class="tabpage" id="tabRead">
+  <div class="card" id="readResultCard" style="display:none">
+    <h3 style="margin:0 0 10px" id="readResultTitle"><svg class="ic ic-h"><use href="#i-edit"/></svg> <span id="readResultTitleLbl">Tap to listen & learn</span></h3>
+    <div class="row" style="gap:8px;flex-wrap:wrap;margin-bottom:10px">
+      <button class="btn primary ticonbtn" id="readPlayAll" title="Listen to the whole article"><svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M8 5.5v13l11-6.5z"/></svg></button>
+      <button class="btn ghost ticonbtn" id="readMakeMp3" title="Create MP3 file"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>
+      <div class="segbtn">
+        <button id="viewArticle" class="active" title="Article view"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg></button>
+        <button id="viewCards" title="Cards view"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg></button>
+      </div>
+      <button class="btn ghost ticonbtn" id="readClear" title="Clear all"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+    </div>
+    <div class="hint" id="readResultHint">🔊 hear sentence · tap <b>word</b> = pronunciation + dictionary</div>
+    <div class="row" id="scanHistRow" style="display:none"><select id="scanHistSel"></select></div>
+    <div id="readArticle" class="rv on" style="margin-top:10px"></div>
+    <div id="readSents" class="rv" style="margin-top:10px"></div>
+  </div>
+
+  <div class="card" id="serverReadingsCard" style="display:none">
+    <div class="row" style="justify-content:space-between;align-items:center">
+      <h3 style="margin:0"><svg class="ic ic-h"><use href="#i-cloud"/></svg> <span id="srvReadTitle">My readings</span></h3>
+      <button class="btn ghost" id="srvReadRefresh" style="padding:8px 12px" title="Refresh"><svg class="ic"><use href="#i-refresh"/></svg></button>
+    </div>
+    <div class="hint" id="srvReadHint">Articles saved in your account — listen or download anytime.</div>
+    <div id="serverReadings" style="margin-top:8px"></div>
+  </div>
+</div>
+
+<div class="tabpage" id="tabAudio">
+  <div class="card">
+    <div class="row" style="justify-content:space-between;align-items:center">
+      <h3 style="margin:0"><svg class="ic ic-h"><use href="#i-headphones"/></svg> <span id="audioLibTitle">Audio library</span></h3>
+      <button class="btn ghost" id="audioLibRefresh" style="padding:8px 12px" title="Refresh"><svg class="ic"><use href="#i-refresh"/></svg></button>
+    </div>
+    <div class="hint" id="audioLibHint"></div>
+    <audio id="audioLibPlayer" controls style="width:100%;display:none;margin-top:10px"></audio>
+    <div id="audioLib" style="margin-top:8px"></div>
+  </div>
+</div>
+
+<div class="tabpage" id="tabProgress">
+  <div class="card" id="unlockCard" style="display:none">
+    <h3><svg class="ic ic-h"><use href="#i-lock"/></svg> <span id="unlockTitle">Unlock your data</span></h3>
+    <div class="hint" id="unlockHint">Your session was restored but your data is encrypted. Enter your password to unlock it.</div>
+    <input class="authinput" id="unlockPass" type="password" placeholder="Password" style="margin-top:10px" autocomplete="current-password">
+    <button class="btn primary" id="unlockBtn" style="width:100%;margin-top:8px"><svg class="ic"><use href="#i-unlock"/></svg> Unlock</button>
+  </div>
+  <div id="emptyBankCard" class="card">
+    <h3><svg class="ic ic-h"><use href="#i-layers"/></svg> Sentence bank</h3>
+    <div class="hint">Scan some pages and your sentences will appear here — tappable, listenable, with dictionary.</div>
+  </div>
+
+  <div id="progressDash" style="display:none">
+    <!-- stat tiles -->
+    <div class="statgrid">
+      <div class="stat"><div class="statnum" id="stSent">0</div><div class="statlbl" id="stSentLbl">Sentences</div></div>
+      <div class="stat"><div class="statnum" id="stLevel">–</div><div class="statlbl" id="stLevelLbl">Level</div></div>
+      <div class="stat"><div class="statnum" id="stDays">0</div><div class="statlbl" id="stDaysLbl">Days</div></div>
+      <div class="stat"><div class="statnum" id="stWords">0</div><div class="statlbl" id="stWordsLbl">Words read</div></div>
+    </div>
+    <!-- profile + path side by side on desktop -->
+    <div class="dashcols">
+      <div class="card" id="statsCard">
+        <h3 style="margin-top:0"><svg class="ic ic-h"><use href="#i-chart"/></svg> <span id="profileTitle">Reading profile</span></h3>
+        <div class="hint" id="levelEstimate" style="margin-bottom:8px"></div>
+        <div id="levelBars"></div>
+      </div>
+      <div class="card" id="pathCard">
+        <h3 style="margin-top:0"><svg class="ic ic-h"><use href="#i-compass"/></svg> <span id="pathTitle">Learning path</span></h3>
+        <div id="pathContent"></div>
+      </div>
+    </div>
+    <!-- bank -->
+    <div class="card" id="bankCard">
+      <div class="row" style="justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+        <h3 style="margin:0"><svg class="ic ic-h"><use href="#i-layers"/></svg> <span id="bankTitle">Sentence bank</span> (<span id="bankCount">0</span>)</h3>
+        <div class="row" style="gap:8px">
+          <input id="bankSearch" placeholder="Search…" style="width:140px;border:2px solid var(--line);border-radius:10px;padding:8px 10px;font-size:14px">
+          <select id="bankFilter" style="width:auto;border:2px solid var(--line);border-radius:10px;padding:8px;font-size:14px">
+            <option value="">All levels</option>
+          </select>
+          <button class="btn ghost" id="bankClear" style="padding:8px 12px" title="Clear bank"><svg class="ic"><use href="#i-trash"/></svg></button>
+        </div>
+      </div>
+      <div class="hint">🔊 hear sentence · tap <b>word</b> = pronunciation + dictionary</div>
+      <div id="bankList" style="margin-top:10px"></div>
+    </div>
+  </div>
+</div>
+
+<div class="tabpage" id="tabAdmin">
+  <div class="card">
+    <h3><svg class="ic ic-h"><use href="#i-crown"/></svg> Admin panel</h3>
+    <div class="hint">Full access: manage users, view corpus.</div>
+    <div id="adminContent" style="margin-top:12px"></div>
+  </div>
+</div>
+
+<div class="tabpage" id="tabBooks">
+  <div class="card">
+    <div class="row" style="justify-content:space-between;align-items:center">
+      <h3 style="margin:0"><svg class="ic ic-h"><use href="#i-book"/></svg> My books</h3>
+      <button class="btn primary" id="bookUploadBtn" style="padding:10px 16px"><svg class="ic"><use href="#i-upload"/></svg> Upload PDF</button>
+    </div>
+    <div class="hint">Upload a book → auto-split into lessons → tap to read & learn.</div>
+    <input type="file" id="bookFile" accept="application/pdf" style="display:none">
+    <div id="bookList" style="margin-top:12px"></div>
+  </div>
+  <div class="card" id="bookDetailCard" style="display:none">
+    <div class="row" style="justify-content:space-between;align-items:center">
+      <h3 style="margin:0" id="bookDetailTitle"><svg class="ic ic-h"><use href="#i-book"/></svg> <span id="bookDetailTitleTxt"></span></h3>
+      <button class="btn ghost" id="bookBack" style="padding:8px 12px"><svg class="ic"><use href="#i-back"/></svg> Back</button>
+    </div>
+    <div id="bookChapters" style="margin-top:12px"></div>
+  </div>
+  <div class="card" id="chapterCard" style="display:none">
+    <div class="row" style="justify-content:space-between;align-items:center">
+      <h3 style="margin:0" id="chapterTitle"><svg class="ic ic-h"><use href="#i-doc"/></svg> <span id="chapterTitleTxt"></span></h3>
+      <button class="btn ghost" id="chapterBack" style="padding:8px 12px"><svg class="ic"><use href="#i-back"/></svg> Back</button>
+    </div>
+    <div class="hint">🔊 hear sentence · tap <b>word</b> = pronunciation + dictionary</div>
+    <div id="chapterSents" style="margin-top:10px"></div>
+  </div>
+</div>
+</main>
+
+<!-- settings modal -->
+<div id="settingsBox">
+  <div id="settingsCard">
+    <div class="row" style="justify-content:space-between;align-items:center">
+      <h3 style="margin:0"><svg class="ic ic-h"><use href="#i-gear"/></svg> Voice settings</h3>
+      <button class="iconbtn" id="settingsClose" style="background:var(--card2);color:var(--ink)"><svg class="ic"><use href="#i-close"/></svg></button>
+    </div>
+    <label>Voice</label>
+    <div class="row">
+      <select id="voiceSel" style="flex:1"></select>
+      <button class="btn ghost" id="reloadVoices"><svg class="ic"><use href="#i-refresh"/></svg></button>
+    </div>
+    <label>Model</label>
+    <select id="modelSel">
+      <option value="eleven_turbo_v2_5">Turbo v2.5 — fast, fewer credits</option>
+      <option value="eleven_multilingual_v2">Multilingual v2 — best quality</option>
+    </select>
+    <div class="hint" id="quotaLine" style="margin-top:12px"></div>
+    <label style="margin-top:16px"><svg class="ic"><use href="#i-globe"/></svg> Language / Ngôn ngữ</label>
+    <div class="row">
+      <button class="btn ghost langBtn" data-lang="vi" style="flex:1">🇻🇳 Tiếng Việt</button>
+      <button class="btn ghost langBtn" data-lang="en" style="flex:1">🇬🇧 English</button>
+    </div>
+    <label style="margin-top:16px"><svg class="ic"><use href="#i-chart"/></svg> Help improve the app</label>
+    <div class="row" style="align-items:flex-start">
+      <input type="checkbox" id="analyticsOpt" style="width:20px;height:20px;margin-top:2px">
+      <div class="hint" style="flex:1">Share <b>anonymous</b> word frequencies to build a learner corpus. Never sends your sentences or personal data. <a href="#" id="insightsLink" style="color:var(--accent)">See what's collected</a></div>
+    </div>
+  </div>
+</div>
+
+<!-- dictionary popup (appears near the tapped word) -->
+<div id="dictBox" role="dialog" aria-label="Dictionary">
+  <div id="dictBoxBody"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+<audio id="player" style="display:none"></audio>
+
+<script>
+"use strict";
+/* ================= Read & Learn — minimal rebuild ================= */
+const $ = id => document.getElementById(id);
+const API = "https://api.elevenlabs.io/v1";
+
+function toast(msg, ms=3500){
+  const t = $("toast"); t.textContent = msg; t.style.display = "block";
+  clearTimeout(t._tm); t._tm = setTimeout(()=>t.style.display="none", ms);
+}
+function esc(s){ return String(s).replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+
+const store = {
+  get(k, d){ try{ const v = localStorage.getItem("elab_"+k); return v===null? d : JSON.parse(v);}catch(e){ return d; } },
+  set(k, v){ try{ localStorage.setItem("elab_"+k, JSON.stringify(v)); }catch(e){ toast("Storage full!"); } }
+};
+
+/* ---------- audio cache (IndexedDB) ---------- */
+const idb = {
+  db:null,
+  open(){ return new Promise((res, rej)=>{
+    if(this.db) return res(this.db);
+    const r = indexedDB.open("readlearn", 1);
+    r.onupgradeneeded = ()=>r.result.createObjectStore("audio");
+    r.onsuccess = ()=>{ this.db = r.result; res(this.db); };
+    r.onerror = ()=>rej(r.error);
+  });},
+  async get(k){ try{ const db = await this.open();
+    return new Promise(res=>{ const t = db.transaction("audio").objectStore("audio").get(k);
+      t.onsuccess = ()=>res(t.result||null); t.onerror = ()=>res(null); });
+  }catch(e){ return null; } },
+  async put(k, v){ try{ const db = await this.open();
+    db.transaction("audio","readwrite").objectStore("audio").put(v, k);
+  }catch(e){} },
+  async del(k){ try{ const db = await this.open();
+    db.transaction("audio","readwrite").objectStore("audio").delete(k);
+  }catch(e){} },
+  async keys(){ try{ const db = await this.open();
+    return new Promise(res=>{ const t = db.transaction("audio").objectStore("audio").getAllKeys();
+      t.onsuccess = ()=>res(t.result||[]); t.onerror = ()=>res([]); });
+  }catch(e){ return []; } }
+};
+const memCache = new Map();
+
+/* ---------- TTS (ElevenLabs via secure proxy, browser fallback) ---------- */
+let ttsProvider = store.get("ttsProvider", "elevenlabs");
+
+async function elFetch(path, opts={}){
+  // Secure proxy: key stays on server
+  if(path==="/voices"){
+    const r = await fetch("/api/voices");
+    if(!r.ok) throw new Error("Voice load failed ("+r.status+")");
+    return r;
+  }
+  if(path==="/quota"){
+    const r = await fetch("/api/quota");
+    if(!r.ok) throw new Error("Quota check failed");
+    return r;
+  }
+  if(path.startsWith("/text-to-speech/")){
+    const voice = path.split("/").pop();
+    let body = {};
+    try{ body = JSON.parse(opts.body||"{}"); }catch(e){}
+    const r = await fetch("/api/tts", {
+      method:"POST", headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({ text: body.text||"", voice_id: voice, model_id: body.model_id })
+    });
+    if(!r.ok) throw new Error("TTS error "+r.status);
+    return r;
+  }
+  throw new Error("Unsupported");
+}
+
+async function getElBlob(text){
+  const voice = $("voiceSel").value, model = $("modelSel").value;
+  if(!voice){ toast("Pick a voice in Settings"); throw new Error("no voice"); }
+  const key = "el|"+voice+"|"+model+"|"+text;
+  const cached = await idb.get(key);
+  if(cached) return cached;
+  const r = await elFetch(`/text-to-speech/${voice}`, {
+    method:"POST", body: JSON.stringify({text, model_id:model})
+  });
+  const blob = await r.blob();
+  idb.put(key, blob);
+  return blob;
+}
+async function getElURL(text){
+  const voice = $("voiceSel").value, model = $("modelSel").value;
+  const key = "el|"+voice+"|"+model+"|"+text;
+  if(memCache.has(key)) return memCache.get(key);
+  const url = URL.createObjectURL(await getElBlob(text));
+  memCache.set(key, url);
+  return url;
+}
+
+let speechToken = 0, playerResolve = null;
+function stopSpeaking(){
+  speechToken++;
+  if(playerResolve){ const r = playerResolve; playerResolve = null; r(); }
+  try{ const a = $("player"); a.pause(); a.removeAttribute("src"); a.load(); }catch(e){}
+}
+function playURL(url, rate=1){
+  return new Promise((res, rej)=>{
+    const a = $("player");
+    playerResolve = res;
+    a.src = url; a.playbackRate = rate;
+    a.onended = ()=>{ playerResolve = null; res(); };
+    a.onerror = ()=>{ playerResolve = null; rej(new Error("play fail")); };
+    a.play().catch(e=>{ playerResolve = null; rej(e); });
+  });
+}
+
+/* free word pronunciation: device TTS only — never touches ElevenLabs credits */
+function speakWordBrowser(text){
+  try{
+    speechSynthesis.pause();
+    const u=new SpeechSynthesisUtterance(text);
+    u.lang="en-US";
+    u.onend=u.onerror=()=>{ try{ speechSynthesis.resume(); }catch(e){} };
+    speechSynthesis.speak(u);
+    setTimeout(()=>{ try{ speechSynthesis.resume(); }catch(e){} }, Math.max(2500, text.length*150));
+  }catch(e){ try{ speechSynthesis.resume(); }catch(_){} }
+}
+
+function chunkText(text, max=4500){
+  const t = text.trim();
+  if(t.length <= max) return [t];
+  const parts = t.split(/(?<=[.!?])\s+/);
+  const chunks = []; let cur = "";
+  for(const p of parts){
+    if(cur && (cur+" "+p).length > max){ chunks.push(cur.trim()); cur = p; }
+    else cur = cur ? cur+" "+p : p;
+  }
+  if(cur.trim()) chunks.push(cur.trim());
+  return chunks;
+}
+
+async function speak(text, {slow=false}={}){
+  if(ttsProvider==="browser") return speakBrowser(text, {slow});
+  const my = ++speechToken;
+  const chunks = chunkText(text);
+  for(const ch of chunks){
+    if(my !== speechToken) break;
+    const url = await getElURL(ch);
+    if(my !== speechToken) break;
+    await playURL(url, slow ? 0.7 : 1);
+  }
+  if(my === speechToken) speechToken++;
+}
+
+/* ---------- whole-article audio player ---------- */
+let curServerReadingId = null;
+function fullArticleText(){ return readData.map(s=>s.text).join(" "); }
+function needVoice(){
+  if(ttsProvider === "browser") return true;
+  if($("voiceSel").value) return true;
+  toast("Pick a voice in Settings"); return false;
+}
+function resetPlayAllBtn(){ apStop(); } // legacy name: close the article player
+function hashStr(s){ let h=5381; for(let i=0;i<s.length;i++) h=((h<<5)+h+s.charCodeAt(i))|0; return (h>>>0).toString(36); }
+function fmtT(s){ s=Math.max(0,Math.floor(s||0)); return Math.floor(s/60)+":"+String(s%60).padStart(2,"0"); }
+function confirmLongAudio(text){
+  if(text.length <= 3000) return true;
+  const c = text.length.toLocaleString("en-US");
+  const m = Math.max(1, Math.round(text.length/800));
+  return confirm(t("longAudioConfirm").split("{c}").join(c).split("{m}").join(m));
+}
+
+/* article player state */
+let apBlob=null, apBlobUrl=null, apBlobKey="", apSpeeds=[1,1.25,1.5,2,0.75], apSpeedIdx=0, apLoop=false, apSeeking=false, apLastGen=false;
+function apShow(){ $("artPlayer").classList.add("show"); }
+function apHide(){ $("artPlayer").classList.remove("show"); }
+function apStop(){
+  try{ const a=$("player"); a.pause(); a.removeAttribute("src"); a.load(); }catch(e){}
+  const pb=$("apPlay"); if(pb) pb.innerHTML='<svg class="ic" style="width:28px;height:28px"><use href="#i-play"/></svg>';
+  apHide();
+}
+function apSetStatus(t){ const el=$("apStatus"); if(!el) return; if(!t){ el.style.display="none"; return; } el.style.display="block"; el.textContent=t; }
+async function apEnsureBlob(text){
+  const key = "art|"+text.length+"|"+hashStr(text);
+  apLastGen = false;
+  if(apBlob && apBlobKey===key) return apBlob;
+  if(curServerReadingId){
+    try{
+      const r = await fetch("/api/readings/"+curServerReadingId+"/audio", {headers:authHeaders()});
+      if(r.ok){
+        const blob = await r.blob();
+        if(apBlobUrl) URL.revokeObjectURL(apBlobUrl);
+        apBlob=blob; apBlobUrl=URL.createObjectURL(blob); apBlobKey=key;
+        return blob;
+      }
+    }catch(e){}
+  }
+  if(!confirmLongAudio(text)){ const e=new Error("cancelled"); e.cancelled=true; throw e; }
+  apLastGen = true; // real ElevenLabs generation happened below
+  const chunks = chunkText(text);
+  const blobs = [];
+  for(let i=0;i<chunks.length;i++){
+    apSetStatus(`Creating audio\u2026 ${i+1}/${chunks.length}`);
+    blobs.push(await getElBlob(chunks[i]));
+  }
+  const blob = new Blob(blobs,{type:"audio/mpeg"});
+  if(apBlobUrl) URL.revokeObjectURL(apBlobUrl);
+  apBlob=blob; apBlobUrl=URL.createObjectURL(blob); apBlobKey=key;
+  return blob;
+}
+const SILENT_WAV = "data:audio/wav;base64,UklGRsQPAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YaAPAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+async function openArticlePlayer(text, serverId){
+  // Unlock audio inside the tap gesture (mobile browsers block play() after async gaps)
+  try{
+    const u = $("player");
+    if(!u.dataset.unlocked){
+      u.dataset.unlocked = "1";
+      u.src = SILENT_WAV;
+      const pr = u.play();
+      if(pr && pr.catch) pr.catch(()=>{});
+    }
+  }catch(e){}
+  text = text || fullArticleText();
+  if(!text){ toast("Nothing to play"); return; }
+  if(!needVoice()) return;
+  if(serverId !== undefined) curServerReadingId = serverId;
+  stopSpeaking(); // stop any sentence-level playback on the shared element
+  apShow(); apSetStatus("Creating audio\u2026");
+  const pb=$("apPlay"); pb.innerHTML='<svg class="ic" style="width:28px;height:28px"><use href="#i-play"/></svg>'; pb.disabled=true;
+  try{
+    await apEnsureBlob(text);
+    if(apLastGen){ apLastGen = false; autoSaveAudio(text, apBlob); }
+    const a = $("player");
+    a.src = apBlobUrl; a.playbackRate = apSpeeds[apSpeedIdx]; a.loop = apLoop;
+    apSetStatus(null); pb.disabled=false;
+    await a.play();
+  }catch(e){ if(e&&e.cancelled){ apStop(); return; } toast("Playback error: "+(e.message||e)); apStop(); }
+}
+function downloadUrl(url, name){
+  const a=document.createElement("a"); a.href=url; a.download=name;
+  document.body.appendChild(a); a.click(); a.remove();
+}
+function initArticlePlayer(){
+  const card = $("readResultCard"), hint = $("readResultHint"), pl = $("artPlayer");
+  if(card && hint && pl.parentElement !== card) card.insertBefore(pl, hint);
+  const a = $("player");
+  a.addEventListener("play", ()=>{ $("apPlay").innerHTML='<svg class="ic" style="width:28px;height:28px"><use href="#i-pause"/></svg>'; });
+  a.addEventListener("pause", ()=>{ $("apPlay").innerHTML='<svg class="ic" style="width:28px;height:28px"><use href="#i-play"/></svg>'; });
+  a.addEventListener("loadedmetadata", ()=>{ $("apDur").textContent=fmtT(a.duration); });
+  a.addEventListener("ended", ()=>{ if(!a.loop){ try{a.currentTime=0;}catch(e){} } });
+  a.addEventListener("timeupdate", ()=>{
+    if(apSeeking) return;
+    const d=a.duration||0, p=d?(a.currentTime/d*100):0;
+    $("apFill").style.width=p+"%"; $("apKnob").style.left=p+"%";
+    $("apCur").textContent=fmtT(a.currentTime);
+    if(d) $("apDur").textContent=fmtT(d);
+  });
+  $("apPlay").onclick = ()=>{ const x=$("player"); if(x.paused) x.play().catch(e=>toast(e.message||"Play failed")); else x.pause(); };
+  $("apBack").onclick = ()=>{ const x=$("player"); x.currentTime=Math.max(0,x.currentTime-10); };
+  $("apFwd").onclick = ()=>{ const x=$("player"); x.currentTime=Math.min(x.duration||0,x.currentTime+10); };
+  $("apSpeed").onclick = ()=>{ apSpeedIdx=(apSpeedIdx+1)%apSpeeds.length; $("player").playbackRate=apSpeeds[apSpeedIdx]; $("apSpeed").textContent=apSpeeds[apSpeedIdx]+"x"; };
+  $("apLoop").onclick = ()=>{ apLoop=!apLoop; $("player").loop=apLoop; $("apLoop").style.opacity=apLoop?1:.4; };
+  $("apDl").onclick = ()=>{
+    if(!apBlob){ toast("Audio not ready yet"); return; }
+    downloadUrl(apBlobUrl, `english-lab-${new Date().toISOString().slice(0,10)}.mp3`);
+  };
+  $("apClose").onclick = ()=>apStop();
+  const seek=$("apSeek");
+  const doSeek = e=>{
+    const r=seek.getBoundingClientRect();
+    const cx=(e.touches&&e.touches[0])?e.touches[0].clientX:e.clientX;
+    const p=Math.min(1,Math.max(0,(cx-r.left)/r.width));
+    const x=$("player");
+    if(x.duration) x.currentTime=p*x.duration;
+    $("apFill").style.width=(p*100)+"%"; $("apKnob").style.left=(p*100)+"%";
+  };
+  seek.addEventListener("pointerdown", e=>{ apSeeking=true; try{seek.setPointerCapture(e.pointerId);}catch(_){} doSeek(e); });
+  seek.addEventListener("pointermove", e=>{ if(apSeeking) doSeek(e); });
+  seek.addEventListener("pointerup", ()=>{ apSeeking=false; });
+  seek.addEventListener("pointercancel", ()=>{ apSeeking=false; });
+}
+$("readPlayAll").onclick = ()=>openArticlePlayer();
+async function buildArticleMP3(text){
+  const chunks = chunkText(text);
+  const blobs = [];
+  for(let i=0;i<chunks.length;i++){
+    toast(`Creating MP3… ${i+1}/${chunks.length}`);
+    blobs.push(await getElBlob(chunks[i]));
+  }
+  return new Blob(blobs, {type:"audio/mpeg"});
+}
+function downloadBlob(blob, name){
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 8000);
+}
+$("readMakeMp3").onclick = async ()=>{
+  const text = fullArticleText();
+  if(!text){ toast("Nothing to export"); return; }
+  if(!needVoice()) return;
+  const btn = $("readMakeMp3"); btn.disabled = true;
+  try{
+    const blob = await apEnsureBlob(text);
+    const stamp = new Date().toISOString().slice(0,10);
+    downloadUrl(URL.createObjectURL(blob), `english-lab-${stamp}.mp3`);
+    if(authToken && curServerReadingId){
+      toast("Saving MP3 to your library…");
+      const r = await fetch("/api/readings/"+curServerReadingId+"/audio",
+        {method:"PUT", headers:{...authHeaders(), "Content-Type":"audio/mpeg"}, body:blob});
+      if(r.ok){ toast("MP3 saved to your library ✅"); loadServerReadings(); }
+      else toast("MP3 downloaded — server save failed");
+    }else if(!authToken){
+      toast("MP3 downloaded — login to keep it in your library");
+    }else{
+      toast("MP3 downloaded ✅");
+    }
+  }catch(e){ if(!(e&&e.cancelled)) toast("MP3 error: "+(e.message||e)); }
+  btn.disabled = false;
+};
+async function saveReadingToServer(text, sents){
+  if(!authToken) return;
+  try{
+    const meta = scanHistory.find(x=>x.id===curScanId) || {};
+    const r = await fetch("/api/readings", {method:"POST",
+      headers:{...authHeaders(), "Content-Type":"application/json"},
+      body: JSON.stringify({text: String(text).slice(0,30000), sentences: sents.length, src: meta.src||"✍️"})});
+    const j = await r.json();
+    if(j && j.id){ curServerReadingId = j.id; loadServerReadings(); }
+  }catch(e){}
+}
+async function loadServerReadings(){
+  const card = $("serverReadingsCard"), box = $("serverReadings");
+  if(!authToken){ card.style.display = "none"; return; }
+  card.style.display = "block";
+  box.innerHTML = '<div class="hint">Loading…</div>';
+  try{
+    const r = await fetch("/api/readings", {headers: authHeaders()});
+    const j = await r.json();
+    const arr = (j && j.readings) || [];
+    if(!arr.length){ box.innerHTML = '<div class="hint">'+t("noServerReadings")+'</div>'; return; }
+    box.innerHTML = arr.map(x=>{
+      const d = new Date(x.ts);
+      const ds = d.toLocaleDateString()+" "+d.toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
+      return `<div class="srvrow" data-id="${x.id}">`
+        + `<div style="flex:1;min-width:0"><div style="font-weight:600">${x.src==="📷"?'<svg class="ic"><use href="#i-camera"/></svg>':'<svg class="ic"><use href="#i-edit"/></svg>'} ${esc(ds)}</div>`
+        + `<div class="hint" style="margin:2px 0 0">${x.words} ${t("wordsU")} · ${x.sentences} ${t("sentencesU")}${x.hasAudio?' · <svg class="ic"><use href="#i-volume"/></svg> MP3':""}</div></div>`
+        + `<button class="btn ghost srvOpen" title="${t("open")}"><svg class="ic"><use href="#i-book"/></svg></button>`
+        + `<button class="btn ghost srvPlay" title="${t("listen")}"><svg class="ic"><use href="#i-play"/></svg></button>`
+        + `<button class="btn ghost srvMp3" title="MP3"><svg class="ic"><use href="#i-download"/></svg></button>`
+        + `<button class="btn ghost srvDel" title="${t("delete")}"><svg class="ic"><use href="#i-trash"/></svg></button></div>`;
+    }).join("");
+    box.querySelectorAll(".srvrow").forEach(row=>{
+      const id = row.dataset.id;
+      row.querySelector(".srvOpen").onclick = ()=>openServerReading(id);
+      row.querySelector(".srvPlay").onclick = ()=>playServerReading(id);
+      row.querySelector(".srvMp3").onclick = ()=>mp3ServerReading(id);
+      row.querySelector(".srvDel").onclick = ()=>delServerReading(id);
+    });
+  }catch(e){ box.innerHTML = '<div class="hint">Load failed</div>'; }
+}
+async function getServerReading(id){
+  const r = await fetch("/api/readings/"+id, {headers: authHeaders()});
+  if(!r.ok) throw new Error("load failed");
+  return r.json();
+}
+async function openServerReading(id){
+  try{
+    const rec = await getServerReading(id);
+    renderReadText(rec.text, {skipBank:true, silent:true, id:"srv"+id, src:rec.src, ts:rec.ts, serverId:id});
+    switchTab("read");
+  }catch(e){ toast("Open failed"); }
+}
+async function playServerReading(id){
+  try{
+    const rec = await getServerReading(id);
+    openArticlePlayer(rec.text, id);
+  }catch(e){ toast("Play failed"); }
+}
+async function mp3ServerReading(id){
+  try{
+    const r = await fetch("/api/readings/"+id+"/audio", {headers: authHeaders()});
+    if(r.ok){ downloadBlob(await r.blob(), `english-lab-${id}.mp3`); return; }
+    if(!needVoice()) return;
+    const rec = await getServerReading(id);
+    if(!confirmLongAudio(rec.text)) return;
+    toast("No saved MP3 — generating…");
+    const blob = await buildArticleMP3(rec.text);
+    downloadBlob(blob, `english-lab-${id}.mp3`);
+    const up = await fetch("/api/readings/"+id+"/audio",
+      {method:"PUT", headers:{...authHeaders(), "Content-Type":"audio/mpeg"}, body:blob});
+    if(up.ok){ toast("MP3 saved ✅"); loadServerReadings(); }
+  }catch(e){ if(!(e&&e.cancelled)) toast("MP3 error: "+(e.message||e)); }
+}
+/* auto-save generated MP3 to the Audio library: R2 for logged-in users, device storage for guests */
+async function autoSaveAudio(text, blob){
+  if(!blob) return;
+  const title = (readTitle || text.trim().split(/\s+/).slice(0,8).join(" ")).slice(0,60) || "Reading";
+  try{
+    if(authToken){
+      let id = curServerReadingId;
+      if(!id){
+        const r = await fetch("/api/readings", {method:"POST",
+          headers:{...authHeaders(), "Content-Type":"application/json"},
+          body: JSON.stringify({text: String(text).slice(0,30000), sentences: readData.length, src:"🎧"})});
+        const j = await r.json().catch(()=>null);
+        if(j && j.id){ id = j.id; curServerReadingId = id; }
+      }
+      if(!id) return;
+      const up = await fetch("/api/readings/"+id+"/audio",
+        {method:"PUT", headers:{...authHeaders(), "Content-Type":"audio/mpeg"}, body: blob});
+      if(up.ok){ toast("🎧 "+t("savedToAudio")); loadServerReadings(); }
+    }else{
+      const key = "lib|"+hashStr(text);
+      if(!(await idb.get(key))){
+        await idb.put(key, {title, ts: Date.now(), blob});
+        toast("🎧 "+t("savedToAudio"));
+      }
+    }
+  }catch(e){}
+}
+
+async function renderAudioLib(){
+  const box = $("audioLib"), hint = $("audioLibHint"), player = $("audioLibPlayer");
+  try{ player.pause(); }catch(e){}
+  player.style.display = "none"; player.removeAttribute("src");
+  hint.textContent = t("audioLibHint");
+  if(authToken){
+    box.innerHTML = '<div class="hint">Loading\u2026</div>';
+    try{
+      const r = await fetch("/api/readings", {headers: authHeaders()});
+      const arr = (((await r.json()).readings)||[]).filter(x=>x.hasAudio);
+      if(!arr.length){ box.innerHTML = '<div class="hint">'+t("noAudio")+'</div>'; return; }
+      box.innerHTML = arr.map(x=>{
+        const d = new Date(x.ts);
+        const ds = d.toLocaleDateString()+" "+d.toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
+        return `<div class="srvrow" data-id="${x.id}">`
+          + `<div style="flex:1;min-width:0"><div style="font-weight:600">${esc(x.src||"\u270D\uFE0F")} ${esc(ds)}</div>`
+          + `<div class="hint" style="margin:2px 0 0">${x.words} ${t("wordsU")} · ${x.sentences} ${t("sentencesU")}</div></div>`
+          + `<button class="btn ticonbtn primary srvPlayA" title="${t("listen")}"><svg class="ic"><use href="#i-play"/></svg></button>`
+          + `<button class="btn ticonbtn ghost srvDelA" title="${t("delete")}"><svg class="ic"><use href="#i-trash"/></svg></button></div>`;
+      }).join("");
+      box.querySelectorAll(".srvrow").forEach(row=>{
+        const id = row.dataset.id;
+        row.querySelector(".srvPlayA").onclick = ()=>playLibAudioSrv(id);
+        row.querySelector(".srvDelA").onclick = async ()=>{
+          if(!confirm(t("delete")+"?")) return;
+          await fetch("/api/readings/"+id+"/audio", {method:"DELETE", headers: authHeaders()});
+          renderAudioLib(); loadServerReadings();
+        };
+      });
+    }catch(e){ box.innerHTML = '<div class="hint">Load failed</div>'; }
+    return;
+  }
+  // guest: device library
+  const keys = (await idb.keys()).filter(k=>k.startsWith("lib|")).sort().reverse();
+  if(!keys.length){ box.innerHTML = '<div class="hint">'+t("noAudio")+"<br>"+t("guestAudioHint")+'</div>'; return; }
+  box.innerHTML = '<div class="hint" style="margin-bottom:8px">'+t("guestAudioHint")+'</div>' + keys.map(k=>{
+    return `<div class="srvrow" data-k="${esc(k)}">`
+      + `<div style="flex:1;min-width:0"><div style="font-weight:600"><svg class="ic ic-h"><use href="#i-headphones"/></svg> <span class="libTitle" data-k="${esc(k)}">\u2026</span></div>`
+      + `<div class="hint libDate" style="margin:2px 0 0" data-k="${esc(k)}"></div></div>`
+      + `<button class="btn ticonbtn primary libPlay" data-k="${esc(k)}" title="${t("listen")}"><svg class="ic"><use href="#i-play"/></svg></button>`
+      + `<button class="btn ticonbtn ghost libDel" data-k="${esc(k)}" title="${t("delete")}"><svg class="ic"><use href="#i-trash"/></svg></button></div>`;
+  }).join("");
+  for(const k of keys){
+    const item = await idb.get(k);
+    if(!item) continue;
+    box.querySelectorAll(`.libTitle[data-k="${CSS.escape(k)}"]`).forEach(el=>el.textContent = item.title||"Reading");
+    const d = new Date(item.ts||Date.now());
+    box.querySelectorAll(`.libDate[data-k="${CSS.escape(k)}"]`).forEach(el=>el.textContent = d.toLocaleDateString()+" "+d.toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"}));
+  }
+  box.querySelectorAll(".libPlay").forEach(b=>b.onclick = async ()=>{
+    const item = await idb.get(b.dataset.k);
+    if(!item || !item.blob){ toast("Play failed"); return; }
+    player.src = URL.createObjectURL(item.blob); player.style.display = "block";
+    player.play().catch(()=>{});
+  });
+  box.querySelectorAll(".libDel").forEach(b=>b.onclick = async ()=>{
+    if(!confirm(t("delete")+"?")) return;
+    await idb.del(b.dataset.k); renderAudioLib();
+  });
+}
+async function playLibAudioSrv(id){
+  const player = $("audioLibPlayer");
+  try{
+    const r = await fetch("/api/readings/"+id+"/audio", {headers: authHeaders()});
+    if(!r.ok) throw new Error("load failed");
+    const blob = await r.blob();
+    player.src = URL.createObjectURL(blob); player.style.display = "block";
+    player.play().catch(()=>{});
+  }catch(e){ toast("Play failed"); }
+}
+async function delServerReading(id){
+  if(!confirm(t("delete")+"?")) return;
+  try{ await fetch("/api/readings/"+id, {method:"DELETE", headers: authHeaders()}); }catch(e){}
+  if(curServerReadingId === id) curServerReadingId = null;
+  loadServerReadings();
+}
+$("srvReadRefresh").onclick = ()=>loadServerReadings();
+$("audioLibRefresh").onclick = ()=>renderAudioLib();
+async function safeSpeak(text, opt){
+  try{ await speak(text, opt||{}); }
+  catch(e){ toast("Error: "+e.message); }
+}
+
+/* browser fallback */
+function speakBrowserOne(text, rate){
+  return new Promise(res=>{
+    try{
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = "en-US"; u.rate = rate;
+      u.onend = u.onerror = ()=>res();
+      speechSynthesis.cancel(); speechSynthesis.speak(u);
+      setTimeout(res, Math.max(3000, text.length*120));
+    }catch(e){ res(); }
+  });
+}
+async function speakBrowser(text, {slow=false}={}){
+  await speakBrowserOne(text, slow ? 0.7 : 1);
+}
+
+/* voices */
+async function loadVoices(){
+  try{
+    const r = await elFetch("/voices");
+    const j = await r.json();
+    const sel = $("voiceSel"); sel.innerHTML = "";
+    (j.voices||[]).forEach(v=>{
+      const o = document.createElement("option");
+      const accent = v.labels && v.labels.accent ? " ("+v.labels.accent+")" : "";
+      o.value = v.voice_id; o.textContent = v.name + accent;
+      sel.appendChild(o);
+    });
+    const saved = store.get("voice","");
+    if(saved && [...sel.options].some(o=>o.value===saved)) sel.value = saved;
+    else{
+      const pref = [...sel.options].find(o=>/rachel/i.test(o.textContent))
+                || [...sel.options].find(o=>/adam/i.test(o.textContent));
+      if(pref) sel.value = pref.value;
+    }
+    sel.onchange = ()=>store.set("voice", sel.value);
+    updateQuota();
+  }catch(e){ toast("Voice load error: "+e.message); }
+}
+async function updateQuota(){
+  try{
+    const r = await elFetch("/quota");
+    const j = await r.json();
+    const s = j.subscription || {};
+    const left = (s.character_limit||0) - (s.character_count||0);
+    $("quotaLine").innerHTML = `<b>${left.toLocaleString()}</b> credits left — plan <b>${s.tier||"?"}</b>`;
+  }catch(e){ $("quotaLine").textContent = ""; }
+}
+$("reloadVoices").onclick = loadVoices;
+$("modelSel").onchange = ()=>store.set("model", $("modelSel").value);
+
+/* ---------- dictionary ---------- */
+let dictCache = new Map();
+try{ (store.get("dict", [])||[]).forEach(([w,v])=>dictCache.set(w,v)); }catch(e){}
+function saveDictCache(){
+  const arr = [...dictCache.entries()].slice(-300);
+  dictCache = new Map(arr);
+  try{ store.set("dict", arr); }catch(e){}
+}
+/* Translate: try our worker proxy first (same-origin), fall back to direct Google.
+   Both are best-effort — the popup works with or without Vietnamese glosses. */
+async function translateText(text, target){
+  target = target || "vi";
+  text = String(text).slice(0, 500);
+  if(!text.trim()) return "";
+  try{
+    const ctl = new AbortController(); const timer = setTimeout(()=>ctl.abort(), 3500);
+    const r = await fetch("/api/translate", {method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({text, target}), signal: ctl.signal});
+    clearTimeout(timer);
+    if(r.ok){ const j = await r.json(); const t = (j.text||"").trim(); if(t) return t; }
+  }catch(e){}
+  try{
+    const ctl = new AbortController(); const timer = setTimeout(()=>ctl.abort(), 5000);
+    const r = await fetch("https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl="+encodeURIComponent(target)+"&dt=t&q="+encodeURIComponent(text), {signal: ctl.signal});
+    clearTimeout(timer);
+    const j = await r.json();
+    return (j[0] && j[0][0] && j[0][0][0] || "").trim();
+  }catch(e){ return ""; }
+}
+async function fetchDict(word){
+  const w = word.trim().toLowerCase();
+  if(!w) return null;
+  if(dictCache.has(w)) return dictCache.get(w);
+  // EN via worker (18s timeout, own controller)
+  const enCtl = new AbortController();
+  const enTimer = setTimeout(()=>enCtl.abort(), 18000);
+  // VI via worker translate proxy: best-effort, NEVER blocks EN
+  const viP = translateText(w).catch(()=>null);
+  try{
+    const r = await fetch("/api/dict?word="+encodeURIComponent(w), {signal: enCtl.signal});
+    if(r.status===404){ const miss={miss:true}; dictCache.set(w,miss); saveDictCache(); return miss; }
+    if(!r.ok){ const err = new Error("HTTP "+r.status); err.httpStatus = r.status; throw err; }
+    const out = await r.json();
+    // VI translation (best-effort, don't wait long)
+    try{
+      const t = await Promise.race([viP, new Promise(res=>setTimeout(()=>res(null), 2000))]);
+      if(t && t.toLowerCase() !== w) out.vi = t;
+    }catch(e){}
+    dictCache.set(w, out); saveDictCache();
+    return out;
+  }finally{ clearTimeout(enTimer); }
+}
+/* ---------- dictionary popup near the tapped word ---------- */
+let dictBoxAnchor = null, dictBoxOpenedAt = 0;
+const SRC_NAMES = {"merriam-webster":"Merriam-Webster","mw-thesaurus":"MW Thesaurus","wiktapi":"WiktAPI","wiktionary":"Wiktionary","wordsapi":"WordsAPI"};
+
+let _wUnlocked = false;
+function wordAudioUnlock(){
+  // play silent clip inside the tap gesture so later auto-play isn't blocked
+  if(_wUnlocked) return; _wUnlocked = true;
+  try{ const a = new Audio(typeof SILENT_WAV!=="undefined"?SILENT_WAV:""); const pr=a.play(); if(pr&&pr.catch) pr.catch(()=>{}); }catch(e){}
+}
+async function openDict(word, anchor, autoSpeak){
+  const w = (word||"").trim().toLowerCase(); if(!w) return;
+  trackLookup(w);
+  const pop = $("dictBox"), body = $("dictBoxBody");
+  dictBoxAnchor = (anchor && anchor.getBoundingClientRect) ? anchor : null;
+  body.innerHTML = `<div class="dbox-head"><div style="flex:1;min-width:0"><div class="dword">${esc(w)}</div><div class="dphon">Looking up…</div></div><button class="diconbtn" id="dboxClose" title="Close"><svg class="ic"><use href="#i-close"/></svg></button></div><div class="dloading"><svg class="ic"><use href="#i-book"/></svg> …</div>`;
+  pop.classList.add("show");
+  dictBoxOpenedAt = Date.now();
+  placeDictPop(dictBoxAnchor);
+  $("dboxClose").onclick = hideDictPop;
+  try{
+    const entry = await fetchDict(w);
+    renderDictPop(w, entry);
+    if(autoSpeak && entry && !entry.miss){
+      if(entry.audio){ new Audio(entry.audio).play().catch(()=>speakWordBrowser(w)); }
+      else speakWordBrowser(w);
+    }
+    placeDictPop(dictBoxAnchor);
+  }catch(e){
+    const msg = (e && e.name==="AbortError") ? "Lookup timed out — check your connection."
+      : (e && e.httpStatus===429) ? "Too many lookups — wait a few seconds, then retry."
+      : "Network error — check your connection.";
+    body.innerHTML = `<div class="dbox-head"><div style="flex:1;min-width:0"><div class="dword">${esc(w)}</div></div><button class="diconbtn" id="dboxClose" title="Close"><svg class="ic"><use href="#i-close"/></svg></button></div><div class="dbox-sec"><div class="hint">${msg}</div><button class="btn primary" id="dboxRetry" style="width:100%;margin-top:10px"><svg class="ic"><use href="#i-refresh"/></svg> <span id="dboxRetryLbl">Retry</span></button></div>`;
+    $("dboxClose").onclick = hideDictPop;
+    $("dboxRetry").onclick = ()=>openDict(w, dictBoxAnchor);
+    placeDictPop(dictBoxAnchor);
+  }
+}
+function hideDictPop(){ $("dictBox").classList.remove("show"); dictBoxAnchor = null; }
+function placeDictPop(anchor){
+  const pop = $("dictBox");
+  const pw = Math.min(400, Math.floor(window.innerWidth*0.94));
+  pop.style.width = pw+"px";
+  let x, y;
+  if(anchor){
+    const r = anchor.getBoundingClientRect();
+    x = Math.max(8, Math.min(window.innerWidth - pw - 8, r.left + r.width/2 - pw/2));
+    pop.style.left = x+"px";
+    const ph = pop.offsetHeight || 220;
+    y = r.bottom + 10;
+    if(y + ph > window.innerHeight - 8) y = Math.max(8, r.top - ph - 10);
+  }else{
+    x = Math.max(8, (window.innerWidth - pw)/2);
+    pop.style.left = x+"px";
+    const ph = pop.offsetHeight || 220;
+    y = Math.max(8, (window.innerHeight - ph)/2 - 30);
+  }
+  pop.style.top = y+"px";
+}
+// tap outside closes (small delay so the opening tap doesn't instantly close it)
+document.addEventListener("click", e=>{
+  const pop = $("dictBox");
+  if(!pop.classList.contains("show")) return;
+  if(Date.now() - dictBoxOpenedAt < 350) return;
+  if(pop.contains(e.target)) return;
+  if(dictBoxAnchor && dictBoxAnchor.contains(e.target)) return;
+  hideDictPop();
+});
+window.addEventListener("scroll", (e)=>{ const pop=$("dictBox"); if(pop.classList.contains("show") && !pop.contains(e.target)) hideDictPop(); }, {passive:true, capture:true});
+window.addEventListener("resize", ()=>{ if($("dictBox").classList.contains("show")) placeDictPop(dictBoxAnchor); });
+
+function renderDictPop(w, entry){
+  const body = $("dictBoxBody");
+  if(!entry || entry.miss){
+    body.innerHTML = `<div class="dbox-head"><div style="flex:1;min-width:0"><div class="dword">${esc(w)}</div></div><button class="diconbtn" id="dboxClose"><svg class="ic"><use href="#i-close"/></svg></button></div><div class="dbox-sec"><div class="hint">No definition found for this word.</div></div>`;
+    $("dboxClose").onclick = hideDictPop;
+    return;
+  }
+  const firstPos = entry.meanings[0] && entry.meanings[0].pos;
+  let h = `<div class="dbox-head"><div style="flex:1;min-width:0"><div class="dword">${esc(w)}</div><div class="dphon">${entry.phonetic?esc(entry.phonetic)+" · ":""}${firstPos?esc(firstPos):""}</div></div><button class="diconbtn" id="dboxPlay" title="Pronounce"><svg class="ic"><use href="#i-volume"/></svg></button><button class="diconbtn" id="dboxClose" title="Close"><svg class="ic"><use href="#i-close"/></svg></button></div>`;
+  h += `<div class="dbox-sec">`;
+  // Vietnamese meanings first — most useful for learners
+  const viList = [];
+  (entry.viMeanings||[]).forEach(m=>{ if(m.d && !viList.includes(m.d)) viList.push(m.d); });
+  if(entry.vi && !viList.includes(entry.vi)) viList.unshift(entry.vi);
+  if(viList.length) h += `<div class="dvi">${viList.slice(0,4).map(v=>`<span class="vimean">🇻🇳 ${esc(v)}</span>`).join("")}</div>`;
+  // Meanings grouped by part of speech, merged from all dictionaries
+  entry.meanings.slice(0,4).forEach(m=>{
+    if(m.pos) h += `<div class="dpos">${esc(m.pos)}</div>`;
+    (m.defs||[]).slice(0,4).forEach((d,i)=>{
+      h += `<div class="ddef"><span class="n">${i+1}.</span>${esc(d.d)}</div>`;
+      const exs = (d.exs && d.exs.length ? d.exs : (d.ex ? [{t:d.ex}] : [])).slice(0,2);
+      exs.forEach(ex=>{
+        if(ex.t) h += `<div class="dex">“${esc(ex.t)}”<span class="dexvi" data-exvi="${esc(ex.t)}"></span></div>`;
+      });
+    });
+  });
+  // Synonyms / antonyms as tappable chips
+  const syns = [], ants = [];
+  (entry.thesaurus||[]).forEach(t=>{
+    (t.syn||[]).forEach(s=>{ if(s && !syns.includes(s)) syns.push(s); });
+    (t.ant||[]).forEach(s=>{ if(s && !ants.includes(s)) ants.push(s); });
+  });
+  (entry.meanings||[]).forEach(m=>{ (m.syn||[]).forEach(s=>{ if(s && !syns.includes(s)) syns.push(s); }); });
+  if(syns.length) h += `<div class="synrow"><span class="synlbl">≈ Synonyms</span><br>${syns.slice(0,10).map(s=>`<button class="synchip" data-w="${esc(s)}">${esc(s)}</button>`).join("")}</div>`;
+  if(ants.length) h += `<div class="synrow"><span class="synlbl">≠ Antonyms</span><br>${ants.slice(0,10).map(s=>`<button class="synchip" data-w="${esc(s)}">${esc(s)}</button>`).join("")}</div>`;
+  h += `</div>`;
+  if(entry.sources && entry.sources.length)
+    h += `<div class="dfoot"><svg class="ic"><use href="#i-book"/></svg> ${entry.sources.map(s=>esc(SRC_NAMES[s]||s)).join(" · ")}</div>`;
+  body.innerHTML = h;
+  $("dboxClose").onclick = hideDictPop;
+  $("dboxPlay").onclick = ()=>{
+    if(entry.audio){ new Audio(entry.audio).play().catch(()=>speakWordBrowser(w)); }
+    else speakWordBrowser(w);
+  };
+  body.querySelectorAll(".synchip").forEach(c=>{
+    c.onclick = e=>{ e.stopPropagation(); openDict(c.dataset.w, null); };
+  });
+  translateExamples();
+}
+// Translate up to 3 examples EN->VI, best-effort, fills in place
+async function translateExamples(){
+  const spans = [...document.querySelectorAll("#dictBoxBody span[data-exvi]")].slice(0,3);
+  await Promise.all(spans.map(async sp=>{
+    const t = await translateText(sp.dataset.exvi);
+    if(t && document.body.contains(sp)) sp.textContent = t;
+  }));
+}
+/* ---------- anonymous analytics (opt-in) ---------- */
+function analyticsOn(){ return store.get("analytics", false) === true; }
+function trackLookup(word){
+  if(!analyticsOn()) return;
+  try{
+    fetch("/api/analytics", {method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({type:"lookup", word: String(word).toLowerCase().slice(0,40)})});
+  }catch(e){}
+}
+function trackScan(sents){
+  if(!analyticsOn() || !sents.length) return;
+  try{
+    const words = {};
+    sents.join(" ").toLowerCase().replace(/[^a-z\s']/g," ").split(/\s+/)
+      .forEach(w=>{ if(w.length>2) words[w]=(words[w]||0)+1; });
+    const cefr = {};
+    sents.forEach(s=>{ const c=classifyCEFR(s); if(c) cefr[c]=(cefr[c]||0)+1; });
+    fetch("/api/analytics", {method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({type:"scan", words, cefr, scans: sents.length})});
+  }catch(e){}
+}
+
+/* ---------- settings ---------- */
+$("settingsBtn").onclick = ()=>{
+  $("settingsBox").style.display = "flex"; document.body.style.overflow = "hidden";
+  document.querySelectorAll(".langBtn").forEach(b=>{
+    b.classList.toggle("primary", b.dataset.lang===uiLang);
+    b.classList.toggle("ghost", b.dataset.lang!==uiLang);
+  });
+};
+function setLang(l){
+  uiLang = l;
+  store.set("uiLang", uiLang); store.set("uiLangSet", true);
+  $("langBtn").textContent = uiLang.toUpperCase();
+  applyUIMode();
+  document.querySelectorAll(".langBtn").forEach(x=>{
+    x.classList.toggle("primary", x.dataset.lang===uiLang);
+    x.classList.toggle("ghost", x.dataset.lang!==uiLang);
+  });
+}
+$("langBtn").onclick = ()=>setLang(uiLang==="en" ? "vi" : "en");
+function applyTheme(){
+  const dark = store.get("elab_theme","light")==="dark";
+  document.body.classList.toggle("dark", dark);
+  $("themeBtn").innerHTML = `<svg class="ic"><use href="#${dark ? "i-sun" : "i-moon"}"/></svg>`;
+}
+$("themeBtn").onclick = ()=>{ store.set("elab_theme", document.body.classList.contains("dark")?"light":"dark"); applyTheme(); };
+document.addEventListener("click", e=>{
+  const b = e.target.closest(".langBtn");
+  if(b) setLang(b.dataset.lang);
+});
+$("settingsClose").onclick = ()=>{ $("settingsBox").style.display = "none"; document.body.style.overflow = ""; };
+$("settingsBox").onclick = e=>{ if(e.target===$("settingsBox")) $("settingsClose").onclick(); };
+
+/* ---------- read & learn ---------- */
+function splitSents(text){
+  return cleanOCRText(text).replace(/\s*\n\s*/g," ")
+    .split(/(?<=[.!?])\s+/)
+    .map(s=>s.trim()).filter(s=>s.length>10);
+}
+
+/* Remove browser/app UI junk: URLs, tab bars, taskbars — keep article text only */
+function cleanOCRText(text){
+  const lines = text.split("\n");
+  const kept = [];
+  for(let line of lines){
+    line = line.trim();
+    if(!line) continue;
+    if(/https?:\/\//i.test(line)) continue;                    // URLs
+    if(/\/\d{4}\/\d{2}\//.test(line)) continue;                // date paths like /2026/10/04/
+    if(/\b\w+\.(com|org|net|io|vn|edu)\b/i.test(line) && /[^\w.]/.test(line)) continue; // domains
+    if((line.match(/>/g)||[]).length >= 2) continue;           // tab bars: > A > B >
+    if(line.length < 20) continue;                            // UI fragments: X, +, end
+    const letters = (line.match(/[A-Za-z]/g)||[]).length;
+    if(letters < line.length * 0.6) continue;                 // mostly symbols
+    kept.push(line);
+  }
+  return kept.join("\n");
+}
+
+/* ---------- CEFR sentence classifier (heuristic) ---------- */
+function classifyCEFR(sent){
+  const words = sent.match(/[A-Za-z]+(?:'[a-z]+)?/g) || [];
+  if(!words.length) return null;
+  const avgLen = words.join("").length / words.length;
+  const nWords = words.length;
+  const hasSub = /\b(because|although|though|while|whereas|unless|until|since|if|when|that|which|who|whom|whose)\b/i.test(sent);
+  const hasPass = /\b(am|is|are|was|were|been|be)\s+\w+ed\b/i.test(sent);
+  const hasPerf = /\b(have|has|had)\s+\w+ed\b/i.test(sent);
+  const longRatio = words.filter(w => w.length >= 8).length / words.length;
+  let s = 0;
+  s += Math.min(nWords / 4, 5);
+  s += Math.min(Math.max(0, avgLen - 3.5) * 2, 4);
+  s += longRatio * 6;
+  s += hasSub ? 2 : 0;
+  s += hasPass ? 1.5 : 0;
+  s += hasPerf ? 1 : 0;
+  if(s < 4) return "A1";
+  if(s < 7) return "A2";
+  if(s < 10) return "B1";
+  if(s < 13) return "B2";
+  if(s < 16) return "C1";
+  return "C2";
+}
+
+/* ---------- sentence bank: app learns your level ---------- */
+let bank = []; // NEVER load from shared localStorage — per-user isolation required
+// One-time migration: clear old shared bank keys (rl_ was wrong, elab_ is the real prefix)
+try{ localStorage.removeItem("rl_bank"); localStorage.removeItem("elab_bank"); }catch(e){}
+function saveBank(){
+  bank = bank.slice(-500);
+  // Only save to server when fully authenticated (token + key)
+  // Otherwise keep in memory only — NEVER write to shared storage
+  if(authToken && userKey){ saveServerBank(); }
+}
+
+function normSent(s){
+  return s.toLowerCase().replace(/[^a-z0-9\s]/g,"").replace(/\s+/g," ").trim();
+}
+function addToBank(sentences){
+  const now = Date.now();
+  const have = new Set(bank.map(b => normSent(b.t)));
+  let added = 0;
+  sentences.forEach(s => {
+    const n = normSent(s);
+    if(n.length < 10) return;
+    // skip near-duplicates: 80%+ word overlap with existing
+    let dup = have.has(n);
+    if(!dup){
+      const words = new Set(n.split(" "));
+      for(const b of bank){
+        const bw = new Set(normSent(b.t).split(" "));
+        const inter = [...words].filter(w=>bw.has(w)).length;
+        const union = new Set([...words, ...bw]).size;
+        if(union > 0 && inter/union > 0.8){ dup = true; break; }
+      }
+    }
+    if(!dup){
+      bank.push({ t: s, cefr: classifyCEFR(s) || "B1", ts: now });
+      have.add(n);
+      added++;
+    }
+  });
+  bank = bank.slice(-500);
+  saveBank();
+  renderStats(); renderBank(); renderPath();
+  return added;
+}
+
+function bankLevel(){ // estimated level or null
+  if(!bank.length) return null;
+  const dist = {A1:0,A2:0,B1:0,B2:0,C1:0,C2:0};
+  bank.forEach(b => { if(dist[b.cefr]!==undefined) dist[b.cefr]++; });
+  const weights = {A1:1,A2:2,B1:3,B2:4,C1:5,C2:6};
+  let total = 0, sum = 0;
+  for(const lv in dist){ total += dist[lv]; sum += dist[lv]*weights[lv]; }
+  const avg = total ? sum/total : 3;
+  return avg<1.5?"A1":avg<2.5?"A2":avg<3.5?"B1":avg<4.5?"B2":avg<5.5?"C1":"C2";
+}
+function renderStats(){
+  const locked = !!(authUser && !userKey);
+  $("unlockCard").style.display = locked ? "" : "none";
+  const has = bank.length > 0;
+  $("progressDash").style.display = has ? "" : "none";
+  $("emptyBankCard").style.display = (!has && !locked) ? "" : "none";
+  if(!has) return;
+  const dist = {A1:0,A2:0,B1:0,B2:0,C1:0,C2:0};
+  bank.forEach(b => { if(dist[b.cefr]!==undefined) dist[b.cefr]++; });
+  const level = bankLevel() || "B1";
+  // stat tiles
+  $("stSent").textContent = bank.length;
+  $("stLevel").textContent = uiMode==="kid" ? kidLevel(level).icon : level;
+  const days = new Set(bank.map(b=>new Date(b.ts||Date.now()).toDateString())).size;
+  $("stDays").textContent = days;
+  const words = bank.reduce((n,b)=>n + String(b.t).split(/\s+/).length, 0);
+  $("stWords").textContent = words>999 ? (words/1000).toFixed(1)+"k" : words;
+  // profile
+  const total = bank.length;
+  $("levelEstimate").innerHTML = `Estimated reading level: <b style="color:var(--accent);font-size:20px">${uiMode==="kid"?kidLevel(level).icon+" "+kidLevel(level).name:level}</b>`;
+  const colors = {A1:"#4ade80",A2:"#a3e635",B1:"#facc15",B2:"#fb923c",C1:"#f87171",C2:"#c084fc"};
+  const lvLbl = lv => uiMode==="kid" ? kidLevel(lv).icon : lv;
+  let bars = "";
+  for(const lv of ["A1","A2","B1","B2","C1","C2"]){
+    const pct = total ? Math.round(dist[lv]/total*100) : 0;
+    bars += `<div class="row" style="margin:5px 0"><span style="width:34px;font-weight:800;font-size:14px">${lvLbl(lv)}</span><div style="flex:1;background:var(--card2);border-radius:6px;height:14px;overflow:hidden"><div style="width:${pct}%;height:100%;background:${colors[lv]};transition:width .5s"></div></div><span style="width:40px;text-align:right;font-size:13px;color:#6e6e80">${dist[lv]}</span></div>`;
+  }
+  $("levelBars").innerHTML = bars;
+}
+
+let bankQ = "", bankLv = "";
+function renderBank(){
+  if(!bank.length) return;
+  $("bankCount").textContent = bank.length;
+  // level filter options
+  const sel = $("bankFilter");
+  const cur = sel.value;
+  sel.innerHTML = `<option value="">${t("allLevels")}</option>` +
+    ["A1","A2","B1","B2","C1","C2"].map(lv=>`<option value="${lv}" ${cur===lv?"selected":""}>${uiMode==="kid"?kidLevel(lv).icon+" "+kidLevel(lv).name:lv}</option>`).join("");
+  const box = $("bankList");
+  box.innerHTML = "";
+  const q = bankQ.trim().toLowerCase();
+  [...bank].reverse().forEach((b, idx) => {
+    if(bankLv && b.cefr !== bankLv) return;
+    if(q && !String(b.t).toLowerCase().includes(q)) return;
+    const realIdx = bank.length - 1 - idx;
+    box.appendChild(makeSentenceEl(b.t, b.cefr, ()=>{
+      bank.splice(realIdx, 1); saveBank(); renderStats(); renderBank(); renderPath();
+    }));
+  });
+  if(!box.children.length) box.innerHTML = `<div class="hint">${t("noMatch")}</div>`;
+}
+$("bankSearch").oninput = e=>{ bankQ = e.target.value; renderBank(); };
+$("bankFilter").onchange = e=>{ bankLv = e.target.value; renderBank(); };
+
+$("bankClear").onclick = ()=>{
+  if(!confirm("Clear the entire sentence bank?")) return;
+  bank = []; saveBank(); renderStats(); renderBank(); renderPath();
+};
+$("unlockBtn").onclick = async ()=>{
+  const pw = $("unlockPass").value;
+  if(!pw){ toast("Enter password"); return; }
+  try{ await unlockBank(pw); $("unlockPass").value = ""; toast("Unlocked 🔓"); }
+  catch(e){ toast("Wrong password"); }
+};
+
+/* ---------- learning path from bank data ---------- */
+const LV_ORDER = ["A1","A2","B1","B2","C1","C2"];
+const LV_W = {A1:1,A2:2,B1:3,B2:4,C1:5,C2:6};
+const LV_COLOR = {A1:"#4ade80",A2:"#a3e635",B1:"#facc15",B2:"#fb923c",C1:"#f87171",C2:"#c084fc"};
+
+function renderPath(){
+  const card = $("pathCard"), box = $("pathContent");
+  if(bank.length < 5){
+    card.style.display = "";
+    box.innerHTML = `<div class="hint">📷 Scan at least ${5-bank.length} more sentence${5-bank.length>1?"s":""} and I'll build your personalized learning path.</div>`;
+    return;
+  }
+  card.style.display = "";
+  const recent = bank.slice(-30);
+  let sum = 0;
+  recent.forEach(b => sum += LV_W[b.cefr] || 3);
+  const avg = sum / recent.length;
+  const curIdx = Math.min(5, Math.max(0, Math.round(avg)-1));
+  const cur = LV_ORDER[curIdx];
+  const next = curIdx < 5 ? LV_ORDER[curIdx+1] : null;
+
+  // Progress: share of recent sentences at next level or above
+  let pct = 100, needMsg = "";
+  if(next){
+    const nw = LV_W[next];
+    const hit = recent.filter(b => (LV_W[b.cefr]||0) >= nw).length;
+    pct = Math.round(hit / recent.length * 100);
+    const need = Math.max(0, Math.ceil(recent.length*0.4) - hit);
+    needMsg = need > 0
+      ? `Read <b>${need}</b> more ${next}-level sentence${need>1?"s":""} to level up`
+      : `Ready to level up! Keep reading ${next} material.`;
+  } else {
+    needMsg = "You've reached C2 — keep challenging yourself!";
+  }
+
+  // Personalized recommendations from data
+  const recs = [];
+  const dist = {};
+  recent.forEach(b => dist[b.cefr] = (dist[b.cefr]||0)+1);
+  const curShare = (dist[cur]||0)/recent.length;
+  if(next && curShare > 0.6){
+    recs.push(`🎯 <b>Push harder:</b> ${Math.round(curShare*100)}% of what you read is ${cur}. Try ${next}-level articles (news, essays) to stretch.`);
+  }
+  // Vocabulary sophistication trend
+  const words = recent.join(" ").match(/[A-Za-z]{8,}/g) || [];
+  const avgLong = words.length / recent.length;
+  if(avgLong < 1.5){
+    recs.push(`📝 <b>Vocabulary:</b> your texts use simple words (avg ${avgLong.toFixed(1)} long words/sentence). Tap unfamiliar words to learn them.`);
+  }
+  // Consistency
+  const days = new Set(bank.map(b => new Date(b.ts).toDateString())).size;
+  if(days < 3 && bank.length >= 10){
+    recs.push(`📅 <b>Consistency:</b> you've scanned on ${days} day${days>1?"s":""}. A little every day beats cramming.`);
+  }
+  // Variety
+  const uniqStarts = new Set(recent.map(b => b.t.slice(0,20).toLowerCase())).size;
+  if(uniqStarts < recent.length * 0.7){
+    recs.push(`🔄 <b>Variety:</b> some sentences look similar. Try different topics — tech, science, stories.`);
+  }
+  if(!recs.length && next){
+    recs.push(`✅ <b>On track:</b> good mix of levels. Keep reading ${next} material to advance.`);
+  }
+
+  box.innerHTML = `
+    <div class="pathlevel">
+      <span class="pathbadge" style="background:${LV_COLOR[cur]}">${cur}</span>
+      <div style="flex:1">
+        <div style="font-weight:700">Level ${cur}${next ? ` → ${next}` : ""}</div>
+        <div class="hint">${needMsg}</div>
+      </div>
+    </div>
+    ${next ? `<div class="pathbar"><div style="width:${pct}%"></div></div>
+    <div class="hint" style="text-align:right;margin-top:4px">${pct}% to ${next}</div>` : ""}
+    <div style="margin-top:10px">${recs.map(r=>`<div class="rec">${r}</div>`).join("")}</div>
+    <div class="hint" style="margin-top:8px">Based on your last ${recent.length} sentences · ${bank.length} total</div>
+  `;
+}
+let readCanvas = null, readTessLoading = null;
+
+$("readCamera").onclick = ()=>$("readFileCam").click();
+$("readGallery").onclick = ()=>$("readFileLib").click();
+// Android: capture="environment" opens camera directly. iOS Chrome: capture is buggy,
+// so leave it off and let iOS show the native picker (Take Photo / Photo Library).
+if(!/iPad|iPhone|iPod/.test(navigator.userAgent)){
+  $("readFileCam").setAttribute("capture", "environment");
+}
+$("readFileCam").onchange = e=>handleReadFile(e.target.files[0]);
+$("readFileLib").onchange = e=>handleReadFile(e.target.files[0]);
+
+function handleReadFile(file){
+  if(!file) return;
+  const img = new Image();
+  img.onload = ()=>{
+    const MAXW = 1600;
+    const scale = Math.min(1, MAXW / img.width);
+    const c = document.createElement("canvas");
+    c.width = Math.max(1, Math.round(img.width*scale));
+    c.height = Math.max(1, Math.round(img.height*scale));
+    c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+    readCanvas = c;
+    const pv = $("readPreview");
+    pv.src = c.toDataURL("image/jpeg", 0.85);
+    pv.style.display = "block";
+    updateReadGo();
+    $("readResultCard").style.display = "none";
+    URL.revokeObjectURL(img.src);
+  };
+  img.onerror = ()=>toast("Can't read the image file");
+  img.src = URL.createObjectURL(file);
+}
+
+function loadReadTesseract(){
+  if(readTessLoading) return readTessLoading;
+  readTessLoading = new Promise((res, rej)=>{
+    if(window.Tesseract) return res();
+    const s = document.createElement("script");
+    s.src = "https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js";
+    s.onload = res;
+    s.onerror = ()=>rej(new Error("Can't download OCR engine — check connection"));
+    document.head.appendChild(s);
+  });
+  return readTessLoading;
+}
+
+async function runReadOCR(){
+  if(!readCanvas){ toast("Take or pick a photo first"); return; }
+  const btn = $("readGo"); btn.disabled = true;
+  $("readProg").style.display = "block";
+  const setP = (p, msg)=>{
+    $("readBar").style.width = Math.round(p*100)+"%";
+    if(msg) $("readStatus").textContent = msg;
+  };
+  try{
+    setP(0.03, "Downloading OCR engine (first time only)…");
+    await loadReadTesseract();
+    setP(0.08, "Starting…");
+    const worker = await Tesseract.createWorker("eng", 1, {
+      logger: m=>{
+        if(m.status==="recognizing text")
+          setP(0.1 + m.progress*0.9, "Reading… "+Math.round(m.progress*100)+"%");
+      }
+    });
+    const { data } = await worker.recognize(readCanvas);
+    await worker.terminate();
+    const text = (data.text||"").trim();
+    $("readProg").style.display = "none";
+    if(!text){ toast("No text found — try a closer, clearer shot"); return; }
+    renderReadText(text, {src:"📷"});
+    readCanvas = null; // consumed — button now follows the textarea
+    switchTab("read");
+    toast("Done! Tap a sentence or word.");
+  }catch(e){
+    $("readProg").style.display = "none";
+    toast("OCR error: "+(e.message||e));
+  }finally{ updateReadGo(); }
+};
+
+/* Reusable interactive sentence: 🔊 hear all, tap word = speak + dict */
+function makeSentenceEl(text, cefrLv, onDelete){
+  const s = text;
+  const lv = cefrLv || classifyCEFR(s) || "B1";
+  const div = document.createElement("div");
+  div.className = "rsent";
+  const body = document.createElement("div");
+  body.className = "rbody";
+  const btn = document.createElement("button");
+  btn.className = "btn ghost rplay";
+  btn.innerHTML = '<svg class="ic"><use href="#i-volume"/></svg>';
+  btn.title = "Hear sentence";
+  btn.onclick = e=>{ e.stopPropagation(); apStop(); safeSpeak(s); };
+  body.appendChild(btn);
+  const badge = document.createElement("span");
+  badge.className = "cefr " + lv;
+  badge.textContent = uiMode==="kid" ? kidLevel(lv).icon : lv;
+  badge.title = levelLabel(lv);
+  body.appendChild(badge);
+  // Build words via innerHTML (more reliable rendering than many text nodes)
+  const escS = esc(s);
+  const wordsHtml = escS.replace(/([A-Za-z]+(?:&#39;[a-z]+)?)/g, '<span class="rword">$1</span>');
+  const span = document.createElement("span");
+  span.innerHTML = wordsHtml;
+  span.querySelectorAll(".rword").forEach(w=>{
+    const raw = w.textContent;
+    w.onclick = e=>{ e.stopPropagation(); wordAudioUnlock(); openDict(raw, w, true); };
+  });
+  body.appendChild(span);
+  div.appendChild(body);
+  if(onDelete){
+    const del = document.createElement("button");
+    del.className = "btn ghost rdel";
+    del.innerHTML = '<svg class="ic"><use href="#i-close"/></svg>';
+    del.title = "Delete";
+    del.onclick = e=>{ e.stopPropagation(); onDelete(div); };
+    div.appendChild(del);
+  }
+  return div;
+}
+
+/* ---------- scan history: survive page refresh ---------- */
+let scanHistory = [];
+let curScanId = null;
+function scanHistKey(){
+  const u = authUser && authUser.email ? String(authUser.email).toLowerCase() : "guest";
+  return "scans_" + u; // stored via store → elab_ prefix, per-user isolation
+}
+function loadScanHist(){
+  scanHistory = store.get(scanHistKey(), []) || [];
+  if(!Array.isArray(scanHistory)) scanHistory = [];
+  curScanId = null;
+  renderScanHistSel();
+}
+function saveScanHist(){
+  store.set(scanHistKey(), scanHistory.slice(-10));
+}
+function renderScanHistSel(){
+  const sel = $("scanHistSel"), row = $("scanHistRow");
+  if(!sel || !row) return;
+  if(!scanHistory.length){ row.style.display = "none"; return; }
+  row.style.display = "";
+  sel.innerHTML = [...scanHistory].reverse().map(s=>{
+    const d = new Date(s.ts || Date.now());
+    const wc = String(s.text||"").split(/\s+/).filter(Boolean).length;
+    const lbl = `${s.src||"📷"} ${d.toLocaleDateString()} ${d.toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})} · ${wc} ${t("wordsU")}`;
+    return `<option value="${s.id}"${s.id===curScanId?" selected":""}>${esc(lbl)}</option>`;
+  }).join("");
+}
+function pushScanHist(text, meta){
+  meta = meta || {};
+  const last = scanHistory[scanHistory.length-1];
+  if(last && last.text === text){ curScanId = last.id; }
+  else{
+    const id = meta.id != null ? meta.id : Date.now();
+    scanHistory.push({id, text: String(text).slice(0,30000), ts: meta.ts||Date.now(), src: meta.src||"📷"});
+    scanHistory = scanHistory.slice(-10);
+    curScanId = id;
+  }
+  saveScanHist(); renderScanHistSel();
+}
+function removeScanFromHist(id){
+  scanHistory = scanHistory.filter(x=>x.id!==id);
+  curScanId = null;
+  saveScanHist(); renderScanHistSel();
+}
+function restoreLastScan(){
+  loadScanHist();
+  if(scanHistory.length){
+    const last = scanHistory[scanHistory.length-1];
+    renderReadText(last.text, {skipBank:true, silent:true, id:last.id, src:last.src, ts:last.ts});
+  }
+}
+$("scanHistSel").addEventListener("change", e=>{
+  const s = scanHistory.find(x=>String(x.id)===e.target.value);
+  if(s) renderReadText(s.text, {skipBank:true, silent:true, id:s.id, src:s.src, ts:s.ts});
+});
+
+let readData = []; // [{text, cefr}]
+let readView = "article";
+let selSentIdx = -1;
+
+let readTitle = "";
+function splitTitle(text){
+  const lines = String(text).split(/\n+/).map(s=>s.trim()).filter(Boolean);
+  if(lines.length > 1 && lines[0].length <= 60 && !/[.?!\u2026:;]$/.test(lines[0]) && lines[0].split(/\s+/).length <= 10){
+    return {title: lines[0], body: lines.slice(1).join("\n")};
+  }
+  const words = String(text).trim().split(/\s+/);
+  return {title: words.slice(0,8).join(" ") + (words.length > 8 ? "\u2026" : ""), body: String(text)};
+}
+function renderReadText(text, opts){
+  opts = opts || {};
+  const st = splitTitle(text);
+  readTitle = st.title;
+  const sents = splitSents(st.body);
+  readData = sents.map(s=>({text:s, cefr:classifyCEFR(s)||"B1"}));
+  selSentIdx = -1; hideSentBar();
+  resetPlayAllBtn();
+  curServerReadingId = opts.serverId || null;
+  renderReadView();
+  $("readResultCard").style.display = "block";
+  pushScanHist(text, opts);
+  if(opts.skipBank) return; // restored from history — bank/analytics already counted
+  // Save the article to the server library (logged-in users)
+  saveReadingToServer(text, sents);
+  // Auto-save to bank: app learns your level from what you read
+  const added = addToBank(sents);
+  if(added) toast(`Saved ${added} sentence${added>1?"s":""} to your bank 📚`);
+  // Anonymous corpus for app improvement (opt-in)
+  trackScan(sents);
+}
+
+function renderReadView(){
+  if(readView==="article") renderArticleView(); else renderCardsView();
+  $("readArticle").classList.toggle("on", readView==="article");
+  $("readSents").classList.toggle("on", readView==="cards");
+  $("viewArticle").classList.toggle("active", readView==="article");
+  $("viewCards").classList.toggle("active", readView==="cards");
+}
+
+function wordsHtml(s){
+  const escS = esc(s);
+  return escS.replace(/([A-Za-z]+(?:&#39;[a-z]+)?)/g, '<span class="rword">$1</span>');
+}
+function bindWords(container, stopProp){
+  container.querySelectorAll(".rword").forEach(w=>{
+    const raw = w.textContent;
+    w.onclick = e=>{ if(stopProp) e.stopPropagation(); wordAudioUnlock(); openDict(raw, w, true); };
+  });
+}
+
+function renderArticleView(){
+  const box = $("readArticle");
+  box.innerHTML = "";
+  if(!readData.length){ box.innerHTML = '<div class="hint">No clear sentences found.</div>'; return; }
+  // Book-page header: date + sentence/word count
+  const meta = scanHistory.find(x=>x.id===curScanId);
+  const when = meta && meta.ts ? new Date(meta.ts) : new Date();
+  const words = readData.reduce((n,d)=>n+String(d.text).split(/\s+/).filter(Boolean).length, 0);
+  const head = document.createElement("div");
+  head.className = "bookhead";
+  head.innerHTML = `<div class="btitle"><button class="bplay" id="artTitlePlay" title="${t("listen")}"><svg viewBox="0 0 24 24" width="20" height="20" fill="#fff"><path d="M8 5.5v13l11-6.5z"/></svg></button>${esc(readTitle || t("readingRoom"))}</div><div class="bsub">${esc(when.toLocaleDateString())} · ${readData.length} ${t("sentencesU")} · ${words} ${t("wordsU")}</div>`;
+  box.appendChild(head);
+  const tp = $("artTitlePlay");
+  if(tp) tp.onclick = e=>{ e.stopPropagation(); openArticlePlayer(); };
+  // Group into paragraphs (~4 sentences each) like book paragraphs
+  let para = null, count = 0;
+  readData.forEach((d, idx)=>{
+    if(count % 4 === 0){
+      para = document.createElement("p");
+      para.className = "apara";
+      box.appendChild(para);
+    }
+    count++;
+    const sp = document.createElement("span");
+    sp.className = "asent";
+    sp.dataset.idx = idx;
+    sp.innerHTML = wordsHtml(d.text);
+    bindWords(sp, true);
+    sp.onclick = ()=>selectArticleSent(idx);
+    para.appendChild(sp);
+    para.appendChild(document.createTextNode(" "));
+  });
+}
+
+function renderCardsView(){
+  const box = $("readSents");
+  box.innerHTML = "";
+  if(!readData.length){ box.innerHTML = '<div class="hint">No clear sentences found.</div>'; return; }
+  readData.forEach((d, idx)=>{
+    box.appendChild(makeSentenceEl(d.text, d.cefr, (div)=>{
+      div.remove();
+      readData.splice(idx, 1);
+      if(!readData.length){ $("readResultCard").style.display = "none"; }
+    }));
+  });
+}
+
+function selectArticleSent(idx){
+  document.querySelectorAll(".asent.sel").forEach(x=>x.classList.remove("sel"));
+  selSentIdx = idx;
+  const sp = document.querySelector(`.asent[data-idx="${idx}"]`);
+  if(!sp) return;
+  sp.classList.add("sel");
+  const d = readData[idx];
+  $("sentBarLevel").innerHTML = `<span class="cefr ${d.cefr}">${uiMode==="kid"?kidLevel(d.cefr).icon:d.cefr}</span>`;
+  $("sentBarText").textContent = d.text.length>60 ? d.text.slice(0,60)+"…" : d.text;
+  $("sentBar").classList.add("show");
+}
+function hideSentBar(){
+  $("sentBar").classList.remove("show");
+  document.querySelectorAll(".asent.sel").forEach(x=>x.classList.remove("sel"));
+  selSentIdx = -1;
+}
+$("sentBarPlay").onclick = ()=>{ if(selSentIdx>=0){ apStop(); safeSpeak(readData[selSentIdx].text); } };
+$("sentBarClose").onclick = hideSentBar;
+$("viewArticle").onclick = ()=>{ readView="article"; hideSentBar(); hideDictPop(); renderReadView(); };
+$("viewCards").onclick = ()=>{ readView="cards"; hideSentBar(); hideDictPop(); renderReadView(); };
+
+$("readClear").onclick = ()=>{
+  if(!confirm(t("clearScanQ"))) return;
+  hideDictPop();
+  if(curScanId != null) removeScanFromHist(curScanId);
+  readData = []; selSentIdx = -1; curScanId = null; hideSentBar();
+  $("readSents").innerHTML = "";
+  $("readArticle").innerHTML = "";
+  $("readTextInput").value = "";
+  $("readResultCard").style.display = "none";
+  $("readPreview").style.display = "none";
+  readCanvas = null;
+  updateReadGo();
+};
+
+/* One button for both inputs: photo (OCR) or pasted text */
+function updateReadGo(){
+  const btn = $("readGo");
+  const hasImg = !!readCanvas;
+  const hasText = $("readTextInput").value.trim().length > 0;
+  btn.disabled = !(hasImg || hasText);
+  const lbl = $("readGoLbl"), use = $("readGoUse");
+  if(hasImg){ lbl.textContent = t("readGoPhoto"); use.setAttribute("href", "#i-camera"); }
+  else if(hasText){ lbl.textContent = t("readGoText"); use.setAttribute("href", "#i-doc"); }
+  else { lbl.textContent = t("readGoIdle"); use.setAttribute("href", "#i-book"); }
+}
+$("readTextInput").addEventListener("input", updateReadGo);
+$("readGo").onclick = ()=>{
+  if(readCanvas){ runReadOCR(); return; }
+  const txt = $("readTextInput").value.trim();
+  if(!txt){ toast(t("readGoNeed")); return; }
+  renderReadText(txt, {src:"✍️"});
+  switchTab("read");
+};
+
+/* ---------- i18n + kid/adult UI modes ---------- */
+const I18N = {
+  en: {
+    appName: "Read & Learn", scan: "Scan", progress: "My progress", admin: "Admin",
+    snapPage: "Snap a page",
+    snapHint: "Take a photo of any English text → tap 🔊 to hear, tap any word for dictionary.",
+    takePhoto: "Take photo", gallery: "Gallery", readText: "Read text",
+    readGoPhoto: "Read from photo", readGoText: "Process text", readGoIdle: "Create reading",
+    readGoNeed: "Take a photo or paste text first",
+    pasteText: "Or paste text instead", pastePlaceholder: "Paste English text here…", processText: "Process text",
+    tapLearn: "Tap to listen & learn",
+    readHint: "🔊 tap sentence to select · tap <b>word</b> = pronunciation + dictionary",
+    viewArticleT: "Article view", viewCardsT: "Cards view",
+    allLevels: "All levels", noMatch: "No sentences match.",
+    stSentences: "Sentences", stLevel: "Level", stDays: "Days", stWords: "Words read",
+    profileTitle: "Reading profile", pathTitle: "Learning path", bankTitle: "Sentence bank",
+    tapHint: "🔊 hear sentence · tap word = pronunciation + dictionary",
+    readingProfile: "Your reading profile",
+    learningPath: "Your learning path",
+    sentenceBank: "Sentence bank",
+    bankHint: "🔊 hear sentence · tap word = pronunciation + dictionary",
+    bankEmpty: "Scan some pages and your sentences will appear here.",
+    authBrand: "Read & Learn", authTagline: "Your personal English library",
+    welcomeBack: "Welcome" ,
+    emailPh: "Email address", passPh: "Password (min 4 chars)",
+    dobLbl: "Birth date (chooses kid/adult interface)",
+    login: "Login", createAccount: "Create account",
+    gptWelcomeBack: "Welcome back", gptCreateTitle: "Create your account",
+    gptContinue: "Continue", gptNoAccount: "Don't have an account?", gptSignUp: "Sign up",
+    gptHaveAccount: "Already have an account?", gptLogIn: "Log in",
+    gptTerms: "Terms of Use", gptPrivacy: "Privacy Policy",
+    longAudioConfirm: "This article is ~{c} characters (~{m} min of audio) and will use ~{c} ElevenLabs credits. Continue?",
+    read: "Read", audio: "Audio", explore: "Explore",
+    savedToAudio: "Saved to Audio library",
+    audioLibTitle: "Audio library",
+    audioLibHint: "Tap \u25B6\uFE0F to replay a saved MP3 \u2014 no ElevenLabs credits used.",
+    noAudio: "No saved audio yet. Tap \u25B6\uFE0F on a reading to generate its MP3 and save it here.",
+    guestAudioHint: "Saved on this device. Log in to keep them in your cloud library.",
+    
+    bankEncrypted: "Your sentence bank is encrypted with your password. Server can't read it.",
+    lockedTitle: "Locked.", lockedHint: "Your data is still here — enter your password to unlock it.",
+    unlockData: "Unlock my data", adminPanel: "Admin panel", logout: "Logout",
+    readingRoom: "Reading room", sentencesU: "sentences", wordsU: "words",
+    noServerReadings: "No saved readings yet — scan or paste some text and it will appear here.",
+    listen: "Listen", open: "Open", delete: "Delete",
+    myReadings: "My readings", myReadingsHint: "Articles saved in your account — listen or download anytime.",
+    clearScanQ: "Clear this reading (removes it from history)?",
+    unlockTitle: "Unlock your data",
+    unlockHint: "Your session was restored but your data is encrypted. Enter your password to unlock it.",
+    level: "Level", to: "→",
+  },
+  vi: {
+    appName: "Đọc & Học", scan: "Chụp", progress: "Tiến bộ", admin: "Quản trị",
+    snapPage: "Chụp một trang",
+    snapHint: "Chụp ảnh chữ tiếng Anh → bấm 🔊 để nghe, bấm vào từ để tra từ điển.",
+    takePhoto: "Chụp ảnh", gallery: "Thư viện", readText: "Đọc chữ",
+    readGoPhoto: "Đọc từ ảnh", readGoText: "Xử lý text", readGoIdle: "Tạo bài đọc",
+    readGoNeed: "Chụp ảnh hoặc dán text trước",
+    pasteText: "Hoặc dán text thay thế", pastePlaceholder: "Dán đoạn tiếng Anh vào đây…", processText: "Xử lý text",
+    tapLearn: "Bấm để nghe & học",
+    readHint: "🔊 bấm câu để chọn · bấm <b>từ</b> = phát âm + từ điển",
+    viewArticleT: "Xem dạng bài đọc", viewCardsT: "Xem dạng thẻ",
+    allLevels: "Mọi trình độ", noMatch: "Không có câu phù hợp.",
+    stSentences: "Số câu", stLevel: "Trình độ", stDays: "Số ngày", stWords: "Từ đã đọc",
+    profileTitle: "Hồ sơ đọc", pathTitle: "Lộ trình học", bankTitle: "Kho câu",
+    tapHint: "🔊 nghe câu · bấm vào từ = phát âm + từ điển",
+    readingProfile: "Hồ sơ đọc của bạn",
+    learningPath: "Lộ trình học",
+    sentenceBank: "Kho câu",
+    bankHint: "🔊 nghe câu · bấm vào từ = phát âm + từ điển",
+    bankEmpty: "Chụp vài trang, câu của bạn sẽ hiện ở đây.",
+    authBrand: "Đọc & Học", authTagline: "Thư viện tiếng Anh của bạn",
+    welcomeBack: "Chào mừng", 
+    emailPh: "Địa chỉ email", passPh: "Mật khẩu (tối thiểu 4 ký tự)",
+    dobLbl: "Ngày sinh (chọn giao diện trẻ em/người lớn)",
+    login: "Đăng nhập", createAccount: "Tạo tài khoản",
+    gptWelcomeBack: "Chào mừng trở lại", gptCreateTitle: "Tạo tài khoản của bạn",
+    gptContinue: "Tiếp tục", gptNoAccount: "Chưa có tài khoản?", gptSignUp: "Đăng ký",
+    gptHaveAccount: "Đã có tài khoản?", gptLogIn: "Đăng nhập",
+    gptTerms: "Điều khoản sử dụng", gptPrivacy: "Chính sách riêng tư",
+    longAudioConfirm: "Bài này khoảng {c} ký tự (~{m} phút audio), sẽ tốn ~{c} credits ElevenLabs. Tiếp tục tạo?",
+    read: "\u0110\u1ECDc", audio: "Nghe l\u1EA1i", explore: "Kh\u00E1m ph\u00E1",
+    savedToAudio: "\u0110\u00E3 l\u01B0u v\u00E0o th\u01B0 vi\u1EC7n Nghe l\u1EA1i",
+    audioLibTitle: "Th\u01B0 vi\u1EC7n nghe l\u1EA1i",
+    audioLibHint: "B\u1EA5m \u25B6\uFE0F \u0111\u1EC3 nghe l\u1EA1i MP3 \u0111\u00E3 l\u01B0u \u2014 kh\u00F4ng t\u1ED1n credits ElevenLabs.",
+    noAudio: "Ch\u01B0a c\u00F3 audio n\u00E0o. B\u1EA5m \u25B6\uFE0F \u1EDF b\u00E0i \u0111\u1ECDc \u0111\u1EC3 t\u1EA1o MP3 v\u00E0 l\u01B0u v\u00E0o \u0111\u00E2y.",
+    guestAudioHint: "L\u01B0u tr\u00EAn m\u00E1y n\u00E0y. \u0110\u0103ng nh\u1EADp \u0111\u1EC3 l\u01B0u l\u00EAn th\u01B0 vi\u1EC7n \u0111\u00E1m m\u00E2y.",
+    
+    bankEncrypted: "Kho câu của bạn được mã hoá bằng mật khẩu. Server không đọc được.",
+    lockedTitle: "Đã khoá.", lockedHint: "Dữ liệu vẫn còn đây — nhập mật khẩu để mở khoá.",
+    unlockData: "Mở khoá dữ liệu", adminPanel: "Bảng quản trị", logout: "Đăng xuất",
+    readingRoom: "Góc đọc sách", sentencesU: "câu", wordsU: "từ",
+    noServerReadings: "Chưa có bài nào — quét hoặc dán text, bài sẽ tự lưu ở đây.",
+    listen: "Nghe", open: "Mở", delete: "Xoá",
+    myReadings: "Bài đọc của tôi", myReadingsHint: "Các bài đã lưu trong tài khoản — nghe hoặc tải về bất cứ lúc nào.",
+    clearScanQ: "Xoá bài đọc này (xoá khỏi lịch sử)?",
+    unlockTitle: "Mở khoá dữ liệu",
+    unlockHint: "Phiên đăng nhập đã khôi phục nhưng dữ liệu được mã hoá. Nhập mật khẩu để mở khoá.",
+    level: "Cấp", to: "→",
+  }
+};
+const KID_LEVELS = [
+  {cefr:"A1", icon:"🌱", vi:"Mầm", en:"Sprout"},
+  {cefr:"A2", icon:"🌿", vi:"Chồi", en:"Seedling"},
+  {cefr:"B1", icon:"🌳", vi:"Cây", en:"Tree"},
+  {cefr:"B2", icon:"⭐", vi:"Ngôi sao", en:"Star"},
+  {cefr:"C1", icon:"💎", vi:"Kim cương", en:"Diamond"},
+  {cefr:"C2", icon:"👑", vi:"Vua", en:"Master"},
+];
+function kidLevel(cefr){
+  return KID_LEVELS.find(k=>k.cefr===cefr) || KID_LEVELS[2];
+}
+let uiLang = store.get("uiLang", "en"); // default Vietnamese
+let uiMode = "adult"; // "kid" | "adult", set from authUser.ageGroup
+function t(key){
+  return (I18N[uiLang] && I18N[uiLang][key]) || I18N.en[key] || key;
+}
+function levelLabel(cefr){
+  if(uiMode === "kid"){
+    const k = kidLevel(cefr);
+    return `${k.icon} ${uiLang==="vi"?k.vi:k.en}`;
+  }
+  return cefr;
+}
+function applyUIMode(){
+  document.body.classList.toggle("kid-mode", uiMode==="kid");
+  $("mascot").style.display = uiMode==="kid" ? "" : "none";
+  document.querySelector("header h1").innerHTML = '<svg class="ic ic-h"><use href="#i-camera"/></svg> '+esc(t("appName"));
+
+  $("menuTitleLbl").textContent = t("explore");
+  $("menuRead").textContent = t("read");
+  $("menuAudio").textContent = t("audio");
+  $("menuBooks").textContent = uiLang==="vi" ? "S\u00E1ch" : "Books";
+  $("menuProgress").textContent = t("progress");
+  $("audioLibTitle").textContent = t("audioLibTitle");
+
+  $("snapTitleLbl").textContent = t("snapPage");
+  $("snapHint").innerHTML = t("snapHint");
+  $("readCameraLbl").textContent = t("takePhoto");
+  $("readGalleryLbl").textContent = t("gallery");
+  updateReadGo();
+  $("pasteLblTxt").textContent = t("pasteText");
+  $("readTextInput").placeholder = t("pastePlaceholder");
+  $("readResultTitleLbl").textContent = t("tapLearn");
+  $("srvReadTitle").textContent = t("myReadings");
+  $("srvReadHint").textContent = t("myReadingsHint");
+  $("readResultHint").innerHTML = t("readHint");
+  $("viewArticle").title = t("viewArticleT");
+  $("viewCards").title = t("viewCardsT");
+  $("stSentLbl").textContent = t("stSentences");
+  $("stLevelLbl").textContent = t("stLevel");
+  $("stDaysLbl").textContent = t("stDays");
+  $("stWordsLbl").textContent = t("stWords");
+  $("profileTitle").textContent = t("profileTitle");
+  $("pathTitle").textContent = t("pathTitle");
+  $("bankTitle").textContent = t("bankTitle");
+  $("unlockTitle").textContent = t("unlockTitle");
+  $("unlockHint").textContent = t("unlockHint");
+  renderStats(); renderBank(); renderPath();
+}
+
+/* ---------- server auth + RBAC ---------- */
+const enc = new TextEncoder(), dec = new TextDecoder();
+async function deriveKey(password, salt){
+  const km = await crypto.subtle.importKey("raw", enc.encode(password), "PBKDF2", false, ["deriveKey"]);
+  return crypto.subtle.deriveKey(
+    {name:"PBKDF2", salt, iterations:100000, hash:"SHA-256"},
+    km, {name:"AES-GCM", length:256}, false, ["encrypt","decrypt"]
+  );
+}
+async function encryptData(key, obj){
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = await crypto.subtle.encrypt({name:"AES-GCM", iv}, key, enc.encode(JSON.stringify(obj)));
+  return {iv: btoa(String.fromCharCode(...iv)), data: btoa(String.fromCharCode(...new Uint8Array(ct)))};
+}
+async function decryptData(key, payload){
+  const iv = Uint8Array.from(atob(payload.iv), c=>c.charCodeAt(0));
+  const ct = Uint8Array.from(atob(payload.data), c=>c.charCodeAt(0));
+  const pt = await crypto.subtle.decrypt({name:"AES-GCM", iv}, key, ct);
+  return JSON.parse(dec.decode(pt));
+}
+
+let authToken = store.get("authToken", null);
+let authUser = store.get("authUser", null); // {email, role, ageGroup}
+let userKey = null; // bank encryption key (from password, RAM only)
+
+function authHeaders(){
+  return authToken ? {"Authorization": "Bearer "+authToken} : {};
+}
+async function apiCall(path, opts={}){
+  const r = await fetch(path, {
+    ...opts,
+    headers: {"Content-Type":"application/json", ...authHeaders(), ...(opts.headers||{})},
+  });
+  const j = await r.json().catch(()=>({}));
+  if(!r.ok) throw new Error(j.error || ("HTTP "+r.status));
+  return j;
+}
+async function serverRegister(email, password, dob){
+  const j = await apiCall("/api/auth/register", {method:"POST", body: JSON.stringify({email, password, dob})});
+  return j;
+}
+async function serverLogin(email, password){
+  const j = await apiCall("/api/auth/login", {method:"POST", body: JSON.stringify({email, password})});
+  authToken = j.token; authUser = {email: j.email, role: j.role, ageGroup: j.ageGroup||"adult"};
+  store.set("authToken", authToken); store.set("authUser", authUser);
+  uiMode = authUser.ageGroup;
+  applyUIMode();
+  const salt = enc.encode("bank-"+j.email.toLowerCase());
+  userKey = await deriveKey(password, salt);
+  bank = await loadServerBank();
+  loadServerReadings();
+  return authUser;
+}
+async function serverLogout(){
+  try{ await apiCall("/api/auth/logout", {method:"POST"}); }catch(e){}
+  authToken = null; authUser = null; userKey = null; bank = [];
+  store.set("authToken", null); store.set("authUser", null);
+  // Clear the scan view, then load this (guest) profile's scan history
+  readData = []; curScanId = null; selSentIdx = -1; hideSentBar();
+  $("readSents").innerHTML = ""; $("readArticle").innerHTML = "";
+  $("readResultCard").style.display = "none"; $("readPreview").style.display = "none";
+  readCanvas = null; updateReadGo();
+  loadScanHist();
+  resetPlayAllBtn(); curServerReadingId = null; loadServerReadings();
+  renderStats(); renderBank(); renderPath(); updateAuthUI();
+}
+async function loadServerBank(){
+  if(!authToken || !userKey) return [];
+  try{
+    const j = await apiCall("/api/bank");
+    if(!j.bank) return [];
+    return await decryptData(userKey, j.bank);
+  }catch(e){ return []; }
+}
+// Unlock after session restore: re-derive key from password (throws on wrong password)
+async function unlockBank(password){
+  if(!authUser || !authToken) throw new Error("No session");
+  const salt = enc.encode("bank-"+authUser.email.toLowerCase());
+  const key = await deriveKey(password, salt);
+  const j = await apiCall("/api/bank");
+  let data = [];
+  if(j.bank) data = await decryptData(key, j.bank); // wrong password → throws
+  userKey = key; bank = data;
+  renderStats(); renderBank(); renderPath(); updateAuthUI();
+}
+async function saveServerBank(){
+  if(!authToken || !userKey) return;
+  try{
+    const payload = await encryptData(userKey, bank.slice(-500));
+    await apiCall("/api/bank", {method:"POST", body: JSON.stringify({bank: payload})});
+  }catch(e){}
+}
+function updateAuthUI(){
+  const btn = $("userBtn");
+  if(authUser){
+    // Locked session (restored without key) shows 🔒 so it never looks like an empty account
+    const ic = !userKey ? "i-lock" : (authUser.role === "admin" ? "i-crown" : "i-user");
+    btn.innerHTML = `<svg class="ic"><use href="#${ic}"/></svg>`;
+    btn.title = authUser.email + " (" + authUser.role + (userKey ? "" : ", locked") + ")";
+  }else{
+    btn.innerHTML = `<svg class="ic"><use href="#i-key"/></svg>`; btn.title = "Login";
+  }
+  // Show/hide admin tab
+  const at = $("tabBtnAdmin");
+  if(at) at.style.display = authUser && authUser.role === "admin" ? "" : "none";
+}
+
+/* ---------- auth UI ---------- */
+function openAuth(){ renderAuthMain(); $("authBox").style.display = "flex"; }
+function closeAuth(){ $("authBox").style.display = "none"; }
+$("userBtn").onclick = openAuth;
+function openAuth(){ renderAuthMain(); $("authBox").style.display = "flex"; }
+function closeAuth(){ $("authBox").style.display = "none"; }
+$("userBtn").onclick = openAuth;
+$("authBox").addEventListener("click", e=>{ if(e.target.id==="authBox") closeAuth(); });
+
+let authMode = "login"; // "login" | "reg"
+function renderAuthMain(){
+  const body = $("authBody");
+  const closeBtn = `<button class="gptX" onclick="closeAuth()" title="Close"><svg class="ic"><use href="#i-close"/></svg></button>`;
+  let h = "";
+  if(authUser){
+    const isAdmin = authUser.role === "admin";
+    h += `${closeBtn}<div class="gptWrap">
+      <div class="gptAvatarBig">${esc(authUser.email[0].toUpperCase())}</div>
+      <h1 class="gptH1" style="font-size:21px;word-break:break-all">${esc(authUser.email)}</h1>
+      <p class="gptHint">${isAdmin?"<svg class='ic'><use href='#i-crown'/></svg> ADMINISTRATOR":"<svg class='ic'><use href='#i-book'/></svg> LEARNER"} · <svg class='ic'><use href='#i-lock'/></svg> ${t("bankEncrypted")}</p>`;
+    if(!userKey){
+      h += `<p class="gptHint"><svg class="ic"><use href="#i-lock"/></svg> <b>${t("lockedTitle")}</b> ${t("lockedHint")}</p>
+        <label class="gptLabel">${t("passPh")}</label>
+        <input class="gptInput" id="authUnlockPass" type="password" autocomplete="current-password">
+        <button class="gptBtn" id="authUnlockBtn"><svg class="ic"><use href="#i-unlock"/></svg> ${t("unlockData")}</button>`;
+    }
+    if(isAdmin) h += `<button class="gptBtnGhost" id="authGoAdmin"><svg class="ic"><use href="#i-crown"/></svg> ${t("adminPanel")}</button>`;
+    h += `<button class="gptBtnGhost" id="authLogout"><svg class="ic"><use href="#i-logout"/></svg> ${t("logout")}</button>
+      <div class="gptFoot"><a>${t("gptTerms")}</a> · <a>${t("gptPrivacy")}</a></div>
+    </div>`;
+  }else{
+    const isReg = authMode === "reg";
+    h += `${closeBtn}<div class="gptWrap">
+      <div class="gptLogo"><svg class="ic"><use href="#i-book"/></svg></div>
+      <h1 class="gptH1">${isReg?t("gptCreateTitle"):t("gptWelcomeBack")}</h1>
+      <label class="gptLabel">${t("emailPh")}</label>
+      <input class="gptInput" id="authEmail" type="email" autocomplete="email" autocapitalize="off">
+      <label class="gptLabel">${t("passPh")}</label>
+      <input class="gptInput" id="authPass" type="password" autocomplete="current-password">
+      <div id="regDobWrap" style="display:none">
+        <label class="gptLabel">🎂 ${t("dobLbl")}</label>
+        <input class="gptInput" id="authDob" type="date" max="${new Date().toISOString().slice(0,10)}">
+      </div>
+      <button class="gptBtn" id="gptContinue">${t("gptContinue")}</button>
+      <div class="gptSwitch">${isReg?t("gptHaveAccount"):t("gptNoAccount")} <a id="gptSwitchMode">${isReg?t("gptLogIn"):t("gptSignUp")}</a></div>
+      <div class="gptFoot"><a>${t("gptTerms")}</a> · <a>${t("gptPrivacy")}</a></div>
+    </div>`;
+  }
+  body.innerHTML = h;
+  if(authUser){
+    if($("authUnlockBtn")) $("authUnlockBtn").onclick = async ()=>{
+      const pw = $("authUnlockPass").value;
+      if(!pw){ toast("Enter password"); return; }
+      try{ await unlockBank(pw); renderAuthMain(); toast("Unlocked 🔓"); }
+      catch(e){ toast("Wrong password"); }
+    };
+    $("authLogout").onclick = async ()=>{ await serverLogout(); renderAuthMain(); toast("Logged out"); };
+    if($("authGoAdmin")) $("authGoAdmin").onclick = ()=>{ closeAuth(); switchTab("admin"); };
+  }else{
+    const isReg = authMode === "reg";
+    const doAuth = async ()=>{
+      const em = $("authEmail").value.trim().toLowerCase(), pw = $("authPass").value;
+      if(!em || !pw){ toast("Enter email and password"); return; }
+      if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(em)){ toast("Enter a valid email address"); return; }
+      try{
+        if(isReg){
+          const dob = $("authDob").value;
+          if(!dob){ toast("Pick your birth date 🎂"); $("regDobWrap").style.display = "block"; return; }
+          const j = await serverRegister(em, pw, dob);
+          toast(j.role==="admin" ? "Welcome, Admin! 👑" : j.ageGroup==="kid" ? "Chào bé! 🦉" : "Account created! 🎉");
+        }
+        await serverLogin(em, pw);
+        renderStats(); renderBank(); renderPath(); updateAuthUI();
+        restoreLastScan(); // show this account's last scan (survives refresh)
+        closeAuth(); toast(`Welcome!`);
+        switchTab("scan");
+      }catch(e){ toast(e.message); }
+    };
+    $("gptContinue").onclick = ()=>{
+      if(!isReg){ doAuth(); return; }
+      // register: show DOB on first tap, register on second
+      const w = $("regDobWrap");
+      if(w.style.display === "none"){ w.style.display = "block"; toast("Pick birth date, then tap Continue again 🎂"); }
+      else doAuth();
+    };
+    $("gptSwitchMode").onclick = ()=>{ authMode = isReg ? "login" : "reg"; renderAuthMain(); };
+    $("authPass").onkeydown = e=>{ if(e.key==="Enter") doAuth(); };
+  }
+}
+
+/* ---------- admin panel ---------- */
+async function renderAdmin(){
+  const box = $("adminContent");
+  if(!authUser || authUser.role !== "admin"){
+    box.innerHTML = '<div class="hint">Admin only.</div>'; return;
+  }
+  box.innerHTML = '<div class="hint">Loading…</div>';
+  try{
+    const [usersJ, insightsJ] = await Promise.all([
+      apiCall("/api/admin/users"),
+      fetch("/api/insights").then(r=>r.json()),
+    ]);
+    let h = `<h4 style="margin:12px 0 8px"><svg class="ic ic-h"><use href="#i-user"/></svg> Users (${usersJ.users.length})</h4>`;
+    usersJ.users.forEach(u=>{
+      const isSelf = u.email === authUser.email;
+      h += `<div class="profileitem" style="cursor:default">
+        <div class="profileavatar">${esc(u.email[0].toUpperCase())}</div>
+        <div style="flex:1"><div style="font-weight:700;word-break:break-all">${esc(u.email)} ${u.role==="admin"?"<svg class='ic'><use href='#i-crown'/></svg>":""}</div>
+        <div class="hint">${new Date(u.created).toLocaleDateString()}</div></div>
+        ${!isSelf ? `<span class="hint" style="margin-right:8px">${u.role}</span>
+        <button class="btn ghost delUser" data-user="${esc(u.email)}" style="padding:8px 10px"><svg class="ic"><use href="#i-trash"/></svg></button>` : '<span class="hint">you</span>'}
+      </div>`;
+    });
+    h += `<h4 style="margin:16px 0 8px"><svg class="ic ic-h"><use href="#i-chart"/></svg> Corpus stats</h4>
+      <div class="hint">Learners: <b>${insightsJ.learners||0}</b> · Scans: <b>${insightsJ.scans||0}</b></div>
+      <div class="hint">CEFR: ${Object.entries(insightsJ.cefr||{}).map(([k,v])=>k+":"+v).join(" ")}</div>
+      <div class="hint" style="margin-top:8px">Top looked up: <b>${(insightsJ.topLookups||[]).slice(0,8).map(x=>x.w).join(", ")||"—"}</b></div>`;
+    box.innerHTML = h;
+    box.querySelectorAll(".delUser").forEach(btn=>{
+      btn.onclick = async ()=>{
+        if(!confirm("Delete "+btn.dataset.user+"?")) return;
+        try{
+          await fetch("/api/admin/users/"+encodeURIComponent(btn.dataset.user), {method:"DELETE", headers: authHeaders()});
+          toast("Deleted"); renderAdmin();
+        }catch(e){ toast("Error"); }
+      };
+    });
+  }catch(e){
+    box.innerHTML = '<div class="hint">Error: '+esc(e.message)+'</div>';
+  }
+}
+
+/* ---------- books: upload PDF, auto-split lessons ---------- */
+$("bookUploadBtn").onclick = ()=>{ if(!authToken){ toast("Login first"); openAuth(); return; } $("bookFile").click(); };
+$("bookFile").onchange = async ()=>{
+  const f = $("bookFile").files[0];
+  if(!f) return;
+  if(f.size > 50*1024*1024){ toast("Max 50MB"); return; }
+  const title = prompt("Book title:", f.name.replace(/\.pdf$/i,"")) || "Untitled";
+  toast("Uploading…");
+  try{
+    const buf = await f.arrayBuffer();
+    const r = await fetch("/api/books/upload", {
+      method: "POST",
+      headers: {...authHeaders(), "Content-Type": "application/pdf", "X-Book-Title": encodeURIComponent(title)},
+      body: buf,
+    });
+    const j = await r.json();
+    if(!r.ok) throw new Error(j.error||"Upload failed");
+    toast("Uploaded! Processing… 📚");
+    renderBookList();
+  }catch(e){ toast(e.message); }
+  $("bookFile").value = "";
+};
+async function renderBookList(){
+  const box = $("bookList");
+  $("bookDetailCard").style.display = "none";
+  $("chapterCard").style.display = "none";
+  if(!authToken){ box.innerHTML = '<div class="hint">Login to see your books.</div>'; return; }
+  box.innerHTML = '<div class="hint">Loading…</div>';
+  try{
+    const j = await apiCall("/api/books");
+    if(!j.books.length){ box.innerHTML = '<div class="hint">No books yet. Upload a PDF to start.</div>'; return; }
+    box.innerHTML = "";
+    j.books.forEach(b=>{
+      const d = document.createElement("div");
+      d.className = "profileitem";
+      d.innerHTML = `<div class="profileavatar"><svg class="ic big"><use href="#i-book"/></svg></div>
+        <div style="flex:1"><div style="font-weight:700">${esc(b.title)}</div>
+        <div class="hint">${b.status==="processing" ? "⏳ Processing…" : b.chapters+" lessons"}</div></div>
+        <span style="font-size:20px">›</span>`;
+      if(b.status !== "processing") d.onclick = ()=>openBook(b.id, b.title);
+      box.appendChild(d);
+    });
+  }catch(e){ box.innerHTML = '<div class="hint">Error: '+esc(e.message)+'</div>'; }
+}
+async function openBook(id, title){
+  $("bookDetailTitleTxt").textContent = title;
+  $("bookDetailCard").style.display = "";
+  const box = $("bookChapters");
+  box.innerHTML = '<div class="hint">Loading…</div>';
+  try{
+    const j = await apiCall("/api/books/"+id);
+    box.innerHTML = "";
+    j.chapters.forEach((c, i)=>{
+      const d = document.createElement("div");
+      d.className = "profileitem";
+      const lv = c.cefr || "B1";
+      d.innerHTML = `<span class="cefr ${lv}">${uiMode==="kid"?kidLevel(lv).icon:lv}</span>
+        <div style="flex:1"><div style="font-weight:700">${esc(c.title)}</div>
+        <div class="hint">${c.sentences.length} sentences</div></div>
+        <span style="font-size:20px">›</span>`;
+      d.onclick = ()=>openChapter(c);
+      box.appendChild(d);
+    });
+  }catch(e){ box.innerHTML = '<div class="hint">Error: '+esc(e.message)+'</div>'; }
+}
+function openChapter(c){
+  $("chapterTitleTxt").textContent = c.title;
+  $("chapterCard").style.display = "";
+  const box = $("chapterSents");
+  box.innerHTML = "";
+  c.sentences.forEach(s=>{
+    box.appendChild(makeSentenceEl(s, c.cefr, null));
+  });
+  window.scrollTo(0,0);
+}
+$("bookBack").onclick = ()=>{ $("bookDetailCard").style.display = "none"; };
+$("chapterBack").onclick = ()=>{ $("chapterCard").style.display = "none"; };
+
+/* ---------- tabs ---------- */
+function switchTab(name){
+  hideDictPop();
+  try{ const ap=$("audioLibPlayer"); if(ap){ ap.pause(); } }catch(e){}
+  ["scan","read","audio","books","progress","admin"].forEach(n=>{
+    $("tab"+n[0].toUpperCase()+n.slice(1)).classList.toggle("active", name===n);
+    const btn = $("tabBtn"+n[0].toUpperCase()+n.slice(1));
+    if(btn) btn.classList.toggle("active", name===n);
+  });
+  if(name==="admin") renderAdmin();
+  if(name==="books") renderBookList();
+  if(name==="audio") renderAudioLib();
+  window.scrollTo(0,0);
+}
+$("homeBtn").onclick = ()=>switchTab("scan");
+document.querySelectorAll(".menutile").forEach(b=>{ b.onclick = ()=>switchTab(b.dataset.go); });
+
+/* ---------- init ---------- */
+(function init(){
+  // Fresh start (2026-10-05): wipe all local data from the previous test round
+  if(store.get("dataV", 0) < 2){
+    try{ Object.keys(localStorage).filter(k=>k.startsWith("elab_")).forEach(k=>localStorage.removeItem(k)); }catch(e){}
+    store.set("dataV", 2);
+  }
+  const savedModel = store.get("model", "eleven_turbo_v2_5");
+  $("modelSel").value = savedModel;
+  loadVoices();
+  updateAuthUI();
+  // Restore UI mode from saved session
+  if(authUser && authUser.ageGroup) uiMode = authUser.ageGroup;
+  $("langBtn").textContent = uiLang.toUpperCase();
+  applyTheme(); initArticlePlayer();
+  applyUIMode();
+  // Try to restore session
+  (async ()=>{
+    if(authToken){
+      try{
+        const me = await apiCall("/api/auth/me");
+        authUser = {email: me.email, role: me.role, ageGroup: me.ageGroup||"adult"};
+        uiMode = authUser.ageGroup; applyUIMode();
+        store.set("authUser", authUser);
+        updateAuthUI();
+        loadServerReadings();
+        // Bank stays encrypted until the user unlocks with their password —
+        // the 🔒 icon + unlock card make this visible instead of looking empty
+      }catch(e){
+        authToken = null; authUser = null;
+        store.set("authToken", null); store.set("authUser", null);
+        updateAuthUI();
+      }
+    }
+    renderStats(); renderBank(); renderPath();
+    restoreLastScan(); // last scan comes back after refresh
+    if(!authUser) setTimeout(()=>openAuth(), 800);
+  })();
+  if("serviceWorker" in navigator){
+    navigator.serviceWorker.register("sw.js").catch(()=>{});
+  }
+})();
+</script>
+</body>
+</html>

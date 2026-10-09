@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin - Pocket Personal</title>
+<link rel="stylesheet" href="/design-system.css">
+<style>
+.pp-topbar{display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--pp-card);border-bottom:1px solid var(--pp-line);position:sticky;top:0;z-index:10}
+.pp-topbar h1{font-size:18px;margin:0;flex:1}
+.pp-iconbtn{background:none;border:none;padding:8px;border-radius:12px;cursor:pointer;color:var(--pp-text)}
+.pp-iconbtn .ic{width:22px;height:22px}
+#main{max-width:768px;margin:0 auto;padding:16px}
+.card{background:var(--pp-card);border:1px solid var(--pp-line);border-radius:16px;padding:16px;margin-bottom:12px}
+.hint{font-size:13px;color:var(--pp-mut)}
+.btn{background:var(--pp-accent);color:#fff;border:none;border-radius:12px;padding:8px 14px;font-size:14px;cursor:pointer}
+.btn.ghost{background:var(--pp-bg);color:var(--pp-text);border:1px solid var(--pp-line)}
+.btn.danger{background:#dc2626}
+.userrow{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--pp-line)}
+.userrow:last-child{border-bottom:none}
+</style>
+</head>
+<body>
+<svg style="display:none" xmlns="http://www.w3.org/2000/svg">
+<symbol id="i-back" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></symbol>
+</svg>
+<header class="pp-topbar">
+  <a href="/hub" class="pp-iconbtn" aria-label="Hub"><svg class="ic"><use href="#i-back"/></svg></a>
+  <h1>Admin</h1>
+</header>
+<main id="main">
+  <div class="card">
+    <h3 style="margin:0 0 12px">Users</h3>
+    <div id="userList"><div class="hint">Loading...</div></div>
+  </div>
+  <div class="card">
+    <h3 style="margin:0 0 12px">Pending Books</h3>
+    <div id="bookList"><div class="hint">Loading...</div></div>
+  </div>
+</main>
+<script>
+(function(){
+  function $(id){ return document.getElementById(id); }
+  var token=null;
+  try{ token=localStorage.getItem("elab_authToken")||localStorage.getItem("elab_token"); }catch(e){}
+  function authH(){ return {"Authorization":"Bearer "+token}; }
+  function loadUsers(){
+    var box=$("userList");
+    fetch("/api/admin/users",{headers:authH()}).then(function(r){
+      if(r.status===403){ box.innerHTML='<div class="hint">Access denied.</div>'; return null; }
+      return r.json();
+    }).then(function(data){
+      if(!data) return;
+      var users=data.users||[];
+      if(!users.length){ box.innerHTML='<div class="hint">No users.</div>'; return; }
+      box.innerHTML=users.map(function(u){
+        return '<div class="userrow"><div style="flex:1"><div style="font-weight:600">'+u.email+'</div>'
+          +'<div class="hint">'+(u.plan||"free")+'</div></div>'
+          +'<select data-email="'+u.email+'" class="planSel" style="padding:6px;border-radius:8px;border:1px solid var(--pp-line)">'
+          +["free","hocsinh","sinhvien","dilam","nhadautu"].map(function(p){
+            return '<option value="'+p+'"'+(u.plan===p?" selected":"")+'>'+p+'</option>';
+          }).join("")+'</select></div>';
+      }).join("");
+      box.querySelectorAll(".planSel").forEach(function(sel){
+        sel.addEventListener("change", function(){
+          fetch("/api/admin/set-plan",{method:"POST",headers:Object.assign({"Content-Type":"application/json"},authH()),body:JSON.stringify({email:sel.dataset.email,plan:sel.value})});
+        });
+      });
+    }).catch(function(){ box.innerHTML='<div class="hint">Load failed.</div>'; });
+  }
+  function loadBooks(){
+    var box=$("bookList");
+    fetch("/api/admin/books/pending",{headers:authH()}).then(function(r){
+      if(!r.ok) return null;
+      return r.json();
+    }).then(function(data){
+      if(!data) return;
+      var books=data.books||[];
+      if(!books.length){ box.innerHTML='<div class="hint">No pending books.</div>'; return; }
+      box.innerHTML=books.map(function(b){
+        return '<div class="userrow"><div style="flex:1"><div style="font-weight:600">'+(b.title||"Untitled")+'</div>'
+          +'<div class="hint">'+(b.user||"")+'</div></div>'
+          +'<button class="btn" data-id="'+b.id+'" data-user="'+b.user+'" data-title="'+(b.title||"")+'">Approve</button></div>';
+      }).join("");
+      box.querySelectorAll("button").forEach(function(btn){
+        btn.addEventListener("click", function(){
+          fetch("/api/admin/books/approve",{method:"POST",headers:Object.assign({"Content-Type":"application/json"},authH()),body:JSON.stringify({bookId:btn.dataset.id,user:btn.dataset.user,title:btn.dataset.title})}).then(function(){ loadBooks(); });
+        });
+      });
+    }).catch(function(){ box.innerHTML='<div class="hint">Load failed.</div>'; });
+  }
+  if(!token){
+    $("userList").innerHTML='<div class="hint">Please log in.</div>';
+    $("bookList").innerHTML='<div class="hint">Please log in.</div>';
+  }else{
+    loadUsers();
+    loadBooks();
+  }
+})();
+</script>
+</body>
+</html>

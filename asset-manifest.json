@@ -1,0 +1,30 @@
+{
+  "build_id": "20261009044747",
+  "built_at": "2026-10-09T04:47:47.957467+00:00",
+  "assets": {
+    "design-system.css": "design-system.79e89eb7.css",
+    "js/core/api.js": "js/core/api.cdcbb80a.js",
+    "js/core/dom.js": "js/core/dom.2786fbbf.js",
+    "js/core/i18n.js": "js/core/i18n.86e20cbc.js",
+    "js/core/router.js": "js/core/router.3fa76db8.js",
+    "js/core/state.js": "js/core/state.87ed2ddb.js",
+    "js/core/utils.js": "js/core/utils.055c0e01.js",
+    "js/features/analytics.js": "js/features/analytics.c6cdd4e0.js",
+    "js/features/audio.js": "js/features/audio.45518fd9.js",
+    "js/features/auth.js": "js/features/auth.37c3c694.js",
+    "js/features/bank.js": "js/features/bank.250c084a.js",
+    "js/features/billing.js": "js/features/billing.e4cb0a02.js",
+    "js/features/books.js": "js/features/books.d05cbcce.js",
+    "js/features/dict.js": "js/features/dict.e4092403.js",
+    "js/features/read.js": "js/features/read.f0b3a78c.js",
+    "js/features/scan.js": "js/features/scan.871eab4e.js",
+    "js/features/sentence.js": "js/features/sentence.8b061468.js",
+    "js/features/settings.js": "js/features/settings.33201d7d.js",
+    "js/features/stock.js": "js/features/stock.453ec238.js",
+    "js/features/tts.js": "js/features/tts.ad12f5d3.js",
+    "js/features/vocab.js": "js/features/vocab.08394134.js",
+    "js/lang-dropdown.js": "js/lang-dropdown.b6cc6ccc.js",
+    "js/main.js": "js/main.747cbd17.js",
+    "js/vendor/lightweight-charts.js": "js/vendor/lightweight-charts.bcdca2a5.js"
+  }
+}

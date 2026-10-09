@@ -1,0 +1,726 @@
+export default {
+  async fetch(request, env) {
+    const url = new URL(request.url);
+    // Force HTTPS: redirect plain-HTTP requests (fixes "not secure" warning in browsers)
+    let _scheme = url.protocol;
+    try { const _v = request.headers.get("CF-Visitor"); if (_v) _scheme = JSON.parse(_v).scheme + ":"; } catch (e) {}
+    if (_scheme === "http:") { url.protocol = "https:"; return Response.redirect(url.toString(), 301); }
+    if (url.pathname === "/api/tts" && request.method === "POST") return handleTTS(request, env);
+    if (url.pathname === "/api/voices" && request.method === "GET") return handleVoices(env);
+    if (url.pathname === "/api/quota" && request.method === "GET") return handleQuota(env);
+    if (url.pathname === "/api/translate" && request.method === "POST") return handleTranslate(request, env);
+    if (url.pathname === "/api/dict" && request.method === "GET") return handleDict(url, env);
+    if (url.pathname === "/api/analytics" && request.method === "POST") return handleAnalytics(request, env);
+    if (url.pathname === "/api/insights" && request.method === "GET") return handleInsights(url, env);
+    if (url.pathname === "/api/auth/register" && request.method === "POST") return handleRegister(request, env);
+    if (url.pathname === "/api/auth/login" && request.method === "POST") return handleLogin(request, env);
+    if (url.pathname === "/api/auth/logout" && request.method === "POST") return handleLogout(request, env);
+    if (url.pathname === "/api/auth/me" && request.method === "GET") return handleMe(request, env);
+    if (url.pathname === "/api/bank" && request.method === "GET") return handleBankGet(request, env);
+    if (url.pathname === "/api/bank" && request.method === "POST") return handleBankPost(request, env);
+    if (url.pathname === "/api/readings" && request.method === "GET") return handleReadingsList(request, env);
+    if (url.pathname === "/api/readings" && request.method === "POST") return handleReadingsCreate(request, env);
+    if (url.pathname.startsWith("/api/readings/") && request.method === "GET") return handleReadingGet(request, env);
+    if (url.pathname.startsWith("/api/readings/") && request.method === "DELETE") return handleReadingDelete(request, env);
+    if (url.pathname.startsWith("/api/readings/") && request.method === "PUT") return handleReadingAudioPut(request, env);
+    if (url.pathname === "/api/admin/users" && request.method === "GET") return handleAdminUsers(request, env);
+    if (url.pathname === "/api/admin/role" && request.method === "POST") return handleAdminRole(request, env);
+    if (url.pathname.startsWith("/api/admin/users/") && request.method === "DELETE") return handleAdminDelete(request, env);
+    if (url.pathname === "/api/books/upload" && request.method === "POST") return handleBookUpload(request, env);
+    if (url.pathname === "/api/books" && request.method === "GET") return handleBookList(request, env);
+    if (url.pathname.startsWith("/api/books/") && request.method === "GET") return handleBookGet(request, env);
+    if (url.pathname === "/api/books/shared" && request.method === "GET") return handleBookShared(request, env);
+    if (url.pathname === "/api/books/result" && request.method === "POST") return handleBookResult(request, env);
+    return env.ASSETS.fetch(request);
+  }
+};
+const rateMap = new Map();
+function checkRate(ip) {
+  const now = Date.now();
+  let rec = rateMap.get(ip);
+  if (!rec || now > rec.reset) rec = { count: 0, reset: now + 86400000 };
+  rec.count++;
+  rateMap.set(ip, rec);
+  if (rateMap.size > 2000) for (const [k, v] of rateMap) if (now > v.reset) rateMap.delete(k);
+  return rec.count <= 300;
+}
+function jerr(msg, status) {
+  return new Response(JSON.stringify({ error: msg }), { status, headers: { "Content-Type": "application/json" } });
+}
+async function handleTTS(request, env) {
+  const ip = request.headers.get("cf-connecting-ip") || "x";
+  if (!checkRate(ip)) return jerr("Rate limit exceeded (300/day)", 429);
+  const key = env.ELEVENLABS_API_KEY;
+  if (!key) return jerr("TTS not configured", 503);
+  let b;
+  try { b = await request.json(); } catch (e) { return jerr("Invalid JSON", 400); }
+  const text = (b.text || "").slice(0, 5000), voice_id = b.voice_id || "", model_id = b.model_id || "eleven_multilingual_v2";
+  if (!text || !voice_id) return jerr("Missing text/voice_id", 400);
+  const r = await fetch("https://api.elevenlabs.io/v1/text-to-speech/" + voice_id, {
+    method: "POST",
+    headers: { "xi-api-key": key, "Content-Type": "application/json" },
+    body: JSON.stringify({ text, model_id })
+  });
+  if (!r.ok) return jerr("TTS provider error", r.status);
+  const audio = await r.arrayBuffer();
+  return new Response(audio, { headers: { "Content-Type": "audio/mpeg", "Cache-Control": "no-store" } });
+}
+async function handleVoices(env) {
+  const key = env.ELEVENLABS_API_KEY;
+  if (!key) return jerr("TTS not configured", 503);
+  const r = await fetch("https://api.elevenlabs.io/v1/voices", { headers: { "xi-api-key": key } });
+  if (!r.ok) return jerr("Voice list error", r.status);
+  const j = await r.json();
+  const voices = (j.voices || []).map(v => ({ voice_id: v.voice_id, name: v.name, labels: v.labels }));
+  return new Response(JSON.stringify({ voices }), { headers: { "Content-Type": "application/json" } });
+}
+async function handleQuota(env) {
+  const key = env.ELEVENLABS_API_KEY;
+  if (!key) return jerr("TTS not configured", 503);
+  const r = await fetch("https://api.elevenlabs.io/v1/user", { headers: { "xi-api-key": key } });
+  if (!r.ok) return jerr("Quota error", r.status);
+  const j = await r.json();
+  return new Response(JSON.stringify({ subscription: j.subscription || {} }), { headers: { "Content-Type": "application/json" } });
+}
+/* ---------- translate proxy: same unofficial Google endpoint the app already
+   used client-side, moved server-side so ad-blockers can't break the UI ---------- */
+const translateCache = new Map(); // "target|text" -> {text, ts}
+async function handleTranslate(request, env){
+  const ip = request.headers.get("cf-connecting-ip") || "x";
+  if(!checkRate(ip)) return jerr("Rate limit exceeded (300/day)", 429);
+  let b;
+  try{ b = await request.json(); }catch(e){ return jerr("Invalid JSON", 400); }
+  const text = String(b.text||"").slice(0, 500).trim();
+  const target = String(b.target||"vi").slice(0, 5);
+  if(!text) return jerr("Empty text", 400);
+  const ck = target+"|"+text;
+  const c = translateCache.get(ck);
+  if(c && Date.now()-c.ts < 86400000)
+    return new Response(JSON.stringify({text:c.text}), {headers:{"Content-Type":"application/json"}});
+  const url = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl="
+    + encodeURIComponent(target) + "&dt=t&q=" + encodeURIComponent(text);
+  try{
+    const r = await fetchTimeout(url, 8000, {headers:{"User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"}});
+    if(!r.ok) return jerr("Translate upstream error", 502);
+    const j = await r.json();
+    const t = (j[0] && j[0][0] && j[0][0][0] || "").trim();
+    translateCache.set(ck, {text:t, ts:Date.now()});
+    if(translateCache.size > 2000){ const k = translateCache.keys().next().value; translateCache.delete(k); }
+    return new Response(JSON.stringify({text:t}), {headers:{"Content-Type":"application/json"}});
+  }catch(e){ return jerr("Translate failed", 502); }
+}
+/* ---------- fullstack dictionary: multi-source with fallback ---------- */
+const dictCache = new Map(); // word -> {data, ts}
+function fetchTimeout(url, ms, opts={}){
+  const ctl = new AbortController();
+  const t = setTimeout(()=>ctl.abort(), ms);
+  return fetch(url, {...opts, signal: ctl.signal}).finally(()=>clearTimeout(t));
+}
+function stripHtml(s){
+  return (s||"").replace(/<[^>]*>/g,"").replace(/&amp;/g,"&").replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&quot;/g,'"').replace(/&#39;/g,"'").trim();
+}
+async function handleDict(url, env){
+  const word = (url.searchParams.get("word")||"").trim().toLowerCase();
+  if(!word || !/^[a-z'-]{1,40}$/.test(word)) return jerr("Invalid word", 400);
+  const cached = dictCache.get(word);
+  if(cached && Date.now() - cached.ts < 86400000) {
+    return new Response(JSON.stringify(cached.data), { headers: { "Content-Type": "application/json", "X-Cache": "hit" } });
+  }
+  // Multi-source aggregator (2026-10-05): race ALL sources in parallel, merge results.
+  // Free (no key): Wiktionary, wiktapi.dev EN, wiktapi.dev VI
+  // Key-based (env.MW_KEY, env.WORDSAPI_KEY): Merriam-Webster, WordsAPI - skipped if no key
+  const UA = { "User-Agent": "EnglishLab/1.0 (https://lethanhdong.one)" };
+  const results = await Promise.allSettled([
+    // 1. Wiktionary (free)
+    (async ()=>{
+      const r = await fetchTimeout("https://en.wiktionary.org/api/rest_v1/page/definition/"+encodeURIComponent(word), 6000, {headers: UA});
+      if(!r.ok) throw new Error("wikt "+r.status);
+      return {src:"wiktionary", data: await r.json()};
+    })(),
+    // 2. wiktapi.dev EN (free)
+    (async ()=>{
+      const r = await fetchTimeout("https://api.wiktapi.dev/v1/en/word/"+encodeURIComponent(word)+"/definitions?lang=en", 6000, {headers: UA});
+      if(!r.ok) throw new Error("wiktapi "+r.status);
+      return {src:"wiktapi", data: await r.json()};
+    })(),
+    // 3. wiktapi.dev VI definitions (free)
+    (async ()=>{
+      const r = await fetchTimeout("https://api.wiktapi.dev/v1/vi/word/"+encodeURIComponent(word)+"/definitions?lang=en", 6000, {headers: UA});
+      if(!r.ok) throw new Error("wiktapi-vi "+r.status);
+      return {src:"wiktapi-vi", data: await r.json()};
+    })(),
+    // 4. Merriam-Webster Learner's Dictionary (env.MW_KEY)
+    (async ()=>{
+      if(!env.MW_KEY) throw new Error("no mw key");
+      const r = await fetchTimeout("https://www.dictionaryapi.com/api/v3/references/learners/json/"+encodeURIComponent(word)+"?key="+env.MW_KEY, 6000, {headers: UA});
+      if(!r.ok) throw new Error("mw "+r.status);
+      return {src:"mw", data: await r.json()};
+    })(),
+    // 4b. Merriam-Webster Intermediate Thesaurus (env.MW_THES_KEY) - synonyms/antonyms
+    (async ()=>{
+      if(!env.MW_THES_KEY) throw new Error("no mw thes key");
+      const r = await fetchTimeout("https://www.dictionaryapi.com/api/v3/references/ithesaurus/json/"+encodeURIComponent(word)+"?key="+env.MW_THES_KEY, 6000, {headers: UA});
+      if(!r.ok) throw new Error("mw-thes "+r.status);
+      return {src:"mw-thes", data: await r.json()};
+    })(),
+    // 5. WordsAPI via RapidAPI (needs env.WORDSAPI_KEY)
+    (async ()=>{
+      if(!env.WORDSAPI_KEY) throw new Error("no wordsapi key");
+      const r = await fetchTimeout("https://wordsapiv1.p.rapidapi.com/words/"+encodeURIComponent(word), 6000, {
+        headers: {"X-RapidAPI-Key": env.WORDSAPI_KEY, "X-RapidAPI-Host": "wordsapiv1.p.rapidapi.com", ...UA}
+      });
+      if(!r.ok) throw new Error("wordsapi "+r.status);
+      return {src:"wordsapi", data: await r.json()};
+    })(),
+  ]);
+  const ok = results.filter(x=>x.status==="fulfilled").map(x=>x.value);
+
+  let out = { word, phonetic:"", audio:"", meanings:[], sources:[] };
+  const seenDefs = new Set();
+  const addMeaning = (pos, d, exs)=>{
+    const txt = String(d||"").replace(/\s+/g," ").trim().slice(0,300);
+    if(!txt || txt.length<3) return;
+    const key = txt.toLowerCase().slice(0,60);
+    if(seenDefs.has(key)) return;
+    seenDefs.add(key);
+    let m = out.meanings.find(m=>m.pos===(pos||""));
+    if(!m){ m = {pos: pos||"", defs:[]}; out.meanings.push(m); }
+    if(m.defs.length<4) m.defs.push({d: txt, exs: (exs||[]).map(e=>({t:String(e).slice(0,200)})).slice(0,2)});
+  };
+  function mwAudioUrl(file){
+    if(!file) return "";
+    const sub = file.slice(0,3)==="bix" ? "bix" : file.slice(0,2)==="gg" ? "gg" : /^[a-z]/i.test(file[0]||"") ? file[0].toLowerCase() : "number";
+    return "https://media.merriam-webster.com/audio/prons/en/us/mp3/"+sub+"/"+file+".mp3";
+  }
+  // Parse in quality order: MW > wiktapi > wiktionary > wordsapi
+  const bySrc = s => ok.find(x=>x.src===s);
+  const mw = bySrc("mw"), wikt = bySrc("wiktapi"), wik = bySrc("wiktionary"), wapi = bySrc("wordsapi"), wvi = bySrc("wiktapi-vi");
+  if(mw){
+    out.sources.push("merriam-webster");
+    try{
+      for(const e of (mw.data||[]).slice(0,4)){
+        if(typeof e !== "object" || !e) continue;
+        const pos = e.fl || "";
+        const prs0 = e.hwi && e.hwi.prs && e.hwi.prs[0];
+        if(!out.phonetic && prs0 && (prs0.ipa || prs0.mw)) out.phonetic = prs0.ipa || prs0.mw;
+        if(!out.audio && prs0 && prs0.sound && prs0.sound.audio) out.audio = mwAudioUrl(prs0.sound.audio);
+        for(const sd of (e.shortdef||[]).slice(0,4)) addMeaning(pos, sd, []);
+      }
+    }catch(e){}
+  }
+  const mthes = bySrc("mw-thes");
+  if(mthes){
+    out.sources.push("mw-thesaurus");
+    // collect {wd} words under a given list key (syn_list / ant_list) anywhere in sseq
+    const collectWds = (node, key, arr)=>{
+      if(!node) return;
+      if(Array.isArray(node)){ node.forEach(n=>collectWds(n,key,arr)); return; }
+      if(typeof node !== "object") return;
+      if(node[key] && Array.isArray(node[key])){
+        const pull = x=>{
+          if(Array.isArray(x)){ x.forEach(pull); return; }
+          if(x && typeof x.wd === "string"){
+            const c = x.wd.replace(/\*/g,"").trim();
+            if(c && !arr.includes(c)) arr.push(c);
+          }
+        };
+        node[key].forEach(pull);
+        return;
+      }
+      Object.values(node).forEach(v=>collectWds(v,key,arr));
+    };
+    try{
+      for(const e of (mthes.data||[]).slice(0,2)){
+        if(typeof e !== "object" || !e) continue;
+        const syns = [], ants = [];
+        (e.def||[]).forEach(d=>{
+          collectWds(d.sseq, "syn_list", syns);
+          collectWds(d.sseq, "ant_list", ants);
+        });
+        if(syns.length || ants.length){
+          if(!out.thesaurus) out.thesaurus = [];
+          out.thesaurus.push({syn: syns.slice(0,10), ant: ants.slice(0,10)});
+        }
+        // thesaurus shortdef can also add meanings
+        for(const sd of (e.shortdef||[]).slice(0,2)) addMeaning(e.fl||"", sd, []);
+      }
+    }catch(e){}
+  }
+  if(wikt){
+    out.sources.push("wiktapi");
+    try{
+      for(const d of (wikt.data.definitions||[]).slice(0,4)){
+        for(const s of (d.senses||[]).slice(0,3)){
+          const exs = (s.examples||[]).map(x=>x.text).filter(Boolean).slice(0,2);
+          for(const g of (s.glosses||[]).slice(0,2))
+            addMeaning(d.pos||"", g, exs);
+        }
+      }
+    }catch(e){}
+  }
+  if(wik){
+    out.sources.push("wiktionary");
+    try{
+      for(const e of (wik.data.en||[]).slice(0,4)){
+        for(const d of (e.definitions||[]).slice(0,3)){
+          const txt = stripHtml(d.definition||"");
+          if(txt) addMeaning(e.partOfSpeech||"", txt, []);
+        }
+      }
+    }catch(e){}
+  }
+  if(wapi){
+    out.sources.push("wordsapi");
+    try{
+      const d = wapi.data||{};
+      if(!out.phonetic && d.pronunciation){
+        out.phonetic = typeof d.pronunciation === "string" ? d.pronunciation : (d.pronunciation.all||"");
+      }
+      for(const r of (d.results||[]).slice(0,4)){
+        addMeaning(r.partOfSpeech||"", r.definition||"", (r.examples||[]).slice(0,2));
+        // synonyms as extra value
+        if(r.synonyms && r.synonyms.length && out.meanings.length){
+          const m0 = out.meanings[0];
+          if(!m0.syn) m0.syn = [...new Set(r.synonyms)].slice(0,6);
+        }
+      }
+    }catch(e){}
+  }
+  // VI definitions from wiktapi-vi
+  let viDefs = [];
+  if(wvi){
+    try{
+      (wvi.data.definitions||[]).forEach(d=>{
+        (d.senses||[]).forEach(s=>{
+          (s.glosses||[]).slice(0,2).forEach(g=>{
+            if(g && viDefs.length<4) viDefs.push({pos: d.pos||"", d: String(g).slice(0,200)});
+          });
+        });
+      });
+    }catch(e){}
+  }
+  if(!out.meanings.length) return jerr("Not found", 404);
+  if(viDefs.length) out.viMeanings = viDefs;
+  dictCache.set(word, {data: out, ts: Date.now()});
+  if(dictCache.size > 2000){ const k = dictCache.keys().next().value; dictCache.delete(k); }
+  return new Response(JSON.stringify(out), { headers: { "Content-Type": "application/json", "X-Cache": "miss" } });
+}
+/* ---------- server auth + RBAC (R2-backed) ---------- */
+// Account DB (separate R2 bucket "english-lab-auth", binding AUTHDB):
+//   users/{email}.json {email, salt, hash, role, created}
+//   sessions/{token}.json {email, exp}
+//   bank/{email}.json (encrypted blob, server can't read)
+// Content DB (bucket "english-lab-data", binding DATA): books, uploads, jobs, analytics
+const te = new TextEncoder();
+async function pbkdf2Hash(password, saltB64){
+  const salt = Uint8Array.from(atob(saltB64), c=>c.charCodeAt(0));
+  const km = await crypto.subtle.importKey("raw", te.encode(password), "PBKDF2", false, ["deriveBits"]);
+  const bits = await crypto.subtle.deriveBits({name:"PBKDF2", salt, iterations:100000, hash:"SHA-256"}, km, 256);
+  return btoa(String.fromCharCode(...new Uint8Array(bits)));
+}
+function randToken(n=32){
+  const b = crypto.getRandomValues(new Uint8Array(n));
+  return [...b].map(x=>x.toString(16).padStart(2,"0")).join("");
+}
+async function getSession(request, env){
+  const auth = request.headers.get("Authorization") || "";
+  const m = auth.match(/^Bearer (.+)$/);
+  if(!m) return null;
+  try{
+    const obj = await env.AUTHDB.get("sessions/"+m[1]+".json");
+    if(!obj) return null;
+    const s = await obj.json();
+    if(s.exp < Date.now()){ await env.AUTHDB.delete("sessions/"+m[1]+".json"); return null; }
+    return s; // {email, exp, token}
+  }catch(e){ return null; }
+}
+async function getUser(env, email){
+  try{
+    const obj = await env.AUTHDB.get("users/"+String(email).toLowerCase()+".json");
+    return obj ? await obj.json() : null;
+  }catch(e){ return null; }
+}
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+async function handleRegister(request, env){
+  let d; try{ d = await request.json(); }catch(e){ return jerr("Bad JSON", 400); }
+  const email = String(d.email||"").trim().toLowerCase().slice(0,80);
+  const pw = String(d.password||"");
+  const dob = String(d.dob||""); // YYYY-MM-DD
+  if(!EMAIL_RE.test(email)) return jerr("Enter a valid email address", 400);
+  if(pw.length < 4) return jerr("Password min 4 chars", 400);
+  // Validate DOB and calculate age group
+  let ageGroup = "adult";
+  if(dob){
+    const m = dob.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if(!m) return jerr("Invalid birth date", 400);
+    const birth = new Date(+m[1], +m[2]-1, +m[3]);
+    if(isNaN(birth.getTime()) || birth > new Date()) return jerr("Invalid birth date", 400);
+    const age = Math.floor((Date.now() - birth.getTime()) / 31557600000);
+    if(age < 0 || age > 120) return jerr("Invalid birth date", 400);
+    ageGroup = age < 18 ? "kid" : "adult";
+  }
+  if(await getUser(env, email)) return jerr("Email already registered", 409);
+  // First user becomes admin
+  const list = await env.AUTHDB.list({prefix:"users/"});
+  const role = list.objects.length === 0 ? "admin" : "user";
+  const salt = btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(16))));
+  const hash = await pbkdf2Hash(pw, salt);
+  await env.AUTHDB.put("users/"+email+".json", JSON.stringify({
+    email, salt, hash, role, dob: dob||null, ageGroup, created: Date.now()
+  }), {httpMetadata:{contentType:"application/json"}});
+  return new Response(JSON.stringify({ok:true, role, ageGroup, email}), {headers:{"Content-Type":"application/json"}});
+}
+async function handleLogin(request, env){
+  let d; try{ d = await request.json(); }catch(e){ return jerr("Bad JSON", 400); }
+  const email = String(d.email||"").trim().toLowerCase();
+  const u = await getUser(env, email);
+  if(!u) return jerr("Invalid credentials", 401);
+  const hash = await pbkdf2Hash(String(d.password||""), u.salt);
+  if(hash !== u.hash) return jerr("Invalid credentials", 401);
+  const token = randToken();
+  await env.AUTHDB.put("sessions/"+token+".json", JSON.stringify({
+    email: u.email, exp: Date.now()+30*86400000, token
+  }), {httpMetadata:{contentType:"application/json"}});
+  return new Response(JSON.stringify({token, email: u.email, role: u.role, ageGroup: u.ageGroup||"adult"}), {headers:{"Content-Type":"application/json"}});
+}
+async function handleLogout(request, env){
+  const s = await getSession(request, env);
+  if(s) await env.AUTHDB.delete("sessions/"+s.token+".json");
+  return new Response(JSON.stringify({ok:true}), {headers:{"Content-Type":"application/json"}});
+}
+/* ---------- book upload + processing pipeline ---------- */
+// Flow: POST /api/books/upload (PDF) -> R2 uploads/{user}/{id}.pdf
+//   VM cron processes -> R2 books/{user}/{id}.json {title, chapters:[{title, sentences, cefr}]}
+//   Vocab/stats auto-merged into shared corpus (no opt-in per owner decision)
+async function handleBookUpload(request, env){
+  const s = await getSession(request, env);
+  if(!s) return jerr("Not logged in", 401);
+  const ct = request.headers.get("content-type") || "";
+  if(!ct.includes("application/pdf")) return jerr("PDF only", 400);
+  const buf = await request.arrayBuffer();
+  if(buf.byteLength > 50*1024*1024) return jerr("Max 50MB", 413);
+  if(buf.byteLength < 100) return jerr("Empty file", 400);
+  const bookId = randToken(16);
+  const title = (request.headers.get("x-book-title") || "Untitled").slice(0,100);
+  const key = `uploads/${s.email}/${bookId}.pdf`;
+  await env.DATA.put(key, buf, {
+    httpMetadata: {contentType: "application/pdf"},
+    customMetadata: {title, uploader: s.email, ts: String(Date.now())},
+  });
+  // Create job marker
+  await env.DATA.put(`jobs/${bookId}.json`, JSON.stringify({
+    bookId, user: s.email, title, status: "pending", ts: Date.now()
+  }), {httpMetadata:{contentType:"application/json"}});
+  return new Response(JSON.stringify({ok:true, bookId, title}), {headers:{"Content-Type":"application/json"}});
+}
+async function handleBookList(request, env){
+  const s = await getSession(request, env);
+  if(!s) return jerr("Not logged in", 401);
+  const list = await env.DATA.list({prefix: `books/${s.email}/`});
+  const books = [];
+  for(const o of list.objects){
+    if(!o.key.endsWith(".json")) continue;
+    try{
+      const obj = await env.DATA.get(o.key);
+      const b = await obj.json();
+      books.push({id: o.key.split("/").pop().replace(".json",""), title: b.title, chapters: b.chapters.length, ts: b.ts, status: b.status});
+    }catch(e){}
+  }
+  // Also include pending uploads
+  const jobs = await env.DATA.list({prefix: "jobs/"});
+  for(const o of jobs.objects){
+    try{
+      const obj = await env.DATA.get(o.key);
+      const j = await obj.json();
+      if(j.user === s.email && j.status === "pending"){
+        books.push({id: j.bookId, title: j.title, chapters: 0, ts: j.ts, status: "processing"});
+      }
+    }catch(e){}
+  }
+  books.sort((a,b)=>b.ts-a.ts);
+  return new Response(JSON.stringify({books}), {headers:{"Content-Type":"application/json"}});
+}
+async function handleBookGet(request, env){
+  const s = await getSession(request, env);
+  if(!s) return jerr("Not logged in", 401);
+  const id = request.url.split("/").pop().split("?")[0];
+  if(!/^[a-f0-9]{32}$/.test(id)) return jerr("Invalid id", 400);
+  try{
+    const obj = await env.DATA.get(`books/${s.email}/${id}.json`);
+    if(!obj) return jerr("Not found", 404);
+    return new Response(await obj.text(), {headers:{"Content-Type":"application/json"}});
+  }catch(e){ return jerr("Read error", 500); }
+}
+async function handleBookShared(request, env){
+  // Shared library: books admin has published
+  const list = await env.DATA.list({prefix: "shared/"});
+  const books = [];
+  for(const o of list.objects){
+    if(!o.key.endsWith(".json")) continue;
+    try{
+      const obj = await env.DATA.get(o.key);
+      const b = await obj.json();
+      books.push({id: o.key.split("/").pop().replace(".json",""), title: b.title, chapters: b.chapters.length, ts: b.ts});
+    }catch(e){}
+  }
+  return new Response(JSON.stringify({books}), {headers:{"Content-Type":"application/json"}});
+}
+async function handleBookResult(request, env){
+  // VM processor posts results here (protected by secret)
+  const secret = request.headers.get("x-processor-secret");
+  if(secret !== env.PROCESSOR_SECRET) return jerr("Forbidden", 403);
+  let d; try{ d = await request.json(); }catch(e){ return jerr("Bad JSON", 400); }
+  const {bookId, user, book} = d;
+  if(!bookId || !user || !book) return jerr("Missing fields", 400);
+  await env.DATA.put(`books/${user}/${bookId}.json`, JSON.stringify(book), {
+    httpMetadata: {contentType: "application/json"}
+  });
+  await env.DATA.put(`jobs/${bookId}.json`, JSON.stringify({bookId, user, status: "done", ts: Date.now()}), {
+    httpMetadata: {contentType: "application/json"}
+  });
+  // Auto-merge vocab into shared corpus (per owner: no opt-in)
+  try{
+    const corpus = await loadCorpus(env);
+    const words = d.words || {};
+    for(const w in words){
+      if(/^[a-z'-]{2,30}$/.test(w)) corpus.wordFreq[w] = (corpus.wordFreq[w]||0) + Math.min(100, words[w]|0);
+    }
+    corpus.scans++;
+    await saveCorpus(env, corpus);
+  }catch(e){}
+  return new Response(JSON.stringify({ok:true}), {headers:{"Content-Type":"application/json"}});
+}
+async function handleMe(request, env){
+  const s = await getSession(request, env);
+  if(!s) return jerr("Not logged in", 401);
+  const u = await getUser(env, s.email);
+  return new Response(JSON.stringify({email: u.email, role: u.role, ageGroup: u.ageGroup||"adult"}), {headers:{"Content-Type":"application/json"}});
+}
+async function requireAdmin(request, env){
+  const s = await getSession(request, env);
+  if(!s) return {err: jerr("Not logged in", 401)};
+  const u = await getUser(env, s.email);
+  if(!u || u.role !== "admin") return {err: jerr("Admin only", 403)};
+  return {user: u, session: s};
+}
+async function handleBankGet(request, env){
+  const s = await getSession(request, env);
+  if(!s) return jerr("Not logged in", 401);
+  try{
+    const obj = await env.AUTHDB.get("bank/"+s.email+".json");
+    if(!obj) return new Response(JSON.stringify({bank:null}), {headers:{"Content-Type":"application/json"}});
+    return new Response(await obj.text(), {headers:{"Content-Type":"application/json"}});
+  }catch(e){ return jerr("Read error", 500); }
+}
+async function handleBankPost(request, env){
+  const s = await getSession(request, env);
+  if(!s) return jerr("Not logged in", 401);
+  const body = await request.text();
+  if(body.length > 500000) return jerr("Too large", 413);
+  await env.AUTHDB.put("bank/"+s.email+".json", body, {httpMetadata:{contentType:"application/json"}});
+  return new Response(JSON.stringify({ok:true}), {headers:{"Content-Type":"application/json"}});
+}
+/* ---------- saved readings: article text + MP3 per user (AUTHDB) ---------- */
+function parseReadingPath(pathname){
+  const rest = pathname.slice("/api/readings/".length);
+  const parts = rest.split("/");
+  const id = parts[0]||"";
+  if(!/^[0-9a-f]{16}$/.test(id)) return null;
+  return {id, sub: parts[1]||""};
+}
+async function handleReadingsCreate(request, env){
+  const s = await getSession(request, env);
+  if(!s) return jerr("Not logged in", 401);
+  let b;
+  try{ b = await request.json(); }catch(e){ return jerr("Invalid JSON", 400); }
+  const text = String(b.text||"").slice(0, 30000).trim();
+  if(!text) return jerr("Empty text", 400);
+  const email = s.email, prefix = "readings/"+email+"/";
+  const id = randToken(8);
+  const words = text.split(/\s+/).filter(Boolean).length;
+  const rec = {id, text, words, sentences: Math.max(1, (b.sentences|0)||text.split(/(?<=[.!?])\s+/).length),
+    src: String(b.src||"text").slice(0,8), ts: Date.now(), hasAudio:false};
+  await env.AUTHDB.put(prefix+id+".json", JSON.stringify(rec), {httpMetadata:{contentType:"application/json"}});
+  // cap 100 readings per user: delete oldest
+  try{
+    const list = await env.AUTHDB.list({prefix});
+    const metas = [];
+    for(const o of (list.objects||[])) if(o.key.endsWith(".json")) metas.push(o.key);
+    if(metas.length > 100){
+      const recs = [];
+      for(const k of metas){ const o = await env.AUTHDB.get(k); if(o) recs.push({key:k, ts:(await o.json()).ts||0}); }
+      recs.sort((a,b)=>a.ts-b.ts);
+      for(const r of recs.slice(0, recs.length-100)){
+        await env.AUTHDB.delete(r.key);
+        await env.AUTHDB.delete(r.key.replace(/\.json$/, ".mp3"));
+      }
+    }
+  }catch(e){}
+  return new Response(JSON.stringify({ok:true, id}), {headers:{"Content-Type":"application/json"}});
+}
+async function handleReadingsList(request, env){
+  const s = await getSession(request, env);
+  if(!s) return jerr("Not logged in", 401);
+  const prefix = "readings/"+s.email+"/";
+  const list = await env.AUTHDB.list({prefix});
+  const out = [];
+  for(const o of (list.objects||[])){
+    if(!o.key.endsWith(".json")) continue;
+    try{
+      const obj = await env.AUTHDB.get(o.key);
+      if(!obj) continue;
+      const r = await obj.json();
+      out.push({id:r.id, ts:r.ts, words:r.words, sentences:r.sentences, src:r.src, hasAudio:!!r.hasAudio});
+    }catch(e){}
+    if(out.length >= 100) break;
+  }
+  out.sort((a,b)=>b.ts-a.ts);
+  return new Response(JSON.stringify({readings:out}), {headers:{"Content-Type":"application/json"}});
+}
+async function handleReadingGet(request, env){
+  const s = await getSession(request, env);
+  if(!s) return jerr("Not logged in", 401);
+  const p = parseReadingPath(new URL(request.url).pathname);
+  if(!p) return jerr("Invalid id", 400);
+  const prefix = "readings/"+s.email+"/"+p.id;
+  if(p.sub === "audio"){
+    const obj = await env.AUTHDB.get(prefix+".mp3");
+    if(!obj) return jerr("No audio", 404);
+    return new Response(obj.body, {headers:{"Content-Type":"audio/mpeg","Content-Disposition":'attachment; filename="reading-'+p.id+'.mp3"'}});
+  }
+  if(p.sub) return jerr("Not found", 404);
+  const obj = await env.AUTHDB.get(prefix+".json");
+  if(!obj) return jerr("Not found", 404);
+  return new Response(await obj.text(), {headers:{"Content-Type":"application/json"}});
+}
+async function handleReadingDelete(request, env){
+  const s = await getSession(request, env);
+  if(!s) return jerr("Not logged in", 401);
+  const p = parseReadingPath(new URL(request.url).pathname);
+  if(!p) return jerr("Invalid id", 400);
+  const prefix = "readings/"+s.email+"/"+p.id;
+  if(p.sub === "audio"){
+    await env.AUTHDB.delete(prefix+".mp3");
+    try{
+      const metaObj = await env.AUTHDB.get(prefix+".json");
+      if(metaObj){
+        const rec = await metaObj.json(); rec.hasAudio = false;
+        await env.AUTHDB.put(prefix+".json", JSON.stringify(rec), {httpMetadata:{contentType:"application/json"}});
+      }
+    }catch(e){}
+    return new Response(JSON.stringify({ok:true}), {headers:{"Content-Type":"application/json"}});
+  }
+  if(p.sub) return jerr("Invalid id", 400);
+  await env.AUTHDB.delete(prefix+".json");
+  await env.AUTHDB.delete(prefix+".mp3");
+  return new Response(JSON.stringify({ok:true}), {headers:{"Content-Type":"application/json"}});
+}
+async function handleReadingAudioPut(request, env){
+  const s = await getSession(request, env);
+  if(!s) return jerr("Not logged in", 401);
+  const p = parseReadingPath(new URL(request.url).pathname);
+  if(!p || p.sub !== "audio") return jerr("Invalid id", 400);
+  const ct = request.headers.get("content-type")||"";
+  if(!ct.includes("audio/")) return jerr("Expected audio upload", 400);
+  const buf = await request.arrayBuffer();
+  if(!buf.byteLength || buf.byteLength > 15728640) return jerr("Audio too large (max 15MB)", 413);
+  const prefix = "readings/"+s.email+"/"+p.id;
+  const metaObj = await env.AUTHDB.get(prefix+".json");
+  if(!metaObj) return jerr("Reading not found", 404);
+  await env.AUTHDB.put(prefix+".mp3", buf, {httpMetadata:{contentType:"audio/mpeg"}});
+  try{
+    const rec = await metaObj.json();
+    rec.hasAudio = true;
+    await env.AUTHDB.put(prefix+".json", JSON.stringify(rec), {httpMetadata:{contentType:"application/json"}});
+  }catch(e){}
+  return new Response(JSON.stringify({ok:true, bytes:buf.byteLength}), {headers:{"Content-Type":"application/json"}});
+}
+async function handleAdminUsers(request, env){
+  const {err} = await requireAdmin(request, env);
+  if(err) return err;
+  const list = await env.AUTHDB.list({prefix:"users/"});
+  const users = [];
+  for(const o of list.objects){
+    try{
+      const obj = await env.DATA.get(o.key);
+      const u = await obj.json();
+      users.push({email: u.email, role: u.role, created: u.created});
+    }catch(e){}
+  }
+  return new Response(JSON.stringify({users}), {headers:{"Content-Type":"application/json"}});
+}
+async function handleAdminRole(request, env){
+  // DISABLED: no user may be promoted to admin (policy 2026-10-05)
+  return jerr("Role changes disabled", 403);
+}
+async function handleAdminDelete(request, env){
+  const {err, user} = await requireAdmin(request, env);
+  if(err) return err;
+  const email = decodeURIComponent(request.url.split("/").pop()).toLowerCase();
+  if(email === user.email.toLowerCase()) return jerr("Can't delete self", 400);
+  await env.DATA.delete("users/"+email+".json");
+  await env.AUTHDB.delete("bank/"+email+".json");
+  // delete sessions
+  const sl = await env.AUTHDB.list({prefix:"sessions/"});
+  for(const o of sl.objects){
+    try{
+      const obj = await env.DATA.get(o.key);
+      const s = await obj.json();
+      if(String(s.email).toLowerCase() === email) await env.DATA.delete(o.key);
+    }catch(e){}
+  }
+  return new Response(JSON.stringify({ok:true}), {headers:{"Content-Type":"application/json"}});
+}
+// Privacy: only aggregated word frequencies + CEFR counts, never raw sentences.
+// Stored in R2 bucket "english-lab-data" -> analytics/corpus.json
+// Used to improve CEFR classifier, pre-cache dictionary, suggest vocabulary.
+async function loadCorpus(env){
+  try{
+    const obj = await env.DATA.get("analytics/corpus.json");
+    if(obj) return await obj.json();
+  }catch(e){}
+  return {wordFreq:{}, lookupFreq:{}, cefr:{A1:0,A2:0,B1:0,B2:0,C1:0,C2:0}, scans:0, learners:[]};
+}
+async function saveCorpus(env, corpus){
+  // prune to keep file small
+  const prune = (o, n)=>{
+    const e = Object.entries(o).sort((a,b)=>b[1]-a[1]).slice(0,n);
+    return Object.fromEntries(e);
+  };
+  corpus.wordFreq = prune(corpus.wordFreq, 3000);
+  corpus.lookupFreq = prune(corpus.lookupFreq, 3000);
+  corpus.learners = [...new Set(corpus.learners)].slice(-5000);
+  await env.DATA.put("analytics/corpus.json", JSON.stringify(corpus), {
+    httpMetadata: {contentType: "application/json"}
+  });
+}
+async function handleAnalytics(request, env){
+  let d;
+  try{ d = await request.json(); }catch(e){ return jerr("Bad JSON", 400); }
+  const corpus = await loadCorpus(env);
+  if(d.uid && !corpus.learners.includes(d.uid.slice(0,64))) corpus.learners.push(d.uid.slice(0,64));
+  if(d.words && typeof d.words === "object"){
+    for(const w in d.words){
+      const word = String(w).toLowerCase().slice(0,30);
+      if(/^[a-z'-]{2,30}$/.test(word)) corpus.wordFreq[word] = (corpus.wordFreq[word]||0) + Math.min(50, d.words[w]|0);
+    }
+  }
+  if(Array.isArray(d.lookups)) d.lookups.slice(0,50).forEach(w=>{
+    const word = String(w).toLowerCase().slice(0,30);
+    if(/^[a-z'-]{2,30}$/.test(word)) corpus.lookupFreq[word] = (corpus.lookupFreq[word]||0)+1;
+  });
+  if(d.cefr) for(const lv of ["A1","A2","B1","B2","C1","C2"]) corpus.cefr[lv] += (d.cefr[lv]|0);
+  if(d.words || d.lookups) corpus.scans++;
+  await saveCorpus(env, corpus);
+  return new Response(JSON.stringify({ok:true}), {headers:{"Content-Type":"application/json"}});
+}
+async function handleInsights(url, env){
+  const corpus = await loadCorpus(env);
+  const top = (o, n)=>Object.entries(o).sort((a,b)=>b[1]-a[1]).slice(0,n).map(([w,c])=>({w,c}));
+  const out = {
+    scans: corpus.scans, learners: corpus.learners.length, cefr: corpus.cefr,
+    topWords: top(corpus.wordFreq, 50),
+    topLookups: top(corpus.lookupFreq, 50),
+  };
+  return new Response(JSON.stringify(out), {headers:{"Content-Type":"application/json"}});
+}

@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<script>/* Auto cache-buster: reload if this HTML is stale (build ID mismatch) */
+(function(){var B="__BUILD__";function c(){try{fetch(location.pathname,{method:"HEAD",cache:"no-store"}).then(function(r){var l=r.headers.get("x-build-id");if(l&&l!==B){location.reload();}}).catch(function(){})}catch(e){}}if(document.readyState==="complete"){setTimeout(c,2000);}else{window.addEventListener("load",function(){setTimeout(c,2000);});}})();
+</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Voice — Pocket Personal</title>
+<link rel="stylesheet" href="/design-system.css?v=1791286992">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--pp-bg);color:var(--pp-ink);padding:12px;max-width:640px;margin:0 auto;min-height:100dvh;display:flex;flex-direction:column}
+.card.grow{flex:1;display:flex;flex-direction:column}
+.card.grow textarea{flex:1;min-height:220px}
+body.dark{background:#171310;color:#ece4d2}
+body.dark .card{background:#1c1813;border-color:#3d352a}
+
+.card{background:var(--pp-card);border:1px solid var(--pp-line);border-radius:16px;padding:16px;margin-bottom:12px}
+.hint{color:var(--pp-mut);font-size:13px}
+.row{display:flex;gap:8px;align-items:center}
+.btn{padding:12px 16px;border:1px solid var(--pp-line);border-radius:12px;background:var(--pp-card);color:var(--pp-ink);font-size:15px;font-weight:600;cursor:pointer}
+.btn.primary{background:var(--pp-grad);color:#fff;border:none}
+.btn:disabled{opacity:.5}
+.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.topbar a{color:var(--pp-mut);text-decoration:none;font-size:14px}
+textarea{width:100%;min-height:140px;padding:12px;border:1px solid var(--pp-line);border-radius:12px;background:var(--pp-card);color:var(--pp-ink);font-size:16px;font-family:inherit;resize:vertical}
+select{padding:10px 12px;border:1px solid var(--pp-line);border-radius:12px;background:var(--pp-card);color:var(--pp-ink);font-size:14px}
+input[type=range]{flex:1;accent-color:var(--pp-accent)}
+audio{width:100%;margin-top:8px}
+#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:10px 20px;border-radius:20px;display:none;z-index:1000;max-width:90%}
+.badge{display:inline-block;padding:2px 10px;border-radius:20px;font-size:12px;font-weight:700;background:var(--pp-card);border:1px solid var(--pp-line);color:var(--pp-mut)}
+.lang-pill{display:inline-flex;border:1px solid var(--pp-line);border-radius:20px;overflow:hidden}
+.lang-pill button{border:none;background:transparent;padding:6px 12px;font-size:12px;font-weight:700;color:var(--pp-mut);cursor:pointer}
+.lang-pill button.on{background:var(--pp-accent);color:#fff}
+.app-ic{width:34px;height:34px;border-radius:10px;object-fit:cover}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <a href="/hub">← Pocket Personal</a>
+  <span class="row" style="gap:8px">
+    <div class="pp-langdrop" id="langDrop">
+      <button class="pp-langdrop-btn" aria-label="Language">
+        <svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+        <span class="pp-langdrop-cur">VI</span>
+        <svg class="chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      <div class="pp-langdrop-menu" role="listbox">
+        <button class="pp-langdrop-item" data-lang="vi"><span class="code">VI</span><span class="name">Tiếng Việt</span></button>
+        <button class="pp-langdrop-item" data-lang="en"><span class="code">EN</span><span class="name">English</span></button>
+        <button class="pp-langdrop-item" data-lang="zh"><span class="code">中文</span><span class="name">中文</span></button>
+        <button class="pp-langdrop-item" data-lang="ko"><span class="code">한국어</span><span class="name">한국어</span></button>
+      </div>
+    </div>
+    </span>
+</div>
+
+<div class="card grow">
+  <div class="row" style="justify-content:space-between;margin-bottom:10px">
+    <span class="row" style="gap:10px">
+      <img class="app-ic" src="/english/icons/icon-voice-192.png" alt="Voice">
+      <h3 style="font-size:18px" data-i18n="title">Voice</h3>
+    </span>
+    <span class="hint" id="quotaLine"></span>
+  </div>
+  <textarea id="txt" data-i18n-ph="placeholder" placeholder="Nhập văn bản cần đọc… (tối đa 5000 ký tự)"></textarea>
+  <div class="row" style="margin-top:10px;flex-wrap:wrap">
+    <select id="voiceSel">
+      <option value="auto" data-i18n="v_auto">Tự động</option>
+      <option value="en" data-i18n="v_en">Tiếng Anh</option>
+      <option value="vi" data-i18n="v_vi">Tiếng Việt</option>
+    </select>
+    <span class="hint"><span data-i18n="speed">Tốc độ</span> <b id="speedVal">1.0</b>x</span>
+    <input type="range" id="speed" min="0.5" max="1.5" step="0.1" value="1" style="min-width:100px">
+  </div>
+  <button class="btn primary" id="speakBtn" style="width:100%;margin-top:12px" data-i18n="listen">Nghe</button>
+  <div class="hint" id="status" style="margin-top:8px"></div>
+  <audio id="player" controls style="display:none"></audio>
+  <div class="row" style="margin-top:8px">
+    <a id="dlBtn" class="btn" style="display:none;text-decoration:none" download="voice.wav" data-i18n="download">Tải WAV</a>
+  </div>
+</div>
+
+
+<div id="toast"></div>
+<script>
+let _tok = null;
+try{ _tok = localStorage.getItem("elab_authToken"); }catch(e){}
+try{ _tok = JSON.parse(_tok); }catch(e){}
+if(!_tok){ location.href = "/login"; }
+if(localStorage.getItem('hub_theme')==='dark') document.body.classList.add('dark');
+
+const $ = id => document.getElementById(id);
+const toast = m => { const t=$("toast"); t.textContent=m; t.style.display="block"; setTimeout(()=>t.style.display="none",2500); };
+const apiHeaders = () => ({"Authorization":"Bearer "+_tok,"Content-Type":"application/json"});
+
+const I18N = {
+vi:{title:"Voice",placeholder:"Nhập văn bản cần đọc… (tối đa 5000 ký tự)",
+v_auto:"Tự động",v_en:"Tiếng Anh",v_vi:"Tiếng Việt",speed:"Tốc độ",listen:"Nghe",download:"Tải WAV",
+quota:d=>`Hôm nay: ${(d||0).toLocaleString()} ký tự`,
+needText:"Nhập văn bản trước",creating:"Đang tạo giọng nói…",
+quotaOut:"Hôm nay bạn đã dùng hết lượt đọc. Quay lại vào ngày mai.",engineDown:"Chưa tạo được giọng đọc, thử lại sau.",
+err:"Lỗi: "},
+en:{title:"Voice",placeholder:"Enter text to read… (max 5000 characters)",
+v_auto:"Auto",v_en:"English",v_vi:"Vietnamese",speed:"Speed",listen:"Listen",download:"Download WAV",
+quota:d=>`Today: ${(d||0).toLocaleString()} characters`,
+needText:"Enter some text first",creating:"Generating speech…",
+quotaOut:"You have used up today's reads. Come back tomorrow.",engineDown:"Could not generate speech, try again later.",
+err:"Error: "},
+zh:{title:"语音",placeholder:"输入要朗读的文字…（最多5000字符）",
+v_auto:"自动",v_en:"英语",v_vi:"越南语",speed:"语速",listen:"收听",download:"下载 WAV",
+quota:d=>`今天：${(d||0).toLocaleString()} 字符`,
+needText:"请先输入文字",creating:"正在生成语音…",
+quotaOut:"今日朗读次数已用完，请明天再来。",engineDown:"无法生成语音，请稍后再试。",err:"错误："},
+ko:{title:"음성",placeholder:"읽을 텍스트 입력…（최대 5000자）",
+v_auto:"자동",v_en:"영어",v_vi:"베트남어",speed:"속도",listen:"듣기",download:"WAV 다운로드",
+quota:d=>`오늘：${(d||0).toLocaleString()} 자`,
+needText:"먼저 텍스트를 입력하세요",creating:"음성 생성 중…",
+quotaOut:"오늘 읽기 횟수를 다 사용했습니다. 내일 다시 오세요.",engineDown:"음성을 생성할 수 없습니다. 나중에 다시 시도하세요.",err:"오류: "}
+};
+let LANG = "vi";
+try{ const v = localStorage.getItem("elab_uiLang"); if(v) LANG = JSON.parse(v); }catch(e){}
+function applyLang(l){
+  LANG = l;
+  try{ localStorage.setItem("elab_uiLang", JSON.stringify(l)); }catch(e){}
+  document.documentElement.lang = l;
+  const t = I18N[l];
+  document.querySelectorAll("[data-i18n]").forEach(el=>{
+    const v = t[el.dataset.i18n];
+    if(v !== undefined){ if(/<[a-z][\s>]/i.test(v)) el.innerHTML = v; else el.textContent = v; }
+  });
+  document.querySelectorAll("[data-i18n-ph]").forEach(el=>{ el.placeholder = t[el.dataset.i18nPh] || el.placeholder; });
+  ["vi","en","zh","ko"].forEach(x=>$("lang"+x[0].toUpperCase()+x[1]).classList.toggle("on", l===x));
+  loadPlan();
+}
+// Expose for lang-dropdown.js
+window.__elabSetLang = applyLang;
+
+async function loadPlan(){
+  try{
+    const r = await fetch("/api/user/plan",{headers:apiHeaders()});
+    if(r.status===401){ localStorage.removeItem("elab_authToken"); location.href="/login"; return; }
+    const j = await r.json();
+    const u = await fetch("/api/user/usage",{headers:apiHeaders()}).then(x=>x.json()).catch(()=>null);
+    if(u) $("quotaLine").textContent = I18N[LANG].quota(u.tts_chars);
+  }catch(e){}
+}
+
+$("speed").addEventListener("input", e => { $("speedVal").textContent = (+e.target.value).toFixed(1); });
+
+$("speakBtn").addEventListener("click", async () => {
+  const t = I18N[LANG];
+  const text = $("txt").value.trim();
+  if(!text){ toast(t.needText); return; }
+  const btn = $("speakBtn");
+  btn.disabled = true;
+  $("status").textContent = t.creating;
+  $("player").style.display = "none";
+  $("dlBtn").style.display = "none";
+  try{
+    const r = await fetch("/api/tts", {
+      method: "POST",
+      headers: apiHeaders(),
+      body: JSON.stringify({ text, voice: $("voiceSel").value, speed: +$("speed").value })
+    });
+    if(r.status === 401){ localStorage.removeItem("elab_authToken"); location.href="/login"; return; }
+    if(r.status === 402){ toast(t.quotaOut); $("status").textContent=""; btn.disabled=false; return; }
+    if(r.status === 503){ toast(t.engineDown); $("status").textContent=""; btn.disabled=false; return; }
+    if(!r.ok) throw new Error("TTS error "+r.status);
+    const blob = await r.blob();
+    const url = URL.createObjectURL(blob);
+    $("player").src = url;
+    $("player").style.display = "block";
+    $("dlBtn").href = url;
+    $("dlBtn").style.display = "inline-block";
+    $("status").textContent = "";
+    $("player").play().catch(()=>{});
+    loadPlan();
+  }catch(e){ toast(t.err+e.message); $("status").textContent=""; }
+  btn.disabled = false;
+});
+
+applyLang(LANG);
+</script>
+<script src="/english/js/lang-dropdown.js?v=__BUILD__"></script>
+</body>
+</html>

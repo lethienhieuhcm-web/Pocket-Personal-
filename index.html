@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Read & Learn</title>
+<link rel="stylesheet" href="/english/design-system.css">
+<link rel="manifest" href="/english/manifest.json">
+<style>
+.tabpage{display:none}
+.tabpage.active{display:block}
+.pp-topbar{display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--pp-card);border-bottom:1px solid var(--pp-line);position:sticky;top:0;z-index:10}
+.pp-topbar h1{font-size:18px;margin:0;flex:1}
+.pp-iconbtn{background:none;border:none;padding:8px;border-radius:12px;cursor:pointer;color:var(--pp-text)}
+.pp-iconbtn:active{transform:scale(.94)}
+.pp-iconbtn .ic{width:22px;height:22px}
+#main{max-width:768px;margin:0 auto;padding:16px}
+.pp-tabbar{position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));display:flex;background:var(--pp-card);border:1px solid var(--pp-line);border-radius:20px;padding:8px;z-index:10;box-shadow:0 4px 16px rgba(0,0,0,.08)}
+.pp-tabbar button{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;padding:8px 4px;border-radius:12px;cursor:pointer;color:var(--pp-mut);font-size:11px}
+.pp-tabbar button.active{color:var(--pp-accent)}
+.pp-tabbar button .ic{width:22px;height:22px}
+.menutile{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:var(--pp-card);border:1px solid var(--pp-line);border-radius:16px;padding:14px 16px;margin-bottom:8px;cursor:pointer;font-size:15px;color:var(--pp-text)}
+.menutile:active{transform:scale(.98)}
+.pp-app-row{display:flex;align-items:center;gap:14px;background:var(--pp-card);border-radius:var(--pp-r-lg,20px);padding:13px 14px;color:var(--pp-text);transition:transform .15s,box-shadow .15s}
+.pp-app-row:hover{box-shadow:0 4px 16px rgba(0,0,0,.08)}
+.pp-app-row:active{transform:scale(.98)}
+.pp-app-ic{width:46px;height:46px;border-radius:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.pp-app-tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.pp-app-name{font-weight:700;font-size:15px}
+.pp-app-desc{font-size:13px;color:var(--pp-mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pp-app-go{font-size:20px;color:var(--pp-mut);flex-shrink:0}
+.menutile .ic{width:24px;height:24px;color:var(--pp-accent)}
+.card{background:var(--pp-card);border:1px solid var(--pp-line);border-radius:16px;padding:16px;margin-bottom:12px}
+.hint{font-size:13px;color:var(--pp-mut)}
+.btn{background:var(--pp-accent);color:#fff;border:none;border-radius:12px;padding:10px 16px;font-size:15px;cursor:pointer}
+.btn.ghost{background:var(--pp-bg);color:var(--pp-text);border:1px solid var(--pp-line)}
+.btn:active{transform:scale(.98)}
+</style>
+</head>
+<body>
+<!-- SVG sprite -->
+<svg style="display:none" xmlns="http://www.w3.org/2000/svg">
+<symbol id="i-back" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></symbol>
+<symbol id="i-camera" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></symbol>
+<symbol id="i-book" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></symbol>
+<symbol id="i-headphones" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/></symbol>
+<symbol id="i-bookmark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></symbol>
+<symbol id="i-chart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></symbol>
+<symbol id="i-gear" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></symbol>
+<symbol id="i-user" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></symbol>
+<symbol id="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></symbol>
+<symbol id="i-globe" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></symbol>
+<symbol id="i-chevron-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></symbol>
+</svg>
+
+<header class="pp-topbar">
+  <a href="/hub" class="pp-iconbtn" aria-label="Hub"><svg class="ic"><use href="#i-back"/></svg></a>
+  <h1><span data-i18n="app_title">Read & Learn</span></h1>
+  <button class="pp-iconbtn" id="langBtn" aria-label="Language">EN</button>
+  <button class="pp-iconbtn" id="themeBtn" aria-label="Theme"><svg class="ic"><use href="#i-moon"/></svg></button>
+  <button class="pp-iconbtn" id="accountBtn" aria-label="Account"><svg class="ic"><use href="#i-user"/></svg></button>
+  <button class="pp-iconbtn" id="settingsBtn" aria-label="Settings"><svg class="ic"><use href="#i-gear"/></svg></button>
+</header>
+
+<main id="main">
+  <!-- Home (hub-style) -->
+  <div class="tabpage active" id="tabHome">
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <button class="pp-app-row" data-go="scan" style="width:100%;text-align:left;cursor:pointer;border:1px solid var(--pp-line)">
+        <span class="pp-app-ic" style="background:var(--pp-accent)"><svg class="ic" style="width:24px;height:24px;color:#fff"><use href="#i-camera"/></svg></span>
+        <span class="pp-app-tx"><span class="pp-app-name" data-i18n="home_scan">Quét văn bản</span><span class="pp-app-desc" data-i18n="home_scan_d">Chụp ảnh hoặc dán text tiếng Anh</span></span>
+        <span class="pp-app-go">›</span>
+      </button>
+      <button class="pp-app-row" data-go="read" style="width:100%;text-align:left;cursor:pointer;border:1px solid var(--pp-line)">
+        <span class="pp-app-ic" style="background:var(--pp-accent)"><svg class="ic" style="width:24px;height:24px;color:#fff"><use href="#i-book"/></svg></span>
+        <span class="pp-app-tx"><span class="pp-app-name" data-i18n="home_read">Đọc bài</span><span class="pp-app-desc" data-i18n="home_read_d">Đọc tương tác, tra từ, nghe phát âm</span></span>
+        <span class="pp-app-go">›</span>
+      </button>
+      <button class="pp-app-row" data-go="audio" style="width:100%;text-align:left;cursor:pointer;border:1px solid var(--pp-line)">
+        <span class="pp-app-ic" style="background:var(--pp-accent)"><svg class="ic" style="width:24px;height:24px;color:#fff"><use href="#i-headphones"/></svg></span>
+        <span class="pp-app-tx"><span class="pp-app-name" data-i18n="home_audio">Nghe audio</span><span class="pp-app-desc" data-i18n="home_audio_d">Thư viện audio đã tạo</span></span>
+        <span class="pp-app-go">›</span>
+      </button>
+      <button class="pp-app-row" data-go="books" style="width:100%;text-align:left;cursor:pointer;border:1px solid var(--pp-line)">
+        <span class="pp-app-ic" style="background:var(--pp-accent)"><svg class="ic" style="width:24px;height:24px;color:#fff"><use href="#i-bookmark"/></svg></span>
+        <span class="pp-app-tx"><span class="pp-app-name" data-i18n="home_books">Sách</span><span class="pp-app-desc" data-i18n="home_books_d">Tải sách PDF/EPUB để học</span></span>
+        <span class="pp-app-go">›</span>
+      </button>
+      <button class="pp-app-row" data-go="progress" style="width:100%;text-align:left;cursor:pointer;border:1px solid var(--pp-line)">
+        <span class="pp-app-ic" style="background:var(--pp-accent)"><svg class="ic" style="width:24px;height:24px;color:#fff"><use href="#i-chart"/></svg></span>
+        <span class="pp-app-tx"><span class="pp-app-name" data-i18n="home_progress">Tiến độ</span><span class="pp-app-desc" data-i18n="home_progress_d">Thống kê học tập, từ vựng</span></span>
+        <span class="pp-app-go">›</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Scan tab -->
+  <div class="tabpage" id="tabScan">
+    <button class="pp-iconbtn" id="scanBackBtn" aria-label="Back"><svg class="ic"><use href="#i-back"/></svg></button>
+    <div class="card">
+      <h3 style="margin:0 0 12px"><span data-i18n="scan_title">Snap a page</span></h3>
+      <p class="hint" data-i18n="scan_hint">Take a photo of English text, or paste text below.</p>
+      <div style="display:flex;gap:8px;margin:12px 0">
+        <button class="btn" id="scanPhotoBtn"><span data-i18n="take_photo">Take photo</span></button>
+        <button class="btn ghost" id="scanGalleryBtn"><span data-i18n="gallery">Gallery</span></button>
+      </div>
+      <textarea id="scanTextInput" rows="4" style="width:100%;border:1px solid var(--pp-line);border-radius:12px;padding:12px" data-i18n-ph="paste_hint" placeholder="Paste English text here..."></textarea>
+      <button class="btn" id="scanGoBtn" style="width:100%;margin-top:12px"><span data-i18n="create_reading">Create reading</span></button>
+    </div>
+  </div>
+
+  <!-- Read tab -->
+  <div class="tabpage" id="tabRead">
+    <button class="pp-iconbtn" id="readBackBtn" aria-label="Back"><svg class="ic"><use href="#i-back"/></svg></button>
+    <div id="readContent">
+      <div class="card" style="text-align:center;padding:32px 16px">
+        <div style="margin-bottom:12px;color:var(--pp-mut)"><svg class="ic" style="width:48px;height:48px"><use href="#i-book"/></svg></div>
+        <div style="font-size:16px;font-weight:700;margin-bottom:8px"><span data-i18n="no_reading">No reading yet</span></div>
+        <div class="hint"><span data-i18n="no_reading_hint">Go to the Scan tab to snap a photo or paste text, then your article will appear here.</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Audio tab -->
+  <div class="tabpage" id="tabAudio">
+    <button class="pp-iconbtn" id="audioBackBtn" aria-label="Back"><svg class="ic"><use href="#i-back"/></svg></button>
+    <div class="card">
+      <h3 style="margin:0"><span data-i18n="audio_title">Audio library</span></h3>
+      <div class="hint" id="audioLibHint"></div>
+      <div id="audioLib" style="margin-top:8px"></div>
+    </div>
+  </div>
+
+  <!-- Books tab -->
+  <div class="tabpage" id="tabBooks">
+    <button class="pp-iconbtn" id="booksBackBtn" aria-label="Back"><svg class="ic"><use href="#i-back"/></svg></button>
+    <div class="card">
+      <h3 style="margin:0"><span data-i18n="books_title">Books</span></h3>
+      <div id="bookList"></div>
+    </div>
+  </div>
+
+  <!-- Progress tab -->
+  <div class="tabpage" id="tabProgress">
+    <button class="pp-iconbtn" id="progressBackBtn" aria-label="Back"><svg class="ic"><use href="#i-back"/></svg></button>
+    <div class="card">
+      <h3 style="margin:0"><span data-i18n="progress_title">My progress</span></h3>
+      <div id="progressStats"></div>
+      <div id="vocabBank"></div>
+    </div>
+  </div>
+
+  <!-- Settings tab -->
+  <div class="tabpage" id="tabSettings">
+    <button class="pp-iconbtn" id="settingsBackBtn" aria-label="Back"><svg class="ic"><use href="#i-back"/></svg></button>
+    <div class="card">
+      <h3 style="margin:0 0 16px"><span data-i18n="settings_title">Settings</span></h3>
+      <div id="settingsContent"></div>
+    </div>
+  </div>
+
+  <!-- Profile tab -->
+  <div class="tabpage" id="tabProfile">
+    <button class="pp-iconbtn" id="profileBackBtn" aria-label="Back"><svg class="ic"><use href="#i-back"/></svg></button>
+    <div class="card">
+      <h3 style="margin:0"><span data-i18n="profile_title">Profile</span></h3>
+      <div id="profileContent"></div>
+    </div>
+  </div>
+</main>
+
+<div class="toast" id="toast" style="display:none;position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#14181f;color:#fff;padding:10px 16px;border-radius:12px;z-index:100"></div>
+
+<script>
+(function(){
+  var B="__BUILD__";
+  function $(id){ return document.getElementById(id); }
+  // Tab switching - hub-style navigation (no tabbar)
+  function switchTab(name){
+    var tabs=["home","scan","read","audio","books","progress","settings","profile"];
+    tabs.forEach(function(n){
+      var el=$("tab"+n.charAt(0).toUpperCase()+n.slice(1));
+      if(el) el.classList.toggle("active", n===name);
+    });
+    try{ window.scrollTo(0,0); }catch(e){}
+    // Lazy load tab content - inline (no module dependency)
+    if(name==="audio"){ loadAudioLibInline(); }
+    if(name==="books"){ loadBooksInline(); }
+    if(name==="progress"){ loadProgressInline(); }
+    if(name==="profile"){ loadProfileInline(); }
+    if(name==="settings"){ loadSettingsInline(); }
+    if(window.__elabTabHook) { try{ window.__elabTabHook(name); }catch(e){} }
+  }
+  window._elabSwitchTab=switchTab;
+  // NOTE: Word click handled by main.js via document delegation (doWordLookup)
+  // Old inline handlers removed to avoid conflicts.
+  // Inline audio library loader (Phase 3.3)
+  function loadAudioLibInline(){
+    var box=$("audioLib");
+    if(!box) return;
+    var token=null;
+    try{ token=localStorage.getItem("elab_token"); }catch(e){}
+    if(!token){
+      box.innerHTML='<div class="hint">Please log in to see your audio library.</div>';
+      return;
+    }
+    box.innerHTML='<div class="hint">Loading...</div>';
+    fetch("/api/readings",{headers:{"Authorization":"Bearer "+token}}).then(function(r){return r.json();}).then(function(data){
+      var arr=(data.readings||[]).filter(function(x){return x.hasAudio;});
+      if(!arr.length){
+        box.innerHTML='<div class="hint">No audio yet. Create a reading and generate audio to see it here.</div>';
+        return;
+      }
+      box.innerHTML=arr.map(function(x){
+        var d=new Date(x.ts);
+        var ds=d.toLocaleDateString()+" "+d.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});
+        return '<div class="card" style="display:flex;align-items:center;gap:12px;margin-bottom:8px">'
+          +'<div style="flex:1"><div style="font-weight:600">'+ds+'</div>'
+          +'<div class="hint">'+(x.words||0)+' words</div></div></div>';
+      }).join("");
+    }).catch(function(){
+      box.innerHTML='<div class="hint">Load failed</div>';
+    });
+  }
+  // Inline progress loader (Phase 3.5)
+  function loadProgressInline(){
+    var stats=$("progressStats");
+    var bank=$("vocabBank");
+    if(!stats) return;
+    var token=null;
+    try{ token=localStorage.getItem("elab_token"); }catch(e){}
+    if(!token){
+      stats.innerHTML='<div class="hint">Please log in to see your progress.</div>';
+      if(bank) bank.innerHTML='';
+      return;
+    }
+    stats.innerHTML='<div class="hint">Loading...</div>';
+    fetch("/api/vocab/due",{headers:{"Authorization":"Bearer "+token}}).then(function(r){return r.json();}).then(function(data){
+      var due=(data.words||[]).length;
+      stats.innerHTML='<div style="display:flex;gap:12px;margin-bottom:16px">'
+        +'<div class="card" style="flex:1;text-align:center;margin:0"><div style="font-size:24px;font-weight:700;color:var(--pp-accent)">'+due+'</div><div class="hint">Due words</div></div>'
+        +'</div>';
+      if(bank){
+        if(!due){ bank.innerHTML='<div class="hint">No words due for review.</div>'; }
+        else{
+          bank.innerHTML='<div class="hint">'+due+' words ready to review.</div>';
+        }
+      }
+    }).catch(function(){
+      stats.innerHTML='<div class="hint">Load failed</div>';
+    });
+  }
+  // Profile loader
+  function loadProfileInline(){
+    var box=$("profileContent");
+    if(!box) return;
+    var token=null;
+    try{ token=localStorage.getItem("elab_authToken")||localStorage.getItem("elab_token"); }catch(e){}
+    if(!token){
+      box.innerHTML='<div class="hint">Please log in.</div><div style="margin-top:12px"><a href="/login" class="btn" style="text-decoration:none;display:inline-block">Log in</a></div>';
+      return;
+    }
+    box.innerHTML='<div class="hint">Loading...</div>';
+    fetch("/api/user/plan",{headers:{"Authorization":"Bearer "+token}}).then(function(r){return r.json();}).then(function(data){
+      box.innerHTML='<div style="margin-bottom:12px"><div class="hint">Plan</div><div style="font-weight:700;font-size:18px">'+(data.plan||"free")+'</div></div>'
+        +'<button class="btn ghost" id="logoutBtn2" style="width:100%">Log out</button>';
+      var lb=$("logoutBtn2");
+      if(lb) lb.addEventListener("click", function(){
+        fetch("/api/auth/logout",{method:"POST",headers:{"Authorization":"Bearer "+token}}).finally(function(){
+          try{ localStorage.removeItem("elab_authToken"); localStorage.removeItem("elab_token"); }catch(e){}
+          location.reload();
+        });
+      });
+    }).catch(function(){
+      box.innerHTML='<div class="hint">Load failed.</div>';
+    });
+  }
+  // Settings loader
+  function loadSettingsInline(){
+    var box=$("settingsContent");
+    if(!box) return;
+    box.innerHTML='<div style="margin-bottom:16px"><div class="hint" style="margin-bottom:8px">Language</div>'
+      +'<div class="pp-langdrop" id="langDropSettings">'
+      +'<button class="pp-langdrop-btn" aria-label="Language">'
+      +'<svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>'
+      +'<span class="pp-langdrop-cur">VI</span>'
+      +'<svg class="chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>'
+      +'</button>'
+      +'<div class="pp-langdrop-menu" role="listbox">'
+      +'<button class="pp-langdrop-item" data-lang="vi"><span class="code">VI</span><span class="name">Tiếng Việt</span></button>'
+      +'<button class="pp-langdrop-item" data-lang="en"><span class="code">EN</span><span class="name">English</span></button>'
+      +'<button class="pp-langdrop-item" data-lang="zh"><span class="code">中文</span><span class="name">中文</span></button>'
+      +'<button class="pp-langdrop-item" data-lang="ko"><span class="code">한국어</span><span class="name">한국어</span></button>'
+      +'</div></div>'
+      +'</div>'
+      +'<div><div class="hint" style="margin-bottom:8px">Theme</div>'
+      +'<button class="btn ghost" id="themeToggle2">Toggle dark/light</button></div>';
+    // Init language dropdown (dynamically added)
+    if(window.__ppLangDrop && window.__ppLangDrop.init){
+      try{ window.__ppLangDrop.init(); }catch(e){}
+    }
+    var tt=$("themeToggle2");
+    if(tt) tt.addEventListener("click", function(){
+      var d=document.documentElement;
+      var dark=d.getAttribute("data-theme")!=="dark";
+      d.setAttribute("data-theme", dark?"dark":"light");
+      try{ localStorage.setItem("elab_theme", dark?"dark":"light"); }catch(e){}
+    });
+  }
+  // Inline books loader (Phase 3.4)
+  function loadBooksInline(){
+    var box=$("bookList");
+    if(!box) return;
+    var token=null;
+    try{ token=localStorage.getItem("elab_token"); }catch(e){}
+    if(!token){
+      box.innerHTML='<div class="hint">Please log in to see your books.</div>';
+      return;
+    }
+    box.innerHTML='<div class="hint">Loading...</div>';
+    fetch("/api/books",{headers:{"Authorization":"Bearer "+token}}).then(function(r){return r.json();}).then(function(data){
+      var arr=data.books||[];
+      if(!arr.length){
+        box.innerHTML='<div class="hint">No books yet.</div>';
+        return;
+      }
+      box.innerHTML=arr.map(function(b){
+        return '<div class="card" style="margin-bottom:8px"><div style="font-weight:600">'+(b.title||"Untitled")+'</div></div>';
+      }).join("");
+    }).catch(function(){
+      box.innerHTML='<div class="hint">Load failed</div>';
+    });
+  }
+  // Menu tiles
+  document.querySelectorAll(".menutile, .pp-app-row[data-go]").forEach(function(b){
+    b.addEventListener("click", function(){
+      switchTab(b.getAttribute("data-go")||"scan");
+    });
+  });
+  // Tabbar
+  document.querySelectorAll("#mainTabbar button").forEach(function(b){
+    b.addEventListener("click", function(){
+      var id=b.id.replace("tabBtn","").toLowerCase();
+      switchTab(id);
+    });
+  });
+  // Back buttons (icon only, no text)
+  ["scanBackBtn","readBackBtn","audioBackBtn","booksBackBtn","progressBackBtn","settingsBackBtn","profileBackBtn"].forEach(function(id){
+    var bb=$(id);
+    if(bb) bb.addEventListener("click", function(e){ e.preventDefault(); switchTab("home"); });
+  });
+  // Header buttons
+  var ab=$("accountBtn"); if(ab) ab.addEventListener("click", function(){ switchTab("profile"); });
+  var sb=$("settingsBtn"); if(sb) sb.addEventListener("click", function(){ switchTab("settings"); });
+  // Theme
+  var tb=$("themeBtn");
+  if(tb) tb.addEventListener("click", function(){
+    var d=document.documentElement;
+    var dark=d.getAttribute("data-theme")!=="dark";
+    d.setAttribute("data-theme", dark?"dark":"light");
+    try{ localStorage.setItem("elab_theme", dark?"dark":"light"); }catch(e){}
+  });
+  try{
+    var th=localStorage.getItem("elab_theme");
+    if(th) document.documentElement.setAttribute("data-theme", th);
+  }catch(e){}
+  // Language
+  var I18N={
+    en:{app_title:"Read & Learn",home_scan:"Scan text",home_scan_d:"Snap a photo or paste English text",home_read:"Read",home_read_d:"Interactive reading, dictionary, pronunciation",home_audio:"Audio",home_audio_d:"Your created audio library",home_books:"Books",home_books_d:"Upload PDF/EPUB books to learn",home_progress:"Progress",home_progress_d:"Learning stats, vocabulary",scan_title:"Snap a page",scan_hint:"Take a photo of English text, or paste text below.",take_photo:"Take photo",gallery:"Gallery",paste_hint:"Paste English text here...",create_reading:"Create reading",explore:"Explore",menu_read:"Read",menu_audio:"Audio",menu_books:"Books",menu_progress:"My progress",audio_title:"Audio library",books_title:"Books",progress_title:"My progress",profile_title:"Profile",settings_title:"Settings",tab_scan:"Scan",tab_read:"Read",tab_audio:"Audio",tab_books:"Books",tab_progress:"Progress",no_reading:"No reading yet",no_reading_hint:"Go to the Scan tab to snap a photo or paste text, then your article will appear here."},
+    vi:{app_title:"Đọc & Học",home_scan:"Quét văn bản",home_scan_d:"Chụp ảnh hoặc dán text tiếng Anh",home_read:"Đọc bài",home_read_d:"Đọc tương tác, tra từ, nghe phát âm",home_audio:"Nghe audio",home_audio_d:"Thư viện audio đã tạo",home_books:"Sách",home_books_d:"Tải sách PDF/EPUB để học",home_progress:"Tiến độ",home_progress_d:"Thống kê học tập, từ vựng",scan_title:"Chụp một trang",scan_hint:"Chụp ảnh văn bản tiếng Anh, hoặc dán text bên dưới.",take_photo:"Chụp ảnh",gallery:"Thư viện",paste_hint:"Dán văn bản tiếng Anh vào đây...",create_reading:"Tạo bài đọc",explore:"Khám phá",menu_read:"Đọc",menu_audio:"Nghe",menu_books:"Sách",menu_progress:"Tiến độ",audio_title:"Thư viện audio",books_title:"Sách",progress_title:"Tiến độ của tôi",profile_title:"Hồ sơ",settings_title:"Cài đặt",tab_scan:"Quét",tab_read:"Đọc",tab_audio:"Nghe",tab_books:"Sách",tab_progress:"Tiến độ",no_reading:"Chưa có bài đọc",no_reading_hint:"Vào tab Quét để chụp ảnh hoặc dán text, bài viết sẽ hiện ở đây."},
+    zh:{app_title:"阅读与学习",home_scan:"扫描文本",home_scan_d:"拍照或粘贴英文文本",home_read:"阅读",home_read_d:"互动阅读、查词、听发音",home_audio:"音频",home_audio_d:"已创建的音频库",home_books:"书籍",home_books_d:"上传PDF/EPUB书籍学习",home_progress:"进度",home_progress_d:"学习统计、词汇",scan_title:"拍摄页面",scan_hint:"拍摄英文文本照片，或在下方粘贴文本。",take_photo:"拍照",gallery:"图库",paste_hint:"在此粘贴英文文本...",create_reading:"创建阅读",explore:"探索",menu_read:"阅读",menu_audio:"音频",menu_books:"书籍",menu_progress:"我的进度",audio_title:"音频库",books_title:"书籍",progress_title:"我的进度",profile_title:"个人资料",settings_title:"设置",tab_scan:"扫描",tab_read:"阅读",tab_audio:"音频",tab_books:"书籍",tab_progress:"进度",no_reading:"暂无阅读",no_reading_hint:"前往扫描选项卡拍照或粘贴文本，文章将显示在这里。"},
+    ko:{app_title:"읽기 & 학습",home_scan:"텍스트 스캔",home_scan_d:"사진 찍기 또는 영어 텍스트 붙여넣기",home_read:"읽기",home_read_d:"인터랙티브 읽기, 사전, 발음 듣기",home_audio:"오디오",home_audio_d:"생성된 오디오 라이브러리",home_books:"도서",home_books_d:"PDF/EPUB 도서 업로드하여 학습",home_progress:"진도",home_progress_d:"학습 통계, 어휘",scan_title:"페이지 촬영",scan_hint:"영어 텍스트 사진을 찍거나 아래에 텍스트를 붙여넣으세요.",take_photo:"사진 찍기",gallery:"갤러리",paste_hint:"여기에 영어 텍스트 붙여넣기...",create_reading:"읽기 만들기",explore:"탐색",menu_read:"읽기",menu_audio:"오디오",menu_books:"도서",menu_progress:"내 진도",audio_title:"오디오 라이브러리",books_title:"도서",progress_title:"내 진도",profile_title:"프로필",settings_title:"설정",tab_scan:"스캔",tab_read:"읽기",tab_audio:"오디오",tab_books:"도서",tab_progress:"진도",no_reading:"읽을거리가 없습니다",no_reading_hint:"스캔 탭으로 이동하여 사진을 찍거나 텍스트를 붙여넣으면 글이 여기에 표시됩니다."}
+  };
+  function applyLang(l){
+    var d=I18N[l]||I18N.en;
+    document.querySelectorAll("[data-i18n]").forEach(function(el){
+      var k=el.getAttribute("data-i18n");
+      if(d[k]) el.textContent=d[k];
+    });
+    document.querySelectorAll("[data-i18n-ph]").forEach(function(el){
+      var k=el.getAttribute("data-i18n-ph");
+      if(d[k]) el.placeholder=d[k];
+    });
+    var lb=$("langBtn"); if(lb) lb.textContent=l.toUpperCase();
+    document.documentElement.lang=l;
+  }
+  var lb=$("langBtn");
+  if(lb) lb.addEventListener("click", function(){
+    var langs=["en","vi","zh","ko"], cur="en";
+    try{ cur=localStorage.getItem("elab_uiLang")||"en"; }catch(e){}
+    var nxt=langs[(langs.indexOf(cur)+1)%langs.length];
+    try{ localStorage.setItem("elab_uiLang", nxt); }catch(e){}
+    applyLang(nxt);
+  });
+  try{ applyLang(localStorage.getItem("elab_uiLang")||"en"); }catch(e){ applyLang("en"); }
+  // Expose for lang-dropdown.js
+  window.__elabSetLang = applyLang;
+  // Auto-reload on new build
+  function checkBuild(){
+    try{
+      fetch(location.pathname+"?cb="+Date.now(),{cache:"no-store"}).then(function(r){return r.text();}).then(function(t){
+        var m=t.match(/var B="(\d+)"/);
+        if(m&&m[1]&&m[1]!==B){ location.href=location.pathname+"?v="+m[1]+location.hash; }
+      }).catch(function(){});
+    }catch(e){}
+  }
+  if(document.readyState==="complete"){ setTimeout(checkBuild,2000); }
+  else{ window.addEventListener("load", function(){ setTimeout(checkBuild,2000); }); }
+  setInterval(checkBuild,30000);
+  // SW
+  if("serviceWorker" in navigator){
+    navigator.serviceWorker.register("sw.js").then(function(reg){
+      reg.addEventListener("updatefound", function(){
+        var newWorker = reg.installing;
+        newWorker.addEventListener("statechange", function(){
+          if(newWorker.state === "installed" && navigator.serviceWorker.controller){
+            showUpdateBanner(newWorker);
+          }
+        });
+      });
+    }).catch(function(){});
+  }
+  // Banner "Có bản mới" - hiện inline, không popup/modal (chuẩn big tech)
+  function showUpdateBanner(newWorker){
+    if(document.getElementById("sw-update-banner")) return;
+    var banner = document.createElement("div");
+    banner.id = "sw-update-banner";
+    banner.style.cssText = "position:fixed;top:0;left:0;right:0;z-index:9999;background:var(--pp-accent,#0d9d6c);color:#fff;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:14px;box-shadow:0 2px 8px rgba(0,0,0,.15);";
+    var msg = document.createElement("span");
+    msg.textContent = "Có bản mới";
+    var btns = document.createElement("div");
+    btns.style.cssText = "display:flex;gap:8px;flex-shrink:0;";
+    var btnUpdate = document.createElement("button");
+    btnUpdate.textContent = "Cập nhật";
+    btnUpdate.style.cssText = "background:#fff;color:var(--pp-accent,#0d9d6c);border:none;border-radius:8px;padding:6px 14px;font-weight:600;cursor:pointer;";
+    btnUpdate.addEventListener("click", function(){
+      if(newWorker) newWorker.postMessage({type: "SKIP_WAITING"});
+      location.reload();
+    });
+    var btnLater = document.createElement("button");
+    btnLater.textContent = "Để sau";
+    btnLater.style.cssText = "background:transparent;color:#fff;border:1px solid rgba(255,255,255,.5);border-radius:8px;padding:6px 14px;cursor:pointer;";
+    btnLater.addEventListener("click", function(){ banner.remove(); });
+    btns.appendChild(btnUpdate);
+    btns.appendChild(btnLater);
+    banner.appendChild(msg);
+    banner.appendChild(btns);
+    document.body.prepend(banner);
+  }
+})();
+</script>
+<script src="js/lang-dropdown.js"></script>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

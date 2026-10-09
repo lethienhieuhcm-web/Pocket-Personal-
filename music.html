@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>/* Auto cache-buster: reload if this HTML is stale (build ID mismatch) */
+(function(){var B="__BUILD__";function c(){try{fetch(location.pathname,{method:"HEAD",cache:"no-store"}).then(function(r){var l=r.headers.get("x-build-id");if(l&&l!==B){location.reload();}}).catch(function(){})}catch(e){}}if(document.readyState==="complete"){setTimeout(c,2000);}else{window.addEventListener("load",function(){setTimeout(c,2000);});}})();
+</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Music — Pocket Personal</title>
+<link rel="manifest" href="/music/manifest.json">
+<meta name="theme-color" content="#f6f7f9">
+<link rel="stylesheet" href="/design-system.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  background:var(--pp-bg);color:var(--pp-ink);min-height:100vh;padding-bottom:160px}
+header{display:flex;align-items:center;gap:12px;padding:14px 16px;position:sticky;top:0;flex-wrap:wrap;
+  background:rgba(246,247,249,.95);backdrop-filter:blur(10px);z-index:10}
+.back{color:var(--pp-accent);text-decoration:none;font-weight:700;font-size:15px}
+h1{font-size:18px}
+main{max-width:640px;margin:0 auto;padding:0 16px}
+.greet{padding:20px 0 4px}
+.greet h2{font-size:26px;font-weight:800}
+.greet p{color:var(--pp-mut);font-size:14px;margin-top:2px}
+.searchbar{display:flex;gap:8px;margin:16px 0}
+.searchbar input{flex:1;padding:14px 16px;border:1px solid var(--pp-line);border-radius:14px;font-size:15px;
+  background:var(--pp-card);color:var(--pp-ink);outline:none}
+.searchbar input::placeholder{color:var(--pp-mut)}
+.searchbar button{padding:0 20px;border:none;border-radius:14px;background:var(--pp-accent);color:#fff;
+  font-size:15px;font-weight:700;cursor:pointer}
+.section-head{display:flex;align-items:center;justify-content:space-between;margin:20px 0 12px}
+.section-head h3{font-size:18px;font-weight:700}
+.section-head a{color:var(--pp-accent);font-size:13px;text-decoration:none;font-weight:600}
+.track{display:flex;align-items:center;gap:12px;padding:10px 4px;cursor:pointer;border-radius:12px}
+.track:active{background:var(--pp-card)}
+.track .rank{font-size:18px;font-weight:800;width:24px;text-align:center}
+.track img{width:56px;height:56px;border-radius:12px;object-fit:cover;background:var(--pp-card)}
+.track .t-info{flex:1;min-width:0}
+.track .t-title{font-weight:700;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.track .t-artist{font-size:13px;color:var(--pp-mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+.track .t-menu{background:none;border:none;color:var(--pp-mut);font-size:20px;cursor:pointer;padding:8px}
+.card{background:var(--pp-card);border:1px solid var(--pp-line);border-radius:16px;padding:16px;margin-bottom:16px}
+.row{display:flex;gap:8px;align-items:center}
+.btn{padding:10px 16px;border-radius:10px;border:none;background:var(--pp-card);color:var(--pp-ink);
+  font-size:14px;font-weight:600;cursor:pointer}
+.btn.primary{background:var(--pp-accent)}
+input[type=text].dark{flex:1;padding:12px;border:1px solid var(--pp-line);border-radius:10px;font-size:15px;background:var(--pp-card);color:var(--pp-ink);outline:none}
+/* Mini player */
+#miniplayer{position:fixed;bottom:76px;left:12px;right:12px;z-index:30;display:none;
+  background:var(--pp-card);border-radius:16px;padding:10px 14px;align-items:center;gap:12px;
+  box-shadow:var(--pp-shadow-lg);border:1px solid var(--pp-line);animation:slideUp .3s ease}
+#miniplayer.show{display:flex}
+@keyframes slideUp{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+#miniplayer img{width:48px;height:48px;border-radius:50%;object-fit:cover}
+#miniplayer img.spin{animation:spin 8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#miniplayer .mp-info{flex:1;min-width:0}
+#miniplayer .mp-title{font-weight:700;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#miniplayer .mp-artist{font-size:12px;color:var(--pp-mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#miniplayer .mp-btn{background:none;border:none;color:var(--pp-ink);font-size:22px;cursor:pointer;padding:8px}
+.drv{display:flex;align-items:center;gap:12px;padding:14px;background:var(--pp-card);
+  border:1px solid var(--pp-line);border-radius:14px;margin-bottom:10px}
+.drv-ic{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.drv-name{font-weight:700;font-size:15px}
+.drv-sub{font-size:12px;color:var(--pp-mut)}
+.drv-btn{margin-left:auto;padding:8px 16px;border-radius:10px;border:1px solid var(--pp-line);
+  background:var(--pp-card);color:var(--pp-ink);font-size:13px;font-weight:700;cursor:pointer}
+.drv-btn.on{background:var(--pp-grad);color:#fff;border:none}
+.drv-btn:disabled{opacity:.5}
+.badge-soon{margin-left:auto;font-size:11px;font-weight:700;color:var(--pp-mut);
+  background:var(--pp-bg);border:1px solid var(--pp-line);padding:6px 12px;border-radius:20px}
+/* Bottom nav */
+#bottomnav{position:fixed;bottom:0;left:0;right:0;z-index:20;display:flex;
+  background:rgba(246,247,249,.98);backdrop-filter:blur(10px);border-top:1px solid var(--pp-line);padding:8px 0 12px}
+#bottomnav button{flex:1;background:none;border:none;color:var(--pp-mut);cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;gap:4px;font-size:11px;font-weight:600}
+#bottomnav button.active{color:var(--pp-ink)}
+#bottomnav button{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11px}
+/* Full player */
+#fullplayer{position:fixed;inset:0;z-index:40;display:none;flex-direction:column;
+  background:linear-gradient(180deg,var(--pp-bg) 0%,var(--pp-bg) 100%);padding:20px}
+#fullplayer.show{display:flex}
+#fullplayer .fp-close{align-self:flex-end;background:none;border:none;color:var(--pp-ink);font-size:28px;cursor:pointer}
+#fullplayer .fp-art{width:280px;height:280px;border-radius:24px;margin:40px auto 24px;object-fit:cover;
+  box-shadow:var(--pp-shadow-lg)}
+#fullplayer .fp-art.spin{animation:spin 12s linear infinite}
+#fullplayer .fp-title{text-align:center;font-size:22px;font-weight:800}
+#fullplayer .fp-artist{text-align:center;color:var(--pp-mut);margin-top:6px}
+#fullplayer .fp-prog{margin:32px 0 8px;height:4px;background:var(--pp-card);border-radius:2px;cursor:pointer}
+#fullplayer .fp-fill{height:100%;background:var(--pp-accent);border-radius:2px;width:0%}
+#fullplayer .fp-times{display:flex;justify-content:space-between;font-size:12px;color:var(--pp-mut);margin-bottom:24px}
+#fullplayer .fp-controls{display:flex;align-items:center;justify-content:center;gap:24px}
+#fullplayer .fp-btn{background:none;border:none;color:var(--pp-ink);cursor:pointer;font-size:28px}
+#fullplayer .fp-btn.main{font-size:64px}
+#audio{display:none}
+.hint{color:var(--pp-mut);font-size:13px}
+.lang-pill{display:inline-flex;border:1px solid var(--pp-line);border-radius:20px;overflow:hidden;flex-shrink:0}
+.lang-pill button{border:none;background:transparent;padding:6px 10px;font-size:11px;font-weight:700;color:var(--pp-mut);cursor:pointer}
+.lang-pill button.on{background:var(--pp-accent);color:#fff}
+#toast{position:fixed;bottom:150px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:10px 20px;border-radius:20px;display:none;z-index:1000;max-width:90%;font-size:14px}
+</style>
+</head>
+<body>
+<header>
+  <a class="back" href="/hub">← Pocket Personal</a>
+  <h1 style="display:flex;align-items:center;gap:8px"><img src="/english/icons/icon-music-192.png" alt="" style="width:28px;height:28px;border-radius:8px;object-fit:cover">Music</h1>
+  <div class="pp-langdrop" id="langDrop" style="margin-left:auto">
+    <button class="pp-langdrop-btn" aria-label="Language">
+      <svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+      <span class="pp-langdrop-cur">VI</span>
+      <svg class="chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+    </button>
+    <div class="pp-langdrop-menu" role="listbox">
+      <button class="pp-langdrop-item" data-lang="vi"><span class="code">VI</span><span class="name">Tiếng Việt</span></button>
+      <button class="pp-langdrop-item" data-lang="en"><span class="code">EN</span><span class="name">English</span></button>
+      <button class="pp-langdrop-item" data-lang="zh"><span class="code">中文</span><span class="name">中文</span></button>
+      <button class="pp-langdrop-item" data-lang="ko"><span class="code">한국어</span><span class="name">한국어</span></button>
+    </div>
+  </div>
+</header>
+<main>
+  <div class="greet">
+    <h2 id="greetTitle">Good evening</h2>
+    <p id="greetSub" data-i18n="greet_sub">What do you want to hear?</p>
+  </div>
+
+  <div id="tab-search">
+    <div class="searchbar">
+      <input type="text" id="searchInput" data-i18n-ph="search_ph" placeholder="Search songs, artists...">
+      <button id="searchBtn" data-i18n="go">Go</button>
+    </div>
+    <div class="section-head"><h3 data-i18n="results">Results</h3></div>
+    <div id="results"><p class="hint" style="text-align:center;padding:20px" data-i18n="search_hint">Search for music</p></div>
+  </div>
+
+  <div id="tab-drive" style="display:none">
+    <div class="section-head"><h3 data-i18n="cloud_drives">Cloud Drives</h3></div>
+    <div id="driveList"></div>
+    <div class="section-head" id="driveFilesHead" style="display:none"><h3 data-i18n="music_files">Music files</h3><a href="#" id="driveRefresh" data-i18n="refresh">Refresh</a></div>
+    <div id="driveFiles"></div>
+  </div>
+
+  <div id="tab-playlists" style="display:none">
+    <div class="card">
+      <div class="row" style="margin-bottom:12px">
+        <input type="text" id="plName" class="dark" data-i18n-ph="new_playlist_ph" placeholder="New playlist...">
+        <button class="btn primary" id="plCreate">+</button>
+      </div>
+      <div id="plList"></div>
+    </div>
+  </div>
+
+  <div id="tab-spotify" style="display:none">
+    <div class="card" style="text-align:center;padding:32px" id="spotifyConnectCard">
+      <img src="/english/icons/icon-music-192.png" alt="" style="width:72px;height:72px;border-radius:18px;object-fit:cover">
+      <h3 style="margin:12px 0" data-i18n="connect_spotify">Connect Spotify</h3>
+      <button class="btn primary" id="spotifyConnect" data-i18n="connect">Connect</button>
+    </div>
+    <div id="spotifySearchCard" style="display:none">
+      <div class="searchbar">
+        <input type="text" id="spSearchInput" data-i18n-ph="search_spotify_ph" placeholder="Search Spotify...">
+        <button id="spSearchBtn" data-i18n="go">Go</button>
+      </div>
+      <div id="spResults"></div>
+    </div>
+  </div>
+</main>
+
+<!-- Mini player -->
+<div id="miniplayer">
+  <img id="mpArt" src="" alt="">
+  <div class="mp-info">
+    <div class="mp-title" id="mpTitle">—</div>
+    <div class="mp-artist" id="mpArtist">—</div>
+  </div>
+  <button class="mp-btn" id="mpFav">♡</button>
+  <button class="mp-btn" id="mpPlay">▶</button>
+</div>
+
+<!-- Full player -->
+<div id="fullplayer">
+  <button class="fp-close" id="fpClose">✕</button>
+  <img id="fpArt" class="fp-art" src="" alt="">
+  <div class="fp-title" id="fpTitle">—</div>
+  <div class="fp-artist" id="fpArtist">—</div>
+  <div class="fp-prog" id="fpProg"><div class="fp-fill" id="fpFill"></div></div>
+  <div class="fp-times"><span id="fpCur">0:00</span><span id="fpDur">0:00</span></div>
+  <div class="fp-controls">
+    <button class="fp-btn" id="fpPrev">⏮</button>
+    <button class="fp-btn main" id="fpPlay">▶</button>
+    <button class="fp-btn" id="fpNext">⏭</button>
+  </div>
+</div>
+
+<!-- Bottom nav -->
+<nav id="bottomnav">
+  <button class="active" data-nav="search"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg><span data-i18n="nav_home">Home</span></button>
+  <button data-nav="drive"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.5"/></svg><span data-i18n="nav_drive">Drive</span></button>
+  <button data-nav="playlists"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13"/><circle cx="4" cy="6" r="1.2"/><circle cx="4" cy="12" r="1.2"/><circle cx="4" cy="18" r="1.2"/></svg><span data-i18n="nav_library">Library</span></button>
+  <button data-nav="spotify"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 10.5c2.5-.8 5.5-.5 8 .8M8.5 13.5c2-.6 4.2-.4 6 .6"/></svg><span data-i18n="nav_spotify">Spotify</span></button>
+</nav>
+
+<div id="toast"></div>
+
+<audio id="audio"></audio>
+
+<script>
+const API = 'https://discoveryprovider.audius.co/v1';
+const audio = document.getElementById('audio');
+let queue = [], qi = 0;
+function esc(s){ return String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function fmtT(s){ s=Math.floor(s||0); return Math.floor(s/60)+':'+String(s%60).padStart(2,'0'); }
+
+// Toast
+function toast(m){ const t=document.getElementById('toast'); t.textContent=m; t.style.display='block'; setTimeout(()=>t.style.display='none',2500); }
+
+// i18n (VI/EN/中文/한국어)
+const I18N = {
+vi:{greet_morning:"Chào buổi sáng",greet_afternoon:"Chào buổi chiều",greet_evening:"Chào buổi tối",
+greet_sub:"Bạn muốn nghe gì?",search_ph:"Tìm bài hát, nghệ sĩ...",go:"Tìm",results:"Kết quả",
+search_hint:"Tìm nhạc bạn yêu thích",cloud_drives:"Lưu trữ đám mây",music_files:"File nhạc",refresh:"Làm mới",
+new_playlist_ph:"Playlist mới...",connect_spotify:"Kết nối Spotify",connect:"Kết nối",search_spotify_ph:"Tìm trên Spotify...",
+nav_home:"Trang chủ",nav_drive:"Drive",nav_library:"Thư viện",nav_spotify:"Spotify",
+searching:"Đang tìm...",no_results:"Không có kết quả",failed:"Thất bại",loading:"Đang tải...",
+no_music_drive:"Không có nhạc trên Drive",no_playlists:"Chưa có playlist",
+tracks:n=>`${n} bài hát`,
+drive_connected:"Đã kết nối",drive_not_connected:"Chưa kết nối",drive_connect:"Kết nối",drive_disconnect:"Ngắt kết nối",
+drive_soon:"Sắp có",drive_music_sub:"Nhạc từ Google Drive của bạn",
+toast_no_link:"Không lấy được link kết nối",toast_conn_err:"Lỗi kết nối",
+spotify_not_configured:"Spotify chưa được cấu hình",open:"Mở ↗"},
+en:{greet_morning:"Good morning",greet_afternoon:"Good afternoon",greet_evening:"Good evening",
+greet_sub:"What do you want to hear?",search_ph:"Search songs, artists...",go:"Go",results:"Results",
+search_hint:"Search for music",cloud_drives:"Cloud Drives",music_files:"Music files",refresh:"Refresh",
+new_playlist_ph:"New playlist...",connect_spotify:"Connect Spotify",connect:"Connect",search_spotify_ph:"Search Spotify...",
+nav_home:"Home",nav_drive:"Drive",nav_library:"Library",nav_spotify:"Spotify",
+searching:"Searching...",no_results:"No results",failed:"Failed",loading:"Loading...",
+no_music_drive:"No music on Drive",no_playlists:"No playlists",
+tracks:n=>`${n} tracks`,
+drive_connected:"Connected",drive_not_connected:"Not connected",drive_connect:"Connect",drive_disconnect:"Disconnect",
+drive_soon:"Coming soon",drive_music_sub:"Music from your Google Drive",
+toast_no_link:"Could not get connect link",toast_conn_err:"Connection error",
+spotify_not_configured:"Spotify not configured yet",open:"Open ↗",update_available:"New version available",update_btn:"Update",update_later:"Later"},
+zh:{greet_morning:"早上好",greet_afternoon:"下午好",greet_evening:"晚上好",
+greet_sub:"您想听什么？",search_ph:"搜索歌曲、歌手...",go:"搜索",results:"搜索结果",
+search_hint:"搜索音乐",cloud_drives:"云存储",music_files:"音乐文件",refresh:"刷新",
+new_playlist_ph:"新建播放列表...",connect_spotify:"连接 Spotify",connect:"连接",search_spotify_ph:"搜索 Spotify...",
+nav_home:"首页",nav_drive:"云盘",nav_library:"资料库",nav_spotify:"Spotify",
+searching:"搜索中...",no_results:"没有结果",failed:"失败",loading:"加载中...",
+no_music_drive:"云盘上没有音乐",no_playlists:"暂无播放列表",
+tracks:n=>`${n} 首歌曲`,
+drive_connected:"已连接",drive_not_connected:"未连接",drive_connect:"连接",drive_disconnect:"断开连接",
+drive_soon:"即将推出",drive_music_sub:"您 Google Drive 中的音乐",
+toast_no_link:"无法获取连接链接",toast_conn_err:"连接错误",
+spotify_not_configured:"Spotify 尚未配置",open:"打开 ↗",update_available:"有新版本",update_btn:"更新",update_later:"稍后"},
+ko:{greet_morning:"좋은 아침입니다",greet_afternoon:"좋은 오후입니다",greet_evening:"좋은 저녁입니다",
+greet_sub:"무엇을 듣고 싶으세요?",search_ph:"노래, 아티스트 검색...",go:"검색",results:"검색 결과",
+search_hint:"음악 검색",cloud_drives:"클라우드 드라이브",music_files:"음악 파일",refresh:"새로고침",
+new_playlist_ph:"새 재생목록...",connect_spotify:"Spotify 연결",connect:"연결",search_spotify_ph:"Spotify 검색...",
+nav_home:"홈",nav_drive:"드라이브",nav_library:"보관함",nav_spotify:"Spotify",
+searching:"검색 중...",no_results:"결과가 없습니다",failed:"실패",loading:"로딩 중...",
+no_music_drive:"드라이브에 음악이 없습니다",no_playlists:"재생목록이 없습니다",
+tracks:n=>`${n}곡`,
+drive_connected:"연결됨",drive_not_connected:"연결 안 됨",drive_connect:"연결",drive_disconnect:"연결 해제",
+drive_soon:"출시 예정",drive_music_sub:"내 Google Drive의 음악",
+toast_no_link:"연결 링크를 가져올 수 없습니다",toast_conn_err:"연결 오류",
+spotify_not_configured:"Spotify가 아직 설정되지 않았습니다",open:"열기 ↗"}
+};
+let LANG = "vi";
+try{ const v = localStorage.getItem("elab_uiLang"); if(v) LANG = JSON.parse(v); }catch(e){}
+if(!I18N[LANG]) LANG = "vi";
+let curTab = "search";
+function applyLang(l){
+  LANG = l;
+  try{ localStorage.setItem("elab_uiLang", JSON.stringify(l)); }catch(e){}
+  document.documentElement.lang = l;
+  const t = I18N[l];
+  document.querySelectorAll("[data-i18n]").forEach(el=>{ const v=t[el.dataset.i18n]; if(v!==undefined) el.textContent=v; });
+  document.querySelectorAll("[data-i18n-ph]").forEach(el=>{ const v=t[el.dataset.i18nPh]; if(v!==undefined) el.placeholder=v; });
+  ["vi","en","zh","ko"].forEach(x=>{ const b=document.getElementById("lang"+x[0].toUpperCase()+x[1]); if(b) b.classList.toggle("on", l===x); });
+  const hh = new Date().getHours();
+  document.getElementById('greetTitle').textContent = hh<12?t.greet_morning:hh<18?t.greet_afternoon:t.greet_evening;
+  if(curTab==='drive') renderDriveList();
+  if(curTab==='playlists') renderPlaylists();
+}
+// Expose for lang-dropdown.js
+window.__elabSetLang = applyLang;
+
+// Tabs
+function showTab(n){
+  curTab = n;
+  ['search','drive','playlists','spotify'].forEach(x=>{
+    document.getElementById('tab-'+x).style.display = x===n?'block':'none';
+  });
+  document.querySelectorAll('#bottomnav button').forEach(b=>b.classList.toggle('active', b.dataset.nav===n));
+  if(n==='drive') checkGDrive();
+  if(n==='playlists') renderPlaylists();
+  if(n==='spotify') refreshSpotifyStatus();
+}
+document.querySelectorAll('#bottomnav button').forEach(b=>b.onclick=()=>showTab(b.dataset.nav));
+
+// Player
+function playAt(i){
+  if(i<0||i>=queue.length) return;
+  qi = i;
+  const t = queue[i];
+  document.getElementById('miniplayer').classList.add('show');
+  ['mpArt','fpArt'].forEach(id=>document.getElementById(id).src = t.art||'');
+  ['mpTitle','fpTitle'].forEach(id=>document.getElementById(id).textContent = t.title);
+  ['mpArtist','fpArtist'].forEach(id=>document.getElementById(id).textContent = t.artist);
+  audio.src = t.url;
+  audio.play().catch(()=>{});
+}
+audio.onplay = ()=>{ ['mpPlay','fpPlay'].forEach(id=>document.getElementById(id).textContent='⏸');
+  document.getElementById('mpArt').classList.add('spin'); document.getElementById('fpArt').classList.add('spin'); };
+audio.onpause = ()=>{ ['mpPlay','fpPlay'].forEach(id=>document.getElementById(id).textContent='▶');
+  document.getElementById('mpArt').classList.remove('spin'); document.getElementById('fpArt').classList.remove('spin'); };
+audio.onended = ()=>playAt(qi+1);
+audio.ontimeupdate = ()=>{
+  if(audio.duration){
+    document.getElementById('fpFill').style.width = (audio.currentTime/audio.duration*100)+'%';
+    document.getElementById('fpCur').textContent = fmtT(audio.currentTime);
+    document.getElementById('fpDur').textContent = fmtT(audio.duration);
+  }
+};
+const togglePlay = ()=>audio.paused?audio.play():audio.pause();
+document.getElementById('mpPlay').onclick = (e)=>{ e.stopPropagation(); togglePlay(); };
+document.getElementById('fpPlay').onclick = togglePlay;
+document.getElementById('fpPrev').onclick = ()=>{ audio.currentTime=Math.max(0,audio.currentTime-10); };
+document.getElementById('fpNext').onclick = ()=>playAt(qi+1);
+document.getElementById('fpProg').onclick = (e)=>{
+  const r = e.currentTarget.getBoundingClientRect();
+  if(audio.duration) audio.currentTime = (e.clientX-r.left)/r.width*audio.duration;
+};
+document.getElementById('miniplayer').onclick = ()=>document.getElementById('fullplayer').classList.add('show');
+document.getElementById('fpClose').onclick = ()=>document.getElementById('fullplayer').classList.remove('show');
+document.getElementById('mpFav').onclick = (e)=>{ e.stopPropagation();
+  e.target.textContent = e.target.textContent==='♡'?'♥':'♡'; };
+
+// Search (Audius)
+const RANK_COLORS = ['#00d4ff','#ff4d6d','#a78bfa','#fbbf24','#34d399'];
+async function search(q){
+  const box = document.getElementById('results');
+  box.innerHTML = '<p class="hint" style="text-align:center;padding:20px">'+I18N[LANG].searching+'</p>';
+  try{
+    const r = await fetch(`${API}/tracks/search?query=${encodeURIComponent(q)}&limit=10`);
+    const j = await r.json();
+    queue = (j.data||[]).map((t,i)=>({title:t.title, artist:t.user?.name||'', art:t.artwork?.['150x150']||'',
+      url:`${API}/tracks/${t.id}/stream`}));
+    if(!queue.length){ box.innerHTML='<p class="hint" style="text-align:center">'+I18N[LANG].no_results+'</p>'; return; }
+    box.innerHTML = queue.map((t,i)=>`
+      <div class="track" data-i="${i}">
+        <div class="rank" style="color:${RANK_COLORS[i%5]}">${i+1}</div>
+        <img src="${t.art}" loading="lazy" alt="">
+        <div class="t-info"><div class="t-title">${esc(t.title)}</div><div class="t-artist">${esc(t.artist)}</div></div>
+        <button class="t-menu">⋮</button>
+      </div>`).join('');
+    box.querySelectorAll('.track').forEach(el=>el.onclick=()=>playAt(+el.dataset.i));
+  }catch(e){ box.innerHTML='<p class="hint" style="text-align:center;color:#ff4d6d">'+I18N[LANG].failed+'</p>'; }
+}
+document.getElementById('searchBtn').onclick = ()=>{
+  const q = document.getElementById('searchInput').value.trim(); if(q) search(q); };
+document.getElementById('searchInput').onkeydown = e=>{ if(e.key==='Enter') document.getElementById('searchBtn').click(); };
+
+// Drive — cloud list
+const DRIVES = [
+  {id:'gdrive', name:'Google Drive', icon:`<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#14181f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h10l7 12H0z"/><path d="M7 3L0 15"/></svg>`},
+  {id:'dropbox', name:'Dropbox', icon:`<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#14181f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4.5-8 4.5-8-4.5z"/><path d="M4 12l8 4.5 8-4.5"/><path d="M4 7.5v9L12 21l8-4.5v-9"/></svg>`, soon:true},
+  {id:'onedrive', name:'OneDrive', icon:`<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#14181f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 18a4.5 4.5 0 0 0 .4-9A6 6 0 0 0 6.2 10.5 3.8 3.8 0 0 0 7 18z"/></svg>`, soon:true},
+];
+let gdriveConnected = false;
+function renderDriveList(){
+  const t = I18N[LANG];
+  const box = document.getElementById('driveList');
+  box.innerHTML = DRIVES.map(d=>`
+    <div class="drv">
+      <div class="drv-ic" style="background:#fff;border:1px solid var(--pp-line)">${d.icon}</div>
+      <div><div class="drv-name">${d.name}</div><div class="drv-sub">${d.id==='gdrive' ? (gdriveConnected?t.drive_connected:t.drive_not_connected) : t.drive_soon}</div></div>
+      ${d.soon
+        ? `<span class="badge-soon">${t.drive_soon}</span>`
+        : `<button class="drv-btn ${gdriveConnected?'':'on'}" id="gdriveBtn">${gdriveConnected?t.drive_disconnect:t.drive_connect}</button>`}
+    </div>`).join('');
+  const btn = document.getElementById('gdriveBtn');
+  if(btn) btn.onclick = gdriveConnected ? disconnectGDrive : connectGDrive;
+}
+async function checkGDrive(){
+  try{
+    const tok = localStorage.getItem('elab_authToken');
+    const r = await fetch('/api/drive/status',{headers:{'Authorization':'Bearer '+tok}});
+    const j = await r.json();
+    gdriveConnected = !!j.connected;
+  }catch(e){ gdriveConnected = false; }
+  renderDriveList();
+  document.getElementById('driveFilesHead').style.display = gdriveConnected?'flex':'none';
+  if(gdriveConnected) loadDriveFiles();
+  else document.getElementById('driveFiles').innerHTML='';
+}
+async function connectGDrive(){
+  try{
+    const tok = localStorage.getItem('elab_authToken');
+    const r = await fetch('/api/drive/auth-url',{headers:{'Authorization':'Bearer '+tok}});
+    const j = await r.json();
+    if(j.url) location.href = j.url;
+    else toast(I18N[LANG].toast_no_link);
+  }catch(e){ toast(I18N[LANG].toast_conn_err); }
+}
+async function disconnectGDrive(){
+  try{
+    const tok = localStorage.getItem('elab_authToken');
+    await fetch('/api/drive/disconnect',{method:'POST',headers:{'Authorization':'Bearer '+tok}});
+  }catch(e){}
+  checkGDrive();
+}
+
+// Drive files
+async function loadDriveFiles(){
+  const box = document.getElementById('driveFiles');
+  box.innerHTML = '<p class="hint" style="text-align:center;padding:16px">'+I18N[LANG].loading+'</p>';
+  try{
+    const tok = localStorage.getItem('elab_authToken');
+    const r = await fetch('/api/drive/music', {headers:{'Authorization':'Bearer '+tok}});
+    const j = await r.json();
+    if(j.error){ box.innerHTML=`<p class="hint" style="text-align:center">${esc(j.error)}</p>`; return; }
+    queue = await Promise.all((j.files||[]).map(async f=>{
+      const r2 = await fetch('/api/drive/stream/'+f.id, {headers:{'Authorization':'Bearer '+tok}});
+      const j2 = await r2.json();
+      return {title:f.name.replace(/\.[^.]+$/,''), artist:I18N[LANG].nav_drive, art:'', url:j2.url};
+    }));
+    if(!queue.length){ box.innerHTML='<p class="hint" style="text-align:center">'+I18N[LANG].no_music_drive+'</p>'; return; }
+    box.innerHTML = queue.map((t,i)=>`
+      <div class="track" data-i="${i}">
+        <div class="rank" style="color:${RANK_COLORS[i%5]}">${i+1}</div>
+        <img src="/english/icons/icon-music-192.png" alt="" style="width:56px;height:56px;border-radius:12px;object-fit:cover">
+        <div class="t-info"><div class="t-title">${esc(t.title)}</div><div class="t-artist">${esc(t.artist)}</div></div>
+        <button class="t-menu">⋮</button>
+      </div>`).join('');
+    box.querySelectorAll('.track').forEach(el=>el.onclick=()=>playAt(+el.dataset.i));
+  }catch(e){ box.innerHTML='<p class="hint" style="text-align:center;color:#ff4d6d">'+I18N[LANG].failed+'</p>'; }
+}
+document.getElementById('driveRefresh').onclick = (e)=>{ e.preventDefault(); loadDriveFiles(); };
+checkGDrive();
+
+// Playlists
+let playlists = JSON.parse(localStorage.getItem('pp_playlists')||'[]');
+document.getElementById('plCreate').onclick = async ()=>{
+  const name = document.getElementById('plName').value.trim(); if(!name) return;
+  playlists.push({name, tracks:[]});
+  localStorage.setItem('pp_playlists', JSON.stringify(playlists));
+  document.getElementById('plName').value=''; renderPlaylists();
+};
+function renderPlaylists(){
+  const box = document.getElementById('plList');
+  box.innerHTML = playlists.length ? playlists.map((p,i)=>
+    `<div class="track"><div class="t-info"><div class="t-title">${esc(p.name)}</div>
+    <div class="t-artist">${I18N[LANG].tracks(p.tracks.length)}</div></div></div>`).join('')
+    : '<p class="hint" style="text-align:center">'+I18N[LANG].no_playlists+'</p>';
+}
+
+// Spotify
+async function spApi(p, opts){
+  const tok = localStorage.getItem('elab_authToken');
+  const r = await fetch(p, {...(opts||{}), headers:{'Authorization':'Bearer '+tok}});
+  if(!r.ok) throw new Error();
+  return r.json();
+}
+async function refreshSpotifyStatus(){
+  try{
+    const j = await spApi('/api/spotify/status');
+    document.getElementById('spotifyConnectCard').style.display = j.connected?'none':'block';
+    document.getElementById('spotifySearchCard').style.display = j.connected?'block':'none';
+  }catch(e){}
+}
+document.getElementById('spotifyConnect').onclick = async ()=>{
+  try{ const j = await spApi('/api/spotify/auth-url'); if(j.url) location.href=j.url; }
+  catch(e){ alert(I18N[LANG].spotify_not_configured); }
+};
+document.getElementById('spSearchBtn').onclick = async ()=>{
+  const q = document.getElementById('spSearchInput').value.trim(); if(!q) return;
+  try{
+    const j = await spApi('/api/spotify/search?q='+encodeURIComponent(q));
+    const tracks = j.tracks?.items||[];
+    document.getElementById('spResults').innerHTML = tracks.map(t=>`
+      <div class="track">
+        <img src="${t.album?.images?.[2]?.url||''}" alt="">
+        <div class="t-info"><div class="t-title">${esc(t.name)}</div>
+        <div class="t-artist">${esc(t.artists?.map(a=>a.name).join(', '))}</div></div>
+        <a href="${t.external_urls?.spotify}" target="_blank" style="color:#00d4ff;text-decoration:none;font-size:13px">${I18N[LANG].open}</a>
+      </div>`).join('') || '<p class="hint">'+I18N[LANG].no_results+'</p>';
+  }catch(e){}
+};
+applyLang(LANG);
+if("serviceWorker" in navigator){
+  navigator.serviceWorker.register("/music/sw.js",{scope:"/music/"}).then(function(reg){
+    reg.addEventListener("updatefound", function(){
+      var newWorker = reg.installing;
+      newWorker.addEventListener("statechange", function(){
+        if(newWorker.state === "installed" && navigator.serviceWorker.controller){
+          showUpdateBanner(newWorker);
+        }
+      });
+    });
+  }).catch(()=>{});
+}
+// Banner "Có bản mới" - hiện inline, không popup/modal (chuẩn big tech)
+function showUpdateBanner(newWorker){
+  if(document.getElementById("sw-update-banner")) return;
+  const lang = (window.elab_uiLang || "vi").toLowerCase();
+  const t = (typeof I18N !== "undefined" && I18N[lang]) ? I18N[lang] : (typeof I18N !== "undefined" ? I18N.vi : {});
+  const banner = document.createElement("div");
+  banner.id = "sw-update-banner";
+  banner.style.cssText = "position:fixed;top:0;left:0;right:0;z-index:9999;background:var(--pp-accent,#0d9d6c);color:#fff;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:14px;box-shadow:0 2px 8px rgba(0,0,0,.15);";
+  const msg = document.createElement("span");
+  msg.textContent = t.update_available || "Có bản mới";
+  const btns = document.createElement("div");
+  btns.style.cssText = "display:flex;gap:8px;flex-shrink:0;";
+  const btnUpdate = document.createElement("button");
+  btnUpdate.textContent = t.update_btn || "Cập nhật";
+  btnUpdate.style.cssText = "background:#fff;color:var(--pp-accent,#0d9d6c);border:none;border-radius:8px;padding:6px 14px;font-weight:600;cursor:pointer;";
+  btnUpdate.addEventListener("click", function(){
+    if(newWorker) newWorker.postMessage({type: "SKIP_WAITING"});
+    location.reload();
+  });
+  const btnLater = document.createElement("button");
+  btnLater.textContent = t.update_later || "Để sau";
+  btnLater.style.cssText = "background:transparent;color:#fff;border:1px solid rgba(255,255,255,.5);border-radius:8px;padding:6px 14px;cursor:pointer;";
+  btnLater.addEventListener("click", function(){ banner.remove(); });
+  btns.appendChild(btnUpdate);
+  btns.appendChild(btnLater);
+  banner.appendChild(msg);
+  banner.appendChild(btns);
+  document.body.prepend(banner);
+}
+</script>
+<script src="/english/js/lang-dropdown.js?v=__BUILD__"></script>
+</body>
+</html>
