@@ -1,0 +1,50 @@
+name: Deploy Gemini Proxy to Modal
+
+on:
+  workflow_dispatch:  # manual trigger
+  push:
+    paths:
+      - "modal_crons/gemini_proxy.py"
+      - ".github/workflows/deploy-gemini-proxy.yml"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Modal CLI
+        run: pip install modal
+
+      - name: Authenticate Modal
+        env:
+          MODAL_TOKEN_ID: ${{ secrets.MODAL_TOKEN_ID }}
+          MODAL_TOKEN_SECRET: ${{ secrets.MODAL_TOKEN_SECRET }}
+        run: |
+          mkdir -p ~/.config/modal
+          cat > ~/.modal.toml << EOF
+          [default]
+          token_id = "$MODAL_TOKEN_ID"
+          token_secret = "$MODAL_TOKEN_SECRET"
+          active = true
+          EOF
+          chmod 600 ~/.modal.toml
+
+      - name: Check secret exists
+        run: |
+          echo "Make sure Modal secret 'gemini-proxy' exists with GEMINI_PROXY_TOKEN"
+          echo "Create via: modal secret create gemini-proxy GEMINI_PROXY_TOKEN=<token>"
+
+      - name: Deploy Gemini proxy
+        run: |
+          cd modal_crons && modal deploy gemini_proxy.py
+
+      - name: Get endpoint URL
+        run: |
+          echo "Check Modal dashboard for the web endpoint URL"
+          echo "Endpoints: /health, /gemini, /gemini/stream"
