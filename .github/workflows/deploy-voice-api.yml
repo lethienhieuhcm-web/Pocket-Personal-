@@ -72,10 +72,10 @@ jobs:
       - name: Create volume and upload models
         run: |
           modal volume create voice-clone-vol 2>&1 || echo "Volume exists or created"
-          modal volume put voice-clone-vol models_tmp/ /data/models/ 2>&1 | tail -3
+          modal volume put --force voice-clone-vol models_tmp/ /data/models/ 2>&1 | tail -3
           # Upload reference audio if present
           if [ -f modal_crons/henrry_ref.wav ]; then
-            modal volume put voice-clone-vol modal_crons/henrry_ref.wav /data/henrry_ref.wav
+            modal volume put --force voice-clone-vol modal_crons/henrry_ref.wav /data/henrry_ref.wav
           fi
 
       - name: Deploy voice API
