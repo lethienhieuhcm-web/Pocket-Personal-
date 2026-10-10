@@ -72,17 +72,13 @@ jobs:
       - name: Create volume and upload models
         run: |
           modal volume create voice-clone-vol 2>&1 || echo "Volume exists or created"
-          # Upload each subdirectory explicitly to avoid path nesting issues
-          modal volume put --force voice-clone-vol models_tmp/onnx_update /data/models/onnx_update 2>&1 | tail -3
-          modal volume put --force voice-clone-vol models_tmp/codec /data/models/codec 2>&1 | tail -3
+          # Upload to volume root-relative paths (volume mounts at /data in function)
+          modal volume put --force voice-clone-vol models_tmp/onnx_update models/onnx_update 2>&1 | tail -3
+          modal volume put --force voice-clone-vol models_tmp/codec models/codec 2>&1 | tail -3
           # Upload reference audio if present
           if [ -f modal_crons/henrry_ref.wav ]; then
-            modal volume put --force voice-clone-vol modal_crons/henrry_ref.wav /data/henrry_ref.wav
+            modal volume put --force voice-clone-vol modal_crons/henrry_ref.wav henrry_ref.wav
           fi
-          # Debug: list volume contents
-          echo "=== Volume contents ==="
-          modal volume ls voice-clone-vol /data/models/ 2>&1 | head -20
-          modal volume ls voice-clone-vol /data/models/onnx_update/ 2>&1 | head -20
 
       - name: Deploy voice API
         run: |
