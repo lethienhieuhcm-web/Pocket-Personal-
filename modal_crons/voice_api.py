@@ -71,7 +71,7 @@ def encode_voice(ref_audio_path: str = "/data/henrry_ref.wav"):
     timeout=120,
     # Scale to zero when idle; cold start ~30s (model load)
 )
-@modal.web_endpoint(method="POST")
+@modal.fastapi_endpoint(method="POST")
 def tts(request_data: dict):
     """POST /tts {text, secret} -> WAV audio bytes."""
     import os
