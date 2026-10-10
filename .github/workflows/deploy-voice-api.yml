@@ -1,0 +1,91 @@
+name: Deploy Voice Clone API to Modal
+
+on:
+  workflow_dispatch:  # manual trigger
+  push:
+    paths:
+      - "modal_crons/voice_api.py"
+      - ".github/workflows/deploy-voice-api.yml"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Modal CLI
+        run: pip install modal
+
+      - name: Authenticate Modal
+        env:
+          MODAL_TOKEN_ID: ${{ secrets.MODAL_TOKEN_ID }}
+          MODAL_TOKEN_SECRET: ${{ secrets.MODAL_TOKEN_SECRET }}
+        run: |
+          mkdir -p ~/.config/modal
+          cat > ~/.modal.toml << EOF
+          [default]
+          token_id = "$MODAL_TOKEN_ID"
+          token_secret = "$MODAL_TOKEN_SECRET"
+          active = true
+          EOF
+          chmod 600 ~/.modal.toml
+
+      - name: Download models from HuggingFace
+        run: |
+          pip install huggingface_hub
+          python3 << 'PYEOF'
+          from huggingface_hub import snapshot_download
+          import shutil, os
+          # VieNeu TTS v3 Turbo ONNX
+          src = snapshot_download("pnnbao-ump/VieNeu-TTS-v3-Turbo", allow_patterns=["onnx_update/*"])
+          # Codec
+          src2 = snapshot_download("OpenMOSS-Team/MOSS-Audio-Tokenizer-Nano-ONNX")
+          os.makedirs("models_tmp/onnx_update", exist_ok=True)
+          os.makedirs("models_tmp/codec", exist_ok=True)
+          # Copy dereferenced (resolve symlinks)
+          import pathlib
+          for p in pathlib.Path(src, "onnx_update").rglob("*"):
+              if p.is_file():
+                  dest = pathlib.Path("models_tmp/onnx_update") / p.relative_to(pathlib.Path(src, "onnx_update"))
+                  dest.parent.mkdir(parents=True, exist_ok=True)
+                  shutil.copy2(p, dest)
+          for p in pathlib.Path(src2).rglob("*"):
+              if p.is_file():
+                  dest = pathlib.Path("models_tmp/codec") / p.relative_to(src2)
+                  dest.parent.mkdir(parents=True, exist_ok=True)
+                  shutil.copy2(p, dest)
+          print("Models downloaded")
+          PYEOF
+          du -sh models_tmp/
+
+      - name: Upload reference audio
+        run: |
+          # Reference audio must be committed to repo at modal_crons/henrry_ref.wav
+          # (16kHz mono WAV, ~30s). If not present, skip — encode step will fail with clear error.
+          ls -lh modal_crons/henrry_ref.wav 2>&1 || echo "WARNING: no reference audio"
+
+      - name: Create volume and upload models
+        run: |
+          python3 << 'PYEOF'
+          import modal
+          vol = modal.Volume.from_name("voice-clone-vol", create_if_missing=True)
+          # Upload via modal CLI shell
+          PYEOF
+          modal volume put voice-clone-vol models_tmp/ /data/models/ 2>&1 | tail -3 || true
+          # Upload reference audio if present
+          if [ -f modal_crons/henrry_ref.wav ]; then
+            modal volume put voice-clone-vol modal_crons/henrry_ref.wav /data/henrry_ref.wav
+          fi
+
+      - name: Deploy voice API
+        run: |
+          cd modal_crons && modal deploy voice_api.py
+
+      - name: Encode voice embedding (one-time)
+        run: |
+          cd modal_crons && modal run voice_api.py::encode_voice 2>&1 | tail -5
