@@ -79,6 +79,10 @@ jobs:
           if [ -f modal_crons/henrry_ref.wav ]; then
             modal volume put --force voice-clone-vol modal_crons/henrry_ref.wav /data/henrry_ref.wav
           fi
+          # Debug: list volume contents
+          echo "=== Volume contents ==="
+          modal volume ls voice-clone-vol /data/models/ 2>&1 | head -20
+          modal volume ls voice-clone-vol /data/models/onnx_update/ 2>&1 | head -20
 
       - name: Deploy voice API
         run: |
