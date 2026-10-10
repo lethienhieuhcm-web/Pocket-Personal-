@@ -71,12 +71,8 @@ jobs:
 
       - name: Create volume and upload models
         run: |
-          python3 << 'PYEOF'
-          import modal
-          vol = modal.Volume.from_name("voice-clone-vol", create_if_missing=True)
-          # Upload via modal CLI shell
-          PYEOF
-          modal volume put voice-clone-vol models_tmp/ /data/models/ 2>&1 | tail -3 || true
+          modal volume create voice-clone-vol 2>&1 || echo "Volume exists or created"
+          modal volume put voice-clone-vol models_tmp/ /data/models/ 2>&1 | tail -3
           # Upload reference audio if present
           if [ -f modal_crons/henrry_ref.wav ]; then
             modal volume put voice-clone-vol modal_crons/henrry_ref.wav /data/henrry_ref.wav
