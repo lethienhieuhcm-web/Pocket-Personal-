@@ -4,19 +4,30 @@ compatibility_date = "2024-10-01"
 
 [assets]
 directory = "./"
-not_found_handling = "single-page-application"
 exclude = [
-  ".git",
-  ".github",
   "node_modules",
   "worker/node_modules",
+  ".git",
+  ".github",
   "worker/src",
+  "worker/package.json",
+  "worker/package-lock.json",
   "scripts",
-  "*.md",
+  "tests",
+  "test",
+  "backups",
   "*.py",
   "*.sh",
+  "*.md",
   "wrangler.toml",
   ".gitignore",
+  "android",
+  "apk",
+  "src-tauri",
+  "www",
+  ".venv-book",
+  "__pycache__",
+  "modal_crons",
 ]
 
 [[r2_buckets]]
