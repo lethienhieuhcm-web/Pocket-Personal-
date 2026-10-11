@@ -27,6 +27,7 @@ voice_image = (
         "numpy",
         "scipy",
         "huggingface_hub",
+        "fastapi[standard]",  # required by @modal.fastapi_endpoint (Modal >= 0.7x)
     )
 )
 
@@ -37,7 +38,13 @@ app = modal.App("pocket-personal-voice")
 kokoro_image = (
     modal.Image.debian_slim(python_version="3.12")
     .apt_install("espeak-ng", "ffmpeg")
-    .pip_install("kokoro", "numpy", "scipy", "soundfile")
+    .pip_install(
+        "fastapi[standard]",  # required by @modal.fastapi_endpoint (Modal >= 0.7x)
+        "kokoro",
+        "numpy",
+        "scipy",
+        "soundfile",
+    )
     .run_commands("python3 -c \"from kokoro import KPipeline; KPipeline(lang_code='a')\"")
 )
 
