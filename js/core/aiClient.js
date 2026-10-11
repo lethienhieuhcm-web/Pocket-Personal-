@@ -7,7 +7,9 @@ import { apiCall } from './api.js';
 const DB_NAME = 'pp_ai';
 const STORE = 'keys';
 const KEY_ID = 'gemini_user_key';
-const MODEL = 'gemini-2.5-flash';
+// Big-tech pattern: fallback chain, single source of truth.
+// 404 = invalid model, try next. Matches backend d1_poller.py GEMINI_MODELS.
+const MODELS = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-2.5-flash'];
 
 function openDb() {
   return new Promise((resolve, reject) => {
@@ -88,11 +90,26 @@ export async function testUserKey(key) {
 }
 
 // Gọi trực tiếp Google từ browser, stream SSE từng chunk.
+// Big-tech fallback: thử models theo thứ tự, 404 thì thử model tiếp theo.
 export async function callDirect(prompt, onToken) {
   const key = await getUserKey();
   if (!key) throw new Error('no-key');
+  let lastErr = null;
+  for (const m of MODELS) {
+    try {
+      return await callDirectWithModel(key, m, prompt, onToken);
+    } catch (e) {
+      lastErr = e;
+      if (e.status === 404) continue; // invalid model, try next
+      throw e; // other errors (401/403/429/network) → fallback server
+    }
+  }
+  throw lastErr || new Error('no-model');
+}
+
+async function callDirectWithModel(key, model, prompt, onToken) {
   const r = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:streamGenerateContent?alt=sse`,
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
