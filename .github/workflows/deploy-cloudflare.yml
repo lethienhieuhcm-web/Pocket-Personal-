@@ -29,10 +29,11 @@ jobs:
           ls -lh ../worker.js
           echo "Build OK"
 
-      - name: Deploy with Wrangler (direct npx)
+      - name: Deploy with Wrangler
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
         run: |
           rm -rf node_modules worker/node_modules
-          npx --yes --package=wrangler@4 wrangler deploy --config wrangler.toml
+          npm install -g wrangler@4
+          wrangler deploy --config wrangler.toml
