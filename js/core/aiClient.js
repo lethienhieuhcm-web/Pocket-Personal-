@@ -7,9 +7,9 @@ import { apiCall } from './api.js';
 const DB_NAME = 'pp_ai';
 const STORE = 'keys';
 const KEY_ID = 'gemini_user_key';
-// Big-tech pattern: fallback chain, single source of truth.
-// 404 = invalid model, try next. Matches backend d1_poller.py GEMINI_MODELS.
-const MODELS = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-2.5-flash'];
+// 8b: KHÔNG đoán tên model. Discovery từ API thật bằng key của user.
+// Cache model đã verify để không gọi listModels mỗi lần.
+let _verifiedModel = null;
 
 function openDb() {
   return new Promise((resolve, reject) => {
@@ -69,48 +69,58 @@ export async function deleteUserKey() {
   await idbDel(KEY_ID);
 }
 
+// 8b: Discovery model từ API thật, không đoán tên.
+// Gọi GET /v1beta/models bằng key user, chọn model hỗ trợ generateContent.
+async function discoverModel(key) {
+  if (_verifiedModel) return _verifiedModel;
+  const r = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(key)}`
+  );
+  if (!r.ok) {
+    const err = new Error('HTTP ' + r.status);
+    err.status = r.status;
+    throw err;
+  }
+  const data = await r.json();
+  const models = (data.models || []).filter(m =>
+    (m.supportedGenerationMethods || []).includes('generateContent')
+  );
+  if (!models.length) throw new Error('no_model');
+  // Ưu tiên flash (nhanh, rẻ), rồi mới đến các model khác
+  models.sort((a, b) => {
+    const aFlash = a.name.includes('flash') ? 0 : 1;
+    const bFlash = b.name.includes('flash') ? 0 : 1;
+    return aFlash - bFlash;
+  });
+  // name dạng "models/gemini-xxx", lấy phần sau "models/"
+  _verifiedModel = models[0].name.replace('models/', '');
+  return _verifiedModel;
+}
+
 // Kiểm tra key bằng 1 request thật nhẹ.
-// Big-tech: thử models theo thứ tự fallback.
+// Dùng listModels để verify key + discovery model.
 export async function testUserKey(key) {
   const k = (key || '').trim();
   if (!k) return { ok: false, error: 'empty' };
-  for (const m of MODELS) {
-    try {
-      const r = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-goog-api-key': k },
-          body: JSON.stringify({ contents: [{ parts: [{ text: 'Hi' }] }] }),
-        }
-      );
-      if (r.ok) return { ok: true };
-      if (r.status === 404) continue; // model không tồn tại, thử tiếp
-      return { ok: false, error: 'HTTP ' + r.status };
-    } catch (e) {
-      // network error: thử model tiếp theo
-      continue;
-    }
+  try {
+    _verifiedModel = null; // force re-discovery khi test
+    await discoverModel(k);
+    return { ok: true };
+  } catch (e) {
+    if (e.status === 400) return { ok: false, error: 'invalid_key' };
+    if (e.status === 403) return { ok: false, error: 'forbidden' };
+    if (e.message === 'no_model') return { ok: false, error: 'no_model' };
+    return { ok: false, error: 'network' };
   }
-  return { ok: false, error: 'network' };
 }
 
 // Gọi trực tiếp Google từ browser, stream SSE từng chunk.
-// Big-tech fallback: thử models theo thứ tự, 404 thì thử model tiếp theo.
+// 8b: dùng model đã discovery từ API thật, không đoán tên.
 export async function callDirect(prompt, onToken) {
   const key = await getUserKey();
   if (!key) throw new Error('no-key');
-  let lastErr = null;
-  for (const m of MODELS) {
-    try {
-      return await callDirectWithModel(key, m, prompt, onToken);
-    } catch (e) {
-      lastErr = e;
-      if (e.status === 404) continue; // invalid model, try next
-      throw e; // other errors (401/403/429/network) → fallback server
-    }
-  }
-  throw lastErr || new Error('no-model');
+  const model = await discoverModel(key);
+  return await callDirectWithModel(key, model, prompt, onToken);
 }
 
 async function callDirectWithModel(key, model, prompt, onToken) {
