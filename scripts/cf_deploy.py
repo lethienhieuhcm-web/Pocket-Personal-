@@ -435,8 +435,11 @@ def main():
     # MUST rebuild the bundle first — deploying a stale worker.js silently
     # ships old backend code (hit 2026-10-11: fixes sat in src/ for ~10h
     # while "DEPLOY OK" kept uploading the 14:46 bundle).
+    # 8b (2026-10-11): Pass build_id to build.sh for single release ID
+    # across manifest + worker. Previously build.sh generated its own
+    # timestamp, causing ID mismatch and verify failures.
     _build = subprocess.run(
-        ["bash", os.path.join(SRC, "worker", "build.sh")],
+        ["bash", os.path.join(SRC, "worker", "build.sh"), build_id],
         capture_output=True, text=True, timeout=180)
     if _build.returncode != 0:
         print("WORKER BUILD FAILED:\n" + (_build.stderr or _build.stdout)[-2000:])
