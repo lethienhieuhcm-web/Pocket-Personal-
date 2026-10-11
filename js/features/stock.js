@@ -35,7 +35,9 @@ ind_on:"✓ Chỉ báo",ind_off:"Chỉ báo",vn_time:"Việt Nam (GMT+7)",
 all_ind:"Tất cả ngành",show_penny:"Hiện penny",
 preset_value:"Giá trị",preset_momentum:"Tăng mạnh",preset_quality:"Chất lượng",
 preset_basic:"Cơ bản",preset_full:"Full",
-indtab_price:"Giá",indtab_label:"Chỉ báo:"},
+indtab_price:"Giá",indtab_label:"Chỉ báo:",
+byok_saved:"Đã lưu khóa",byok_test_ok:"Khóa hoạt động!",byok_test_fail:"Khóa lỗi: ",byok_deleted:"Đã xoá khóa",
+agent_too_long:"Tin nhắn quá dài (tối đa 1000 ký tự)",agent_waiting:"Đang xử lý"},
 en:{
 login_required:"Log in to view stocks.",no_data_updating:"Data is being updated. Please wait.",
 updated:"Updated: ",error:"Error",loading:"Loading…",watching:"✓ Following",watch:"+ Follow",
@@ -65,7 +67,9 @@ ind_on:"✓ Indicators",ind_off:"Indicators",vn_time:"Vietnam (GMT+7)",
 all_ind:"All sectors",show_penny:"Show penny",
 preset_value:"Value",preset_momentum:"Top gainers",preset_quality:"Quality",
 preset_basic:"Basic",preset_full:"Full",
-indtab_price:"Price",indtab_label:"Indicators:"},
+indtab_price:"Price",indtab_label:"Indicators:",
+byok_saved:"Key saved",byok_test_ok:"Key works!",byok_test_fail:"Key failed: ",byok_deleted:"Key deleted",
+agent_too_long:"Message too long (max 1000 chars)",agent_waiting:"Processing"},
 zh:{
 login_required:"登录后查看股票。",no_data_updating:"数据正在更新，请稍候。",
 updated:"更新时间：",error:"错误",loading:"加载中…",watching:"✓ 已关注",watch:"+ 关注",
@@ -95,7 +99,9 @@ ind_on:"✓ 指标",ind_off:"指标",vn_time:"越南 (GMT+7)",
 all_ind:"所有行业",show_penny:"显示仙股",
 preset_value:"价值",preset_momentum:"涨幅榜",preset_quality:"优质",
 preset_basic:"基础",preset_full:"全部",
-indtab_price:"价格",indtab_label:"指标："},
+indtab_price:"价格",indtab_label:"指标：",
+byok_saved:"已保存密钥",byok_test_ok:"密钥有效!",byok_test_fail:"密钥失败: ",byok_deleted:"已删除密钥",
+agent_too_long:"消息太长（最多1000个字符）",agent_waiting:"处理中"},
 ko:{
 login_required:"로그인 후 주식을 확인하세요。",no_data_updating:"데이터를 업데이트 중입니다. 잠시만 기다려 주세요.",
 updated:"업데이트: ",error:"오류",loading:"불러오는 중…",watching:"✓ 팔로우 중",watch:"+ 팔로우",
@@ -125,7 +131,9 @@ ind_on:"✓ 지표",ind_off:"지표",vn_time:"베트남 (GMT+7)",
 all_ind:"모든 업종",show_penny:"페니주 표시",
 preset_value:"가치",preset_momentum:"상승률",preset_quality:"우량",
 preset_basic:"기본",preset_full:"전체",
-indtab_price:"가격",indtab_label:"지표:"}
+indtab_price:"가격",indtab_label:"지표:",
+byok_saved:"키 저장됨",byok_test_ok:"키가 작동합니다!",byok_test_fail:"키 실패: ",byok_deleted:"키 삭제됨",
+agent_too_long:"메시지가 너무 깁니다 (최대 1000자)",agent_waiting:"처리 중"}
 };
 let LANG = "vi";
 try{ const v = localStorage.getItem("elab_uiLang"); if(v) LANG = JSON.parse(v); }catch(e){}
