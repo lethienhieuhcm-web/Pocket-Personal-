@@ -360,7 +360,7 @@
       if(!keyInput || !testBtn) return;
       function T(k){ return (window.__elabT ? window.__elabT(k) : k); }
       function setStatus(msg, ok){
-        if(statusEl){ statusEl.textContent=msg; statusEl.style.color=ok?"#0d9d6c":"#e5484d"; }
+        if(statusEl){ statusEl.textContent=msg; statusEl.style.color=ok?"var(--pp-accent)":"var(--pp-danger)"; }
       }
       import('./js/core/aiClient.js').then(function(m){
         m.getUserKey().then(function(k){
