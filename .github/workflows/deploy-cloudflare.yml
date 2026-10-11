@@ -9,6 +9,7 @@ on:
       - '*.html'
       - '*.css'
       - 'icons/**'
+      - 'scripts/cf_deploy.py'
   workflow_dispatch:
 
 jobs:
@@ -17,63 +18,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
-          node-version: '20'
+          python-version: '3.11'
 
-      - name: Build worker
-        run: |
-          cd worker
-          npx --yes esbuild src/index.js --bundle --format=esm --outfile=../worker.js
-          ls -lh ../worker.js
-
-      - name: Prepare public assets
-        run: |
-          mkdir -p public
-          cp *.html public/ 2>/dev/null || true
-          cp -r js public/ 2>/dev/null || true
-          cp *.css public/ 2>/dev/null || true
-          cp -r icons public/ 2>/dev/null || true
-          cp manifest.json public/ 2>/dev/null || true
-          cp *-manifest.json public/ 2>/dev/null || true
-          cp sw.js public/ 2>/dev/null || true
-          cp *-sw.js public/ 2>/dev/null || true
-          cp _headers public/ 2>/dev/null || true
-          cp -r .well-known public/ 2>/dev/null || true
-          cp -r chess public/ 2>/dev/null || true
-          echo "Public assets:"
-          ls public/
-          du -sh public/
-
-      - name: Generate wrangler config
-        run: |
-          cat > wrangler.deploy.toml << 'EOF'
-          name = "fancy-wood-2b3c"
-          main = "worker.js"
-          compatibility_date = "2024-10-01"
-
-          [assets]
-          directory = "./public"
-
-          [[r2_buckets]]
-          binding = "DATA"
-          bucket_name = "english-lab-data"
-
-          [[r2_buckets]]
-          binding = "AUTHDB"
-          bucket_name = "english-lab-auth"
-
-          [[d1_databases]]
-          binding = "DB"
-          database_id = "e856db4d-1ee1-42fd-9c1d-1807ca31afb5"
-          EOF
-          cat wrangler.deploy.toml
-
-      - name: Deploy with Wrangler
+      - name: Deploy via cf_deploy.py
         env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CF_DEPLOY_SRC: ${{ github.workspace }}
         run: |
-          npm install -g wrangler@4
-          wrangler deploy --config wrangler.deploy.toml
+          python3 scripts/cf_deploy.py
