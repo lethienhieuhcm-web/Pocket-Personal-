@@ -268,7 +268,7 @@ export function renderDictPop(w, entry){
       aiRes.style.display = "block";
       aiRes.innerHTML = "...";
       try{
-        const {apiCall} = await import('../core/api.js');
+        const {explainWithFallback, aiRoute} = await import('../core/aiClient.js');
         const lang = (localStorage.getItem("elab_uiLang") || "en").replace(/"/g, "");
         // Get sentence context from anchor
         let sentence = "";
@@ -279,15 +279,26 @@ export function renderDictPop(w, entry){
             if(sentEl) sentence = sentEl.textContent.slice(0, 500);
           }
         }catch(e){}
-        const r = await apiCall("/api/ai/explain", {
-          method: "POST",
-          body: JSON.stringify({word: w, sentence, lang})
+        // BYOK: stream từng chunk khi dùng key riêng, fallback server khi lỗi
+        let streamed = "";
+        const r = await explainWithFallback(w, sentence, lang, (chunk)=>{
+          streamed += chunk;
+          aiRes.innerHTML = esc(streamed).replace(/\n/g, "<br>");
         });
         if(r.explanation){
           aiRes.innerHTML = esc(r.explanation).replace(/\n/g, "<br>");
         }else{
           aiRes.innerHTML = esc(r.error || "AI failed");
         }
+        // Indicator: đang dùng key của bạn hay server
+        try{
+          const via = (window.__elabT ? window.__elabT(r.via === 'direct' ? 'byok_via_direct' : 'byok_via_server') : r.via);
+          const ind = document.createElement("div");
+          ind.className = "hint";
+          ind.style.cssText = "font-size:11px;margin-top:6px;opacity:0.7";
+          ind.textContent = via;
+          aiRes.appendChild(ind);
+        }catch(e){}
       }catch(e){
         aiRes.innerHTML = esc("Error: " + (e.message || "failed"));
       }
