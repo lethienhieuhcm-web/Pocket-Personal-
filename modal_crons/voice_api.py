@@ -1,18 +1,16 @@
 """
-Modal Voice Clone API for Pocket Personal (k1 P2).
+Modal Voice API for Pocket Personal (k1 P2).
 
-Endpoint: POST /tts {text} -> WAV audio (Henrry's cloned voice)
-- VieNeu-TTS v3 Turbo, CPU inference, scale-to-zero
-- Voice embedding pre-computed from reference audio, stored in volume
-- EQ softening applied by default (reduce harsh 4kHz)
+Endpoints:
+  POST /tts    {text, secret} -> WAV audio (Henrry's cloned voice, VieNeu v3 Turbo)
+  POST /tts_en {text, secret, voice} -> WAV audio (Kokoro-82M, native EN presets)
 
-Deploy via GitHub Actions (deploy-voice-api.yml):
-  - Downloads models from HuggingFace
-  - Uploads to Modal Volume
-  - Deploys this app
+- VieNeu: CPU inference, voice embedding pre-computed, EQ softening (reduce harsh 4kHz)
+- Kokoro: weights baked into image at build time, scale-to-zero
+- Deploy via GitHub Actions (deploy-voice-api.yml)
 
 Secrets (Modal dashboard -> Secrets -> "pocket-personal"):
-  - VOICE_API_SECRET: bearer token for /tts endpoint
+  - VOICE_API_SECRET: bearer token for both endpoints
 """
 import modal
 
@@ -33,6 +31,34 @@ voice_image = (
 )
 
 app = modal.App("pocket-personal-voice")
+
+# Image with Kokoro-82M (English, native-speaker presets) + deps.
+# Weights (~310MB) baked into image at build time.
+kokoro_image = (
+    modal.Image.debian_slim(python_version="3.12")
+    .apt_install("espeak-ng", "ffmpeg")
+    .pip_install("kokoro", "numpy", "scipy", "soundfile")
+    .run_commands("python3 -c \"from kokoro import KPipeline; KPipeline(lang_code='a')\"")
+)
+
+# Whitelist Kokoro American-English preset voices (same list as kokoro_local.py)
+KOKORO_VOICES = (
+    "am_adam", "am_michael", "am_onyx", "am_fenrir", "am_liam",
+    "am_echo", "am_eric", "am_puck", "am_santa",
+    "af_alloy", "af_aoede", "af_bella", "af_heart", "af_jessica",
+    "af_kore", "af_nicole", "af_nova", "af_river", "af_sarah", "af_sky",
+)
+
+_KOKORO_PIPELINE = None
+
+
+def _get_kokoro():
+    """Lazy-load Kokoro pipeline (weights already baked into image)."""
+    global _KOKORO_PIPELINE
+    if _KOKORO_PIPELINE is None:
+        from kokoro import KPipeline
+        _KOKORO_PIPELINE = KPipeline(lang_code="a")
+    return _KOKORO_PIPELINE
 
 
 def _get_tts():
@@ -115,3 +141,40 @@ def tts(request_data: dict):
     # Return as base64 JSON (Modal web_endpoint serialization)
     import base64
     return {"audio_b64": base64.b64encode(wav_bytes).decode()}
+
+
+@app.function(
+    image=kokoro_image,
+    secrets=[modal.Secret.from_name("pocket-personal")],
+    timeout=120,
+    # Scale to zero when idle; cold start ~20s (torch + weights from image)
+)
+@modal.fastapi_endpoint(method="POST")
+def tts_en(request_data: dict):
+    """POST /tts_en {text, secret, voice} -> WAV audio (Kokoro-82M, native EN presets)."""
+    import base64
+    import io
+    import os
+
+    # Auth (same secret as /tts)
+    secret = request_data.get("secret", "")
+    expected = os.environ.get("VOICE_API_SECRET", "")
+    if not expected or secret != expected:
+        return {"error": "Unauthorized"}, 401
+
+    text = str(request_data.get("text", "")).strip()[:500]
+    if not text:
+        return {"error": "Missing text"}, 400
+    voice = str(request_data.get("voice", "am_michael")).strip()
+    if voice not in KOKORO_VOICES:
+        voice = "am_michael"
+
+    import soundfile as sf
+    import torch
+
+    pipeline = _get_kokoro()
+    chunks = [audio for _, _, audio in pipeline(text, voice=voice)]
+    full = torch.cat(chunks, dim=-1) if len(chunks) > 1 else chunks[0]
+    buf = io.BytesIO()
+    sf.write(buf, full.numpy(), 24000, format="WAV")
+    return {"audio_b64": base64.b64encode(buf.getvalue()).decode()}
