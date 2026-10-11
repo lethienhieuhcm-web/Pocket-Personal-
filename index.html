@@ -10,29 +10,29 @@
 .tabpage{display:none}
 .tabpage.active{display:block}
 .pp-topbar{display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--pp-card);border-bottom:1px solid var(--pp-line);position:sticky;top:0;z-index:10}
-.pp-topbar h1{font-size:18px;margin:0;flex:1}
+.pp-topbar h1{font-size:var(--pp-text-lg);margin:0;flex:1}
 .pp-iconbtn{background:none;border:none;padding:8px;border-radius:12px;cursor:pointer;color:var(--pp-text)}
 .pp-iconbtn:active{transform:scale(.94)}
 .pp-iconbtn .ic{width:22px;height:22px}
 #main{max-width:768px;margin:0 auto;padding:16px}
 .pp-tabbar{position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));display:flex;background:var(--pp-card);border:1px solid var(--pp-line);border-radius:20px;padding:8px;z-index:10;box-shadow:0 4px 16px rgba(0,0,0,.08)}
-.pp-tabbar button{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;padding:8px 4px;border-radius:12px;cursor:pointer;color:var(--pp-mut);font-size:11px}
+.pp-tabbar button{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;padding:8px 4px;border-radius:12px;cursor:pointer;color:var(--pp-mut);font-size:var(--pp-text-xs)}
 .pp-tabbar button.active{color:var(--pp-accent)}
 .pp-tabbar button .ic{width:22px;height:22px}
-.menutile{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:var(--pp-card);border:1px solid var(--pp-line);border-radius:16px;padding:14px 16px;margin-bottom:8px;cursor:pointer;font-size:15px;color:var(--pp-text)}
+.menutile{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:var(--pp-card);border:1px solid var(--pp-line);border-radius:16px;padding:14px 16px;margin-bottom:8px;cursor:pointer;font-size:var(--pp-text-sm);color:var(--pp-text)}
 .menutile:active{transform:scale(.98)}
 .pp-app-row{display:flex;align-items:center;gap:14px;background:var(--pp-card);border-radius:var(--pp-r-lg,20px);padding:13px 14px;color:var(--pp-text);transition:transform .15s,box-shadow .15s}
 .pp-app-row:hover{box-shadow:0 4px 16px rgba(0,0,0,.08)}
 .pp-app-row:active{transform:scale(.98)}
 .pp-app-ic{width:46px;height:46px;border-radius:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .pp-app-tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
-.pp-app-name{font-weight:700;font-size:15px}
-.pp-app-desc{font-size:13px;color:var(--pp-mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pp-app-go{font-size:20px;color:var(--pp-mut);flex-shrink:0}
+.pp-app-name{font-weight:700;font-size:var(--pp-text-sm)}
+.pp-app-desc{font-size:var(--pp-text-xs);color:var(--pp-mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pp-app-go{font-size:var(--pp-text-xl);color:var(--pp-mut);flex-shrink:0}
 .menutile .ic{width:24px;height:24px;color:var(--pp-accent)}
 .card{background:var(--pp-card);border:1px solid var(--pp-line);border-radius:16px;padding:16px;margin-bottom:12px}
-.hint{font-size:13px;color:var(--pp-mut)}
-.btn{background:var(--pp-accent);color:#fff;border:none;border-radius:12px;padding:10px 16px;font-size:15px;cursor:pointer}
+.hint{font-size:var(--pp-text-xs);color:var(--pp-mut)}
+.btn{background:var(--pp-accent);color:#fff;border:none;border-radius:12px;padding:10px 16px;font-size:var(--pp-text-sm);cursor:pointer}
 .btn.ghost{background:var(--pp-bg);color:var(--pp-text);border:1px solid var(--pp-line)}
 .btn:active{transform:scale(.98)}
 </style>
@@ -91,6 +91,16 @@
         <span class="pp-app-tx"><span class="pp-app-name" data-i18n="home_progress">Tiến độ</span><span class="pp-app-desc" data-i18n="home_progress_d">Thống kê học tập, từ vựng</span></span>
         <span class="pp-app-go">›</span>
       </button>
+      <button class="pp-app-row" data-go="library" style="width:100%;text-align:left;cursor:pointer;border:1px solid var(--pp-line)">
+        <span class="pp-app-ic" style="background:var(--pp-accent)"><svg class="ic" style="width:24px;height:24px;color:#fff"><use href="#i-layers"/></svg></span>
+        <span class="pp-app-tx"><span class="pp-app-name" data-i18n="home_library">Thư viện</span><span class="pp-app-desc" data-i18n="home_library_d">Bài học curated theo chủ đề</span></span>
+        <span class="pp-app-go">›</span>
+      </button>
+      <button class="pp-app-row" id="homeAdminBtn" data-go="admin" style="width:100%;text-align:left;cursor:pointer;border:1px solid var(--pp-line);display:none">
+        <span class="pp-app-ic" style="background:var(--pp-accent)"><svg class="ic" style="width:24px;height:24px;color:#fff"><use href="#i-crown"/></svg></span>
+        <span class="pp-app-tx"><span class="pp-app-name" data-i18n="home_admin">Quản trị</span><span class="pp-app-desc" data-i18n="home_admin_d">Quản lý người dùng</span></span>
+        <span class="pp-app-go">›</span>
+      </button>
     </div>
   </div>
 
@@ -115,7 +125,7 @@
     <div id="readContent">
       <div class="card" style="text-align:center;padding:32px 16px">
         <div style="margin-bottom:12px;color:var(--pp-mut)"><svg class="ic" style="width:48px;height:48px"><use href="#i-book"/></svg></div>
-        <div style="font-size:16px;font-weight:700;margin-bottom:8px"><span data-i18n="no_reading">No reading yet</span></div>
+        <div style="font-size:var(--pp-text-base);font-weight:700;margin-bottom:8px"><span data-i18n="no_reading">No reading yet</span></div>
         <div class="hint"><span data-i18n="no_reading_hint">Go to the Scan tab to snap a photo or paste text, then your article will appear here.</span></div>
       </div>
     </div>
@@ -148,6 +158,25 @@
       <div id="progressStats"></div>
       <div id="vocabBank"></div>
     </div>
+    <div class="card" style="margin-top:12px">
+      <h3 style="margin:0 0 8px"><span data-i18n="vocabReviewTitle">Review vocabulary</span></h3>
+      <div id="vocabBox"></div>
+      <button class="btn primary" id="vocabStart" style="width:100%;margin-top:8px"><span data-i18n="vocabStartBtn">Start review</span></button>
+    </div>
+  </div>
+
+  <!-- Library tab -->
+  <div class="tabpage" id="tabLibrary">
+    <button class="pp-iconbtn" id="libraryBackBtn" aria-label="Back"><svg class="ic"><use href="#i-back"/></svg></button>
+    <div class="card">
+      <h3 style="margin:0 0 12px"><span data-i18n="library_title">Thư viện</span></h3>
+      <div id="libraryList"></div>
+    </div>
+    <div class="card" id="libraryDetail" style="margin-top:12px;display:none">
+      <h3 style="margin:0 0 8px" id="libraryDetailTitle"></h3>
+      <div id="libraryDetailItems"></div>
+      <button class="btn ghost" id="libraryBackToList" style="width:100%;margin-top:8px"><span data-i18n="back">Quay lại</span></button>
+    </div>
   </div>
 
   <!-- Settings tab -->
@@ -167,6 +196,14 @@
       <div id="profileContent"></div>
     </div>
   </div>
+
+  <div class="tabpage" id="tabAdmin">
+    <button class="pp-iconbtn" id="adminBackBtn" aria-label="Back"><svg class="ic"><use href="#i-back"/></svg></button>
+    <div class="card">
+      <h3 style="margin:0"><span data-i18n="home_admin">Quản trị</span></h3>
+      <div id="adminContent"></div>
+    </div>
+  </div>
 </main>
 
 <div class="toast" id="toast" style="display:none;position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#14181f;color:#fff;padding:10px 16px;border-radius:12px;z-index:100"></div>
@@ -177,7 +214,7 @@
   function $(id){ return document.getElementById(id); }
   // Tab switching - hub-style navigation (no tabbar)
   function switchTab(name){
-    var tabs=["home","scan","read","audio","books","progress","settings","profile"];
+    var tabs=["home","scan","read","audio","books","progress","library","settings","profile","admin"];
     tabs.forEach(function(n){
       var el=$("tab"+n.charAt(0).toUpperCase()+n.slice(1));
       if(el) el.classList.toggle("active", n===name);
@@ -189,6 +226,7 @@
     if(name==="progress"){ loadProgressInline(); }
     if(name==="profile"){ loadProfileInline(); }
     if(name==="settings"){ loadSettingsInline(); }
+    if(name==="library" && window._elabLoadLibrary){ try{ window._elabLoadLibrary(); }catch(e){} }
     if(window.__elabTabHook) { try{ window.__elabTabHook(name); }catch(e){} }
   }
   window._elabSwitchTab=switchTab;
@@ -199,7 +237,7 @@
     var box=$("audioLib");
     if(!box) return;
     var token=null;
-    try{ token=localStorage.getItem("elab_token"); }catch(e){}
+    try{ token=localStorage.getItem("elab_authToken")||localStorage.getItem("elab_token"); }catch(e){}
     if(!token){
       box.innerHTML='<div class="hint">Please log in to see your audio library.</div>';
       return;
@@ -228,7 +266,7 @@
     var bank=$("vocabBank");
     if(!stats) return;
     var token=null;
-    try{ token=localStorage.getItem("elab_token"); }catch(e){}
+    try{ token=localStorage.getItem("elab_authToken")||localStorage.getItem("elab_token"); }catch(e){}
     if(!token){
       stats.innerHTML='<div class="hint">Please log in to see your progress.</div>';
       if(bank) bank.innerHTML='';
@@ -238,7 +276,7 @@
     fetch("/api/vocab/due",{headers:{"Authorization":"Bearer "+token}}).then(function(r){return r.json();}).then(function(data){
       var due=(data.words||[]).length;
       stats.innerHTML='<div style="display:flex;gap:12px;margin-bottom:16px">'
-        +'<div class="card" style="flex:1;text-align:center;margin:0"><div style="font-size:24px;font-weight:700;color:var(--pp-accent)">'+due+'</div><div class="hint">Due words</div></div>'
+        +'<div class="card" style="flex:1;text-align:center;margin:0"><div style="font-size:var(--pp-text-2xl);font-weight:700;color:var(--pp-accent)">'+due+'</div><div class="hint">Due words</div></div>'
         +'</div>';
       if(bank){
         if(!due){ bank.innerHTML='<div class="hint">No words due for review.</div>'; }
@@ -262,7 +300,7 @@
     }
     box.innerHTML='<div class="hint">Loading...</div>';
     fetch("/api/user/plan",{headers:{"Authorization":"Bearer "+token}}).then(function(r){return r.json();}).then(function(data){
-      box.innerHTML='<div style="margin-bottom:12px"><div class="hint">Plan</div><div style="font-weight:700;font-size:18px">'+(data.plan||"free")+'</div></div>'
+      box.innerHTML='<div style="margin-bottom:12px"><div class="hint">Plan</div><div style="font-weight:700;font-size:var(--pp-text-lg)">'+(data.plan||"free")+'</div></div>'
         +'<button class="btn ghost" id="logoutBtn2" style="width:100%">Log out</button>';
       var lb=$("logoutBtn2");
       if(lb) lb.addEventListener("click", function(){
@@ -294,7 +332,17 @@
       +'</div></div>'
       +'</div>'
       +'<div><div class="hint" style="margin-bottom:8px">Theme</div>'
-      +'<button class="btn ghost" id="themeToggle2">Toggle dark/light</button></div>';
+      +'<button class="btn ghost" id="themeToggle2">Toggle dark/light</button></div>'
+      +'<div style="margin-top:20px"><div class="hint" style="margin-bottom:8px"><span data-i18n="byok_title">AI key</span></div>'
+      +'<div class="hint" style="margin-bottom:8px;font-size:12px"><span data-i18n="byok_hint">Paste your key</span></div>'
+      +'<div style="display:flex;gap:8px;margin-bottom:8px">'
+      +'<input type="password" id="byokKey" style="flex:1;min-width:0" data-i18n-ph="byok_placeholder" placeholder="Paste API key...">'
+      +'<button class="btn" id="byokTest"><span data-i18n="byok_test">Test</span></button>'
+      +'</div>'
+      +'<div style="display:flex;gap:8px;align-items:center">'
+      +'<button class="btn ghost" id="byokDelete"><span data-i18n="byok_delete">Delete</span></button>'
+      +'<span class="hint" id="byokStatus" style="font-size:12px"></span>'
+      +'</div></div>';
     // Init language dropdown (dynamically added)
     if(window.__ppLangDrop && window.__ppLangDrop.init){
       try{ window.__ppLangDrop.init(); }catch(e){}
@@ -306,13 +354,53 @@
       d.setAttribute("data-theme", dark?"dark":"light");
       try{ localStorage.setItem("elab_theme", dark?"dark":"light"); }catch(e){}
     });
+    // BYOK — AI key management (Phase 1). Dynamic import tránh circular.
+    (function(){
+      var keyInput=$("byokKey"), testBtn=$("byokTest"), delBtn=$("byokDelete"), statusEl=$("byokStatus");
+      if(!keyInput || !testBtn) return;
+      function T(k){ return (window.__elabT ? window.__elabT(k) : k); }
+      function setStatus(msg, ok){
+        if(statusEl){ statusEl.textContent=msg; statusEl.style.color=ok?"#0d9d6c":"#e5484d"; }
+      }
+      import('./js/core/aiClient.js').then(function(m){
+        m.getUserKey().then(function(k){
+          if(k) setStatus(T("byok_via_direct"), true);
+        }).catch(function(){});
+      }).catch(function(){});
+      testBtn.addEventListener("click", function(){
+        var k=keyInput.value.trim();
+        if(!k){ setStatus(T("byok_test_fail")+"empty", false); return; }
+        testBtn.disabled=true; setStatus("...", true);
+        import('./js/core/aiClient.js').then(function(m){
+          return m.testUserKey(k).then(function(r){
+            if(r.ok){
+              return m.saveUserKey(k).then(function(){
+                keyInput.value="";
+                setStatus(T("byok_test_ok"), true);
+              });
+            }
+            setStatus(T("byok_test_fail")+r.error, false);
+          });
+        }).catch(function(e){
+          setStatus(T("byok_test_fail")+(e.message||"error"), false);
+        }).then(function(){ testBtn.disabled=false; });
+      });
+      if(delBtn) delBtn.addEventListener("click", function(){
+        import('./js/core/aiClient.js').then(function(m){
+          return m.deleteUserKey().then(function(){
+            keyInput.value="";
+            setStatus(T("byok_deleted"), true);
+          });
+        }).catch(function(){});
+      });
+    })();
   }
   // Inline books loader (Phase 3.4)
   function loadBooksInline(){
     var box=$("bookList");
     if(!box) return;
     var token=null;
-    try{ token=localStorage.getItem("elab_token"); }catch(e){}
+    try{ token=localStorage.getItem("elab_authToken")||localStorage.getItem("elab_token"); }catch(e){}
     if(!token){
       box.innerHTML='<div class="hint">Please log in to see your books.</div>';
       return;
@@ -345,7 +433,7 @@
     });
   });
   // Back buttons (icon only, no text)
-  ["scanBackBtn","readBackBtn","audioBackBtn","booksBackBtn","progressBackBtn","settingsBackBtn","profileBackBtn"].forEach(function(id){
+  ["scanBackBtn","readBackBtn","audioBackBtn","booksBackBtn","progressBackBtn","settingsBackBtn","profileBackBtn","adminBackBtn"].forEach(function(id){
     var bb=$(id);
     if(bb) bb.addEventListener("click", function(e){ e.preventDefault(); switchTab("home"); });
   });
@@ -362,14 +450,28 @@
   });
   try{
     var th=localStorage.getItem("elab_theme");
-    if(th) document.documentElement.setAttribute("data-theme", th);
+    // FIT 8b-8: chưa có lựa chọn tay -> theo theme hệ thống
+    if(!th && window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches) th="dark";
+    if(th){
+      document.documentElement.setAttribute("data-theme", th);
+      // CSS dark dùng body.dark — phải set class ngay để không nháy
+      if(th==="dark") document.documentElement.classList.add("pp-dark");
+    }
   }catch(e){}
+  // Đồng bộ body.dark khi body sẵn sàng
+  document.addEventListener("DOMContentLoaded", function(){
+    try{
+      var dark = document.documentElement.classList.contains("pp-dark") ||
+                 document.documentElement.getAttribute("data-theme")==="dark";
+      document.body.classList.toggle("dark", dark);
+    }catch(e){}
+  });
   // Language
   var I18N={
-    en:{app_title:"Read & Learn",home_scan:"Scan text",home_scan_d:"Snap a photo or paste English text",home_read:"Read",home_read_d:"Interactive reading, dictionary, pronunciation",home_audio:"Audio",home_audio_d:"Your created audio library",home_books:"Books",home_books_d:"Upload PDF/EPUB books to learn",home_progress:"Progress",home_progress_d:"Learning stats, vocabulary",scan_title:"Snap a page",scan_hint:"Take a photo of English text, or paste text below.",take_photo:"Take photo",gallery:"Gallery",paste_hint:"Paste English text here...",create_reading:"Create reading",explore:"Explore",menu_read:"Read",menu_audio:"Audio",menu_books:"Books",menu_progress:"My progress",audio_title:"Audio library",books_title:"Books",progress_title:"My progress",profile_title:"Profile",settings_title:"Settings",tab_scan:"Scan",tab_read:"Read",tab_audio:"Audio",tab_books:"Books",tab_progress:"Progress",no_reading:"No reading yet",no_reading_hint:"Go to the Scan tab to snap a photo or paste text, then your article will appear here."},
-    vi:{app_title:"Đọc & Học",home_scan:"Quét văn bản",home_scan_d:"Chụp ảnh hoặc dán text tiếng Anh",home_read:"Đọc bài",home_read_d:"Đọc tương tác, tra từ, nghe phát âm",home_audio:"Nghe audio",home_audio_d:"Thư viện audio đã tạo",home_books:"Sách",home_books_d:"Tải sách PDF/EPUB để học",home_progress:"Tiến độ",home_progress_d:"Thống kê học tập, từ vựng",scan_title:"Chụp một trang",scan_hint:"Chụp ảnh văn bản tiếng Anh, hoặc dán text bên dưới.",take_photo:"Chụp ảnh",gallery:"Thư viện",paste_hint:"Dán văn bản tiếng Anh vào đây...",create_reading:"Tạo bài đọc",explore:"Khám phá",menu_read:"Đọc",menu_audio:"Nghe",menu_books:"Sách",menu_progress:"Tiến độ",audio_title:"Thư viện audio",books_title:"Sách",progress_title:"Tiến độ của tôi",profile_title:"Hồ sơ",settings_title:"Cài đặt",tab_scan:"Quét",tab_read:"Đọc",tab_audio:"Nghe",tab_books:"Sách",tab_progress:"Tiến độ",no_reading:"Chưa có bài đọc",no_reading_hint:"Vào tab Quét để chụp ảnh hoặc dán text, bài viết sẽ hiện ở đây."},
-    zh:{app_title:"阅读与学习",home_scan:"扫描文本",home_scan_d:"拍照或粘贴英文文本",home_read:"阅读",home_read_d:"互动阅读、查词、听发音",home_audio:"音频",home_audio_d:"已创建的音频库",home_books:"书籍",home_books_d:"上传PDF/EPUB书籍学习",home_progress:"进度",home_progress_d:"学习统计、词汇",scan_title:"拍摄页面",scan_hint:"拍摄英文文本照片，或在下方粘贴文本。",take_photo:"拍照",gallery:"图库",paste_hint:"在此粘贴英文文本...",create_reading:"创建阅读",explore:"探索",menu_read:"阅读",menu_audio:"音频",menu_books:"书籍",menu_progress:"我的进度",audio_title:"音频库",books_title:"书籍",progress_title:"我的进度",profile_title:"个人资料",settings_title:"设置",tab_scan:"扫描",tab_read:"阅读",tab_audio:"音频",tab_books:"书籍",tab_progress:"进度",no_reading:"暂无阅读",no_reading_hint:"前往扫描选项卡拍照或粘贴文本，文章将显示在这里。"},
-    ko:{app_title:"읽기 & 학습",home_scan:"텍스트 스캔",home_scan_d:"사진 찍기 또는 영어 텍스트 붙여넣기",home_read:"읽기",home_read_d:"인터랙티브 읽기, 사전, 발음 듣기",home_audio:"오디오",home_audio_d:"생성된 오디오 라이브러리",home_books:"도서",home_books_d:"PDF/EPUB 도서 업로드하여 학습",home_progress:"진도",home_progress_d:"학습 통계, 어휘",scan_title:"페이지 촬영",scan_hint:"영어 텍스트 사진을 찍거나 아래에 텍스트를 붙여넣으세요.",take_photo:"사진 찍기",gallery:"갤러리",paste_hint:"여기에 영어 텍스트 붙여넣기...",create_reading:"읽기 만들기",explore:"탐색",menu_read:"읽기",menu_audio:"오디오",menu_books:"도서",menu_progress:"내 진도",audio_title:"오디오 라이브러리",books_title:"도서",progress_title:"내 진도",profile_title:"프로필",settings_title:"설정",tab_scan:"스캔",tab_read:"읽기",tab_audio:"오디오",tab_books:"도서",tab_progress:"진도",no_reading:"읽을거리가 없습니다",no_reading_hint:"스캔 탭으로 이동하여 사진을 찍거나 텍스트를 붙여넣으면 글이 여기에 표시됩니다."}
+    en:{app_title:"Read & Learn",home_scan:"Scan text",home_scan_d:"Snap a photo or paste English text",home_read:"Read",home_read_d:"Interactive reading, dictionary, pronunciation",home_audio:"Audio",home_audio_d:"Your created audio library",home_books:"Books",home_books_d:"Upload PDF/EPUB books to learn",home_progress:"Progress",home_progress_d:"Learning stats, vocabulary",scan_title:"Snap a page",scan_hint:"Take a photo of English text, or paste text below.",take_photo:"Take photo",gallery:"Gallery",paste_hint:"Paste English text here...",create_reading:"Create reading",explore:"Explore",menu_read:"Read",menu_audio:"Audio",menu_books:"Books",menu_progress:"My progress",audio_title:"Audio library",books_title:"Books",progress_title:"My progress",profile_title:"Profile",settings_title:"Settings",tab_scan:"Scan",tab_read:"Read",tab_audio:"Audio",tab_books:"Books",tab_progress:"Progress",no_reading:"No reading yet",no_reading_hint:"Go to the Scan tab to snap a photo or paste text, then your article will appear here.",byok_title:"AI key",byok_hint:"Paste your free Gemini API key — AI calls go directly from your browser.",byok_placeholder:"Paste API key...",byok_test:"Test",byok_delete:"Delete",byok_saved:"Key saved",byok_test_ok:"Key works!",byok_test_fail:"Key failed: ",byok_deleted:"Key deleted",byok_via_direct:"Using your key",byok_via_server:"Using server"},
+    vi:{app_title:"Đọc & Học",home_scan:"Quét văn bản",home_scan_d:"Chụp ảnh hoặc dán text tiếng Anh",home_read:"Đọc bài",home_read_d:"Đọc tương tác, tra từ, nghe phát âm",home_audio:"Nghe audio",home_audio_d:"Thư viện audio đã tạo",home_books:"Sách",home_books_d:"Tải sách PDF/EPUB để học",home_progress:"Tiến độ",home_progress_d:"Thống kê học tập, từ vựng",scan_title:"Chụp một trang",scan_hint:"Chụp ảnh văn bản tiếng Anh, hoặc dán text bên dưới.",take_photo:"Chụp ảnh",gallery:"Thư viện",paste_hint:"Dán văn bản tiếng Anh vào đây...",create_reading:"Tạo bài đọc",explore:"Khám phá",menu_read:"Đọc",menu_audio:"Nghe",menu_books:"Sách",menu_progress:"Tiến độ",audio_title:"Thư viện audio",books_title:"Sách",progress_title:"Tiến độ của tôi",profile_title:"Hồ sơ",settings_title:"Cài đặt",tab_scan:"Quét",tab_read:"Đọc",tab_audio:"Nghe",tab_books:"Sách",tab_progress:"Tiến độ",no_reading:"Chưa có bài đọc",no_reading_hint:"Vào tab Quét để chụp ảnh hoặc dán text, bài viết sẽ hiện ở đây.",byok_title:"Khóa AI",byok_hint:"Dán khóa API Gemini miễn phí của bạn — AI gọi trực tiếp từ trình duyệt.",byok_placeholder:"Dán khóa API...",byok_test:"Kiểm tra",byok_delete:"Xoá",byok_saved:"Đã lưu khóa",byok_test_ok:"Khóa hoạt động!",byok_test_fail:"Khóa lỗi: ",byok_deleted:"Đã xoá khóa",byok_via_direct:"Đang dùng khóa của bạn",byok_via_server:"Đang dùng server"},
+    zh:{app_title:"阅读与学习",home_scan:"扫描文本",home_scan_d:"拍照或粘贴英文文本",home_read:"阅读",home_read_d:"互动阅读、查词、听发音",home_audio:"音频",home_audio_d:"已创建的音频库",home_books:"书籍",home_books_d:"上传PDF/EPUB书籍学习",home_progress:"进度",home_progress_d:"学习统计、词汇",scan_title:"拍摄页面",scan_hint:"拍摄英文文本照片，或在下方粘贴文本。",take_photo:"拍照",gallery:"图库",paste_hint:"在此粘贴英文文本...",create_reading:"创建阅读",explore:"探索",menu_read:"阅读",menu_audio:"音频",menu_books:"书籍",menu_progress:"我的进度",audio_title:"音频库",books_title:"书籍",progress_title:"我的进度",profile_title:"个人资料",settings_title:"设置",tab_scan:"扫描",tab_read:"阅读",tab_audio:"音频",tab_books:"书籍",tab_progress:"进度",no_reading:"暂无阅读",no_reading_hint:"前往扫描选项卡拍照或粘贴文本，文章将显示在这里。",byok_title:"AI密钥",byok_hint:"粘贴您的免费Gemini API密钥——AI直接从浏览器调用。",byok_placeholder:"粘贴API密钥...",byok_test:"测试",byok_delete:"删除",byok_saved:"已保存密钥",byok_test_ok:"密钥有效!",byok_test_fail:"密钥失败: ",byok_deleted:"已删除密钥",byok_via_direct:"正在使用您的密钥",byok_via_server:"正在使用服务器"},
+    ko:{app_title:"읽기 & 학습",home_scan:"텍스트 스캔",home_scan_d:"사진 찍기 또는 영어 텍스트 붙여넣기",home_read:"읽기",home_read_d:"인터랙티브 읽기, 사전, 발음 듣기",home_audio:"오디오",home_audio_d:"생성된 오디오 라이브러리",home_books:"도서",home_books_d:"PDF/EPUB 도서 업로드하여 학습",home_progress:"진도",home_progress_d:"학습 통계, 어휘",scan_title:"페이지 촬영",scan_hint:"영어 텍스트 사진을 찍거나 아래에 텍스트를 붙여넣으세요.",take_photo:"사진 찍기",gallery:"갤러리",paste_hint:"여기에 영어 텍스트 붙여넣기...",create_reading:"읽기 만들기",explore:"탐색",menu_read:"읽기",menu_audio:"오디오",menu_books:"도서",menu_progress:"내 진도",audio_title:"오디오 라이브러리",books_title:"도서",progress_title:"내 진도",profile_title:"프로필",settings_title:"설정",tab_scan:"스캔",tab_read:"읽기",tab_audio:"오디오",tab_books:"도서",tab_progress:"진도",no_reading:"읽을거리가 없습니다",no_reading_hint:"스캔 탭으로 이동하여 사진을 찍거나 텍스트를 붙여넣으면 글이 여기에 표시됩니다.",byok_title:"AI 키",byok_hint:"무료 Gemini API 키를 붙여넣으세요 — AI가 브라우저에서 직접 호출됩니다.",byok_placeholder:"API 키 붙여넣기...",byok_test:"테스트",byok_delete:"삭제",byok_saved:"키 저장됨",byok_test_ok:"키가 작동합니다!",byok_test_fail:"키 실패: ",byok_deleted:"키 삭제됨",byok_via_direct:"내 키 사용 중",byok_via_server:"서버 사용 중"}
   };
   function applyLang(l){
     var d=I18N[l]||I18N.en;
@@ -395,6 +497,14 @@
   try{ applyLang(localStorage.getItem("elab_uiLang")||"en"); }catch(e){ applyLang("en"); }
   // Expose for lang-dropdown.js
   window.__elabSetLang = applyLang;
+  // Expose translator for dynamic content (BYOK status etc.)
+  window.__elabT = function(k){
+    try{
+      var lang=(localStorage.getItem("elab_uiLang")||"en").replace(/"/g,"");
+      var d=I18N[lang]||I18N.en;
+      return d[k]||k;
+    }catch(e){ return k; }
+  };
   // Auto-reload on new build
   function checkBuild(){
     try{
@@ -425,7 +535,7 @@
     if(document.getElementById("sw-update-banner")) return;
     var banner = document.createElement("div");
     banner.id = "sw-update-banner";
-    banner.style.cssText = "position:fixed;top:0;left:0;right:0;z-index:9999;background:var(--pp-accent,#0d9d6c);color:#fff;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:14px;box-shadow:0 2px 8px rgba(0,0,0,.15);";
+    banner.style.cssText = "position:fixed;top:0;left:0;right:0;z-index:9999;background:var(--pp-accent,#0d9d6c);color:#fff;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:var(--pp-text-sm);box-shadow:0 2px 8px rgba(0,0,0,.15);";
     var msg = document.createElement("span");
     msg.textContent = "Có bản mới";
     var btns = document.createElement("div");
