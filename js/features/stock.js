@@ -2,6 +2,7 @@
 import { $, esc, toast } from '../core/dom.js';
 import { state } from '../core/state.js';
 import { apiCall } from '../core/api.js';
+import { getUserKey, callDirect } from '../core/aiClient.js';
 
 /* ---------- i18n (VI/EN/中文/한국어) ---------- */
 const I18N = {
@@ -30,7 +31,11 @@ no_alerts:"Chưa có cảnh báo.",th_condition:"Điều kiện",
 alert_fill:"Nhập mã và giá",alert_added:"Đã thêm cảnh báo",
 no_targets:"Chưa có mục tiêu. Đặt từ tab Danh mục.",
 th_tp:"Chốt lời",th_sl:"Cắt lỗ",
-ind_on:"✓ Chỉ báo",ind_off:"fx Chỉ báo",vn_time:"Việt Nam (GMT+7)"},
+ind_on:"✓ Chỉ báo",ind_off:"Chỉ báo",vn_time:"Việt Nam (GMT+7)",
+all_ind:"Tất cả ngành",show_penny:"Hiện penny",
+preset_value:"Giá trị",preset_momentum:"Tăng mạnh",preset_quality:"Chất lượng",
+preset_basic:"Cơ bản",preset_full:"Full",
+indtab_price:"Giá",indtab_label:"Chỉ báo:"},
 en:{
 login_required:"Log in to view stocks.",no_data_updating:"Data is being updated. Please wait.",
 updated:"Updated: ",error:"Error",loading:"Loading…",watching:"✓ Following",watch:"+ Follow",
@@ -56,7 +61,11 @@ no_alerts:"No alerts.",th_condition:"Condition",
 alert_fill:"Fill in symbol and price",alert_added:"Alert added",
 no_targets:"No targets. Set them from the Portfolio tab.",
 th_tp:"Take profit",th_sl:"Stop loss",
-ind_on:"✓ Indicators",ind_off:"fx Indicators",vn_time:"Vietnam (GMT+7)"},
+ind_on:"✓ Indicators",ind_off:"Indicators",vn_time:"Vietnam (GMT+7)",
+all_ind:"All sectors",show_penny:"Show penny",
+preset_value:"Value",preset_momentum:"Top gainers",preset_quality:"Quality",
+preset_basic:"Basic",preset_full:"Full",
+indtab_price:"Price",indtab_label:"Indicators:"},
 zh:{
 login_required:"登录后查看股票。",no_data_updating:"数据正在更新，请稍候。",
 updated:"更新时间：",error:"错误",loading:"加载中…",watching:"✓ 已关注",watch:"+ 关注",
@@ -82,7 +91,11 @@ no_alerts:"暂无提醒。",th_condition:"条件",
 alert_fill:"请填写代码和价格",alert_added:"提醒已添加",
 no_targets:"暂无目标，请从投资组合页设置。",
 th_tp:"止盈",th_sl:"止损",
-ind_on:"✓ 指标",ind_off:"fx 指标",vn_time:"越南 (GMT+7)"},
+ind_on:"✓ 指标",ind_off:"指标",vn_time:"越南 (GMT+7)",
+all_ind:"所有行业",show_penny:"显示仙股",
+preset_value:"价值",preset_momentum:"涨幅榜",preset_quality:"优质",
+preset_basic:"基础",preset_full:"全部",
+indtab_price:"价格",indtab_label:"指标："},
 ko:{
 login_required:"로그인 후 주식을 확인하세요。",no_data_updating:"데이터를 업데이트 중입니다. 잠시만 기다려 주세요.",
 updated:"업데이트: ",error:"오류",loading:"불러오는 중…",watching:"✓ 팔로우 중",watch:"+ 팔로우",
@@ -108,7 +121,11 @@ no_alerts:"알림이 없습니다.",th_condition:"조건",
 alert_fill:"종목과 가격을 입력하세요",alert_added:"알림이 추가되었습니다",
 no_targets:"목표가가 없습니다. 포트폴리오 탭에서 설정하세요.",
 th_tp:"익절",th_sl:"손절",
-ind_on:"✓ 지표",ind_off:"fx 지표",vn_time:"베트남 (GMT+7)"}
+ind_on:"✓ 지표",ind_off:"지표",vn_time:"베트남 (GMT+7)",
+all_ind:"모든 업종",show_penny:"페니주 표시",
+preset_value:"가치",preset_momentum:"상승률",preset_quality:"우량",
+preset_basic:"기본",preset_full:"전체",
+indtab_price:"가격",indtab_label:"지표:"}
 };
 let LANG = "vi";
 try{ const v = localStorage.getItem("elab_uiLang"); if(v) LANG = JSON.parse(v); }catch(e){}
@@ -209,9 +226,28 @@ export function bindStock(){
     stkTab = "alert"; renderStockTab();
     setTimeout(()=>{ const i=$("alSym"); if(i && curSymbol) i.value = curSymbol; }, 60);
   };
-  // screener filter
+  // screener filter — auto-filter on change (2026-10-09: no button press needed)
   const sbtn = $("scrBtn");
   if(sbtn) sbtn.onclick = renderScreener;
+  for(const id of ["scrEx","scrInd"]){
+    const el = $(id);
+    if(el) el.addEventListener("change", renderScreener);
+  }
+  for(const id of ["scrMinPct","scrMinScore"]){
+    const el = $(id);
+    if(el) el.addEventListener("change", renderScreener);
+  }
+  // Preset buttons (2026-10-09): one-tap filter templates
+  document.querySelectorAll("[data-preset]").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      const p = btn.getAttribute("data-preset");
+      // Toggle: click again to clear
+      window._stkPreset = (window._stkPreset===p) ? "" : p;
+      document.querySelectorAll("[data-preset]").forEach(b=>
+        b.classList.toggle("primary", b.getAttribute("data-preset")===window._stkPreset));
+      renderScreener();
+    });
+  });
 }
 
 export async function renderStock(){
@@ -402,11 +438,15 @@ async function loadChart(sym, interval="1D"){
     el.innerHTML = '<div class="hint">'+t("chart_fail")+'</div>';
     return;
   }
+  // Race guard (2026-10-09): ignore stale responses when user taps rapidly
+  const reqSym = sym, reqIv = interval;
   el.innerHTML = '<div class="pp-skeleton" style="height:300px;border-radius:12px"></div>';
   try{
     const isIntraday = interval!=="1D";
     const count = isIntraday ? 80 : 300;
     const j = await sApi("/ohlcv?symbol="+encodeURIComponent(sym)+"&count="+count+"&interval="+interval);
+    // Drop stale: user switched symbol/interval while loading
+    if(curSymbol!==reqSym || curIv!==reqIv) return;
     el.innerHTML = "";
     el.style.position = "relative";
     const dark = document.body.classList.contains("dark");
@@ -440,6 +480,11 @@ async function loadChart(sym, interval="1D"){
     };
     const lineData = (arr)=>candleData.map((p,i)=>({time:p.time, value:arr[i]})).filter(p=>p.value!=null);
 
+    const hasIndData = !isIntraday && j.indicators && j.indicators.length;
+    const indByT = {};
+    if(hasIndData) j.indicators.forEach(r=>{ indByT[r.t]=r; });
+    const val = (t,k)=>{ const r=indByT[t]; const v=r?r[k]:null; return v==null?null:v; };
+
     if(!isIntraday && indMode && j.indicators && j.indicators.length){
       // ---- indicator mode: Bollinger + RSI + MACD ----
       const indByT = {};
@@ -469,7 +514,7 @@ async function loadChart(sym, interval="1D"){
       lg.innerHTML = '<span style="color:#7B1FA2">RSI 14</span> · <span style="color:#2962FF">MACD</span> · <span style="color:#FF6D00">Signal</span> · <span style="color:#2962FF">BB(20,2)</span>';
       el.appendChild(lg);
     } else {
-      // ---- FireAnt default: MA10/MA50 + volume(+MA5/MA10) ----
+      // ---- FireAnt default: MA10/MA50 + volume ----
       const ma10 = smaArr(closes, 10), ma50 = smaArr(closes, 50);
       mkLine(lineData(ma10), "#26a69a");
       mkLine(lineData(ma50), "#FF9800");
@@ -481,18 +526,12 @@ async function loadChart(sym, interval="1D"){
         const up = r.c>=r.o;
         return {time:candleData[i].time, value:r.v||0, color: up?"rgba(38,166,154,.55)":"rgba(239,83,80,.55)"};
       }));
-      const vma5 = smaArr(vols, 5), vma10 = smaArr(vols, 10);
-      mkLine(lineData(vma5), "#FF9800", {priceScaleId:"vol"});
-      mkLine(lineData(vma10), "#26a69a", {priceScaleId:"vol"});
       chart.priceScale("right").applyOptions({scaleMargins:{top:0.05, bottom:0.30}});
       chart.priceScale("vol").applyOptions({scaleMargins:{top:0.78, bottom:0.02}});
-      const last = disp[disp.length-1]||{};
       const lg = document.createElement("div");
       lg.style.cssText = "position:absolute;top:6px;left:8px;font-size:11px;font-weight:700;pointer-events:none";
       const ma10v = ma10[ma10.length-1], ma50v = ma50[ma50.length-1];
-      const v5 = vma5[vma5.length-1], v10 = vma10[vma10.length-1];
-      lg.innerHTML = `<span style="color:#26a69a">MA10:${ma10v!=null?ma10v.toFixed(2):"—"}</span> <span style="color:#FF9800">MA50:${ma50v!=null?ma50v.toFixed(2):"—"}</span><br>`+
-        `<span style="color:#7B1FA2">VOL:${fmtN(last.v)}</span> <span style="color:#FF9800">MA5:${v5!=null?fmtN(Math.round(v5)):"—"}</span> <span style="color:#26a69a">MA10:${v10!=null?fmtN(Math.round(v10)):"—"}</span>`;
+      lg.innerHTML = `<span style="color:#26a69a">MA10:${ma10v!=null?ma10v.toFixed(2):"—"}</span> <span style="color:#FF9800">MA50:${ma50v!=null?ma50v.toFixed(2):"—"}</span>`;
       el.appendChild(lg);
     }
     chart.timeScale().fitContent();
@@ -537,6 +576,7 @@ async function renderScreener(){
   box.innerHTML = '<div class="hint">'+t("loading_screener")+'</div>';
   try{
     const ex = $("scrEx") ? $("scrEx").value : "";
+    const ind = $("scrInd") ? $("scrInd").value : "";
     const minPct = $("scrMinPct") ? $("scrMinPct").value : "";
     const minScore = $("scrMinScore") ? $("scrMinScore").value : "";
     let url = "/screener2?";
@@ -545,6 +585,13 @@ async function renderScreener(){
     if(minScore!=="") url += "min_score="+encodeURIComponent(minScore)+"&";
     const j = await sApi(url);
     let rows = j.rows||[];
+    // Industry filter client-side (2026-10-09: backend URL param caused 503)
+    if(ind) rows = rows.filter(r=>(r.industry||"")===ind);
+    // Preset filters (2026-10-09): one-tap templates like TradingView
+    const preset = window._stkPreset || "";
+    if(preset==="value") rows = rows.filter(r=>r.pe!=null && r.pe<15 && r.roe!=null && r.roe>15);
+    else if(preset==="momentum") rows = [...rows].sort((a,b)=>(b.pct_change??-999)-(a.pct_change??-999));
+    else if(preset==="quality") rows = rows.filter(r=>r.roe!=null && r.roe>15 && r.debt_to_equity!=null && r.debt_to_equity<1);
     if(minPct!==""){
       const mp = parseFloat(minPct);
       rows = rows.filter(r=>r.pct_change!=null && r.pct_change>=mp);
@@ -957,8 +1004,26 @@ export function setStockLang(l){
   }
 }
 
-/* ---------- AI agent chat ---------- */
+/* ---------- AI agent chat (BYOK Phase 1.5) ---------- */
+// Thử gọi trực tiếp bằng key của user trước, lỗi thì fallback về server.
+async function chatWithFallback(message, onToken){
+  const key = await getUserKey();
+  if(key){
+    try{
+      const prompt = "Bạn là trợ lý chứng khoán Việt Nam. Trả lời ngắn gọn, chính xác. " +
+        "Đây không phải lời khuyên đầu tư.\n\nCâu hỏi: " + message;
+      const reply = await callDirect(prompt, onToken);
+      return { reply, via: "direct" };
+    }catch(e){
+      // Direct failed → fallback to server below
+    }
+  }
+  return { reply: null, via: "server" };
+}
+
 let agentBound = false;
+let lastAgentSend = 0;
+const AGENT_THROTTLE_MS = 2000;
 function initAgentChat(){
   if(agentBound) return;
   agentBound = true;
@@ -978,6 +1043,9 @@ function initAgentChat(){
   }
 
   async function send(){
+    const now = Date.now();
+    if(now - lastAgentSend < AGENT_THROTTLE_MS) return;
+    lastAgentSend = now;
     const text = input.value.trim();
     if(!text) return;
     if(text.length > 1000){ addMsg(t("agent_too_long") || "Message too long", false); return; }
@@ -985,17 +1053,81 @@ function initAgentChat(){
     input.disabled = true;
     btn.disabled = true;
     addMsg(text, true);
-    addMsg("...", false);
+    const waitingText = t("agent_waiting") || "Processing";
+    addMsg(waitingText + "...", false);
     const loading = msgs.lastChild;
+    const startTime = Date.now();
+    // Update elapsed time every 2s so user knows it's working
+    const elapsedTimer = setInterval(() => {
+      const secs = Math.floor((Date.now() - startTime) / 1000);
+      if(loading && loading.isConnected){
+        loading.textContent = waitingText + "... (" + secs + "s)";
+      }
+    }, 2000);
     try{
+      // BYOK Phase 1.5: thử direct trước, lỗi thì fallback server.
+      const fb = await chatWithFallback(text, (tok)=>{
+        if(loading && loading.isConnected){
+          // Streaming: thay "..." bằng token đầu tiên
+          if(loading.textContent.startsWith(waitingText)) loading.textContent = "";
+          loading.textContent += tok;
+        }
+      });
+      if(fb.via === "direct" && fb.reply){
+        clearInterval(elapsedTimer);
+        loading.remove();
+        addMsg(fb.reply, false);
+      } else {
+      // Async job pattern: POST returns immediately with requestId,
+      // then poll status every 2s (Canva/Midjourney style).
+      // Avoids holding one HTTP connection for 60s+ (mobile browsers kill it).
       const r = await sApi("/agent", {
         method: "POST",
         body: JSON.stringify({message: text})
       });
-      loading.remove();
-      if(r.reply) addMsg(r.reply, false);
-      else addMsg((r.error || t("error") || "Error"), false);
+      if(!r.requestId){
+        clearInterval(elapsedTimer);
+        loading.remove();
+        addMsg((r.error || r.reply || t("error") || "Error"), false);
+      } else {
+        // Poll for result
+        const maxPolls = 90; // 90 x 2s = 3 min max
+        let done = false;
+        for(let i = 0; i < maxPolls && !done; i++){
+          await new Promise(res => setTimeout(res, 2000));
+          try{
+            const s = await sApi("/agent/status?id=" + encodeURIComponent(r.requestId));
+            if(s.status === "done"){
+              clearInterval(elapsedTimer);
+              loading.remove();
+              addMsg(s.reply || "", false);
+              done = true;
+            } else if(s.status === "error"){
+              clearInterval(elapsedTimer);
+              loading.remove();
+              addMsg((s.error || t("error") || "Error"), false);
+              done = true;
+            }
+            // else "queued"/"processing": keep polling
+          }catch(pe){
+            // Single poll failed — keep trying unless it's the last attempt
+            if(i === maxPolls - 1){
+              clearInterval(elapsedTimer);
+              loading.remove();
+              addMsg(t("error")+": "+pe.message, false);
+              done = true;
+            }
+          }
+        }
+        if(!done){
+          clearInterval(elapsedTimer);
+          loading.remove();
+          addMsg(t("error")+": timeout", false);
+        }
+      }
+      } // end else (server fallback)
     }catch(e){
+      clearInterval(elapsedTimer);
       loading.remove();
       addMsg(t("error")+": "+e.message, false);
     }
@@ -1009,3 +1141,4 @@ function initAgentChat(){
     if(e.key==="Enter" && !e.shiftKey){ e.preventDefault(); send(); }
   });
 }
+// force rehash 20261009
