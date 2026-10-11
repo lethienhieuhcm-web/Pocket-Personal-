@@ -70,23 +70,29 @@ export async function deleteUserKey() {
 }
 
 // Kiểm tra key bằng 1 request thật nhẹ.
+// Big-tech: thử models theo thứ tự fallback.
 export async function testUserKey(key) {
   const k = (key || '').trim();
   if (!k) return { ok: false, error: 'empty' };
-  try {
-    const r = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': k },
-        body: JSON.stringify({ contents: [{ parts: [{ text: 'Hi' }] }] }),
-      }
-    );
-    if (r.ok) return { ok: true };
-    return { ok: false, error: 'HTTP ' + r.status };
-  } catch (e) {
-    return { ok: false, error: 'network' };
+  for (const m of MODELS) {
+    try {
+      const r = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-goog-api-key': k },
+          body: JSON.stringify({ contents: [{ parts: [{ text: 'Hi' }] }] }),
+        }
+      );
+      if (r.ok) return { ok: true };
+      if (r.status === 404) continue; // model không tồn tại, thử tiếp
+      return { ok: false, error: 'HTTP ' + r.status };
+    } catch (e) {
+      // network error: thử model tiếp theo
+      continue;
+    }
   }
+  return { ok: false, error: 'network' };
 }
 
 // Gọi trực tiếp Google từ browser, stream SSE từng chunk.
