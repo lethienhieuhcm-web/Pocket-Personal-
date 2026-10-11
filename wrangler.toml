@@ -5,6 +5,19 @@ compatibility_date = "2024-10-01"
 [assets]
 directory = "./"
 not_found_handling = "single-page-application"
+exclude = [
+  ".git",
+  ".github",
+  "node_modules",
+  "worker/node_modules",
+  "worker/src",
+  "scripts",
+  "*.md",
+  "*.py",
+  "*.sh",
+  "wrangler.toml",
+  ".gitignore",
+]
 
 [[r2_buckets]]
 binding = "DATA"
