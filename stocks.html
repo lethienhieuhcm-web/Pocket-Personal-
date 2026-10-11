@@ -299,6 +299,12 @@ h4{font-size:var(--pp-text-sm)}
         <button class="btn" id="stkByokTest" data-i18n="byok_test">Test</button>
         <button class="btn" id="stkByokDel" data-i18n="byok_delete">Delete</button>
       </div>
+      <div class="row" style="gap:8px;margin-top:8px">
+        <span class="hint" data-i18n="byok_model">Model</span>
+        <select id="stkByokModel" class="gptInput" style="flex:1">
+          <option value="" data-i18n="byok_model_select">Chọn model...</option>
+        </select>
+      </div>
       <div id="stkByokStatus" class="hint" style="margin-top:4px"></div>
     </div>
   </div>
@@ -389,7 +395,7 @@ pin_wrong:"Sai PIN",market_updated:"Đã cập nhật dữ liệu thị trườn
 pin_cur:"PIN hiện tại (để trống để gỡ PIN):",pin_remove_q:"Gỡ khóa PIN?",
 pin_removed:"Đã gỡ PIN",pin_new:"PIN mới (4-6 chữ số):",pin_set:"Đặt PIN (4-6 chữ số):",
 pin_digits:"PIN phải có 4-6 chữ số",pin_saved:"Đã lưu PIN",pin_err:"Lỗi: ",pin_setup:"Cài đặt PIN",pin_cur_label:"PIN hiện tại",pin_new_label:"PIN mới",pin_save:"Lưu",pin_remove:"Gỡ PIN",pin_cancel:"Hủy",pin_confirm_remove:"Chắc chắn gỡ?",pin_cur_required:"Nhập PIN hiện tại",
-tab_agent:"AI Chat",agent_h:"AI Chat",agent_hint:"Hỏi về chứng khoán Việt Nam. Ví dụ: \"Giá VCB bao nhiêu?\"",agent_ph:"Hỏi về cổ phiếu...",agent_send:"Gửi",agent_disclaimer:"Đây không phải lời khuyên đầu tư. Vui lòng tự nghiên cứu.",agent_too_long:"Tin nhắn quá dài (tối đa 1000 ký tự)",agent_waiting:"Đang xử lý",byok_title:"Khóa AI",byok_hint_short:"tùy chọn, để trả lời nhanh hơn",byok_placeholder:"Dán khóa API...",byok_test:"Kiểm tra",byok_delete:"Xoá",byok_saved:"Đã lưu khóa",byok_test_ok:"Khóa hoạt động!",byok_test_fail:"Khóa lỗi: ",byok_deleted:"Đã xoá khóa",
+tab_agent:"AI Chat",agent_h:"AI Chat",agent_hint:"Hỏi về chứng khoán Việt Nam. Ví dụ: \"Giá VCB bao nhiêu?\"",agent_ph:"Hỏi về cổ phiếu...",agent_send:"Gửi",agent_disclaimer:"Đây không phải lời khuyên đầu tư. Vui lòng tự nghiên cứu.",agent_too_long:"Tin nhắn quá dài (tối đa 1000 ký tự)",agent_waiting:"Đang xử lý",byok_title:"Khóa AI",byok_hint_short:"tùy chọn, để trả lời nhanh hơn",byok_placeholder:"Dán khóa API...",byok_test:"Kiểm tra",byok_delete:"Xoá",byok_saved:"Đã lưu khóa",byok_test_ok:"Khóa hoạt động!",byok_test_fail:"Khóa lỗi: ",byok_deleted:"Đã xoá khóa",byok_model:"Model",byok_model_select:"Chọn model...",
 update_available:"Có bản mới",update_btn:"Cập nhật",update_later:"Để sau"},
 en:{doc_title:"Stocks — Pocket Personal",
 pin_title:"Enter PIN",pin_ph:"4-6 digits",unlock:"Unlock",pin_btn:"PIN",logout:"Logout",
@@ -414,7 +420,7 @@ pin_wrong:"Wrong PIN",market_updated:"Market data updated",
 pin_cur:"Current PIN (leave empty to remove PIN):",pin_remove_q:"Remove PIN lock?",
 pin_removed:"PIN removed",pin_new:"New PIN (4-6 digits):",pin_set:"Set PIN (4-6 digits):",
 pin_digits:"PIN must be 4-6 digits",pin_saved:"PIN saved",pin_err:"Error: ",pin_setup:"PIN settings",pin_cur_label:"Current PIN",pin_new_label:"New PIN",pin_save:"Save",pin_remove:"Remove PIN",pin_cancel:"Cancel",pin_confirm_remove:"Confirm remove?",pin_cur_required:"Enter current PIN",
-tab_agent:"AI Chat",agent_h:"AI Chat",agent_hint:"Ask about Vietnam stocks. Example: \"What is the price of VCB?\"",agent_ph:"Ask about stocks...",agent_send:"Send",agent_disclaimer:"This is not investment advice. Please do your own research.",agent_too_long:"Message too long (max 1000 chars)",agent_waiting:"Processing",byok_title:"AI key",byok_hint_short:"optional, for faster answers",byok_placeholder:"Paste API key...",byok_test:"Test",byok_delete:"Delete",byok_saved:"Key saved",byok_test_ok:"Key works!",byok_test_fail:"Key failed: ",byok_deleted:"Key deleted",update_available:"New version available",update_btn:"Update",update_later:"Later"},
+tab_agent:"AI Chat",agent_h:"AI Chat",agent_hint:"Ask about Vietnam stocks. Example: \"What is the price of VCB?\"",agent_ph:"Ask about stocks...",agent_send:"Send",agent_disclaimer:"This is not investment advice. Please do your own research.",agent_too_long:"Message too long (max 1000 chars)",agent_waiting:"Processing",byok_title:"AI key",byok_hint_short:"optional, for faster answers",byok_placeholder:"Paste API key...",byok_test:"Test",byok_delete:"Delete",byok_saved:"Key saved",byok_test_ok:"Key works!",byok_test_fail:"Key failed: ",byok_deleted:"Key deleted",byok_model:"Model",byok_model_select:"Select model...",update_available:"New version available",update_btn:"Update",update_later:"Later"},
 zh:{doc_title:"股票 — Pocket Personal",
 pin_title:"输入 PIN",pin_ph:"4-6 位数字",unlock:"解锁",pin_btn:"PIN",logout:"退出登录",
 stocks_title:"股票",tab_market:"行情",tab_watch:"自选",tab_port:"投资组合",tab_alert:"提醒",
@@ -438,7 +444,7 @@ pin_wrong:"PIN 错误",market_updated:"行情数据已更新",
 pin_cur:"当前 PIN（留空则移除 PIN）：",pin_remove_q:"移除 PIN 锁？",
 pin_removed:"已移除 PIN",pin_new:"新 PIN（4-6 位数字）：",pin_set:"设置 PIN（4-6 位数字）：",
 pin_digits:"PIN 必须为 4-6 位数字",pin_saved:"PIN 已保存",pin_err:"错误：",pin_setup:"PIN 设置",pin_cur_label:"当前 PIN",pin_new_label:"新 PIN",pin_save:"保存",pin_remove:"移除 PIN",pin_cancel:"取消",pin_confirm_remove:"确认移除？",pin_cur_required:"请输入当前 PIN",
-tab_agent:"AI 聊天",agent_h:"AI 聊天",agent_hint:"咨询越南股票。例如：\"VCB 的价格是多少？\"",agent_ph:"咨询股票...",agent_send:"发送",agent_disclaimer:"这不是投资建议。请自行研究。",agent_too_long:"消息太长（最多1000个字符）",agent_waiting:"处理中",byok_title:"AI密钥",byok_hint_short:"可选，回复更快",byok_placeholder:"粘贴API密钥...",byok_test:"测试",byok_delete:"删除",byok_saved:"已保存密钥",byok_test_ok:"密钥有效!",byok_test_fail:"密钥失败: ",byok_deleted:"已删除密钥",update_available:"有新版本",update_btn:"更新",update_later:"稍后"},
+tab_agent:"AI 聊天",agent_h:"AI 聊天",agent_hint:"咨询越南股票。例如：\"VCB 的价格是多少？\"",agent_ph:"咨询股票...",agent_send:"发送",agent_disclaimer:"这不是投资建议。请自行研究。",agent_too_long:"消息太长（最多1000个字符）",agent_waiting:"处理中",byok_title:"AI密钥",byok_hint_short:"可选，回复更快",byok_placeholder:"粘贴API密钥...",byok_test:"测试",byok_delete:"删除",byok_saved:"已保存密钥",byok_test_ok:"密钥有效!",byok_test_fail:"密钥失败: ",byok_deleted:"已删除密钥",byok_model:"模型",byok_model_select:"选择模型...",update_available:"有新版本",update_btn:"更新",update_later:"稍后"},
 ko:{doc_title:"주식 — Pocket Personal",
 pin_title:"PIN 입력",pin_ph:"4-6자리 숫자",unlock:"잠금 해제",pin_btn:"PIN",logout:"로그아웃",
 stocks_title:"주식",tab_market:"시장",tab_watch:"관심 목록",tab_port:"포트폴리오",tab_alert:"알림",
@@ -462,7 +468,7 @@ pin_wrong:"PIN이 올바르지 않습니다",market_updated:"시장 데이터가
 pin_cur:"현재 PIN (비워 두면 PIN 제거):",pin_remove_q:"PIN 잠금을 해제하시겠습니까?",
 pin_removed:"PIN이 제거되었습니다",pin_new:"새 PIN (4-6자리 숫자):",pin_set:"PIN 설정 (4-6자리 숫자):",
 pin_digits:"PIN은 4-6자리 숫자여야 합니다",pin_saved:"PIN이 저장되었습니다",pin_err:"오류: ",pin_setup:"PIN 설정",pin_cur_label:"현재 PIN",pin_new_label:"새 PIN",pin_save:"저장",pin_remove:"PIN 제거",pin_cancel:"취소",pin_confirm_remove:"제거를 확인하시겠습니까?",pin_cur_required:"현재 PIN을 입력하세요",
-tab_agent:"AI 채팅",agent_h:"AI 채팅",agent_hint:"베트남 주식에 대해 물어보세요. 예: \"VCB 가격이 얼마인가요?\"",agent_ph:"주식에 대해 물어보세요...",agent_send:"전송",agent_disclaimer:"투자 조언이 아닙니다. 직접 조사하시기 바랍니다.",agent_too_long:"메시지가 너무 깁니다 (최대 1000자)",agent_waiting:"처리 중",byok_title:"AI 키",byok_hint_short:"선택사항, 더 빠른 답변",byok_placeholder:"API 키 붙여넣기...",byok_test:"테스트",byok_delete:"삭제",byok_saved:"키 저장됨",byok_test_ok:"키가 작동합니다!",byok_test_fail:"키 실패: ",byok_deleted:"키 삭제됨",update_available:"새 버전 있음",update_btn:"업데이트",update_later:"나중에"}
+tab_agent:"AI 채팅",agent_h:"AI 채팅",agent_hint:"베트남 주식에 대해 물어보세요. 예: \"VCB 가격이 얼마인가요?\"",agent_ph:"주식에 대해 물어보세요...",agent_send:"전송",agent_disclaimer:"투자 조언이 아닙니다. 직접 조사하시기 바랍니다.",agent_too_long:"메시지가 너무 깁니다 (최대 1000자)",agent_waiting:"처리 중",byok_title:"AI 키",byok_hint_short:"선택사항, 더 빠른 답변",byok_placeholder:"API 키 붙여넣기...",byok_test:"테스트",byok_delete:"삭제",byok_saved:"키 저장됨",byok_test_ok:"키가 작동합니다!",byok_test_fail:"키 실패: ",byok_deleted:"키 삭제됨",byok_model:"모델",byok_model_select:"모델 선택...",update_available:"새 버전 있음",update_btn:"업데이트",update_later:"나중에"}
 };
 let LANG = "vi";
 try{ const v = localStorage.getItem("elab_uiLang"); if(v) LANG = JSON.parse(v); }catch(e){}
