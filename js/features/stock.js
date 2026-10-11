@@ -1026,8 +1026,22 @@ async function chatWithFallback(message, onToken){
   const key = await getUserKey();
   if(key){
     try{
-      const prompt = "Bạn là trợ lý chứng khoán Việt Nam. Trả lời ngắn gọn, chính xác. " +
-        "Đây không phải lời khuyên đầu tư.\n\nCâu hỏi: " + message;
+      // 8b: Context injection kiểu Perplexity — nhét dữ liệu thật vào prompt.
+      // App đã có giá realtime, không cần tools, AI direct vẫn thông minh.
+      let context = "";
+      const symbols = detectSymbols(message);
+      for(const sym of symbols.slice(0, 3)){ // tối đa 3 mã để prompt không quá dài
+        try{
+          const q = await sApi("/quote?symbol=" + encodeURIComponent(sym));
+          if(q && q.close != null){
+            context += `\n- ${sym}: giá ${q.close}, thay đổi ${q.change ?? "—"} (${q.pct_change != null ? q.pct_change.toFixed(2) + "%" : "—"}), khối lượng ${q.volume ?? "—"}`;
+          }
+        }catch(e){ /* bỏ qua mã lỗi, không chặn chat */ }
+      }
+      const prompt = "Bạn là trợ lý chứng khoán Việt Nam. Trả lời ngắn gọn, chính xác bằng tiếng Việt. " +
+        "Đây không phải lời khuyên đầu tư." +
+        (context ? "\n\nDữ liệu thị trường hiện tại:" + context : "") +
+        "\n\nCâu hỏi: " + message;
       const reply = await callDirect(prompt, onToken);
       return { reply, via: "direct" };
     }catch(e){
@@ -1035,6 +1049,14 @@ async function chatWithFallback(message, onToken){
     }
   }
   return { reply: null, via: "server" };
+}
+
+// Tách mã chứng khoán từ câu hỏi (mã VN thường 3 ký tự hoa: HPG, VCB, VIC...)
+function detectSymbols(text){
+  const matches = text.toUpperCase().match(/\b[A-Z]{3}\b/g) || [];
+  // Loại từ thông dụng không phải mã CK
+  const stopwords = new Set(["CHO", "BAO", "NHI", "GIA", "HAY", "LA", "CAI", "VND", "USD"]);
+  return [...new Set(matches.filter(m => !stopwords.has(m)))];
 }
 
 let agentBound = false;
