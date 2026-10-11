@@ -6,14 +6,21 @@
 </script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script>/* FIT 8b-8: theme theo hệ thống, không nháy — localStorage > prefers-color-scheme */
+try{
+  var s = localStorage.getItem('pp_theme') || localStorage.getItem('hub_theme');
+  var d = s ? s === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+  if(d) document.documentElement.classList.add('pp-dark');
+  if(s && !localStorage.getItem('pp_theme')) localStorage.setItem('pp_theme', s); // migrate key cũ
+}catch(e){}</script>
 <title>Pocket Personal</title>
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#0d9d6c">
 <link rel="stylesheet" href="/design-system.css?v=1791286992">
 <style>
-.pp-hub{min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:48px 20px 32px;max-width:600px;margin:0 auto;width:100%}
-.pp-hub h1{font-size:30px;margin-bottom:6px;font-weight:800;letter-spacing:-.3px}
-.pp-hub .subtitle{color:var(--pp-mut);margin-bottom:24px;font-size:14px}
+.pp-hub{min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;align-items:center;padding:48px 20px 32px;max-width:600px;margin:0 auto;width:100%}
+.pp-hub h1{font-size:var(--pp-text-3xl);margin-bottom:6px;font-weight:800;letter-spacing:-.3px}
+.pp-hub .subtitle{color:var(--pp-mut);margin-bottom:24px;font-size:var(--pp-text-sm)}
 #installBtn{margin-bottom:20px;width:100%;justify-content:center}
 .pp-apps{display:flex;flex-direction:column;gap:10px;width:100%}
 .pp-app-row{display:flex;align-items:center;gap:14px;background:var(--pp-card);border:1px solid var(--pp-line);
@@ -23,14 +30,14 @@
 .pp-app-row:active{transform:scale(.98)}
 img.pp-app-ic{object-fit:cover;padding:0}
 .pp-app-ic{width:46px;height:46px;border-radius:14px;display:flex;align-items:center;justify-content:center;
-  color:#fff;font-weight:800;font-size:20px;flex-shrink:0}
+  color:#fff;font-weight:800;font-size:var(--pp-text-xl);flex-shrink:0}
 .pp-app-tx{flex:1;min-width:0}
-.pp-app-name{font-weight:700;font-size:16px}
-.pp-app-desc{color:var(--pp-mut);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pp-app-go{color:var(--pp-mut);font-size:22px;font-weight:700;flex-shrink:0}
+.pp-app-name{font-weight:700;font-size:var(--pp-text-base)}
+.pp-app-desc{color:var(--pp-mut);font-size:var(--pp-text-xs);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pp-app-go{color:var(--pp-mut);font-size:var(--pp-text-xl);font-weight:700;flex-shrink:0}
 .pp-top-btns{position:fixed;top:16px;right:16px;display:flex;gap:8px;align-items:center}
 .lang-pill{display:inline-flex;border:1px solid var(--pp-line);border-radius:20px;overflow:hidden;background:var(--pp-card)}
-.lang-pill button{border:none;background:transparent;padding:8px 10px;font-size:11px;font-weight:700;color:var(--pp-mut);cursor:pointer}
+.lang-pill button{border:none;background:transparent;padding:8px 10px;font-size:var(--pp-text-xs);font-weight:700;color:var(--pp-mut);cursor:pointer}
 .lang-pill button.on{background:var(--pp-accent);color:#fff}
 </style>
 </head>
@@ -55,8 +62,8 @@ img.pp-app-ic{object-fit:cover;padding:0}
   <button class="pp-btn sm" id="logoutBtn" title="Logout" style="border-radius:50%;width:44px;height:44px;padding:0">
     <svg class="pp-ic" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5M21 12H9"/></svg>
   </button>
-  <button class="pp-btn sm" id="themeBtn" title="Theme" style="border-radius:50%;width:44px;height:44px;padding:0">
-    <svg class="pp-ic" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+  <button class="pp-themebtn" id="themeBtn" title="Theme" aria-label="Theme">
+    <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
   </button>
 </div>
 <div class="pp-hub">
@@ -107,25 +114,28 @@ img.pp-app-ic{object-fit:cover;padding:0}
 </div>
 <script>
 const themeBtn = document.getElementById('themeBtn');
-if(localStorage.getItem('hub_theme')==='dark'){
-  document.body.classList.add('pp-dark');
-}
+// Head script đã set pp-dark ở html; đồng bộ sang body
+document.body.classList.toggle('pp-dark', document.documentElement.classList.contains('pp-dark'));
 themeBtn.onclick = ()=>{
-  const dark = document.body.classList.toggle('pp-dark');
-  localStorage.setItem('hub_theme', dark?'dark':'light');
+  const dark = document.documentElement.classList.toggle('pp-dark');
+  document.body.classList.toggle('pp-dark', dark);
+  try{ localStorage.setItem('pp_theme', dark?'dark':'light'); }catch(e){}
 };
-// Service worker (hub PWA)
+// Service worker auto-update (Henrry 2026-10-11): tự update, không cần user bấm.
 if('serviceWorker' in navigator){
   navigator.serviceWorker.register('/sw.js',{scope:'/'}).then(function(reg){
     reg.addEventListener('updatefound', function(){
       var newWorker = reg.installing;
       newWorker.addEventListener('statechange', function(){
         if(newWorker.state === 'installed' && navigator.serviceWorker.controller){
-          showUpdateBanner(newWorker);
+          newWorker.postMessage({type: 'SKIP_WAITING'});
         }
       });
     });
   }).catch(()=>{});
+  navigator.serviceWorker.addEventListener('controllerchange', function(){
+    location.reload();
+  });
 }
 // Banner "Có bản mới" - hiện inline, không popup/modal (chuẩn big tech)
 function showUpdateBanner(newWorker){
@@ -134,7 +144,7 @@ function showUpdateBanner(newWorker){
   var t = (typeof I18N !== 'undefined' && I18N[lang]) ? I18N[lang] : (typeof I18N !== 'undefined' ? I18N.vi : {});
   var banner = document.createElement('div');
   banner.id = 'sw-update-banner';
-  banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;background:var(--pp-accent,#0d9d6c);color:#fff;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:14px;box-shadow:0 2px 8px rgba(0,0,0,.15);';
+  banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;background:var(--pp-accent,#0d9d6c);color:#fff;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:var(--pp-text-sm);box-shadow:0 2px 8px rgba(0,0,0,.15);';
   var msg = document.createElement('span');
   msg.textContent = t.update_available || 'Có bản mới';
   var btns = document.createElement('div');
@@ -214,8 +224,8 @@ document.getElementById('devicesBtn').onclick = async ()=>{
     list.innerHTML = j.sessions.map(s=>
       '<div class="pp-app" style="padding:12px;margin-bottom:8px">'+
       '<div style="flex:1"><div style="font-weight:600">'+(s.current?'This device':(s.ua||'Unknown device').slice(0,40))+'</div>'+
-      '<div style="font-size:12px;color:var(--pp-mut)">'+(s.ip||'')+'</div></div>'+
-      (s.current?'<span style="font-size:12px;color:var(--pp-accent)">Current</span>':'<button class="pp-btn sm" data-revoke="'+s.token+'">Revoke</button>')+
+      '<div style="font-size:var(--pp-text-xs);color:var(--pp-mut)">'+(s.ip||'')+'</div></div>'+
+      (s.current?'<span style="font-size:var(--pp-text-xs);color:var(--pp-accent)">Current</span>':'<button class="pp-btn sm" data-revoke="'+s.token+'">Revoke</button>')+
       '</div>').join('');
     list.querySelectorAll('[data-revoke]').forEach(b=>b.onclick=async()=>{
       if(!confirm('Revoke this device?')) return;
@@ -224,14 +234,7 @@ document.getElementById('devicesBtn').onclick = async ()=>{
     });
   }catch(e){ list.innerHTML = '<div class="hint">Load failed</div>'; }
 };
-document.getElementById('devicesClose').onclick = ()=>{ document.getElementById('devicesPanel').style.display='none'; };
-document.getElementById('logoutBtn').addEventListener('click', ()=>{
-  const tok = localStorage.getItem('elab_authToken');
-  if(tok){ fetch('/api/auth/logout', {method:'POST', headers:{'Authorization':'Bearer '+tok}}).catch(()=>{}); }
-  localStorage.removeItem('elab_authToken');
-  localStorage.removeItem('elab_authUser');
-  location.href='/';
-});
+
 </script>
 
 <script>
@@ -281,7 +284,7 @@ window.__elabSetLang = applyHubLang;
     document.querySelectorAll(".pp-app-row[data-app]").forEach(el=>{
       const app = el.dataset.app;
       if(app==="upgrade") return; // always show upgrade
-      if(!apps.includes(app)) el.style.display="none";
+      el.style.display = apps.includes(app) ? "" : "none";
     });
   }
   const tok = localStorage.getItem("elab_authToken");
@@ -319,5 +322,17 @@ window.__elabSetLang = applyHubLang;
     <button class="pp-btn" id="devicesClose" style="margin-top:12px">Close</button>
   </div>
 </div>
+<script>
+// Attached at end of body: elements above are parsed (8b-6: script in head
+// cannot bind elements defined later in body)
+document.getElementById('devicesClose').onclick = ()=>{ document.getElementById('devicesPanel').style.display='none'; };
+document.getElementById('logoutBtn').addEventListener('click', ()=>{
+  const tok = localStorage.getItem('elab_authToken');
+  if(tok){ fetch('/api/auth/logout', {method:'POST', headers:{'Authorization':'Bearer '+tok}}).catch(()=>{}); }
+  localStorage.removeItem('elab_authToken');
+  localStorage.removeItem('elab_authUser');
+  location.href='/';
+});
+</script>
 </body>
 </html>
