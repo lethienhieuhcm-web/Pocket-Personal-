@@ -310,24 +310,26 @@ h4{font-size:var(--pp-text-sm)}
 <script src="/english/js/vendor/lightweight-charts.js?v=1791286992"></script>
 <script defer src="https://cdn.ably.com/lib/ably.min-1.js?v=1791286992"></script>
 <script type="module">
-// Service Worker update flow (big tech pattern):
+// Service Worker auto-update (Henrry 2026-10-11): tự update, không cần user bấm.
 // 1. Register SW (browser checks for updates automatically on navigation)
-// 2. Listen for 'updatefound' -> new SW is installing
-// 3. When new SW reaches 'installed' state and there's an existing controller,
-//    it means an update is waiting -> show banner
-// 4. User clicks "Update" -> post SKIP_WAITING to the waiting SW -> it activates
-// 5. Page reloads to get fresh content
+// 2. 'updatefound' -> new SW installing -> installed -> auto SKIP_WAITING
+// 3. 'controllerchange' -> new SW active -> reload to get fresh content
 if("serviceWorker" in navigator){
   navigator.serviceWorker.register("/stocks/sw.js",{scope:"/stocks/"}).then(function(reg){
     reg.addEventListener("updatefound", function(){
       var newWorker = reg.installing;
       newWorker.addEventListener("statechange", function(){
         if(newWorker.state === "installed" && navigator.serviceWorker.controller){
-          showUpdateBanner(newWorker);
+          // Auto-update: skip waiting immediately, no banner
+          newWorker.postMessage({type: "SKIP_WAITING"});
         }
       });
     });
   }).catch(()=>{});
+  // Reload when new SW takes control
+  navigator.serviceWorker.addEventListener("controllerchange", function(){
+    location.reload();
+  });
 }
 // Banner "Có bản mới" - hiện inline, không popup/modal (chuẩn big tech)
 function showUpdateBanner(newWorker){
