@@ -2,7 +2,7 @@
 import { $, esc, toast } from '../core/dom.js';
 import { state } from '../core/state.js';
 import { apiCall } from '../core/api.js';
-import { getUserKey, callDirect } from '../core/aiClient.js';
+import { getUserKey, callDirect, saveUserKey, deleteUserKey, testUserKey } from '../core/aiClient.js';
 
 /* ---------- i18n (VI/EN/中文/한국어) ---------- */
 const I18N = {
@@ -1024,9 +1024,50 @@ async function chatWithFallback(message, onToken){
 let agentBound = false;
 let lastAgentSend = 0;
 const AGENT_THROTTLE_MS = 2000;
+
+/* ---------- BYOK UI for Stocks (shared IndexedDB with English Lab) ---------- */
+let stkByokBound = false;
+function initStkByok(){
+  if(stkByokBound) return;
+  stkByokBound = true;
+  const keyInput = $("stkByokKey");
+  const testBtn = $("stkByokTest");
+  const delBtn = $("stkByokDel");
+  const statusEl = $("stkByokStatus");
+  if(!keyInput || !testBtn || !delBtn) return;
+
+  function setStatus(msg, ok){
+    if(statusEl){ statusEl.textContent = msg; statusEl.style.color = ok ? "var(--pp-accent)" : "var(--pp-danger)"; }
+  }
+  // Load existing key (shared with English Lab via same-origin IndexedDB)
+  getUserKey().then(k => { if(k) keyInput.value = k; }).catch(()=>{});
+  // Auto-save on input
+  keyInput.addEventListener("input", () => {
+    const v = keyInput.value.trim();
+    if(v) saveUserKey(v).then(()=>setStatus(t("byok_saved")||"Saved", true)).catch(()=>{});
+  });
+  testBtn.addEventListener("click", async () => {
+    const k = keyInput.value.trim();
+    if(!k){ setStatus((t("byok_test_fail")||"Key failed: ")+"empty", false); return; }
+    setStatus("...", true);
+    try{
+      const r = await testUserKey(k);
+      setStatus(r.ok ? (t("byok_test_ok")||"Key works!") : (t("byok_test_fail")||"Key failed: ")+(r.error||""), r.ok);
+    }catch(e){
+      setStatus((t("byok_test_fail")||"Key failed: ")+(e.message||"error"), false);
+    }
+  });
+  delBtn.addEventListener("click", async () => {
+    await deleteUserKey();
+    keyInput.value = "";
+    setStatus(t("byok_deleted")||"Key deleted", true);
+  });
+}
+
 function initAgentChat(){
   if(agentBound) return;
   agentBound = true;
+  initStkByok();
   const input = $("agentInput");
   const btn = $("agentSendBtn");
   const msgs = $("agentMsgs");
