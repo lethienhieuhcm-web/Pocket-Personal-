@@ -37,6 +37,8 @@ preset_value:"Giá trị",preset_momentum:"Tăng mạnh",preset_quality:"Chất 
 preset_basic:"Cơ bản",preset_full:"Full",
 indtab_price:"Giá",indtab_label:"Chỉ báo:",
 byok_saved:"Đã lưu khóa",byok_test_ok:"Khóa hoạt động!",byok_test_fail:"Khóa lỗi: ",byok_deleted:"Đã xoá khóa",
+byok_err_invalid_key:"Key không đúng",byok_err_forbidden:"Key bị từ chối",byok_err_no_model:"Không tìm thấy model",
+byok_err_network:"Lỗi mạng",byok_err_empty:"Chưa nhập key",
 agent_too_long:"Tin nhắn quá dài (tối đa 1000 ký tự)",agent_waiting:"Đang xử lý"},
 en:{
 login_required:"Log in to view stocks.",no_data_updating:"Data is being updated. Please wait.",
@@ -69,6 +71,8 @@ preset_value:"Value",preset_momentum:"Top gainers",preset_quality:"Quality",
 preset_basic:"Basic",preset_full:"Full",
 indtab_price:"Price",indtab_label:"Indicators:",
 byok_saved:"Key saved",byok_test_ok:"Key works!",byok_test_fail:"Key failed: ",byok_deleted:"Key deleted",
+byok_err_invalid_key:"Invalid key",byok_err_forbidden:"Key rejected",byok_err_no_model:"No model found",
+byok_err_network:"Network error",byok_err_empty:"No key entered",
 agent_too_long:"Message too long (max 1000 chars)",agent_waiting:"Processing"},
 zh:{
 login_required:"登录后查看股票。",no_data_updating:"数据正在更新，请稍候。",
@@ -101,6 +105,8 @@ preset_value:"价值",preset_momentum:"涨幅榜",preset_quality:"优质",
 preset_basic:"基础",preset_full:"全部",
 indtab_price:"价格",indtab_label:"指标：",
 byok_saved:"已保存密钥",byok_test_ok:"密钥有效!",byok_test_fail:"密钥失败: ",byok_deleted:"已删除密钥",
+byok_err_invalid_key:"密钥无效",byok_err_forbidden:"密钥被拒绝",byok_err_no_model:"未找到模型",
+byok_err_network:"网络错误",byok_err_empty:"未输入密钥",
 agent_too_long:"消息太长（最多1000个字符）",agent_waiting:"处理中"},
 ko:{
 login_required:"로그인 후 주식을 확인하세요。",no_data_updating:"데이터를 업데이트 중입니다. 잠시만 기다려 주세요.",
@@ -133,6 +139,8 @@ preset_value:"가치",preset_momentum:"상승률",preset_quality:"우량",
 preset_basic:"기본",preset_full:"전체",
 indtab_price:"가격",indtab_label:"지표:",
 byok_saved:"키 저장됨",byok_test_ok:"키가 작동합니다!",byok_test_fail:"키 실패: ",byok_deleted:"키 삭제됨",
+byok_err_invalid_key:"키가 유효하지 않음",byok_err_forbidden:"키 거부됨",byok_err_no_model:"모델을 찾을 수 없음",
+byok_err_network:"네트워크 오류",byok_err_empty:"키를 입력하지 않음",
 agent_too_long:"메시지가 너무 깁니다 (최대 1000자)",agent_waiting:"처리 중"}
 };
 let LANG = "vi";
@@ -1056,13 +1064,14 @@ function initStkByok(){
   });
   testBtn.addEventListener("click", async () => {
     const k = keyInput.value.trim();
-    if(!k){ setStatus((t("byok_test_fail")||"Key failed: ")+"empty", false); return; }
+    const errMsg = (code) => t("byok_err_"+code) || code;
+    if(!k){ setStatus((t("byok_test_fail")||"Key failed: ")+errMsg("empty"), false); return; }
     setStatus("...", true);
     try{
       const r = await testUserKey(k);
-      setStatus(r.ok ? (t("byok_test_ok")||"Key works!") : (t("byok_test_fail")||"Key failed: ")+(r.error||""), r.ok);
+      setStatus(r.ok ? (t("byok_test_ok")||"Key works!") : (t("byok_test_fail")||"Key failed: ")+errMsg(r.error||"error"), r.ok);
     }catch(e){
-      setStatus((t("byok_test_fail")||"Key failed: ")+(e.message||"error"), false);
+      setStatus((t("byok_test_fail")||"Key failed: ")+errMsg(e.message||"error"), false);
     }
   });
   delBtn.addEventListener("click", async () => {
