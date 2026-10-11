@@ -7,10 +7,13 @@ import { apiCall } from './api.js';
 const DB_NAME = 'pp_ai';
 const STORE = 'keys';
 const KEY_ID = 'gemini_user_key';
-// 8b: Model đã verify bằng curl (2026-10-11):
-// - gemini-2.0-flash trả 400 (không phải 404) với key sai → model tồn tại
-// - POST có CORS header, GET listModels không có → phải dùng POST
-const MODELS = ['gemini-2.0-flash', 'gemini-1.5-flash'];
+// 8b: Model đã verify bằng key thật của user (2026-10-11):
+// - Gọi GET /v1beta/models: thấy 50 models
+// - gemini-2.0-flash KHÔNG tồn tại; gemini-2.5-flash đã ngừng với user mới
+// - Test POST generateContent: gemini-3.5-flash trả 200 OK ("Hello!...")
+// - gemini-3.8-flash trả 503 (tạm thời)
+// - POST có CORS, GET listModels không có → dùng POST để test
+const MODELS = ['gemini-3.5-flash', 'gemini-3.8-flash', 'gemini-2.5-flash-lite'];
 
 function openDb() {
   return new Promise((resolve, reject) => {
