@@ -2,7 +2,7 @@
 import { $, esc, toast } from '../core/dom.js';
 import { state } from '../core/state.js';
 import { apiCall } from '../core/api.js';
-import { getUserKey, callDirect, saveUserKey, deleteUserKey, testUserKey } from '../core/aiClient.js';
+import { getUserKey, callDirect, saveUserKey, deleteUserKey, testUserKey, getUserModel, saveUserModel } from '../core/aiClient.js';
 
 /* ---------- i18n (VI/EN/中文/한국어) ---------- */
 const I18N = {
@@ -1050,6 +1050,7 @@ function initStkByok(){
   const testBtn = $("stkByokTest");
   const delBtn = $("stkByokDel");
   const statusEl = $("stkByokStatus");
+  const modelSel = $("stkByokModel");
   if(!keyInput || !testBtn || !delBtn) return;
 
   function setStatus(msg, ok){
@@ -1057,11 +1058,20 @@ function initStkByok(){
   }
   // Load existing key (shared with English Lab via same-origin IndexedDB)
   getUserKey().then(k => { if(k) keyInput.value = k; }).catch(()=>{});
+  // Load saved model selection
+  getUserModel().then(m => { if(m && modelSel) modelSel.value = m; }).catch(()=>{});
   // Auto-save on input
   keyInput.addEventListener("input", () => {
     const v = keyInput.value.trim();
     if(v) saveUserKey(v).then(()=>setStatus(t("byok_saved")||"Saved", true)).catch(()=>{});
   });
+  // Model selection change
+  if(modelSel){
+    modelSel.addEventListener("change", () => {
+      const v = modelSel.value;
+      if(v) saveUserModel(v).catch(()=>{});
+    });
+  }
   testBtn.addEventListener("click", async () => {
     const k = keyInput.value.trim();
     const errMsg = (code) => t("byok_err_"+code) || code;
@@ -1069,6 +1079,31 @@ function initStkByok(){
     setStatus("...", true);
     try{
       const r = await testUserKey(k);
+      if(r.ok && r.models && r.models.length && modelSel){
+        // Populate model dropdown with working models
+        const current = modelSel.value;
+        modelSel.innerHTML = '';
+        const placeholder = document.createElement('option');
+        placeholder.value = '';
+        placeholder.textContent = t("byok_model_select") || "Select model...";
+        modelSel.appendChild(placeholder);
+        for(const m of r.models){
+          const opt = document.createElement('option');
+          opt.value = m;
+          opt.textContent = m;
+          modelSel.appendChild(opt);
+        }
+        // Restore selection or select first
+        const saved = await getUserModel().catch(()=>null);
+        if(saved && r.models.includes(saved)){
+          modelSel.value = saved;
+        } else if(r.models.length){
+          modelSel.value = r.models[0];
+          await saveUserModel(r.models[0]).catch(()=>{});
+        } else if(current){
+          modelSel.value = current;
+        }
+      }
       setStatus(r.ok ? (t("byok_test_ok")||"Key works!") : (t("byok_test_fail")||"Key failed: ")+errMsg(r.error||"error"), r.ok);
     }catch(e){
       setStatus((t("byok_test_fail")||"Key failed: ")+errMsg(e.message||"error"), false);
@@ -1077,6 +1112,7 @@ function initStkByok(){
   delBtn.addEventListener("click", async () => {
     await deleteUserKey();
     keyInput.value = "";
+    if(modelSel) modelSel.innerHTML = '<option value="">' + (t("byok_model_select")||"Select model...") + '</option>';
     setStatus(t("byok_deleted")||"Key deleted", true);
   });
 }
