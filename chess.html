@@ -16,18 +16,18 @@
   --light:#ffffff;--dark:#0d9d6c}
 body.dark{--bg:#1a1714;--card:#23201a;--ink:#e8e2d6;--mut:#8a847c;--line:#3d352a}
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);min-height:100vh}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;min-height:100dvh}
 header{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg);z-index:10}
-.back{color:var(--accent);text-decoration:none;font-weight:600;font-size:15px}
+.back{color:var(--accent);text-decoration:none;font-weight:600;font-size:var(--pp-text-sm)}
 .lang-pill{display:inline-flex;border:1px solid var(--line);border-radius:20px;overflow:hidden}
-.lang-pill button{border:none;background:transparent;padding:6px 10px;font-size:11px;font-weight:700;color:var(--mut);cursor:pointer}
+.lang-pill button{border:none;background:transparent;padding:6px 10px;font-size:var(--pp-text-xs);font-weight:700;color:var(--mut);cursor:pointer}
 .lang-pill button.on{background:var(--accent);color:#fff}
-h1{font-size:19px}
+h1{font-size:var(--pp-text-lg)}
 main{max-width:1080px;margin:0 auto;padding:16px}
 .layout{display:flex;gap:16px;align-items:flex-start}
-#sideMoves{width:230px;flex-shrink:0;position:sticky;top:70px;max-height:calc(100vh - 90px);display:flex;flex-direction:column}
-#sideMoves h3{font-size:14px;color:var(--mut);margin-bottom:8px;font-weight:700}
-#moves{overflow-y:auto;font-size:14px;flex:1;min-height:80px}
+#sideMoves{width:230px;flex-shrink:0;position:sticky;top:70px;max-height:calc(100vh - 90px);max-height:calc(100dvh - 90px);display:flex;flex-direction:column}
+#sideMoves h3{font-size:var(--pp-text-sm);color:var(--mut);margin-bottom:8px;font-weight:700}
+#moves{overflow-y:auto;font-size:var(--pp-text-sm);flex:1;min-height:80px}
 #moves table{width:100%;border-collapse:collapse}
 #moves td{padding:5px 8px;border-bottom:1px solid var(--line)}
 #moves td.num{color:var(--mut);width:36px;text-align:right}
@@ -40,7 +40,7 @@ main{max-width:1080px;margin:0 auto;padding:16px}
 }
 .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:16px}
 .row{display:flex;gap:8px;align-items:center}
-.btn{padding:10px 16px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);font-size:15px;font-weight:600;cursor:pointer}
+.btn{padding:10px 16px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);font-size:var(--pp-text-sm);font-weight:600;cursor:pointer}
 .btn.primary{background:var(--pp-grad,var(--accent));color:#fff;border-color:transparent}
 .btn:disabled{opacity:.5}
 #board{width:100%;max-width:480px;margin:0 auto;display:block;border-radius:8px;touch-action:manipulation}
@@ -49,9 +49,9 @@ main{max-width:1080px;margin:0 auto;padding:16px}
 .sq.last{filter:brightness(1.1)}
 .sq.hint-dot::after{content:"";position:absolute}
 .controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;justify-content:center}
-select{padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);font-size:15px}
+select{padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);font-size:var(--pp-text-sm)}
 #status{text-align:center;font-weight:700;margin:12px 0;min-height:24px}
-#moves{max-height:120px;overflow-y:auto;font-size:14px;color:var(--mut);text-align:center}
+#moves{max-height:120px;overflow-y:auto;font-size:var(--pp-text-sm);color:var(--mut);text-align:center}
 .piece{font-size:44px;text-anchor:middle;dominant-baseline:central;pointer-events:none;user-select:none}
 @media(max-width:480px){.piece{font-size:36px}}
 </style>
@@ -73,6 +73,9 @@ select{padding:10px;border-radius:10px;border:1px solid var(--line);background:v
       <button class="pp-langdrop-item" data-lang="ko"><span class="code">한국어</span><span class="name">한국어</span></button>
     </div>
   </div>
+  <button class="pp-themebtn" id="themeBtn" aria-label="Theme">
+    <svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+  </button>
 </header>
 <main>
   <div class="layout">
@@ -293,8 +296,12 @@ async function checkPremium(){
   }catch(e){ return false; }
 }
 
-// Dark mode
-if(localStorage.getItem('elab_theme')==='dark') document.body.classList.add('dark');
+// Dark mode — FIT 8b-8: localStorage ưu tiên, fallback theme hệ thống
+try{
+  const s = localStorage.getItem('elab_theme');
+  const dark = s ? s === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+  if(dark) document.body.classList.add('dark');
+}catch(e){}
 
 loadSaved();
 
@@ -345,11 +352,14 @@ if("serviceWorker" in navigator){
       var newWorker = reg.installing;
       newWorker.addEventListener("statechange", function(){
         if(newWorker.state === "installed" && navigator.serviceWorker.controller){
-          showUpdateBanner(newWorker);
+          newWorker.postMessage({type: "SKIP_WAITING"});
         }
       });
     });
   }).catch(()=>{});
+  navigator.serviceWorker.addEventListener("controllerchange", function(){
+    location.reload();
+  });
 }
 // Banner "Có bản mới" - hiện inline, không popup/modal (chuẩn big tech)
 function showUpdateBanner(newWorker){
@@ -358,7 +368,7 @@ function showUpdateBanner(newWorker){
   const t = (typeof I18N !== "undefined" && I18N[lang]) ? I18N[lang] : (typeof I18N !== "undefined" ? I18N.vi : {});
   const banner = document.createElement("div");
   banner.id = "sw-update-banner";
-  banner.style.cssText = "position:fixed;top:0;left:0;right:0;z-index:9999;background:var(--pp-accent,#0d9d6c);color:#fff;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:14px;box-shadow:0 2px 8px rgba(0,0,0,.15);";
+  banner.style.cssText = "position:fixed;top:0;left:0;right:0;z-index:9999;background:var(--pp-accent,#0d9d6c);color:#fff;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:var(--pp-text-sm);box-shadow:0 2px 8px rgba(0,0,0,.15);";
   const msg = document.createElement("span");
   msg.textContent = t.update_available || "Có bản mới";
   const btns = document.createElement("div");
@@ -382,5 +392,10 @@ function showUpdateBanner(newWorker){
 }
 </script>
 <script src="/english/js/lang-dropdown.js?v=__BUILD__"></script>
+<script>/* FIT 8b-8: nút chuyển theme */
+document.getElementById('themeBtn').onclick = ()=>{
+  const dark = document.body.classList.toggle('dark');
+  try{ localStorage.setItem('elab_theme', dark ? 'dark' : 'light'); }catch(e){}
+};</script>
 </body>
 </html>
