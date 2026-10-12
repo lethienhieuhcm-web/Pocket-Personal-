@@ -1,0 +1,3 @@
+[submodule "dac-player/decent-player"]
+	path = dac-player/decent-player
+	url = https://github.com/Ma145/decent-player.git
