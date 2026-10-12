@@ -1,0 +1,66 @@
+# .github/workflows/build-dac-apk.yml — plan "dac"
+# Build APK tự động mỗi khi push code dac-player.
+# dac-player nằm chung repo Pocket-Personal- (subfolder), nên workflow đặt ở
+# root .github/workflows/ với working-directory: dac-player.
+name: Build DAC APK
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "dac-player/**"
+      - ".github/workflows/build-dac-apk.yml"
+  workflow_dispatch:  # cho phép bấm tay
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: dac-player
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Clone decent-player sparse (chỉ lấy libs/, tránh AGPL Felicity).
+      # Pin commit đã verify (2026-10-12) để build reproducible.
+      - name: Clone decent-player libs (sparse, pinned)
+        run: |
+          git clone --filter=blob:none --sparse \
+            https://github.com/Ma145/decent-player.git decent-player
+          cd decent-player
+          git checkout d039f9d6b1ec30901a5cd6edf72c29cde362a549
+          git sparse-checkout set libs
+          ls libs/decent-usb-audio-driver \
+             libs/decent-usb-audio-wrapper-media3 \
+             libs/decent-media3-decoder-flac
+
+      - name: Setup JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install NDK + platform
+        run: |
+          sdkmanager "ndk;29.0.14206865" "platforms;android-36" "build-tools;36.0.0"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build release APK
+        run: chmod +x gradlew && ./gradlew assembleRelease --no-daemon
+        env:
+          Dac_KEYSTORE_B64: ${{ secrets.Dac_KEYSTORE_B64 }}
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: dac-player-apk
+          path: dac-player/app/build/outputs/apk/release/*.apk
+          retention-days: 30
+          
