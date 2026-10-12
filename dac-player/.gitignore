@@ -1,0 +1,11 @@
+# .gitignore — plan "dac"
+*.iml
+.gradle/
+/local.properties
+/.idea/
+/build/
+/app/build/
+# (decent-player là git submodule — không ignore)
+*.ap_
+*.dex
+local.properties
