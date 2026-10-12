@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- AndroidManifest.xml — plan "dac"
+     USB setup y chang doc Ma145/decent-player (GETTING_STARTED.md):
+     - intent-filter USB_DEVICE_ATTACHED để app claim DAC trước kernel driver
+     - meta-data trỏ tới usb_audio_device_filter.xml -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- MusicApiClient gọi Worker API qua HTTP — bắt buộc -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- required=false để app vẫn cài được trên máy không có USB host -->
+    <uses-feature android:name="android.hardware.usb.host" android:required="false" />
+
+    <application
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:theme="@style/Theme.DacPlayer">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <!-- Nhận sự kiện cắm DAC: Android hiện dialog xin quyền,
+                 app claim thiết bị trước khi snd-usb-audio của kernel bind -->
+            <intent-filter>
+                <action android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED" />
+            </intent-filter>
+            <meta-data
+                android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED"
+                android:resource="@xml/usb_audio_device_filter" />
+        </activity>
+    </application>
+</manifest>
