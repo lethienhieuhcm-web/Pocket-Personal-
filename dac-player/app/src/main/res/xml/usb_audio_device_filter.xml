@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- res/xml/usb_audio_device_filter.xml — plan "dac"
+     Y chang doc Ma145/decent-player: match mọi thiết bị USB Audio Class (class 1). -->
+<resources>
+    <usb-device class="1" />
+</resources>
