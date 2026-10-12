@@ -62,16 +62,26 @@ jobs:
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.3.1"
 
-      - name: Build release APK
-        run: chmod +x gradlew && ./gradlew assembleRelease --no-daemon
-        env:
-          Dac_KEYSTORE_B64: ${{ secrets.Dac_KEYSTORE_B64 }}
+      - name: Generate Gradle wrapper
+        # Tạo wrapper tại chỗ thay vì push file jar binary qua API
+        # (tránh lỗi encode khi upload binary qua GitHub API)
+        run: |
+          gradle wrapper --gradle-version 9.3.1 --no-daemon
+          chmod +x gradlew
+          ls -la gradlew gradle/wrapper/
+
+      - name: Build debug APK
+        # Build debug trước (không cần keystore). Release signing tính sau
+        # khi đã có đủ 4 secrets: Dac_KEYSTORE_B64/PASSWORD/ALIAS/PASSWORD.
+        run: ./gradlew assembleDebug --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: dac-player-apk
-          path: dac-player/app/build/outputs/apk/release/*.apk
+          name: dac-player-apk-debug
+          path: dac-player/app/build/outputs/apk/debug/*.apk
           retention-days: 30
           
