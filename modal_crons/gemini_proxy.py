@@ -1,1 +1,134 @@
-IiIiCk1vZGFsIEdlbWluaSBQcm94eSBmb3IgUG9ja2V0IFBlcnNvbmFsIChzdHJlYW0tZHVhbCBwbGFuKS4KCkVuZHBvaW50czoKICBQT1NUIC9nZW1pbmkgICAgICAgIHttb2RlbCwgY29udGVudHMsIHRvb2xzLCBnZW5lcmF0aW9uQ29uZmlnLCBzeXN0ZW1JbnN0cnVjdGlvbiwgYXBpX2tleX0gLT4gSlNPTgogIFBPU1QgL2dlbWluaS9zdHJlYW0ge21vZGVsLCBjb250ZW50cywgdG9vbHMsIGdlbmVyYXRpb25Db25maWcsIHN5c3RlbUluc3RydWN0aW9uLCBhcGlfa2V5fSAtPiBTU0Ugc3RyZWFtCiAgR0VUICAvaGVhbHRoIC0+IHsic3RhdHVzIjogIm9rIn0KCkF1dGg6IEhlYWRlciAiWC1Qcm94eS1Ub2tlbiIgbXVzdCBtYXRjaCBHRU1JTklfUFJPWFlfVE9LRU4gKE1vZGFsIHNlY3JldCkuCkdlbWluaSBBUEkga2V5IGNvbWVzIGluIHJlcXVlc3QgYm9keSAoZnJvbSBXb3JrZXIgc2VjcmV0cyksIHByb3h5IG9ubHkgZm9yd2FyZHMuCgpXaHk6IENsb3VkZmxhcmUgV29ya2VycyBlZ3Jlc3MgSVBzIGFyZSBibG9ja2VkIGJ5IEdvb2dsZS4gTW9kYWwgSVBzIGFyZSBub3QuCldvcmtlciBjYWxscyB0aGlzIHByb3h5IGRpcmVjdGx5IHZpYSBIVFRQUyBpbnN0ZWFkIG9mIEQxIHF1ZXVlICsgVk0gcG9sbGVyLgoKU2VjcmV0cyAoTW9kYWwgZGFzaGJvYXJkIC0+IFNlY3JldHMgLT4gImdlbWluaS1wcm94eSIpOgogIC0gR0VNSU5JX1BST1hZX1RPS0VOOiBiZWFyZXIgdG9rZW4gZm9yIGVuZHBvaW50cwoiIiIKaW1wb3J0IGpzb24KaW1wb3J0IG1vZGFsCgphcHAgPSBtb2RhbC5BcHAoImdlbWluaS1wcm94eSIpCgpwcm94eV9pbWFnZSA9ICgKICAgIG1vZGFsLkltYWdlLmRlYmlhbl9zbGltKHB5dGhvbl92ZXJzaW9uPSIzLjEyIikKICAgIC5waXBfaW5zdGFsbCgiaHR0cHgiLCAiZmFzdGFwaSIpCikKCkdFTUlOSV9CQVNFID0gImh0dHBzOi8vZ2VuZXJhdGl2ZWxhbmd1YWdlLmdvb2dsZWFwaXMuY29tL3YxYmV0YS9tb2RlbHMiCgoKZGVmIF9idWlsZF9wYXlsb2FkKGRhdGE6IGRpY3QpOgogICAgcGF5bG9hZCA9IHsiY29udGVudHMiOiBkYXRhLmdldCgiY29udGVudHMiLCBbXSl9CiAgICBmb3IgayBpbiAoInRvb2xzIiwgImdlbmVyYXRpb25Db25maWciLCAic3lzdGVtSW5zdHJ1Y3Rpb24iKToKICAgICAgICBpZiBkYXRhLmdldChrKToKICAgICAgICAgICAgcGF5bG9hZFtrXSA9IGRhdGFba10KICAgIHJldHVybiBwYXlsb2FkCgoKQGFwcC5mdW5jdGlvbihpbWFnZT1wcm94eV9pbWFnZSwgc2VjcmV0cz1bbW9kYWwuU2VjcmV0LmZyb21fbmFtZSgiZ2VtaW5pLXByb3h5IildLCB0aW1lb3V0PTEyMCkKQG1vZGFsLmFzZ2lfYXBwKCkKZGVmIGZhc3RhcGlfYXBwKCk6CiAgICBmcm9tIGZhc3RhcGkgaW1wb3J0IEZhc3RBUEksIEhlYWRlciwgSFRUUEV4Y2VwdGlvbgogICAgZnJvbSBmYXN0YXBpLnJlc3BvbnNlcyBpbXBvcnQgSlNPTlJlc3BvbnNlLCBTdHJlYW1pbmdSZXNwb25zZQogICAgZnJvbSB0eXBpbmcgaW1wb3J0IE9wdGlvbmFsLCBBbnkKICAgIGZyb20gcHlkYW50aWMgaW1wb3J0IEJhc2VNb2RlbAoKICAgIHdlYl9hcHAgPSBGYXN0QVBJKHRpdGxlPSJHZW1pbmkgUHJveHkiKQoKICAgIGNsYXNzIEdlbWluaVJlcXVlc3QoQmFzZU1vZGVsKToKICAgICAgICBtb2RlbDogc3RyID0gImdlbWluaS0zLjgtZmxhc2giCiAgICAgICAgY29udGVudHM6IEFueQogICAgICAgIHRvb2xzOiBPcHRpb25hbFtBbnldID0gTm9uZQogICAgICAgIGdlbmVyYXRpb25Db25maWc6IE9wdGlvbmFsW0FueV0gPSBOb25lCiAgICAgICAgc3lzdGVtSW5zdHJ1Y3Rpb246IE9wdGlvbmFsW0FueV0gPSBOb25lCiAgICAgICAgYXBpX2tleTogc3RyCgogICAgQHdlYl9hcHAuZ2V0KCIvaGVhbHRoIikKICAgIGFzeW5jIGRlZiBoZWFsdGhfY2hlY2soKToKICAgICAgICByZXR1cm4geyJzdGF0dXMiOiAib2sifQoKICAgIEB3ZWJfYXBwLnBvc3QoIi9nZW1pbmkiKQogICAgYXN5bmMgZGVmIHByb3h5X2dlbWluaShyZXE6IEdlbWluaVJlcXVlc3QsIHhfcHJveHlfdG9rZW46IHN0ciA9IEhlYWRlcihOb25lKSk6CiAgICAgICAgaW1wb3J0IGh0dHB4CiAgICAgICAgaW1wb3J0IG9zCiAgICAgICAgdG9rZW4gPSBvcy5lbnZpcm9uLmdldCgiR0VNSU5JX1BST1hZX1RPS0VOIiwgIiIpCiAgICAgICAgaWYgbm90IHRva2VuIG9yIHhfcHJveHlfdG9rZW4gIT0gdG9rZW46CiAgICAgICAgICAgIHJhaXNlIEhUVFBFeGNlcHRpb24oc3RhdHVzX2NvZGU9NDAxLCBkZXRhaWw9IkludmFsaWQgcHJveHkgdG9rZW4iKQogICAgICAgIGlmIG5vdCByZXEuYXBpX2tleToKICAgICAgICAgICAgcmFpc2UgSFRUUEV4Y2VwdGlvbihzdGF0dXNfY29kZT00MDAsIGRldGFpbD0iQVBJIGtleSByZXF1aXJlZCIpCgogICAgICAgIHVybCA9IGYie0dFTUlOSV9CQVNFfS97cmVxLm1vZGVsfTpnZW5lcmF0ZUNvbnRlbnQiCiAgICAgICAgcGF5bG9hZCA9IF9idWlsZF9wYXlsb2FkKHJlcS5tb2RlbF9kdW1wKCkpCgogICAgICAgIGFzeW5jIHdpdGggaHR0cHguQXN5bmNDbGllbnQodGltZW91dD02MC4wKSBhcyBjbGllbnQ6CiAgICAgICAgICAgIHRyeToKICAgICAgICAgICAgICAgIHIgPSBhd2FpdCBjbGllbnQucG9zdCgKICAgICAgICAgICAgICAgICAgICB1cmwsCiAgICAgICAgICAgICAgICAgICAgcGFyYW1zPXsia2V5IjogcmVxLmFwaV9rZXl9LAogICAgICAgICAgICAgICAgICAgIGpzb249cGF5bG9hZCwKICAgICAgICAgICAgICAgICAgICBoZWFkZXJzPXsiQ29udGVudC1UeXBlIjogImFwcGxpY2F0aW9uL2pzb24ifSwKICAgICAgICAgICAgICAgICkKICAgICAgICAgICAgZXhjZXB0IEV4Y2VwdGlvbiBhcyBlOgogICAgICAgICAgICAgICAgcmFpc2UgSFRUUEV4Y2VwdGlvbihzdGF0dXNfY29kZT01MDIsIGRldGFpbD1mIlVwc3RyZWFtIGVycm9yOiB7ZX0iKQoKICAgICAgICB0cnk6CiAgICAgICAgICAgIGRhdGEgPSByLmpzb24oKQogICAgICAgIGV4Y2VwdCBFeGNlcHRpb246CiAgICAgICAgICAgIGRhdGEgPSB7InJhdyI6IHIudGV4dFs6NTAwXX0KICAgICAgICByZXR1cm4gSlNPTlJlc3BvbnNlKHN0YXR1c19jb2RlPXIuc3RhdHVzX2NvZGUsIGNvbnRlbnQ9ZGF0YSkKCiAgICBAd2ViX2FwcC5wb3N0KCIvZ2VtaW5pL3N0cmVhbSIpCiAgICBhc3luYyBkZWYgcHJveHlfZ2VtaW5pX3N0cmVhbShyZXE6IEdlbWluaVJlcXVlc3QsIHhfcHJveHlfdG9rZW46IHN0ciA9IEhlYWRlcihOb25lKSk6CiAgICAgICAgaW1wb3J0IGh0dHB4CiAgICAgICAgaW1wb3J0IG9zCiAgICAgICAgdG9rZW4gPSBvcy5lbnZpcm9uLmdldCgiR0VNSU5JX1BST1hZX1RPS0VOIiwgIiIpCiAgICAgICAgaWYgbm90IHRva2VuIG9yIHhfcHJveHlfdG9rZW4gIT0gdG9rZW46CiAgICAgICAgICAgIHJhaXNlIEhUVFBFeGNlcHRpb24oc3RhdHVzX2NvZGU9NDAxLCBkZXRhaWw9IkludmFsaWQgcHJveHkgdG9rZW4iKQogICAgICAgIGlmIG5vdCByZXEuYXBpX2tleToKICAgICAgICAgICAgcmFpc2UgSFRUUEV4Y2VwdGlvbihzdGF0dXNfY29kZT00MDAsIGRldGFpbD0iQVBJIGtleSByZXF1aXJlZCIpCgogICAgICAgIHVybCA9IGYie0dFTUlOSV9CQVNFfS97cmVxLm1vZGVsfTpzdHJlYW1HZW5lcmF0ZUNvbnRlbnQiCiAgICAgICAgcGF5bG9hZCA9IF9idWlsZF9wYXlsb2FkKHJlcS5tb2RlbF9kdW1wKCkpCgogICAgICAgIGFzeW5jIGRlZiBldmVudF9nZW5lcmF0b3IoKToKICAgICAgICAgICAgYXN5bmMgd2l0aCBodHRweC5Bc3luY0NsaWVudCh0aW1lb3V0PTEyMC4wKSBhcyBjbGllbnQ6CiAgICAgICAgICAgICAgICB0cnk6CiAgICAgICAgICAgICAgICAgICAgYXN5bmMgd2l0aCBjbGllbnQuc3RyZWFtKAogICAgICAgICAgICAgICAgICAgICAgICAiUE9TVCIsCiAgICAgICAgICAgICAgICAgICAgICAgIHVybCwKICAgICAgICAgICAgICAgICAgICAgICAgcGFyYW1zPXsia2V5IjogcmVxLmFwaV9rZXksICJhbHQiOiAic3NlIn0sCiAgICAgICAgICAgICAgICAgICAgICAgIGpzb249cGF5bG9hZCwKICAgICAgICAgICAgICAgICAgICAgICAgaGVhZGVycz17IkNvbnRlbnQtVHlwZSI6ICJhcHBsaWNhdGlvbi9qc29uIn0sCiAgICAgICAgICAgICAgICAgICAgKSBhcyByOgogICAgICAgICAgICAgICAgICAgICAgICBpZiByLnN0YXR1c19jb2RlICE9IDIwMDoKICAgICAgICAgICAgICAgICAgICAgICAgICAgIGVycl90ZXh0ID0gYXdhaXQgci5hcmVhZCgpCiAgICAgICAgICAgICAgICAgICAgICAgICAgICB5aWVsZCBmJ2RhdGE6IHtqc29uLmR1bXBzKHsiZXJyb3IiOiBmIkdlbWluaSB7ci5zdGF0dXNfY29kZX06IHtlcnJfdGV4dC5kZWNvZGUoKVs6NTAwXX0ifSl9XG5cbicKICAgICAgICAgICAgICAgICAgICAgICAgICAgIHJldHVybgogICAgICAgICAgICAgICAgICAgICAgICBhc3luYyBmb3IgbGluZSBpbiByLmFpdGVyX2xpbmVzKCk6CiAgICAgICAgICAgICAgICAgICAgICAgICAgICBpZiBsaW5lLnN0YXJ0c3dpdGgoImRhdGE6ICIpOgogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHlpZWxkIGxpbmUgKyAiXG5cbiIKICAgICAgICAgICAgICAgIGV4Y2VwdCBFeGNlcHRpb24gYXMgZToKICAgICAgICAgICAgICAgICAgICB5aWVsZCBmJ2RhdGE6IHtqc29uLmR1bXBzKHsiZXJyb3IiOiBzdHIoZSlbOjUwMF19KX1cblxuJwogICAgICAgICAgICB5aWVsZCAiZGF0YTogW0RPTkVdXG5cbiIKCiAgICAgICAgcmV0dXJuIFN0cmVhbWluZ1Jlc3BvbnNlKAogICAgICAgICAgICBldmVudF9nZW5lcmF0b3IoKSwKICAgICAgICAgICAgbWVkaWFfdHlwZT0idGV4dC9ldmVudC1zdHJlYW0iLAogICAgICAgICAgICBoZWFkZXJzPXsKICAgICAgICAgICAgICAgICJDYWNoZS1Db250cm9sIjogIm5vLWNhY2hlIiwKICAgICAgICAgICAgICAgICJYLUFjY2VsLUJ1ZmZlcmluZyI6ICJubyIsCiAgICAgICAgICAgIH0sCiAgICAgICAgKQoKICAgIHJldHVybiB3ZWJfYXBwCgojIFJlZGVwbG95IHRyaWdnZXI6IHNlY3JldCByb3RhdGVkIDIwMjYxMDEyLTAzNDc1MQo=
+"""
+Modal Gemini Proxy for Pocket Personal (stream-dual plan).
+
+Endpoints:
+  POST /gemini        {model, contents, tools, generationConfig, systemInstruction, api_key} -> JSON
+  POST /gemini/stream {model, contents, tools, generationConfig, systemInstruction, api_key} -> SSE stream
+  GET  /health -> {"status": "ok"}
+
+Auth: Header "X-Proxy-Token" must match GEMINI_PROXY_TOKEN (Modal secret).
+Gemini API key comes in request body (from Worker secrets), proxy only forwards.
+
+Why: Cloudflare Workers egress IPs are blocked by Google. Modal IPs are not.
+Worker calls this proxy directly via HTTPS instead of D1 queue + VM poller.
+
+Secrets (Modal dashboard -> Secrets -> "gemini-proxy"):
+  - GEMINI_PROXY_TOKEN: bearer token for endpoints
+"""
+import json
+import modal
+
+app = modal.App("gemini-proxy")
+
+proxy_image = (
+    modal.Image.debian_slim(python_version="3.12")
+    .pip_install("httpx", "fastapi")
+)
+
+GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta/models"
+
+
+def _build_payload(data: dict):
+    payload = {"contents": data.get("contents", [])}
+    for k in ("tools", "generationConfig", "systemInstruction"):
+        if data.get(k):
+            payload[k] = data[k]
+    return payload
+
+
+@app.function(image=proxy_image, secrets=[modal.Secret.from_name("gemini-proxy")], timeout=120)
+@modal.asgi_app()
+def fastapi_app():
+    from fastapi import FastAPI, Header, HTTPException
+    from fastapi.responses import JSONResponse, StreamingResponse
+    from typing import Optional, Any
+    from pydantic import BaseModel
+
+    web_app = FastAPI(title="Gemini Proxy")
+
+    class GeminiRequest(BaseModel):
+        model: str = "gemini-3.8-flash"
+        contents: Any
+        tools: Optional[Any] = None
+        generationConfig: Optional[Any] = None
+        systemInstruction: Optional[Any] = None
+        api_key: str
+
+    @web_app.get("/health")
+    async def health_check():
+        return {"status": "ok"}
+
+    @web_app.post("/gemini")
+    async def proxy_gemini(req: GeminiRequest, x_proxy_token: str = Header(None)):
+        import httpx
+        import os
+        token = os.environ.get("GEMINI_PROXY_TOKEN", "")
+        if not token or x_proxy_token != token:
+            raise HTTPException(status_code=401, detail="Invalid proxy token")
+        if not req.api_key:
+            raise HTTPException(status_code=400, detail="API key required")
+
+        url = f"{GEMINI_BASE}/{req.model}:generateContent"
+        payload = _build_payload(req.model_dump())
+
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            try:
+                r = await client.post(
+                    url,
+                    params={"key": req.api_key},
+                    json=payload,
+                    headers={"Content-Type": "application/json"},
+                )
+            except Exception as e:
+                raise HTTPException(status_code=502, detail=f"Upstream error: {e}")
+
+        try:
+            data = r.json()
+        except Exception:
+            data = {"raw": r.text[:500]}
+        return JSONResponse(status_code=r.status_code, content=data)
+
+    @web_app.post("/gemini/stream")
+    async def proxy_gemini_stream(req: GeminiRequest, x_proxy_token: str = Header(None)):
+        import httpx
+        import os
+        token = os.environ.get("GEMINI_PROXY_TOKEN", "")
+        if not token or x_proxy_token != token:
+            raise HTTPException(status_code=401, detail="Invalid proxy token")
+        if not req.api_key:
+            raise HTTPException(status_code=400, detail="API key required")
+
+        url = f"{GEMINI_BASE}/{req.model}:streamGenerateContent"
+        payload = _build_payload(req.model_dump())
+
+        async def event_generator():
+            async with httpx.AsyncClient(timeout=120.0) as client:
+                try:
+                    async with client.stream(
+                        "POST",
+                        url,
+                        params={"key": req.api_key, "alt": "sse"},
+                        json=payload,
+                        headers={"Content-Type": "application/json"},
+                    ) as r:
+                        if r.status_code != 200:
+                            err_text = await r.aread()
+                            yield f'data: {json.dumps({"error": f"Gemini {r.status_code}: {err_text.decode()[:500]}"})}\n\n'
+                            return
+                        async for line in r.aiter_lines():
+                            if line.startswith("data: "):
+                                yield line + "\n\n"
+                except Exception as e:
+                    yield f'data: {json.dumps({"error": str(e)[:500]})}\n\n'
+            yield "data: [DONE]\n\n"
+
+        return StreamingResponse(
+            event_generator(),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "X-Accel-Buffering": "no",
+            },
+        )
+
+    return web_app
