@@ -17,11 +17,7 @@ import java.net.URL
  *   GET /api/dac/music          → {files:[{id,name,size,mimeType}]} (cần Bearer token)
  *   GET /api/dac/stream/{id}    → {url}  (signed R2 URL, cần Bearer token)
  *
- * Auth: dùng cùng token Pocket Personal (elab_authToken) như app web.
- *
- * TODO(D2): viết màn hình đăng nhập lưu token vào SharedPreferences "pp_auth"
- * key "authToken". Hiện tại authToken() luôn null → listMusic() throw
- * "Chưa đăng nhập". D1 chỉ test phát file local.
+ * Token đọc từ AuthManager (SharedPreferences "pp_auth").
  */
 class MusicApiClient(
     private val context: Context,
@@ -34,12 +30,9 @@ class MusicApiClient(
         val mimeType: String,
     )
 
-    private fun authToken(): String? {
-        val prefs = context.getSharedPreferences("pp_auth", Context.MODE_PRIVATE)
-        // Cùng key với web app (localStorage elab_authToken), unwrap JSON nếu cần.
-        val raw = prefs.getString("authToken", null) ?: return null
-        return raw.trim().removeSurrounding(""")
-    }
+    private val auth by lazy { AuthManager(context, baseUrl) }
+
+    private fun authToken(): String? = auth.token()
 
     private suspend fun get(path: String): JSONObject = withContext(Dispatchers.IO) {
         val token = authToken() ?: throw IllegalStateException("Chưa đăng nhập")
