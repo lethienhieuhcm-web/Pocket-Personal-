@@ -99,6 +99,19 @@ jobs:
         working-directory: dac-player
 
     steps:
+      # Dọn ổ đĩa TRƯỚC mọi step khác — chuẩn ngành (keiji, auto-mobile):
+      # run #36: emulator cần 7372.80 MB nhưng chỉ còn trống 7050.26 MB → FATAL.
+      # android: false là BẮT BUỘC (mặc định true sẽ xoá luôn Android SDK).
+      - name: Free disk space
+        uses: jlumbroso/free-disk-space@main
+        with:
+          android: false
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: false
+
       - name: Checkout
         uses: actions/checkout@v4
 
