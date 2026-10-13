@@ -18,6 +18,8 @@ android {
         targetSdk = 36
         versionCode = 2
         versionName = "0.2.0-dac-pass"
+        // 1.2: instrumented test chạy trên emulator CI.
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         ndk {
             // Driver C++ của decent-player build cho ARM64 (máy Android thật).
@@ -82,6 +84,8 @@ dependencies {
     implementation(libs.appcompat)
     implementation(libs.coroutines)
     implementation(libs.recyclerview)
+    // 1.2: mã hoá token (EncryptedSharedPreferences).
+    implementation(libs.security.crypto)
     implementation(libs.lifecycle.runtime)
     implementation(libs.media3.exoplayer)
     implementation(libs.media3.ui)
@@ -97,4 +101,9 @@ dependencies {
     // Optional: decode FLAC ra integer thô tại extractor (zero float).
     // Không có cũng được — FFmpeg xử lý FLAC qua float (vẫn bit-perfect).
     implementation("com.decent.usbaudio:decent-media3-decoder-flac:0.1.0")
+
+    // Instrumented test (emulator CI) — 1.2 EncryptedPrefsTest.
+    androidTestImplementation(libs.androidx.test.ext.junit)
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.androidx.test.core)
 }
