@@ -1,5 +1,7 @@
 // app/build.gradle.kts — plan "dac"
 // Java 21 bắt buộc (đồng bộ với decent-player/libs — mọi module dùng jvmToolchain(21))
+import java.util.Base64
+
 plugins {
     alias(libs.plugins.android.application)
     // AGP 9.x đã tích hợp sẵn Kotlin support — không cần org.jetbrains.kotlin.android nữa
@@ -48,7 +50,7 @@ android {
                 // CI: decode keystore từ secret vào file tạm
                 val ksFile = rootProject.file("build/dac-release.keystore")
                 ksFile.parentFile.mkdirs()
-                ksFile.writeBytes(java.util.Base64.getDecoder().decode(b64))
+                ksFile.writeBytes(Base64.getDecoder().decode(b64))
                 storeFile = ksFile
             } else {
                 storeFile = rootProject.file("dac-release.keystore")
