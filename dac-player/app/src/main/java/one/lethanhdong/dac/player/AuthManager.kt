@@ -65,6 +65,38 @@ class AuthManager(
             }
         }
 
+    /** Đăng ký tài khoản mới. True nếu thành công, throw nếu lỗi. */
+    suspend fun register(email: String, password: String): Boolean =
+        withContext(Dispatchers.IO) {
+            val conn = URL("$baseUrl/api/auth/register").openConnection() as HttpURLConnection
+            try {
+                conn.requestMethod = "POST"
+                conn.setRequestProperty("Content-Type", "application/json")
+                conn.doOutput = true
+                conn.connectTimeout = 15000
+                conn.readTimeout = 15000
+                val body = JSONObject()
+                    .put("email", email.trim().lowercase())
+                    .put("password", password)
+                    .toString()
+                conn.outputStream.bufferedWriter().use { it.write(body) }
+
+                val code = conn.responseCode
+                if (code == 409) throw IllegalStateException("Email đã đăng ký, vui lòng đăng nhập")
+                if (code == 400) {
+                    val err = runCatching {
+                        JSONObject(conn.errorStream?.bufferedReader()?.readText() ?: "")
+                            .optString("error", "")
+                    }.getOrDefault("")
+                    throw IllegalStateException(err.ifEmpty { "Thông tin đăng ký không hợp lệ" })
+                }
+                if (code != 200) throw IllegalStateException("Lỗi đăng ký: HTTP $code")
+                true
+            } finally {
+                conn.disconnect()
+            }
+        }
+
     fun logout() {
         prefs.edit().remove("authToken").remove("authEmail").apply()
     }
