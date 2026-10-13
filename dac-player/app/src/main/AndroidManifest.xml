@@ -8,6 +8,9 @@
     <!-- MusicApiClient gọi Worker API qua HTTP — bắt buộc -->
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- DriveAuthManager: liệt kê tài khoản Google trên máy (dac-pass) -->
+    <uses-permission android:name="android.permission.GET_ACCOUNTS" />
+
     <!-- required=false để app vẫn cài được trên máy không có USB host -->
     <uses-feature android:name="android.hardware.usb.host" android:required="false" />
 
