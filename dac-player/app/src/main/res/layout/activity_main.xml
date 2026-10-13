@@ -14,6 +14,16 @@
         android:text="DAC Player"
         android:textSize="14sp"
         android:gravity="center"
+        android:layout_marginBottom="4dp" />
+
+    <!-- Version (để user biết đang dùng bản nào) -->
+    <TextView
+        android:id="@+id/versionText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text=""
+        android:textSize="11sp"
+        android:gravity="center"
         android:layout_marginBottom="12dp" />
 
     <!-- Form đăng nhập (ẩn khi đã login) -->
