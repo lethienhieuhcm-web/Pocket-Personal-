@@ -13,7 +13,7 @@ import java.net.URL
  * Kiến trúc plan "dac" (đã Chốt):
  *   [FLAC trên R2] → [Worker API: list + auth] → [App] → [USB DAC bit-perfect]
  *
- * API contract (D3 sẽ implement phía Worker, mirror theo /api/drive/* đang có):
+ * API contract (D3 sẽ implement phía Worker, mirror theo /api/drive/... đang có):
  *   GET /api/dac/music          → {files:[{id,name,size,mimeType}]} (cần Bearer token)
  *   GET /api/dac/stream/{id}    → {url}  (signed R2 URL, cần Bearer token)
  *
@@ -38,7 +38,7 @@ class MusicApiClient(
         val prefs = context.getSharedPreferences("pp_auth", Context.MODE_PRIVATE)
         // Cùng key với web app (localStorage elab_authToken), unwrap JSON nếu cần.
         val raw = prefs.getString("authToken", null) ?: return null
-        return raw.trim().removeSurrounding("\"")
+        return raw.trim().removeSurrounding(""")
     }
 
     private suspend fun get(path: String): JSONObject = withContext(Dispatchers.IO) {
