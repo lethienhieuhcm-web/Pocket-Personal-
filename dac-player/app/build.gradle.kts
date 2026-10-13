@@ -64,18 +64,22 @@ android {
         sourceCompatibility = JavaVersion.VERSION_21
         targetCompatibility = JavaVersion.VERSION_21
     }
-    kotlin {
-        jvmToolchain(21)
-    }
     buildFeatures {
         viewBinding = true
+    }
+}
+
+// AGP 9 built-in Kotlin: config compiler ở top-level, không dùng android.kotlin nữa
+// (theo https://kotl.in/gradle/agp-built-in-kotlin và các repo đã migrate)
+kotlin {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21)
     }
 }
 
 dependencies {
     implementation(libs.core.ktx)
     implementation(libs.appcompat)
-    implementation(libs.kotlin.stdlib)
     implementation(libs.coroutines)
     implementation(libs.recyclerview)
     implementation(libs.lifecycle.runtime)
