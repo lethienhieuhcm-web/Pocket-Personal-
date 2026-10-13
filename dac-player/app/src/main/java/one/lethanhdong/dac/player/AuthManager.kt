@@ -8,26 +8,35 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 /**
- * Quản lý đăng nhập Pocket Personal — plan "dac" D2.
+ * Quản lý đăng nhập Pocket Personal — plan "dac" D2 + dac-app Phase 1.2.
  *
  * API: POST /api/auth/login {email, password} → {token, email, role, ...}
  * (verify từ worker/src/auth.js handleLogin, 2026-10-12)
  *
- * Token lưu vào SharedPreferences "pp_auth" key "authToken" —
- * MusicApiClient đọc từ đây.
+ * Token lưu vào EncryptedSharedPreferences "pp_auth_enc" key "session_token" (Phase 1.2) —
+ * MusicApiClient đọc từ đây qua [token].
+ * Migrate 1 lần: plain "pp_auth" cũ (key "authToken" + "authEmail") → encrypted
+ * ("session_token" + "authEmail") → xoá file plain (xem [EncryptedPrefs]).
+ * Lần đầu mở EncryptedSharedPreferences chạy Keystore I/O đồng bộ (vài chục ms, 1 lần)
+ * — chấp nhận theo pattern chuẩn của Google (không fallback về plain).
  */
 class AuthManager(
     private val context: Context,
     private val baseUrl: String = "https://lethanhdong.one",
 ) {
     private val prefs by lazy {
-        context.getSharedPreferences("pp_auth", Context.MODE_PRIVATE)
+        EncryptedPrefs.open(
+            context,
+            plainName = "pp_auth",
+            encryptedName = "pp_auth_enc",
+            migrateKeys = mapOf("authToken" to "session_token", "authEmail" to "authEmail"),
+        )
     }
 
     fun isLoggedIn(): Boolean = token() != null
 
     fun token(): String? {
-        val raw = prefs.getString("authToken", null) ?: return null
+        val raw = prefs.getString("session_token", null) ?: return null
         return raw.trim().removeSurrounding("\"").ifEmpty { null }
     }
 
@@ -56,7 +65,7 @@ class AuthManager(
                 val json = JSONObject(conn.inputStream.bufferedReader().readText())
                 val token = json.getString("token")
                 prefs.edit()
-                    .putString("authToken", token)
+                    .putString("session_token", token)
                     .putString("authEmail", json.optString("email", email))
                     .apply()
                 true
@@ -98,6 +107,6 @@ class AuthManager(
         }
 
     fun logout() {
-        prefs.edit().remove("authToken").remove("authEmail").apply()
+        prefs.edit().remove("session_token").remove("authEmail").apply()
     }
 }
