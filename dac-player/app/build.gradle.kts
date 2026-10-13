@@ -75,6 +75,7 @@ android {
 dependencies {
     implementation(libs.core.ktx)
     implementation(libs.appcompat)
+    implementation(libs.kotlin.stdlib)
     implementation(libs.coroutines)
     implementation(libs.recyclerview)
     implementation(libs.lifecycle.runtime)
