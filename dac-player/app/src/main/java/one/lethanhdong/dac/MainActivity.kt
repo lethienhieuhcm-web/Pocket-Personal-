@@ -70,6 +70,15 @@ class MainActivity : AppCompatActivity() {
         loginForm = findViewById(R.id.loginForm)
         trackList = findViewById(R.id.trackList)
 
+        // Hiện version để user biết đang dùng bản nào (dac-pass 2026-10-13)
+        try {
+            val pInfo = packageManager.getPackageInfo(packageName, 0)
+            val versionName = pInfo.versionName ?: "?"
+            findViewById<TextView>(R.id.versionText)?.text = "v$versionName"
+        } catch (e: Exception) {
+            // Không lấy được version → bỏ qua, không crash
+        }
+
         trackAdapter = TrackAdapter { track -> playTrack(track) }
         trackList.layoutManager = LinearLayoutManager(this)
         trackList.adapter = trackAdapter
