@@ -1,32 +1,80 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- res/layout/activity_main.xml — plan "dac" D1: UI tối thiểu để test -->
+<!-- res/layout/activity_main.xml — plan "dac" D2: login + danh sách nhạc + phát -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:gravity="center"
-    android:padding="24dp">
+    android:padding="16dp">
 
+    <!-- Trạng thái USB DAC -->
     <TextView
         android:id="@+id/statusText"
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="DAC Player"
-        android:textSize="16sp"
+        android:textSize="14sp"
         android:gravity="center"
-        android:layout_marginBottom="24dp" />
+        android:layout_marginBottom="12dp" />
 
-    <Button
-        android:id="@+id/pickButton"
-        android:layout_width="wrap_content"
+    <!-- Form đăng nhập (ẩn khi đã login) -->
+    <LinearLayout
+        android:id="@+id/loginForm"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Chọn file nhạc"
-        android:layout_marginBottom="16dp" />
+        android:orientation="vertical"
+        android:visibility="gone">
 
-    <Button
-        android:id="@+id/playPauseButton"
-        android:layout_width="wrap_content"
+        <EditText
+            android:id="@+id/emailInput"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Email"
+            android:inputType="textEmailAddress"
+            android:layout_marginBottom="8dp" />
+
+        <EditText
+            android:id="@+id/passwordInput"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Mật khẩu"
+            android:inputType="textPassword"
+            android:layout_marginBottom="8dp" />
+
+        <Button
+            android:id="@+id/loginButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Đăng nhập" />
+    </LinearLayout>
+
+    <!-- Danh sách nhạc từ R2 (hiện khi đã login) -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/trackList"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:visibility="gone" />
+
+    <!-- Điều khiển phát -->
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Phát / Dừng" />
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:layout_marginTop="12dp">
 
+        <Button
+            android:id="@+id/pickButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="File local" />
+
+        <Button
+            android:id="@+id/playPauseButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Phát / Dừng" />
+    </LinearLayout>
 </LinearLayout>
