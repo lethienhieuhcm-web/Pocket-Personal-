@@ -7,7 +7,7 @@ import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.LoadControl
 import androidx.media3.exoplayer.audio.AudioSink
 import androidx.media3.exoplayer.audio.DefaultAudioSink
-import com.decent.usbaudio.UsbAudioSink
+import com.decent.usbaudio.media3.UsbAudioSink
 
 /**
  * RenderersFactory tích hợp USB bit-perfect — y chang
