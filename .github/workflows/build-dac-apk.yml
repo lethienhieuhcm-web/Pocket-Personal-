@@ -76,7 +76,7 @@ jobs:
       - name: Build debug APK
         # Build debug trước (không cần keystore). Release signing tính sau
         # khi đã có đủ 4 secrets: Dac_KEYSTORE_B64/PASSWORD/ALIAS/PASSWORD.
-        run: ./gradlew assembleDebug --no-daemon
+        run: ./gradlew assembleDebug --no-daemon --stacktrace
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
