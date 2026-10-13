@@ -126,6 +126,9 @@ jobs:
           echo "/usr/local/lib/android/sdk/cmdline-tools/latest/bin" >> $GITHUB_PATH
           echo "/usr/local/lib/android/sdk/platform-tools" >> $GITHUB_PATH
           yes | sdkmanager --licenses > /dev/null 2>&1 || true
+          # Cài cmdline-tools;latest để có avdmanager ở cmdline-tools/latest
+          # (run #34: avdmanager thiếu → AVD tạo thất bại → emulator không boot).
+          sdkmanager "cmdline-tools;latest"
 
       - name: Install NDK + platform
         run: |
@@ -149,6 +152,8 @@ jobs:
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
+          # Kiểm tra KVM thật — fail sớm nếu không có, không phí 10 phút poll emulator.
+          ls -l /dev/kvm
 
       - name: Run instrumented tests on emulator
         # reactivecircus/android-emulator-runner@v2: chuẩn hiện nay cho emulator trên GH Actions.
@@ -164,6 +169,9 @@ jobs:
           # Không set → script chạy ở repo root, ./gradlew không tồn tại → fail.
           working-directory: dac-player
           ram-size: 2048M
+          # disk-size 4096M: userdata 4GB vừa với ~7GB trống
+          # (run #34: mặc định cần 7372MB > 6997MB trống → FATAL, emulator chết ngay).
+          disk-size: 4096M
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
           script: |
@@ -178,4 +186,3 @@ jobs:
           name: dac-player-emulator-test-reports
           path: dac-player/app/build/reports/androidTests/connected/
           retention-days: 30
-          
