@@ -35,6 +35,9 @@ jobs:
           ls libs/decent-usb-audio-driver \
              libs/decent-usb-audio-wrapper-media3 \
              libs/decent-media3-decoder-flac
+          # Tải libflac source (xiph/flac) — cần cho CMake build native
+          # (theo libs/decent-media3-decoder-flac/setup.sh)
+          bash libs/decent-media3-decoder-flac/setup.sh
 
       - name: Setup JDK 21
         uses: actions/setup-java@v4
