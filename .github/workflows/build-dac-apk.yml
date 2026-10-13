@@ -193,8 +193,9 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
           script: |
             ./gradlew connectedDebugAndroidTest --no-daemon --stacktrace
-            adb shell pm list packages | grep one.lethanhdong.dac
-            adb shell run-as one.lethanhdong.dac ls shared_prefs/ || echo NO_SHARED_PREFS_LEFT
+            # KHÔNG check adb sau test: connectedDebugAndroidTest gỡ app khi xong
+            # (run #38: pm list packages | grep trả exit 1 vì app đã bị gỡ,
+            # dù 4 test pass + BUILD SUCCESSFUL). Kết quả test nằm ở reports.
 
       - name: Upload test reports
         if: always()
