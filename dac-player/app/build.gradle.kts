@@ -30,6 +30,14 @@ android {
     ndkVersion = "29.0.14206865"
 
     buildTypes {
+        debug {
+            // 1.2: emulator CI là x86_64 — debug build thêm x86_64 để
+            // connectedDebugAndroidTest chạy được (AGP lọc device theo ABI).
+            // Release giữ arm64-v8a only (máy Android thật).
+            ndk {
+                abiFilters += listOf("arm64-v8a", "x86_64")
+            }
+        }
         release {
             isMinifyEnabled = false
             proguardFiles(
