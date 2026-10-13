@@ -4,5 +4,5 @@
 // - Java 21 (tất cả modules dùng jvmToolchain(21))
 plugins {
     id("com.android.application") version "9.1.0" apply false
-    id("org.jetbrains.kotlin.android") version "2.2.20" apply false
+    // AGP 9.x đã tích hợp Kotlin support — không cần org.jetbrains.kotlin.android
 }

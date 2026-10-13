@@ -2,7 +2,7 @@
 // Java 21 bắt buộc (đồng bộ với decent-player/libs — mọi module dùng jvmToolchain(21))
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
+    // AGP 9.x đã tích hợp sẵn Kotlin support — không cần org.jetbrains.kotlin.android nữa
 }
 
 android {
@@ -74,6 +74,8 @@ dependencies {
     implementation(libs.core.ktx)
     implementation(libs.appcompat)
     implementation(libs.coroutines)
+    implementation(libs.recyclerview)
+    implementation(libs.lifecycle.runtime)
     implementation(libs.media3.exoplayer)
     implementation(libs.media3.ui)
     implementation(libs.media3.session)
