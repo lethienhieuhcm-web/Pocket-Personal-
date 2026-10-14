@@ -111,6 +111,9 @@ android {
         getByName("release") {
             buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"\"")
         }
+        getByName("deploy") {
+            buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"\"")
+        }
     }
 
     // 1.5: Licenses screen đọc THIRD_PARTY_NOTICES.md — copy file docs/ vào assets
