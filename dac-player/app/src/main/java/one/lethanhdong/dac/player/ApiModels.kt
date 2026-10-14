@@ -39,6 +39,8 @@ data class AuthResponse(
 @Serializable
 data class ErrorResponse(
     val error: String = "",
+    val details: String = "",
+    val driveError: String = "",
 )
 
 // --- dac-pass (GET /api/dac/music, /api/dac/stream/{id}) ---
@@ -62,4 +64,34 @@ data class StreamResponse(
     val name: String = "",
     val mimeType: String = "",
     val size: Long = 0,
+)
+
+// --- dac-app 2.1: Drive Copy từ share link ---
+
+@Serializable
+data class ResolveRequest(
+    val link: String,
+)
+
+@Serializable
+data class ResolveResponse(
+    val id: String = "",
+    val name: String = "",
+    val isFolder: Boolean = false,
+    val files: List<DriveFile> = emptyList(),
+)
+
+@Serializable
+data class CopyRequest(
+    val sourceId: String,
+    val destName: String = "",
+)
+
+@Serializable
+data class CopyResponse(
+    val copiedId: String = "",
+    val name: String = "",
+    val size: Long = 0,
+    val mimeType: String = "",
+    val method: String = "",
 )
