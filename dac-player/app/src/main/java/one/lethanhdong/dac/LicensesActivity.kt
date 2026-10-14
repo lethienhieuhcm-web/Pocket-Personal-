@@ -1,1 +1,25 @@
-cGFja2FnZSBvbmUubGV0aGFuaGRvbmcuZGFjCgppbXBvcnQgYW5kcm9pZC5vcy5CdW5kbGUKaW1wb3J0IGFuZHJvaWQud2lkZ2V0LlRleHRWaWV3CmltcG9ydCBhbmRyb2lkeC5hcHBjb21wYXQuYXBwLkFwcENvbXBhdEFjdGl2aXR5CgovKioKICogMS41OiBNw6BuIGjDrG5oIEdp4bqleSBwaMOpcCBtw6Mgbmd14buTbiBt4bufIChTZXR0aW5ncyDihpIgQWJvdXQg4oaSIE9wZW4gU291cmNlIExpY2Vuc2VzKS4KICogSGnhu4NuIHRo4buLIGRvY3MvVEhJUkRfUEFSVFlfTk9USUNFUy5tZCDigJQgZmlsZSDEkcaw4bujYyBjb3B5IHbDoG8gYXNzZXRzIGzDumMgYnVpbGQKICogKGNvcHlMaWNlbnNlcyB0cm9uZyBhcHAvYnVpbGQuZ3JhZGxlLmt0cyksIHNpbmdsZSBzb3VyY2Ugb2YgdHJ1dGgsIGtow7RuZyBkcmlmdC4KICogTmdoxKlhIHbhu6UgTEdQTDogRkZtcGVnIHNvdXJjZSArIGxpY2Vuc2UgcGjhuqNpIHhlbSDEkcaw4bujYyB0cm9uZyBhcHAuCiAqLwpjbGFzcyBMaWNlbnNlc0FjdGl2aXR5IDogQXBwQ29tcGF0QWN0aXZpdHkoKSB7CgogICAgb3ZlcnJpZGUgZnVuIG9uQ3JlYXRlKHNhdmVkSW5zdGFuY2VTdGF0ZTogQnVuZGxlPykgewogICAgICAgIHN1cGVyLm9uQ3JlYXRlKHNhdmVkSW5zdGFuY2VTdGF0ZSkKICAgICAgICBzZXRDb250ZW50VmlldyhSLmxheW91dC5hY3Rpdml0eV9saWNlbnNlcykKICAgICAgICB2YWwgdGV4dFZpZXcgPSBmaW5kVmlld0J5SWQ8VGV4dFZpZXc+KFIuaWQubGljZW5zZXNUZXh0KQogICAgICAgIHRleHRWaWV3LnRleHQgPSB0cnkgewogICAgICAgICAgICBhc3NldHMub3BlbigidGhpcmRfcGFydHlfbm90aWNlcy5tZCIpLmJ1ZmZlcmVkUmVhZGVyKCkudXNlIHsgaXQucmVhZFRleHQoKSB9CiAgICAgICAgfSBjYXRjaCAoZTogRXhjZXB0aW9uKSB7CiAgICAgICAgICAgIGdldFN0cmluZyhSLnN0cmluZy5saWNlbnNlc19taXNzaW5nKQogICAgICAgIH0KICAgIH0KfQo=
+package one.lethanhdong.dac
+
+import android.os.Bundle
+import android.widget.TextView
+import androidx.appcompat.app.AppCompatActivity
+
+/**
+ * 1.5: Màn hình Giấy phép mã nguồn mở (Settings → About → Open Source Licenses).
+ * Hiển thị docs/THIRD_PARTY_NOTICES.md — file được copy vào assets lúc build
+ * (copyLicenses trong app/build.gradle.kts), single source of truth, không drift.
+ * Nghĩa vụ LGPL: FFmpeg source + license phải xem được trong app.
+ */
+class LicensesActivity : AppCompatActivity() {
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_licenses)
+        val textView = findViewById<TextView>(R.id.licensesText)
+        textView.text = try {
+            assets.open("third_party_notices.md").bufferedReader().use { it.readText() }
+        } catch (e: Exception) {
+            getString(R.string.licenses_missing)
+        }
+    }
+}
