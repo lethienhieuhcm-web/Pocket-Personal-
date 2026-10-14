@@ -1,8 +1,10 @@
 package one.lethanhdong.dac.player
 
 import android.content.Context
+import android.net.Uri
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -10,17 +12,30 @@ import org.junit.runner.RunWith
 /**
  * 4.5: test queue gapless của PlayerManager.
  * Không cần DAC thật, không cần mạng — chỉ kiểm tra playlist mechanics
- * (title metadata, queue size). Dùng URL giả, không prepare/play thật.
+ * (title metadata, queue size). Dùng URL giả, không tải thật.
+ *
+ * ExoPlayer bắt buộc truy cập trên thread đã tạo nó → mọi thao tác
+ * chạy trên main thread qua runOnMainSync.
  */
 @RunWith(AndroidJUnit4::class)
 class GaplessQueueTest {
 
     private val context: Context = ApplicationProvider.getApplicationContext()
+    private val instr = InstrumentationRegistry.getInstrumentation()
+
+    private fun withPlayer(block: (PlayerManager) -> Unit) {
+        lateinit var pm: PlayerManager
+        instr.runOnMainSync { pm = PlayerManager(context) }
+        try {
+            instr.runOnMainSync { block(pm) }
+        } finally {
+            instr.runOnMainSync { pm.release() }
+        }
+    }
 
     @Test
     fun playSingleStream_setsTitleAndClearsQueue() {
-        val pm = PlayerManager(context)
-        try {
+        withPlayer { pm ->
             // Giả lập queue cũ có 2 bài
             pm.enqueueStream("https://example.test/old1.mp3", "Cu A")
             pm.enqueueStream("https://example.test/old2.mp3", "Cu B")
@@ -37,15 +52,12 @@ class GaplessQueueTest {
                 pm.player.currentMediaItem?.mediaMetadata?.title?.toString(),
             )
             assertEquals(0, pm.queueSize())
-        } finally {
-            pm.release()
         }
     }
 
     @Test
     fun enqueueStream_growsQueue() {
-        val pm = PlayerManager(context)
-        try {
+        withPlayer { pm ->
             pm.playSingleStream("https://example.test/a.mp3", "A")
             pm.player.stop()
             assertEquals(0, pm.queueSize())
@@ -64,24 +76,19 @@ class GaplessQueueTest {
                 "C",
                 pm.player.getMediaItemAt(2).mediaMetadata.title?.toString(),
             )
-        } finally {
-            pm.release()
         }
     }
 
     @Test
     fun playSingleLocal_setsTitle() {
-        val pm = PlayerManager(context)
-        try {
-            val uri = android.net.Uri.parse("file:///sdcard/Music/bai.flac")
+        withPlayer { pm ->
+            val uri = Uri.parse("file:///sdcard/Music/bai.flac")
             pm.playSingleLocal(uri, "Bai FLAC")
             pm.player.stop()
             assertEquals(
                 "Bai FLAC",
                 pm.player.currentMediaItem?.mediaMetadata?.title?.toString(),
             )
-        } finally {
-            pm.release()
         }
     }
 }
