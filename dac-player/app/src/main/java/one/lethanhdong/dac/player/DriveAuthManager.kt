@@ -20,7 +20,7 @@ import kotlin.coroutines.resumeWithException
  *
  * Scope: drive.readonly (đã Chốt, deploy Worker 2026-10-13).
  */
-class DriveAuthManager(private val context: Context) {
+open class DriveAuthManager(private val context: Context) {
 
     companion object {
         const val DRIVE_SCOPE = "oauth2:https://www.googleapis.com/auth/drive.readonly"
@@ -64,7 +64,7 @@ class DriveAuthManager(private val context: Context) {
      * @param activity Activity để hiện dialog xin quyền (nếu có).
      * @throws IllegalStateException nếu chưa chọn tài khoản hoặc bị từ chối.
      */
-    suspend fun getToken(activity: android.app.Activity? = null): String =
+    open suspend fun getToken(activity: android.app.Activity? = null): String =
         withContext(Dispatchers.IO) {
             val accountName = selectedAccount()
                 ?: throw IllegalStateException("Chưa kết nối Google Drive")
@@ -101,7 +101,7 @@ class DriveAuthManager(private val context: Context) {
      * Báo token hết hạn để AccountManager lấy token mới lần sau.
      * Gọi khi Worker trả 401 "Drive token invalid".
      */
-    fun invalidateToken(token: String) {
+    open fun invalidateToken(token: String) {
         accountManager.invalidateAuthToken("com.google", token)
     }
 }

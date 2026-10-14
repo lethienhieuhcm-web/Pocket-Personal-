@@ -26,6 +26,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 class MusicApiClient(
     private val context: Context,
     private val baseUrl: String = "https://lethanhdong.one",
+    driveAuthManager: DriveAuthManager? = null,
 ) {
     data class Track(
         val id: String,
@@ -41,7 +42,37 @@ class MusicApiClient(
     }
 
     private val auth by lazy { AuthManager(context, baseUrl) }
-    private val driveAuth by lazy { DriveAuthManager(context) }
+    private val driveAuth by lazy { driveAuthManager ?: DriveAuthManager(context) }
+
+    /** 4.6: Mutex serialize refresh — tránh bão request khi nhiều call cùng 401. */
+    private val refreshMutex = kotlinx.coroutines.sync.Mutex()
+
+    /**
+     * 4.6: Gọi API với Drive token, tự refresh + thử lại 1 lần khi Worker báo 401.
+     * OAuth chuẩn: AccountManager giữ refresh token trong system store;
+     * invalidate() rồi getToken() sẽ trả access token mới. Worker không lưu token.
+     * Hết 1 lần retry vẫn 401 → throw để UI hiện "kết nối lại Drive".
+     */
+    internal suspend fun <T> withDriveToken(
+        activity: android.app.Activity? = null,
+        block: suspend (driveToken: String) -> T,
+    ): T {
+        val first = driveAuth.getToken(activity)
+        try {
+            return block(first)
+        } catch (e: DriveTokenInvalidException) {
+            return refreshMutex.withLock {
+                driveAuth.invalidateToken(first)
+                val fresh = driveAuth.getToken(activity)
+                try {
+                    block(fresh)
+                } catch (e2: DriveTokenInvalidException) {
+                    driveAuth.invalidateToken(fresh)
+                    throw e2
+                }
+            }
+        }
+    }
 
     private fun authToken(): String? = auth.token()
 
@@ -124,9 +155,11 @@ class MusicApiClient(
             }
         }
 
-        val driveToken = driveAuth.getToken(activity)
-        val body = get("/api/dac/music", driveToken)
-        val tracks = parseTracks(ApiHttp.json.decodeFromString<MusicListResponse>(body))
+        // 4.6: tự refresh Drive token + retry 1 lần khi 401.
+        val tracks = withDriveToken(activity) { driveToken ->
+            val body = get("/api/dac/music", driveToken)
+            parseTracks(ApiHttp.json.decodeFromString<MusicListResponse>(body))
+        }
 
         // Lưu cache Room (xoá cũ, chèn mới với timestamp)
         val now = System.currentTimeMillis()
@@ -148,11 +181,11 @@ class MusicApiClient(
      * Lần đầu full scan (lâu), các lần sau incremental (nhanh).
      * App gọi khi mở màn hình Thư mục / pull-to-refresh.
      */
-    suspend fun syncIndex(activity: android.app.Activity? = null): SyncResult {
-        val driveToken = driveAuth.getToken(activity)
-        val body = post("/api/dac/sync", driveToken)
-        return ApiHttp.json.decodeFromString(body)
-    }
+    suspend fun syncIndex(activity: android.app.Activity? = null): SyncResult =
+        withDriveToken(activity) { driveToken ->
+            val body = post("/api/dac/sync", driveToken)
+            ApiHttp.json.decodeFromString(body)
+        }
 
     @Serializable
     data class SyncResult(
@@ -178,10 +211,11 @@ class MusicApiClient(
         parentId: String = "root",
         activity: android.app.Activity? = null,
     ): FolderListing {
-        val driveToken = driveAuth.getToken(activity)
         val encoded = java.net.URLEncoder.encode(parentId, "UTF-8")
-        val body = get("/api/dac/folders?parentId=$encoded", driveToken)
-        val resp = ApiHttp.json.decodeFromString<FolderListResponse>(body)
+        val resp = withDriveToken(activity) { driveToken ->
+            val body = get("/api/dac/folders?parentId=$encoded", driveToken)
+            ApiHttp.json.decodeFromString<FolderListResponse>(body)
+        }
         return FolderListing(
             parentId = resp.parentId,
             parentName = resp.parentName,
@@ -208,22 +242,16 @@ class MusicApiClient(
 
     /**
      * Lấy direct Drive URL để stream. ExoPlayer đọc trực tiếp từ Google.
-     * Tự động invalidate Drive token nếu Worker báo 401.
+     * 4.6: tự refresh Drive token + thử lại 1 lần khi Worker báo 401.
      * @param activity Activity để hiện dialog xin quyền Drive (nếu cần).
      */
     suspend fun streamUrl(
         id: String,
         activity: android.app.Activity? = null,
     ): String {
-        val driveToken = driveAuth.getToken(activity)
-        try {
+        return withDriveToken(activity) { driveToken ->
             val body = get("/api/dac/stream/$id", driveToken)
-            return ApiHttp.json.decodeFromString<StreamResponse>(body).url
-        } catch (e: DriveTokenInvalidException) {
-            driveAuth.invalidateToken(driveToken)
-            throw e
-        } catch (e: IllegalStateException) {
-            throw e
+            ApiHttp.json.decodeFromString<StreamResponse>(body).url
         }
     }
 
