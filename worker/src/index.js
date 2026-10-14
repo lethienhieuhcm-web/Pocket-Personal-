@@ -8,7 +8,7 @@ import {handleAnalytics, handleInsights, handleBankGet, handleBankPost, handleRe
 import {handleRegister, handleSendCode, handleVerifyCode, handleLogin, handleLogout, handleMe, handleGoogleLogin, handleGoogleCallback, handleGoogleIdToken, handleListSessions, handleRevokeSession, handleVerifyEmail, handleResendVerification, handleForgotPassword, handleResetPassword, handleResetPasswordPage } from './auth.js';
 import {handleGetPlan, handleGetUsage, handleSetPlan} from './billing.js';
 import {handleDriveAuthUrl, handleDriveCallback, handleDriveStatus, handleDriveDisconnect, handleDriveMusic, handleDriveStream, handleDriveUpload} from './drive.js';
-import {handleDacMusic, handleDacStream, handleDacResolve, handleDacCopy} from './dac.js';
+import {handleDacMusic, handleDacStream, handleDacResolve, handleDacCopy, handleDacFolders, handleDacSync, handleDacSearch} from './dac.js';
 import {handleSpotifyAuthUrl, handleSpotifyCallback, handleSpotifyStatus, handleSpotifySearch} from './spotify.js';
 import {handleBrowse, handleBrowseWs} from './browser.js';
 import { drizzle } from "drizzle-orm/d1";
@@ -91,7 +91,10 @@ const ROUTES = [
   ['POST',   '/api/drive/upload',    handleDriveUpload,      'user'],
   // --- dac-pass (Chốt 2026-10-13): nhạc từ Drive user, Worker passthrough ---
   ['GET',    '/api/dac/music',       handleDacMusic,           'user'],
+  ['GET',    '/api/dac/folders',     handleDacFolders,         'user'],
+  ['POST',   '/api/dac/sync',        handleDacSync,            'user'],
   ['GET',    '/api/dac/stream/*',    handleDacStream,            'user'],
+  ['GET',    '/api/dac/search',      handleDacSearch,            'user'],
   ['POST',   '/api/dac/resolve',     handleDacResolve,           'user'],
   ['POST',   '/api/dac/copy',        handleDacCopy,              'user'],
   // --- spotify ---
@@ -316,7 +319,15 @@ export default {
       return serveAsset(env, "/english/dac.html"+url.search);
    }
     if (url.pathname === "/dac-player-debug.apk") {
-      return serveAsset(env, "/english/dac-player-debug.apk");
+      // 2.5: APK vượt 25 MiB giới hạn Workers Assets → serve từ R2 DATA.
+      const obj = await env.DATA.get("dac-player-debug.apk");
+      if (!obj) return new Response("Not found", {status: 404});
+      const h = new Headers();
+      h.set("Content-Type", "application/vnd.android.package-archive");
+      h.set("Content-Length", String(obj.size));
+      h.set("Cache-Control", "public, max-age=3600");
+      h.set("Content-Disposition", 'attachment; filename="dac-player-debug.apk"');
+      return new Response(obj.body, {headers: h});
    }
     if (url.pathname === "/admin" || url.pathname === "/admin/" || url.pathname === "/admin.html") {
       return serveAsset(env, "/english/admin.html"+url.search);
