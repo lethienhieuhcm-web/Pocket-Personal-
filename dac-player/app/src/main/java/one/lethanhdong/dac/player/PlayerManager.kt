@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.jaudiotagger.audio.AudioFileIO
 
 /**
@@ -129,7 +130,12 @@ class PlayerManager(private val context: Context) {
     private val _currentTitle = MutableStateFlow<String?>(null)
     val currentTitle: StateFlow<String?> = _currentTitle.asStateFlow()
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    /**
+     * ExoPlayer bắt buộc truy cập trên thread đã tạo (main) — scope này chạy
+     * trên Main. Chỉ phần đọc file header (jaudiotagger, blocking) mới
+     * chuyển xuống Dispatchers.IO.
+     */
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     init {
         player.addListener(object : Player.Listener {
@@ -154,6 +160,7 @@ class PlayerManager(private val context: Context) {
      */
     private fun updateQuality() {
         scope.launch {
+            // Chạy trên Main — đọc player an toàn.
             val current = player.currentMediaItem
             val title = current?.mediaMetadata?.title?.toString() ?: "audio"
             val format = player.currentTracks.groups
@@ -168,7 +175,10 @@ class PlayerManager(private val context: Context) {
             } else {
                 null
             }
-            val bitDepth = localFile?.let { readBitDepth(it) }
+            // Đọc header file là blocking → xuống IO.
+            val bitDepth = withContext(Dispatchers.IO) {
+                localFile?.let { readBitDepth(it) }
+            }
             val viaUsb = try {
                 UsbAudioDevice.getInstance(context).findUsbAudioDevice() != null
             } catch (e: Exception) {
