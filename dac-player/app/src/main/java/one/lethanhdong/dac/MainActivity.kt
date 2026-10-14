@@ -13,6 +13,7 @@ import androidx.media3.common.util.UnstableApi
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.decent.usbaudio.UsbAudioPermissionHelper
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import one.lethanhdong.dac.player.AuthManager
 import one.lethanhdong.dac.player.CoverArt
@@ -20,6 +21,7 @@ import one.lethanhdong.dac.player.DriveTokenInvalidException
 import one.lethanhdong.dac.player.MusicApiClient
 import one.lethanhdong.dac.player.PlayerManager
 import one.lethanhdong.dac.player.TrackAdapter
+import javax.inject.Inject
 
 /**
  * MainActivity — plan "dac-pass" (Chốt 2026-10-13) + dac-app 1.3.
@@ -36,9 +38,17 @@ import one.lethanhdong.dac.player.TrackAdapter
  * D1 (file local) vẫn giữ để test không cần mạng.
  */
 @UnstableApi
+@AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
 
-    private lateinit var playerManager: PlayerManager
+    /**
+     * 4.1: PlayerManager singleton (Hilt) — chung với FolderActivity.
+     * Nhạc tiếp tục phát khi chuyển màn hình; không release ở onDestroy nữa
+     * (singleton sống theo application).
+     */
+    @Inject
+    lateinit var playerManager: dagger.Lazy<PlayerManager>
+
     private lateinit var authManager: AuthManager
     private lateinit var apiClient: MusicApiClient
     private lateinit var driveAuthManager: one.lethanhdong.dac.player.DriveAuthManager
@@ -52,7 +62,7 @@ class MainActivity : AppCompatActivity() {
     ) { uri: Uri? ->
         uri?.let {
             statusText.text = "Đang phát local: ${it.lastPathSegment}"
-            playerManager.playLocal(it)
+            playerManager.get().playLocal(it)
         }
     }
 
@@ -72,7 +82,7 @@ class MainActivity : AppCompatActivity() {
         // Y chang doc ma145 — phải gọi trước khi làm gì khác với USB.
         UsbAudioPermissionHelper.handleIntent(applicationContext, intent)
 
-        playerManager = PlayerManager(this)
+        // 4.1: playerManager do Hilt inject (singleton), không khởi tạo tay nữa.
         apiClient = MusicApiClient(this)
         driveAuthManager = one.lethanhdong.dac.player.DriveAuthManager(this)
 
@@ -100,7 +110,7 @@ class MainActivity : AppCompatActivity() {
             pickAudio.launch("audio/*")
         }
         findViewById<Button>(R.id.playPauseButton).setOnClickListener {
-            playerManager.togglePlayPause()
+            playerManager.get().togglePlayPause()
         }
         findViewById<Button>(R.id.logoutButton).setOnClickListener {
             doLogout()
@@ -111,6 +121,10 @@ class MainActivity : AppCompatActivity() {
         // 2.1: Nhập nhạc từ Drive share link
         findViewById<Button>(R.id.importButton).setOnClickListener {
             startActivity(Intent(this@MainActivity, ImportActivity::class.java))
+        }
+        // 4.1: Duyệt nhạc theo thư mục Drive
+        findViewById<Button>(R.id.folderButton).setOnClickListener {
+            startActivity(Intent(this@MainActivity, FolderActivity::class.java))
         }
 
         refreshAuthUi()
@@ -177,7 +191,7 @@ class MainActivity : AppCompatActivity() {
                 statusText.text = "Đang tải: ${track.title}"
                 val url = apiClient.streamUrl(track.id, this@MainActivity)
                 statusText.text = "Đang phát: ${track.title}"
-                playerManager.playStream(url)
+                playerManager.get().playStream(url)
             } catch (e: Exception) {
                 Toast.makeText(this@MainActivity, e.message ?: "Lỗi phát nhạc", Toast.LENGTH_LONG).show()
             }
@@ -200,9 +214,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
-        // 1.3: onCreate có thể return sớm (chưa đăng nhập → AuthActivity)
-        // → playerManager chưa init, không được release.
-        if (::playerManager.isInitialized) playerManager.release()
+        // 4.1: playerManager là singleton (Hilt) — không release ở đây nữa.
+        // Nhạc tiếp tục phát khi chuyển sang FolderActivity.
         super.onDestroy()
     }
 }
