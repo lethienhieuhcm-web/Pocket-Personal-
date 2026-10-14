@@ -135,13 +135,13 @@ class PlayerManager(private val context: Context) {
         }
     }
 
-    /** Đọc bit depth từ header file (jaudiotagger). Null nếu không đọc được. */
+    /** Đọc bit depth từ header file (jaudiotagger 3.x: getBitsPerSample() trả về int). */
     internal fun readBitDepth(file: File): Int? {
-        val bps: String? = try {
+        val bps: Int? = try {
             AudioFileIO.read(file).audioHeader?.bitsPerSample
         } catch (e: Exception) {
             null
         }
-        return bps?.toIntOrNull()?.takeIf { it > 0 }
+        return bps?.takeIf { it > 0 }
     }
 }
