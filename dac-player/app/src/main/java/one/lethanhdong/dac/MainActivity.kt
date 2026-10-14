@@ -140,6 +140,10 @@ class MainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.searchButton).setOnClickListener {
             startActivity(Intent(this@MainActivity, SearchActivity::class.java))
         }
+        // 4.9: Hàng chờ + hẹn giờ + playlist
+        findViewById<Button>(R.id.queueButton).setOnClickListener {
+            startActivity(Intent(this@MainActivity, QueueActivity::class.java))
+        }
         findViewById<Button>(R.id.licensesButton).setOnClickListener {
             startActivity(Intent(this@MainActivity, LicensesActivity::class.java))
         }
