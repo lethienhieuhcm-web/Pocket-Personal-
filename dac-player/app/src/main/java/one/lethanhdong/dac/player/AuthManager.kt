@@ -83,6 +83,16 @@ class AuthManager(
                 val respBody = resp.body?.string().orEmpty()
                 when (resp.code) {
                     401 -> throw IllegalStateException("Sai email hoặc mật khẩu")
+                    // 2.2: email chưa verify → exception riêng để UI hiện nút gửi lại
+                    403 -> {
+                        val err = try {
+                            ApiHttp.json.decodeFromString<ErrorResponse>(respBody)
+                        } catch (e: Exception) { null }
+                        if (err?.error == "email_not_verified") throw EmailNotVerifiedException()
+                        throw IllegalStateException(
+                            err?.error ?: "Lỗi đăng nhập: HTTP ${resp.code}"
+                        )
+                    }
                     429 -> throw IllegalStateException(
                         // 1.1 Chốt C: lock 15 phút sau 5 lần sai — hiện đúng message server
                         ApiHttp.readErrorMessage(respBody)
@@ -103,8 +113,11 @@ class AuthManager(
             }
         }
 
-    /** Đăng ký tài khoản mới. True nếu thành công, throw nếu lỗi. */
-    suspend fun register(email: String, password: String): Boolean =
+    /**
+     * Đăng ký tài khoản mới. Trả về RegisterResponse (có needsVerification).
+     * 2.2: nếu needsVerification=true, user phải bấm link trong email trước khi login.
+     */
+    suspend fun register(email: String, password: String): RegisterResponse =
         withContext(Dispatchers.IO) {
             val body = ApiHttp.json.encodeToString(
                 RegisterRequest(email.trim().lowercase(), password)
@@ -116,7 +129,7 @@ class AuthManager(
             ApiHttp.client.newCall(request).execute().use { resp ->
                 val respBody = resp.body?.string().orEmpty()
                 when (resp.code) {
-                    200 -> true
+                    200 -> ApiHttp.json.decodeFromString<RegisterResponse>(respBody)
                     409 -> throw IllegalStateException("Email đã đăng ký, vui lòng đăng nhập")
                     429 -> throw IllegalStateException(
                         ApiHttp.readErrorMessage(respBody) ?: "Đăng ký quá nhiều. Thử lại sau."
@@ -128,6 +141,40 @@ class AuthManager(
                         ApiHttp.readErrorMessage(respBody) ?: "Lỗi đăng ký: HTTP ${resp.code}"
                     )
                 }
+            }
+        }
+
+    /**
+     * 2.2: Gửi lại email xác nhận. Luôn thành công (server không tiết lộ email có tồn tại).
+     */
+    suspend fun resendVerification(email: String): Boolean =
+        withContext(Dispatchers.IO) {
+            val body = ApiHttp.json.encodeToString(
+                mapOf("email" to email.trim().lowercase())
+            )
+            val request = Request.Builder()
+                .url("$baseUrl/api/auth/resend-verification")
+                .post(jsonBody(body))
+                .build()
+            ApiHttp.client.newCall(request).execute().use { resp ->
+                resp.code == 200
+            }
+        }
+
+    /**
+     * 2.2: Quên mật khẩu — gửi email reset link. Luôn thành công để chống enumeration.
+     */
+    suspend fun forgotPassword(email: String): Boolean =
+        withContext(Dispatchers.IO) {
+            val body = ApiHttp.json.encodeToString(
+                mapOf("email" to email.trim().lowercase())
+            )
+            val request = Request.Builder()
+                .url("$baseUrl/api/auth/forgot-password")
+                .post(jsonBody(body))
+                .build()
+            ApiHttp.client.newCall(request).execute().use { resp ->
+                resp.code == 200
             }
         }
 

@@ -31,6 +31,15 @@ data class RegisterRequest(
 )
 
 @Serializable
+data class RegisterResponse(
+    val ok: Boolean = false,
+    val email: String = "",
+    val verified: Boolean = false,
+    val needsVerification: Boolean = false,
+    val emailSent: Boolean = false,
+)
+
+@Serializable
 data class AuthResponse(
     val token: String,
     val email: String = "",
@@ -41,7 +50,14 @@ data class ErrorResponse(
     val error: String = "",
     val details: String = "",
     val driveError: String = "",
+    val needsVerification: Boolean = false,
 )
+
+/**
+ * 2.2: Exception riêng khi email chưa verify — UI hiện thông báo +
+ * nút "Gửi lại email xác nhận" thay vì message lỗi chung.
+ */
+class EmailNotVerifiedException : IllegalStateException("Email chưa được xác nhận. Vui lòng kiểm tra hộp thư và bấm link xác nhận.")
 
 // --- dac-pass (GET /api/dac/music, /api/dac/stream/{id}) ---
 
