@@ -3,6 +3,7 @@ package one.lethanhdong.dac.player
 import android.content.Context
 import android.net.Uri
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.common.Tracks
 import androidx.media3.common.util.UnstableApi
@@ -50,24 +51,54 @@ class PlayerManager(private val context: Context) {
             renderersFactory.usbSink.attachToPlayer(exo)
         }
 
-    /** Phát 1 file local (D1: test với file trong máy trước). */
+    /** Phát 1 file local (giữ API cũ cho MainActivity nút pick). */
     fun playLocal(uri: Uri) {
-        pendingLocalFile = uri.path?.let { File(it) }?.takeIf { it.exists() }
-        pendingTitle = uri.lastPathSegment ?: "audio"
-        player.setMediaItem(MediaItem.fromUri(uri))
+        playSingleLocal(uri, uri.lastPathSegment ?: "audio")
+    }
+
+    /**
+     * 4.5: Phát 1 track, xoá queue cũ. Title lưu vào MediaMetadata để
+     * listener đọc lại khi chuyển bài (không dùng biến pendingTitle rời rạc).
+     */
+    fun playStream(url: String, title: String = "audio") {
+        playSingleStream(url, title)
+    }
+
+    fun playSingleStream(url: String, title: String) {
+        player.clearMediaItems()
+        player.setMediaItem(mediaItem(url, title))
         player.prepare()
         player.play()
     }
 
-    /** Phát HTTP(S) URL — D3: stream từ R2. ExoPlayer pipeline xử lý,
-     *  vẫn bit-perfect qua UsbAudioSink (theo ARCHITECTURE.md). */
-    fun playStream(url: String, title: String = "audio") {
-        pendingLocalFile = null
-        pendingTitle = title
-        player.setMediaItem(MediaItem.fromUri(url))
+    fun playSingleLocal(uri: Uri, title: String) {
+        player.clearMediaItems()
+        player.setMediaItem(mediaItem(uri.toString(), title))
         player.prepare()
         player.play()
     }
+
+    /**
+     * 4.5: Thêm vào cuối queue. ExoPlayer tự chuyển bài gapless khi các
+     * track liên tiếp cùng format (không reconfigure sink).
+     */
+    fun enqueueStream(url: String, title: String) {
+        player.addMediaItem(mediaItem(url, title))
+    }
+
+    fun enqueueLocal(uri: Uri, title: String) {
+        player.addMediaItem(mediaItem(uri.toString(), title))
+    }
+
+    /** Số bài đang chờ trong queue (không tính bài đang phát). */
+    fun queueSize(): Int =
+        maxOf(0, player.mediaItemCount - player.currentMediaItemIndex - 1)
+
+    private fun mediaItem(url: String, title: String): MediaItem =
+        MediaItem.Builder()
+            .setUri(url)
+            .setMediaMetadata(MediaMetadata.Builder().setTitle(title).build())
+            .build()
 
     fun togglePlayPause() {
         if (player.isPlaying) player.pause() else player.play()
@@ -94,13 +125,21 @@ class PlayerManager(private val context: Context) {
     private val _audioQuality = MutableStateFlow<AudioQuality?>(null)
     val audioQuality: StateFlow<AudioQuality?> = _audioQuality.asStateFlow()
 
+    /** 4.5: title track đang phát (tự cập nhật khi queue chuyển bài). */
+    private val _currentTitle = MutableStateFlow<String?>(null)
+    val currentTitle: StateFlow<String?> = _currentTitle.asStateFlow()
+
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private var pendingLocalFile: File? = null
-    private var pendingTitle: String = "audio"
 
     init {
         player.addListener(object : Player.Listener {
             override fun onTracksChanged(tracks: Tracks) {
+                updateQuality()
+            }
+
+            /** 4.5: queue chuyển bài → cập nhật title + chất lượng. */
+            override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                _currentTitle.value = mediaItem?.mediaMetadata?.title?.toString()
                 updateQuality()
             }
         })
@@ -110,17 +149,26 @@ class PlayerManager(private val context: Context) {
      * Đọc chất lượng từ track ExoPlayer đang phát:
      * - sampleRate: từ Format (ExoPlayer parse container — đúng cho cả stream).
      * - bitDepth: từ header file local (jaudiotagger); stream không đọc được → null.
+     *   File local suy từ URI của media item hiện tại (kể cả bài trong queue).
      * - viaUsbDac: có USB DAC đang cắm không.
      */
     private fun updateQuality() {
         scope.launch {
+            val current = player.currentMediaItem
+            val title = current?.mediaMetadata?.title?.toString() ?: "audio"
             val format = player.currentTracks.groups
                 .firstOrNull { it.type == androidx.media3.common.C.TRACK_TYPE_AUDIO }
                 ?.getTrackFormat(0)
             val sampleRate = format?.sampleRate?.takeIf { it > 0 }
             val mime = format?.sampleMimeType ?: ""
-            val label = AudioFormat.formatLabel(mime, pendingTitle)
-            val bitDepth = pendingLocalFile?.let { readBitDepth(it) }
+            val label = AudioFormat.formatLabel(mime, title)
+            val uri = current?.localConfiguration?.uri
+            val localFile = if (uri?.scheme == "file") {
+                uri.path?.let { File(it) }?.takeIf { it.exists() }
+            } else {
+                null
+            }
+            val bitDepth = localFile?.let { readBitDepth(it) }
             val viaUsb = try {
                 UsbAudioDevice.getInstance(context).findUsbAudioDevice() != null
             } catch (e: Exception) {
