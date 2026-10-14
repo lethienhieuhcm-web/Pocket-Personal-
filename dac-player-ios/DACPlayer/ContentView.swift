@@ -39,10 +39,19 @@ struct LibraryView: View {
                         Text("Chưa kết nối Google Drive")
                             .font(.title3)
                             .bold()
-                        Text("Đăng nhập Google để lấy nhạc từ Drive của bạn. Tính năng đang hoàn thiện (cần OAuth client cho iOS).")
+                        Text("Đăng nhập Google để lấy nhạc từ Drive của bạn.")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                             .multilineTextAlignment(.center)
+                        Button("Kết nối Google Drive") {
+                            Task { await driveAuth.signIn() }
+                        }
+                        .buttonStyle(.borderedProminent)
+                        if let err = driveAuth.errorMessage {
+                            Text(err)
+                                .font(.footnote)
+                                .foregroundStyle(.red)
+                        }
                     }
                     .padding()
                 } else if isLoading && api.tracks.isEmpty {
