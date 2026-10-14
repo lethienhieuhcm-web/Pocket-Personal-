@@ -54,6 +54,15 @@ android {
                     rootProject.file("dac-release.keystore").exists()
             }
         }
+        // 1.6: buildType "deploy" — APK cho trang /dac: arm64-v8a only (dưới giới
+        // hạn 25 MiB của Cloudflare Workers assets), ký bằng debug key
+        // (isDebuggable = true) để cài được như bản debug. x86_64 chỉ cần cho
+        // emulator test nên chỉ có ở buildType debug; deploy không thêm x86_64
+        // (thừa hưởng arm64-v8a từ defaultConfig).
+        create("deploy") {
+            isDebuggable = true
+            isMinifyEnabled = false
+        }
     }
     signingConfigs {
         create("release") {
