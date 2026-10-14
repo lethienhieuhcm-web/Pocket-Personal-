@@ -1,0 +1,42 @@
+name: Build DAC iOS
+
+on:
+  push:
+    paths:
+      - 'dac-player-ios/**'
+      - '.github/workflows/build-dac-ios.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Build (unsigned, iOS Simulator)
+        working-directory: dac-player-ios
+        run: |
+          xcodebuild -project DACPlayer.xcodeproj \
+            -scheme DACPlayer \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Package unsigned IPA
+        working-directory: dac-player-ios
+        run: |
+          APP="build/Build/Products/Debug-iphonesimulator/DACPlayer.app"
+          ls -la "$APP"
+          /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$APP/Info.plist"
+          mkdir -p Payload
+          cp -R "$APP" Payload/
+          zip -r DACPlayer-unsigned.ipa Payload
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DACPlayer-unsigned-ipa
+          path: dac-player-ios/DACPlayer-unsigned.ipa
