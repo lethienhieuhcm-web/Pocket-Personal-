@@ -7,6 +7,9 @@ plugins {
     // AGP 9.x đã tích hợp sẵn Kotlin support — không cần org.jetbrains.kotlin.android nữa
     // 1.4: kotlinx.serialization (@Serializable) cho API JSON.
     alias(libs.plugins.kotlin.serialization)
+    // 2.3: KSP (Room + Hilt) + Hilt plugin.
+    alias(libs.plugins.ksp)
+    alias(libs.plugins.hilt.plugin)
 }
 
 android {
@@ -160,4 +163,15 @@ dependencies {
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.androidx.test.core)
+    // 2.3: Phase 2 Libraries — Room (cache library) + Hilt (DI) +
+    // WorkManager (background copy) + jaudiotagger (đọc tag).
+    implementation(libs.room.runtime)
+    implementation(libs.room.ktx)
+    ksp(libs.room.compiler)
+    implementation(libs.hilt.android)
+    ksp(libs.hilt.compiler)
+    implementation(libs.work.runtime.ktx)
+    implementation(libs.jaudiotagger)
+    // Room testing cho instrumented test DAO.
+    androidTestImplementation(libs.room.testing)
 }
