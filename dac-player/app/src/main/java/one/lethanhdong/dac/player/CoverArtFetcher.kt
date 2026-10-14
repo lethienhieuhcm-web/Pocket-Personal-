@@ -3,14 +3,16 @@ package one.lethanhdong.dac.player
 import android.content.Context
 import coil.ImageLoader
 import coil.decode.DataSource
+import coil.decode.ImageSource
 import coil.fetch.FetchResult
 import coil.fetch.Fetcher
+import coil.fetch.SourceResult
 import coil.request.Options
 import okio.Buffer
 import okio.BufferedSource
 
 /**
- * Ảnh bìa cho danh sách nhạc — plan dac-app 1.4 (Coil).
+ * Ảnh bìa cho danh sách nhạc — plan dac-app 1.4 (Coil 2.7.0).
  *
  * Luồng: TrackAdapter load [CoverArtKey] → [CoverArtFetcher] lấy Drive stream URL
  * (qua [MusicApiClient.streamUrl]) → [MediaMetadataReader] trích ảnh nhúng →
@@ -19,6 +21,11 @@ import okio.BufferedSource
  *
  * Không có ảnh nhúng → Fetcher trả null → Coil hiện placeholder (ic_music_note).
  * Không bịa ảnh bìa.
+ *
+ * Lưu ý API Coil 2 (verify từ coil-base-2.7.0-sources.jar, không đoán):
+ * FetchResult có 2 subclass là SourceResult(source: ImageSource, ...) và
+ * DrawableResult — KHÔNG có FetchResult.Source hay FetchResult.OfSource
+ * (OfSource là tên của Coil 3). ImageSource tạo qua factory ImageSource(BufferedSource, Context).
  */
 
 /** Key cho Coil cache: track id + file size. */
@@ -43,6 +50,7 @@ object CoverArt {
 class CoverArtFetcher(
     private val key: CoverArtKey,
     private val apiClient: MusicApiClient,
+    private val context: Context,
 ) : Fetcher {
 
     override suspend fun fetch(): FetchResult? {
@@ -50,9 +58,8 @@ class CoverArtFetcher(
             val url = apiClient.streamUrl(key.trackId)
             val art = MediaMetadataReader.embeddedArtFromUrl(url) ?: return null
             val source: BufferedSource = Buffer().write(art)
-            // Coil 2: FetchResult.Source (không phải OfSource — đó là tên của Coil 3).
-            FetchResult.Source(
-                source = source,
+            SourceResult(
+                source = ImageSource(source, context),
                 mimeType = CoverArt.guessMime(art),
                 dataSource = DataSource.NETWORK,
             )
@@ -69,6 +76,6 @@ class CoverArtFetcher(
             data: CoverArtKey,
             options: Options,
             imageLoader: ImageLoader,
-        ): Fetcher = CoverArtFetcher(data, apiClient)
+        ): Fetcher = CoverArtFetcher(data, apiClient, options.context)
     }
 }
