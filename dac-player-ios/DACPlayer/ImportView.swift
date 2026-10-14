@@ -18,7 +18,8 @@ struct ImportView: View {
     @State private var copyProgress = ""
 
     var body: some View {
-        NavigationStack {
+        // 4.8: không dùng .sheet (cấm modal) — view này luôn được push qua
+        // navigationDestination từ Library nên không cần NavigationStack riêng.
             VStack(spacing: 16) {
                 if !driveAuth.isConnected {
                     VStack(spacing: 8) {
@@ -126,7 +127,6 @@ struct ImportView: View {
                     Button("Đóng") { dismiss() }
                 }
             }
-        }
     }
 
     private func doResolve() async {

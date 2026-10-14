@@ -78,7 +78,8 @@ struct SearchView: View {
             .onSubmit(of: .search) {
                 Task { await doSearch() }
             }
-            .sheet(isPresented: $showPlayer) {
+            // 4.8: push full-page thay vì .sheet (cấm modal/popup).
+            .navigationDestination(isPresented: $showPlayer) {
                 PlayerView()
             }
         }

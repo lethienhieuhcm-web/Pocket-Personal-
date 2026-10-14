@@ -12,7 +12,8 @@ struct PlayerView: View {
     @State private var timer: Timer?
 
     var body: some View {
-        NavigationStack {
+        // 4.8: không dùng .sheet (cấm modal) — view này luôn được push qua
+        // navigationDestination từ Library/Search nên không cần NavigationStack riêng.
             VStack(spacing: 20) {
                 if let track = engine.currentTrack {
                     Text(track.title)
@@ -75,7 +76,6 @@ struct PlayerView: View {
             }
             .onAppear(perform: startTimer)
             .onDisappear(perform: stopTimer)
-        }
     }
 
     private func startTimer() {

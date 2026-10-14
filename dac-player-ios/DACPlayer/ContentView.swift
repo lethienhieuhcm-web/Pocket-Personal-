@@ -115,10 +115,11 @@ struct LibraryView: View {
                     }
                 }
             }
-            .sheet(isPresented: $showPlayer) {
+            // 4.8: push full-page thay vì .sheet (cấm modal/popup).
+            .navigationDestination(isPresented: $showPlayer) {
                 PlayerView()
             }
-            .sheet(isPresented: $showImport) {
+            .navigationDestination(isPresented: $showImport) {
                 ImportView()
             }
             .task {
