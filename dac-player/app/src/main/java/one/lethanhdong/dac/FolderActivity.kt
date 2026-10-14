@@ -75,7 +75,27 @@ class FolderActivity : AppCompatActivity() {
             playerManager.get().togglePlayPause()
         }
 
-        loadFolder("root")
+        // 4.2: Đồng bộ index trước khi duyệt (lần đầu full scan, sau incremental).
+        syncAndLoad()
+    }
+
+    private fun syncAndLoad() {
+        statusText.text = "Đang đồng bộ thư viện…"
+        lifecycleScope.launch {
+            try {
+                val r = apiClient.syncIndex(this@FolderActivity)
+                statusText.text =
+                    if (r.full) "Đã đồng bộ ${r.total} file (lần đầu)."
+                    else "Đã đồng bộ (${r.synced} thay đổi)."
+            } catch (e: DriveTokenInvalidException) {
+                statusText.text = e.message
+                return@launch
+            } catch (e: Exception) {
+                // Sync lỗi → vẫn duyệt bằng live Drive (fallback ở Worker)
+                statusText.text = "Đồng bộ lỗi, dùng dữ liệu trực tiếp."
+            }
+            loadFolder("root")
+        }
     }
 
     private fun loadFolder(parentId: String) {
