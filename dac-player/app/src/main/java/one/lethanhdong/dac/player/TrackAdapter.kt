@@ -70,7 +70,7 @@ class TrackAdapter(
                 downloadButton.visibility = View.VISIBLE
                 val done = isDownloaded(track.id)
                 downloadButton.alpha = if (done) 1f else 0.5f
-                downloadButton.contentDescription = view.context.getString(
+                downloadButton.contentDescription = itemView.context.getString(
                     if (done) R.string.downloaded_offline else R.string.download_offline
                 )
                 downloadButton.setOnClickListener { onDownloadClick.invoke(track) }
