@@ -60,6 +60,9 @@ class MainActivity : AppCompatActivity() {
     /** Title track đang phát — để ghép badge chất lượng vào status. */
     private var currentPlayingTitle: String? = null
 
+    /** Job prefetch queue — huỷ khi user chọn bài khác. */
+    private var prefetchJob: kotlinx.coroutines.Job? = null
+
     private lateinit var authManager: AuthManager
     private lateinit var apiClient: MusicApiClient
     private lateinit var driveAuthManager: one.lethanhdong.dac.player.DriveAuthManager
@@ -151,6 +154,12 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+        // 4.5: queue tự chuyển bài → cập nhật title đang phát.
+        lifecycleScope.launch {
+            playerManager.get().currentTitle.collect { t ->
+                if (t != null) currentPlayingTitle = t
+            }
+        }
     }
 
     private fun refreshAuthUi() {
@@ -211,6 +220,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun playTrack(track: MusicApiClient.Track) {
+        prefetchJob?.cancel()
         lifecycleScope.launch {
             try {
                 // 4.3: ưu tiên file offline đã tải.
@@ -218,16 +228,44 @@ class MainActivity : AppCompatActivity() {
                 if (local != null) {
                     currentPlayingTitle = track.title
                     statusText.text = "Đang phát offline: ${track.title}"
-                    playerManager.get().playLocal(Uri.fromFile(local))
-                    return@launch
+                    playerManager.get().playSingleLocal(Uri.fromFile(local), track.title)
+                } else {
+                    statusText.text = "Đang tải: ${track.title}"
+                    val url = apiClient.streamUrl(track.id, this@MainActivity)
+                    currentPlayingTitle = track.title
+                    statusText.text = "Đang phát: ${track.title}"
+                    playerManager.get().playSingleStream(url, track.title)
                 }
-                statusText.text = "Đang tải: ${track.title}"
-                val url = apiClient.streamUrl(track.id, this@MainActivity)
-                currentPlayingTitle = track.title
-                statusText.text = "Đang phát: ${track.title}"
-                playerManager.get().playStream(url, track.title)
+                // 4.5: prefetch 5 bài tiếp theo vào queue → chuyển bài gapless.
+                prefetchNext(track.id)
             } catch (e: Exception) {
                 Toast.makeText(this@MainActivity, e.message ?: "Lỗi phát nhạc", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    /**
+     * 4.5: Nạp trước URL của các bài sau bài đang phát vào queue.
+     * ExoPlayer tự chuyển bài gapless khi cùng format. Giới hạn 5 bài.
+     */
+    private fun prefetchNext(currentId: String) {
+        prefetchJob = lifecycleScope.launch {
+            try {
+                val list = trackAdapter.currentList
+                val idx = list.indexOfFirst { it.id == currentId }
+                if (idx < 0) return@launch
+                for (t in list.drop(idx + 1).take(5)) {
+                    ensureActive()
+                    val local = offlineManager.get().localFile(t.id)
+                    if (local != null) {
+                        playerManager.get().enqueueLocal(Uri.fromFile(local), t.title)
+                    } else {
+                        val url = apiClient.streamUrl(t.id, this@MainActivity)
+                        playerManager.get().enqueueStream(url, t.title)
+                    }
+                }
+            } catch (e: Exception) {
+                // Prefetch lỗi → bỏ qua
             }
         }
     }
