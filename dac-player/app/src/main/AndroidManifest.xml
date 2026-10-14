@@ -66,5 +66,9 @@
         <activity
             android:name=".SessionsActivity"
             android:exported="false" />
+        <!-- 4.8: Tìm kiếm metadata. Không exported. -->
+        <activity
+            android:name=".SearchActivity"
+            android:exported="false" />
     </application>
 </manifest>
