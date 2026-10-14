@@ -3,12 +3,10 @@ package one.lethanhdong.dac.player
 import android.content.Context
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.json.JSONObject
-import java.net.HttpURLConnection
-import java.net.URL
+import okhttp3.Request
 
 /**
- * Client gọi Worker API — plan "dac-pass" (Chốt 2026-10-13).
+ * Client gọi Worker API — plan "dac-pass" (Chốt 2026-10-13) + dac-app 1.4.
  *
  * Kiến trúc dac-pass:
  *   [Drive của user] → [Worker: verify + passthrough] → [App] → [USB DAC]
@@ -20,6 +18,8 @@ import java.net.URL
  * API contract:
  *   GET /api/dac/music          → {files:[{id,name,size,mimeType}]}
  *   GET /api/dac/stream/{id}    → {url, name, mimeType, size}
+ *
+ * 1.4: HttpURLConnection → OkHttp (ApiHttp.client), JSONObject → kotlinx.serialization.
  */
 class MusicApiClient(
     private val context: Context,
@@ -48,42 +48,39 @@ class MusicApiClient(
 
     private fun authToken(): String? = auth.token()
 
-    private suspend fun get(path: String, driveToken: String? = null): JSONObject =
+    /** GET Worker API, trả về body string. Throw IllegalStateException nếu lỗi. */
+    private suspend fun get(path: String, driveToken: String? = null): String =
         withContext(Dispatchers.IO) {
             val token = authToken() ?: throw IllegalStateException("Chưa đăng nhập")
-            val conn = URL(baseUrl + path).openConnection() as HttpURLConnection
-            try {
-                conn.setRequestProperty("Authorization", "Bearer $token")
-                if (driveToken != null) {
-                    conn.setRequestProperty("X-Drive-Token", driveToken)
+            val builder = Request.Builder().url(baseUrl + path)
+                .header("Authorization", "Bearer $token")
+            if (driveToken != null) {
+                builder.header("X-Drive-Token", driveToken)
+            }
+            ApiHttp.client.newCall(builder.build()).execute().use { resp ->
+                val body = resp.body?.string().orEmpty()
+                when (resp.code) {
+                    200 -> body
+                    401 -> throw IllegalStateException("Hết phiên đăng nhập (401)")
+                    400 -> throw IllegalStateException(
+                        ApiHttp.readErrorMessage(body) ?: "Lỗi yêu cầu (400)"
+                    )
+                    else -> throw IllegalStateException(
+                        ApiHttp.readErrorMessage(body) ?: "API lỗi: HTTP ${resp.code}"
+                    )
                 }
-                conn.connectTimeout = 15000
-                conn.readTimeout = 15000
-                val code = conn.responseCode
-                if (code == 401) throw IllegalStateException("Hết phiên đăng nhập (401)")
-                if (code == 400) {
-                    val err = JSONObject(conn.errorStream?.bufferedReader()?.readText() ?: "{}")
-                    throw IllegalStateException(err.optString("error", "Lỗi yêu cầu (400)"))
-                }
-                if (code != 200) throw IllegalStateException("API lỗi: HTTP $code")
-                JSONObject(conn.inputStream.bufferedReader().readText())
-            } finally {
-                conn.disconnect()
             }
         }
 
-    private fun parseTracks(json: JSONObject): List<Track> {
-        val arr = json.optJSONArray("files") ?: return emptyList()
-        return List(arr.length()) { i ->
-            val o = arr.getJSONObject(i)
+    private fun parseTracks(response: MusicListResponse): List<Track> =
+        response.files.map { f ->
             Track(
-                id = o.getString("id"),
-                title = o.getString("name").substringBeforeLast("."),
-                size = o.optLong("size", 0),
-                mimeType = o.optString("mimeType", ""),
+                id = f.id,
+                title = f.name.substringBeforeLast("."),
+                size = f.size,
+                mimeType = f.mimeType,
             )
         }
-    }
 
     /**
      * Lấy danh sách nhạc từ Drive qua Worker (dac-pass).
@@ -100,7 +97,7 @@ class MusicApiClient(
             val cachedJson = cachePrefs.getString(KEY_CACHE_JSON, null)
             if (cachedJson != null && System.currentTimeMillis() - cachedTime < CACHE_TTL_MS) {
                 try {
-                    return parseTracks(JSONObject(cachedJson))
+                    return parseTracks(ApiHttp.json.decodeFromString<MusicListResponse>(cachedJson))
                 } catch (e: Exception) {
                     // Cache hỏng → fetch mới
                 }
@@ -108,15 +105,15 @@ class MusicApiClient(
         }
 
         val driveToken = driveAuth.getToken(activity)
-        val json = get("/api/dac/music", driveToken)
+        val body = get("/api/dac/music", driveToken)
 
-        // Lưu cache
+        // Lưu cache (body đã là JSON chuẩn từ Worker)
         cachePrefs.edit()
-            .putString(KEY_CACHE_JSON, json.toString())
+            .putString(KEY_CACHE_JSON, body)
             .putLong(KEY_CACHE_TIME, System.currentTimeMillis())
             .apply()
 
-        return parseTracks(json)
+        return parseTracks(ApiHttp.json.decodeFromString<MusicListResponse>(body))
     }
 
     /** Xoá cache danh sách nhạc. */
@@ -135,8 +132,8 @@ class MusicApiClient(
     ): String {
         val driveToken = driveAuth.getToken(activity)
         try {
-            val json = get("/api/dac/stream/$id", driveToken)
-            return json.getString("url")
+            val body = get("/api/dac/stream/$id", driveToken)
+            return ApiHttp.json.decodeFromString<StreamResponse>(body).url
         } catch (e: IllegalStateException) {
             if (e.message?.contains("Drive token invalid") == true) {
                 driveAuth.invalidateToken(driveToken)
