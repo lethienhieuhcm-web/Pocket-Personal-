@@ -36,6 +36,11 @@ class DriveCopyManager: ObservableObject {
         req.httpBody = try JSONEncoder().encode(body)
         let (data, resp) = try await URLSession.shared.data(for: req)
         let code = (resp as? HTTPURLResponse)?.statusCode ?? 0
+        if code == 401,
+           let err = try? JSONDecoder().decode(ErrorResponse.self, from: data),
+           err.error.contains("Drive token invalid") {
+            throw CopyError.driveTokenInvalid
+        }
         return (data, code)
     }
 
@@ -97,6 +102,8 @@ class DriveCopyManager: ObservableObject {
 
 enum CopyError: Error {
     case message(String)
+    /// Drive token hết hạn/sai — UI bắt riêng để hiện "kết nối lại Drive".
+    case driveTokenInvalid
 }
 
 /// Lỗi scope khi copy — UI bắt riêng để hiện hướng dẫn cấp quyền.

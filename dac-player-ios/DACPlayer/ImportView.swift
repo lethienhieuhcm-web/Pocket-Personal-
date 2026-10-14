@@ -129,6 +129,9 @@ struct ImportView: View {
             let r = try await copyManager.resolve(link: link)
             resolved = r
             selected = Set(r.files.map(\.id))
+        } catch CopyError.driveTokenInvalid {
+            driveAuth.clear()
+            errorText = "Drive token hết hạn. Vui lòng kết nối lại Google Drive."
         } catch CopyError.message(let msg) {
             errorText = msg
         } catch {
@@ -152,6 +155,10 @@ struct ImportView: View {
                 okCount += 1
             } catch let e as CopyScopeError {
                 scopeError = e.message
+                break
+            } catch CopyError.driveTokenInvalid {
+                driveAuth.clear()
+                errorText = "Drive token hết hạn. Vui lòng kết nối lại Google Drive."
                 break
             } catch {
                 // Tiếp tục file khác, không dừng cả đợt

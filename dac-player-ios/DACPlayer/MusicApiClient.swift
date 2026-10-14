@@ -80,6 +80,10 @@ class MusicApiClient: ObservableObject {
         case 200:
             return data
         case 401:
+            if let err = try? JSONDecoder().decode(ErrorResponse.self, from: data),
+               err.error.contains("Drive token invalid") {
+                throw MusicError.driveTokenInvalid
+            }
             throw MusicError.message("Hết phiên đăng nhập (401)")
         default:
             if let err = try? JSONDecoder().decode(ErrorResponse.self, from: data),
@@ -135,4 +139,7 @@ class MusicApiClient: ObservableObject {
 
 enum MusicError: Error {
     case message(String)
+    /// Drive token hết hạn/sai — khác với hết phiên đăng nhập.
+    /// UI bắt riêng để hiện "kết nối lại Drive".
+    case driveTokenInvalid
 }

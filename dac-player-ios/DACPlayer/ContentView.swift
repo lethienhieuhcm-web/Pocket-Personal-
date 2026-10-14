@@ -105,6 +105,10 @@ struct LibraryView: View {
         defer { isLoading = false }
         do {
             try await api.listMusic(forceRefresh: force)
+        } catch MusicError.driveTokenInvalid {
+            // Drive token sai/hết hạn → về trạng thái "chưa kết nối",
+            // user kết nối lại thay vì bị báo nhầm "hết phiên đăng nhập".
+            driveAuth.clear()
         } catch MusicError.message(let msg) {
             errorText = msg
         } catch {
