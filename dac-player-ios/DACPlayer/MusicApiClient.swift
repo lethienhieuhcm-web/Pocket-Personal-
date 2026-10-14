@@ -1,4 +1,5 @@
 import Foundation
+import GoogleSignIn
 
 /// Client gọi Worker API — dịch từ MusicApiClient.kt (Android).
 ///
@@ -79,7 +80,26 @@ class MusicApiClient: ObservableObject {
         return UInt64(base) + UInt64.random(in: 0...500_000_000)
     }
 
+    /**
+     * 4.6: Gọi API với Drive token, tự refresh + thử lại 1 lần khi Worker báo 401.
+     * OAuth chuẩn: SDK giữ refresh token trong Keychain; refreshTokensIfNeeded()
+     * lấy access token mới mà app không bao giờ thấy refresh token.
+     * Hết 1 lần retry vẫn 401 → throw để UI hiện "kết nối lại Drive".
+     */
     private func request(_ path: String, method: String) async throws -> Data {
+        var refreshed = false
+        while true {
+            do {
+                return try await performRequest(path, method: method)
+            } catch MusicError.driveTokenInvalid {
+                if refreshed { throw MusicError.driveTokenInvalid }
+                refreshed = true
+                try? await GIDSignIn.sharedInstance.currentUser?.refreshTokensIfNeeded()
+            }
+        }
+    }
+
+    private func performRequest(_ path: String, method: String) async throws -> Data {
         guard let token = auth.token() else {
             throw MusicError.message("Chưa đăng nhập")
         }
