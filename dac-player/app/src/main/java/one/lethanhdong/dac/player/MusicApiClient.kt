@@ -35,6 +35,8 @@ class MusicApiClient(
         val title: String,
         val size: Long,
         val mimeType: String,
+        // 4.8: artist parse từ tên file ("Nghệ sĩ - Tên bài"); rỗng nếu không khớp quy ước
+        val artist: String = "",
     )
 
     companion object {
@@ -241,6 +243,47 @@ class MusicApiClient(
         val dao = MusicDatabase.getInstance(context).trackDao()
         return dao.search(query).map { Track(it.id, it.title, it.size, it.mimeType) }
     }
+
+    /**
+     * 4.8: Tìm kiếm metadata trong D1 index.
+     * GET /api/dac/search?q=..&limit=..&offset=.. → {files, total, limit, offset}
+     * Chưa sync → Worker fallback tìm live Drive (total=-1).
+     */
+    suspend fun search(
+        query: String,
+        limit: Int = 50,
+        offset: Int = 0,
+        activity: android.app.Activity? = null,
+    ): SearchResult = withDriveToken(activity) { driveToken ->
+        val encoded = java.net.URLEncoder.encode(query, "UTF-8")
+        val body = get("/api/dac/search?q=$encoded&limit=$limit&offset=$offset", driveToken)
+        val resp = ApiHttp.json.decodeFromString<SearchResponse>(body)
+        SearchResult(
+            tracks = resp.files.map { f ->
+                Track(f.id, f.title.ifEmpty { f.name }, f.size, f.mimeType, f.artist)
+            },
+            total = resp.total,
+        )
+    }
+
+    @kotlinx.serialization.Serializable
+    data class SearchResult(val tracks: List<Track>, val total: Int)
+
+    @kotlinx.serialization.Serializable
+    internal data class SearchResponse(
+        val files: List<SearchFile> = emptyList(),
+        val total: Int = 0,
+    )
+
+    @kotlinx.serialization.Serializable
+    internal data class SearchFile(
+        val id: String = "",
+        val name: String = "",
+        val artist: String = "",
+        val title: String = "",
+        val size: Long = 0,
+        val mimeType: String = "",
+    )
 
     /**
      * Lấy direct Drive URL để stream. ExoPlayer đọc trực tiếp từ Google.

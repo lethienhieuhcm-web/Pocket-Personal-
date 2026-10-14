@@ -47,7 +47,12 @@ class TrackAdapter(
         private val downloadButton: ImageButton = view.findViewById(R.id.downloadButton)
 
         fun bind(track: MusicApiClient.Track) {
-            titleView.text = track.title
+            // 4.8: hiện "Nghệ sĩ - Tên bài" khi parse được artist từ tên file.
+            titleView.text = if (track.artist.isNotEmpty()) {
+                "${track.artist} - ${track.title}"
+            } else {
+                track.title
+            }
             badgeView.text = formatBadge(track.mimeType, track.title)
             // 1.4: ảnh bìa qua Coil (CoverArtFetcher → ảnh nhúng, cache theo id+size).
             coverView.load(CoverArtKey(track.id, track.size), imageLoader) {
