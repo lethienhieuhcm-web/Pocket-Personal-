@@ -216,6 +216,7 @@
 				232EC81E81BB43D081C16197 /* ImportView.swift in Sources */,
 				F4798FF5483049C190471291 /* CoverArtManager.swift in Sources */,
 				0C49889E0EEF43EEA06CE5C4 /* TrackArtworkView.swift in Sources */,
+				B88327190C0F4A1352419BCF /* FolderBrowserView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
