@@ -1,1 +1,94 @@
-cGFja2FnZSBvbmUubGV0aGFuaGRvbmcuZGFjLnBsYXllcgoKaW1wb3J0IGFuZHJvaWQuY29udGVudC5Db250ZXh0CmltcG9ydCBhbmRyb2lkLm9zLkJ1bmRsZQppbXBvcnQgYW5kcm9pZHguY3JlZGVudGlhbHMuQ3VzdG9tQ3JlZGVudGlhbAppbXBvcnQgYW5kcm9pZHguY3JlZGVudGlhbHMuUGFzc3dvcmRDcmVkZW50aWFsCmltcG9ydCBhbmRyb2lkeC50ZXN0LmNvcmUuYXBwLkFwcGxpY2F0aW9uUHJvdmlkZXIKaW1wb3J0IGNvbS5nb29nbGUuYW5kcm9pZC5saWJyYXJpZXMuaWRlbnRpdHkuZ29vZ2xlaWQuR29vZ2xlSWRUb2tlbkNyZWRlbnRpYWwKaW1wb3J0IG9yZy5qdW5pdC5Bc3NlcnQuYXNzZXJ0RXF1YWxzCmltcG9ydCBvcmcuanVuaXQuQXNzZXJ0LmFzc2VydE51bGwKaW1wb3J0IG9yZy5qdW5pdC5UZXN0CmltcG9ydCBvcmcuanVuaXQucnVubmVyLlJ1bldpdGgKaW1wb3J0IGFuZHJvaWR4LnRlc3QuZXh0Lmp1bml0LnJ1bm5lcnMuQW5kcm9pZEpVbml0NAoKLyoqCiAqIDIuNDogdGVzdCBwaOG6p24gcGFyc2UgY3JlZGVudGlhbCBj4bunYSBHb29nbGUgU2lnbi1JbiDigJQga2jDtG5nIGPhuqduIHTDoGkga2hv4bqjbgogKiBHb29nbGUgdGjhuq10LCBraMO0bmcgbeG7nyBib3R0b20gc2hlZXQuCiAqLwpAUnVuV2l0aChBbmRyb2lkSlVuaXQ0OjpjbGFzcykKY2xhc3MgR29vZ2xlU2lnbkluUGFyc2luZ1Rlc3QgewoKICAgIHByaXZhdGUgdmFsIGNvbnRleHQ6IENvbnRleHQgPSBBcHBsaWNhdGlvblByb3ZpZGVyLmdldEFwcGxpY2F0aW9uQ29udGV4dCgpCiAgICBwcml2YXRlIHZhbCBtYW5hZ2VyID0gR29vZ2xlU2lnbkluTWFuYWdlcigKICAgICAgICBjb250ZXh0LAogICAgICAgIGJhc2VVcmwgPSAiaHR0cHM6Ly9leGFtcGxlLnRlc3QiLAogICAgICAgIHdlYkNsaWVudElkID0gInRlc3Qtd2ViLWNsaWVudC1pZC5hcHBzLmdvb2dsZXVzZXJjb250ZW50LmNvbSIsCiAgICApCgogICAgcHJpdmF0ZSBmdW4gZ29vZ2xlQ3JlZGVudGlhbChpZFRva2VuOiBTdHJpbmc/KTogQ3VzdG9tQ3JlZGVudGlhbCB7CiAgICAgICAgdmFsIGRhdGEgPSBCdW5kbGUoKS5hcHBseSB7CiAgICAgICAgICAgIGlmIChpZFRva2VuICE9IG51bGwpIHsKICAgICAgICAgICAgICAgIHB1dFN0cmluZyhHb29nbGVJZFRva2VuQ3JlZGVudGlhbC5CVU5ETEVfS0VZX0lEX1RPS0VOLCBpZFRva2VuKQogICAgICAgICAgICB9CiAgICAgICAgfQogICAgICAgIHJldHVybiBDdXN0b21DcmVkZW50aWFsKAogICAgICAgICAgICB0eXBlID0gR29vZ2xlSWRUb2tlbkNyZWRlbnRpYWwuVFlQRV9HT09HTEVfSURfVE9LRU5fQ1JFREVOVElBTCwKICAgICAgICAgICAgZGF0YSA9IGRhdGEsCiAgICAgICAgKQogICAgfQoKICAgIEBUZXN0CiAgICBmdW4gdmFsaWRHb29nbGVDcmVkZW50aWFsX3JldHVybnNJZFRva2VuKCkgewogICAgICAgIHZhbCBjcmVkID0gZ29vZ2xlQ3JlZGVudGlhbCgiaGVhZGVyLnBheWxvYWQuc2lnbmF0dXJlIikKICAgICAgICBhc3NlcnRFcXVhbHMoImhlYWRlci5wYXlsb2FkLnNpZ25hdHVyZSIsIG1hbmFnZXIuZXh0cmFjdEdvb2dsZUlkVG9rZW4oY3JlZCkpCiAgICB9CgogICAgQFRlc3QKICAgIGZ1biB3cm9uZ1R5cGVfcmV0dXJuc051bGwoKSB7CiAgICAgICAgdmFsIGNyZWQgPSBDdXN0b21DcmVkZW50aWFsKAogICAgICAgICAgICB0eXBlID0gInNvbWUub3RoZXIudHlwZSIsCiAgICAgICAgICAgIGRhdGEgPSBCdW5kbGUoKSwKICAgICAgICApCiAgICAgICAgYXNzZXJ0TnVsbChtYW5hZ2VyLmV4dHJhY3RHb29nbGVJZFRva2VuKGNyZWQpKQogICAgfQoKICAgIEBUZXN0CiAgICBmdW4gcGFzc3dvcmRDcmVkZW50aWFsX3JldHVybnNOdWxsKCkgewogICAgICAgIHZhbCBjcmVkID0gUGFzc3dvcmRDcmVkZW50aWFsKCJ1c2VyIiwgInBhc3MiKQogICAgICAgIGFzc2VydE51bGwobWFuYWdlci5leHRyYWN0R29vZ2xlSWRUb2tlbihjcmVkKSkKICAgIH0KCiAgICBAVGVzdAogICAgZnVuIG1pc3NpbmdJZFRva2VuSW5CdW5kbGVfcmV0dXJuc051bGwoKSB7CiAgICAgICAgdmFsIGNyZWQgPSBnb29nbGVDcmVkZW50aWFsKG51bGwpCiAgICAgICAgYXNzZXJ0TnVsbChtYW5hZ2VyLmV4dHJhY3RHb29nbGVJZFRva2VuKGNyZWQpKQogICAgfQoKICAgIEBUZXN0CiAgICBmdW4gZW1wdHlEYXRhQnVuZGxlX3JldHVybnNOdWxsKCkgewogICAgICAgIHZhbCBjcmVkID0gQ3VzdG9tQ3JlZGVudGlhbCgKICAgICAgICAgICAgdHlwZSA9IEdvb2dsZUlkVG9rZW5DcmVkZW50aWFsLlRZUEVfR09PR0xFX0lEX1RPS0VOX0NSRURFTlRJQUwsCiAgICAgICAgICAgIGRhdGEgPSBCdW5kbGUoKSwKICAgICAgICApCiAgICAgICAgYXNzZXJ0TnVsbChtYW5hZ2VyLmV4dHJhY3RHb29nbGVJZFRva2VuKGNyZWQpKQogICAgfQoKICAgIEBUZXN0CiAgICBmdW4gZ29vZ2xlTG9naW5SZXNwb25zZV9wYXJzZXNKc29uKCkgewogICAgICAgIHZhbCByZXNwID0gQXBpSHR0cC5qc29uLmRlY29kZUZyb21TdHJpbmc8R29vZ2xlU2lnbkluTWFuYWdlci5Hb29nbGVMb2dpblJlc3BvbnNlPigKICAgICAgICAgICAgIiIieyJ0b2tlbiI6InNlc3MtYWJjIiwiZW1haWwiOiJ1c2VyQGdtYWlsLmNvbSIsInJvbGUiOiJ1c2VyIn0iIiIKICAgICAgICApCiAgICAgICAgYXNzZXJ0RXF1YWxzKCJzZXNzLWFiYyIsIHJlc3AudG9rZW4pCiAgICAgICAgYXNzZXJ0RXF1YWxzKCJ1c2VyQGdtYWlsLmNvbSIsIHJlc3AuZW1haWwpCiAgICB9CgogICAgQFRlc3QKICAgIGZ1biBnb29nbGVMb2dpblJlc3BvbnNlX3BhcnNlc0pzb25XaXRoRXh0cmFLZXlzKCkgewogICAgICAgIC8vIFdvcmtlciBjw7MgdGjhu4MgdHLhuqMgdGjDqm0gZmllbGQ7IHBhcnNlciBwaOG6o2kgY2jhu4t1IMSRxrDhu6NjCiAgICAgICAgdmFsIHJlc3AgPSBBcGlIdHRwLmpzb24uZGVjb2RlRnJvbVN0cmluZzxHb29nbGVTaWduSW5NYW5hZ2VyLkdvb2dsZUxvZ2luUmVzcG9uc2U+KAogICAgICAgICAgICAiIiJ7InRva2VuIjoic2Vzcy1hYmMiLCJlbWFpbCI6InVzZXJAZ21haWwuY29tIiwicm9sZSI6InVzZXIiLCJ2ZXJpZmllZCI6dHJ1ZX0iIiIKICAgICAgICApCiAgICAgICAgYXNzZXJ0RXF1YWxzKCJzZXNzLWFiYyIsIHJlc3AudG9rZW4pCiAgICB9Cn0K
+package one.lethanhdong.dac.player
+
+import android.content.Context
+import android.os.Bundle
+import androidx.credentials.CustomCredential
+import androidx.credentials.PasswordCredential
+import androidx.test.core.app.ApplicationProvider
+import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
+import org.junit.Test
+import org.junit.runner.RunWith
+import androidx.test.ext.junit.runners.AndroidJUnit4
+
+/**
+ * 2.4: test phần parse credential của Google Sign-In — không cần tài khoản
+ * Google thật, không mở bottom sheet.
+ */
+@RunWith(AndroidJUnit4::class)
+class GoogleSignInParsingTest {
+
+    private val context: Context = ApplicationProvider.getApplicationContext()
+    private val manager = GoogleSignInManager(
+        context,
+        baseUrl = "https://example.test",
+        webClientId = "test-web-client-id.apps.googleusercontent.com",
+    )
+
+    private fun googleCredential(idToken: String?): CustomCredential {
+        val data = Bundle().apply {
+            if (idToken != null) {
+                putString(GoogleIdTokenCredential.BUNDLE_KEY_ID_TOKEN, idToken)
+            }
+        }
+        return CustomCredential(
+            type = GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL,
+            data = data,
+        )
+    }
+
+    @Test
+    fun validGoogleCredential_returnsIdToken() {
+        val cred = googleCredential("header.payload.signature")
+        assertEquals("header.payload.signature", manager.extractGoogleIdToken(cred))
+    }
+
+    @Test
+    fun wrongType_returnsNull() {
+        val cred = CustomCredential(
+            type = "some.other.type",
+            data = Bundle(),
+        )
+        assertNull(manager.extractGoogleIdToken(cred))
+    }
+
+    @Test
+    fun passwordCredential_returnsNull() {
+        val cred = PasswordCredential("user", "pass")
+        assertNull(manager.extractGoogleIdToken(cred))
+    }
+
+    @Test
+    fun missingIdTokenInBundle_returnsNull() {
+        val cred = googleCredential(null)
+        assertNull(manager.extractGoogleIdToken(cred))
+    }
+
+    @Test
+    fun emptyDataBundle_returnsNull() {
+        val cred = CustomCredential(
+            type = GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL,
+            data = Bundle(),
+        )
+        assertNull(manager.extractGoogleIdToken(cred))
+    }
+
+    @Test
+    fun googleLoginResponse_parsesJson() {
+        val resp = ApiHttp.json.decodeFromString<GoogleSignInManager.GoogleLoginResponse>(
+            """{"token":"sess-abc","email":"user@gmail.com","role":"user"}"""
+        )
+        assertEquals("sess-abc", resp.token)
+        assertEquals("user@gmail.com", resp.email)
+    }
+
+    @Test
+    fun googleLoginResponse_parsesJsonWithExtraKeys() {
+        // Worker có thể trả thêm field; parser phải chịu được
+        val resp = ApiHttp.json.decodeFromString<GoogleSignInManager.GoogleLoginResponse>(
+            """{"token":"sess-abc","email":"user@gmail.com","role":"user","verified":true}"""
+        )
+        assertEquals("sess-abc", resp.token)
+    }
+}
