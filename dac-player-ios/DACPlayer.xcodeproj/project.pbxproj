@@ -13,6 +13,10 @@
 		AE80B7FE721B4043B0115CA5 /* ApiModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2770726566514301A7E49075 /* ApiModels.swift */; };
 		892AD585B804445E94F41CF7 /* AuthManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = E05D4DB247FF41928E7A1F15 /* AuthManager.swift */; };
 		6D8C7F7E6AB244C4818C37A0 /* AuthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2489095D74154681B06F48E8 /* AuthView.swift */; };
+		E8D5B5BDAA9844C4AE0ED4AC /* MusicApiClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA5A850620B24028BC9E8545 /* MusicApiClient.swift */; };
+		EDA60D705A274B9FBA29D88C /* DriveAuthManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5ECEB9E408DA4B66A4CBBCAE /* DriveAuthManager.swift */; };
+		B3301C22365149048494AE52 /* AudioEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43075D3832304E0382B4A237 /* AudioEngine.swift */; };
+		B05767C07B834026AC4996C3 /* PlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8675AB88B9B44EB9A662AB10 /* PlayerView.swift */; };
 		5B4DF315ACA2449ABAAC86D7 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = ED68EDB9D4FE40E5AC21D31D /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
@@ -24,6 +28,10 @@
 		2770726566514301A7E49075 /* ApiModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApiModels.swift; sourceTree = "<group>"; };
 		E05D4DB247FF41928E7A1F15 /* AuthManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthManager.swift; sourceTree = "<group>"; };
 		2489095D74154681B06F48E8 /* AuthView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthView.swift; sourceTree = "<group>"; };
+		FA5A850620B24028BC9E8545 /* MusicApiClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusicApiClient.swift; sourceTree = "<group>"; };
+		5ECEB9E408DA4B66A4CBBCAE /* DriveAuthManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DriveAuthManager.swift; sourceTree = "<group>"; };
+		43075D3832304E0382B4A237 /* AudioEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioEngine.swift; sourceTree = "<group>"; };
+		8675AB88B9B44EB9A662AB10 /* PlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerView.swift; sourceTree = "<group>"; };
 		ED68EDB9D4FE40E5AC21D31D /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -56,6 +64,10 @@
 				2770726566514301A7E49075 /* ApiModels.swift */,
 				E05D4DB247FF41928E7A1F15 /* AuthManager.swift */,
 				2489095D74154681B06F48E8 /* AuthView.swift */,
+				FA5A850620B24028BC9E8545 /* MusicApiClient.swift */,
+				5ECEB9E408DA4B66A4CBBCAE /* DriveAuthManager.swift */,
+				43075D3832304E0382B4A237 /* AudioEngine.swift */,
+				8675AB88B9B44EB9A662AB10 /* PlayerView.swift */,
 				ED68EDB9D4FE40E5AC21D31D /* Assets.xcassets */,
 			);
 			path = DACPlayer;
@@ -150,6 +162,10 @@
 				AE80B7FE721B4043B0115CA5 /* ApiModels.swift in Sources */,
 				892AD585B804445E94F41CF7 /* AuthManager.swift in Sources */,
 				6D8C7F7E6AB244C4818C37A0 /* AuthView.swift in Sources */,
+				E8D5B5BDAA9844C4AE0ED4AC /* MusicApiClient.swift in Sources */,
+				EDA60D705A274B9FBA29D88C /* DriveAuthManager.swift in Sources */,
+				B3301C22365149048494AE52 /* AudioEngine.swift in Sources */,
+				B05767C07B834026AC4996C3 /* PlayerView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
