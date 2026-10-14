@@ -16,6 +16,7 @@ import com.decent.usbaudio.UsbAudioPermissionHelper
 import kotlinx.coroutines.launch
 import one.lethanhdong.dac.player.AuthManager
 import one.lethanhdong.dac.player.CoverArt
+import one.lethanhdong.dac.player.DriveTokenInvalidException
 import one.lethanhdong.dac.player.MusicApiClient
 import one.lethanhdong.dac.player.PlayerManager
 import one.lethanhdong.dac.player.TrackAdapter
@@ -162,6 +163,8 @@ class MainActivity : AppCompatActivity() {
                 if (tracks.isEmpty()) {
                     statusText.text = "Chưa có file nhạc trên Google Drive"
                 }
+            } catch (e: DriveTokenInvalidException) {
+                statusText.text = e.message
             } catch (e: Exception) {
                 statusText.text = "Không tải được danh sách: ${e.message}"
             }

@@ -14,6 +14,7 @@ import androidx.recyclerview.widget.RecyclerView
 import kotlinx.coroutines.launch
 import one.lethanhdong.dac.player.CopyScopeException
 import one.lethanhdong.dac.player.DriveCopyManager
+import one.lethanhdong.dac.player.DriveTokenInvalidException
 import one.lethanhdong.dac.player.ImportFileAdapter
 
 /**
@@ -86,6 +87,9 @@ class ImportActivity : AppCompatActivity() {
                 statusText.text = "Tìm thấy ${res.files.size} file nhạc trong $label"
                 copyButton.text = "Copy ${res.files.size} file"
                 copyButton.isEnabled = true
+            } catch (e: DriveTokenInvalidException) {
+                statusText.text = e.message
+                copyButton.isEnabled = false
             } catch (e: Exception) {
                 statusText.text = "Lỗi: ${e.message}"
                 copyButton.isEnabled = false
@@ -121,6 +125,11 @@ class ImportActivity : AppCompatActivity() {
                     ok++
                 } catch (e: CopyScopeException) {
                     // D7: dừng ngay, hiện hướng dẫn — copy tiếp cũng fail
+                    scopeError = e.message
+                    failed = selected.size - i
+                    break
+                } catch (e: DriveTokenInvalidException) {
+                    // Token hết hạn giữa chừng — dừng, hiện "kết nối lại Drive"
                     scopeError = e.message
                     failed = selected.size - i
                     break
