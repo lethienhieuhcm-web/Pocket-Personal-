@@ -1,1 +1,55 @@
-cGFja2FnZSBvbmUubGV0aGFuaGRvbmcuZGFjLnBsYXllcgoKaW1wb3J0IGFuZHJvaWR4Lm1lZGlhMy5jb21tb24uTWltZVR5cGVzCmltcG9ydCBhbmRyb2lkeC5tZWRpYTMuZGVjb2Rlci5mZm1wZWcuRmZtcGVnTGlicmFyeQppbXBvcnQgYW5kcm9pZHgudGVzdC5leHQuanVuaXQucnVubmVycy5BbmRyb2lkSlVuaXQ0CmltcG9ydCBvcmcuanVuaXQuQXNzZXJ0LmFzc2VydFRydWUKaW1wb3J0IG9yZy5qdW5pdC5UZXN0CmltcG9ydCBvcmcuanVuaXQucnVubmVyLlJ1bldpdGgKCi8qKgogKiAxLjU6IGd1YXJkIGNo4buRbmcgcmVncmVzc2lvbiAiQUFSIHNoaXAgbmjGsG5nIGtow7RuZyBsb2FkIiAoYuG6q3kgMS45LjAvMS45LjM6CiAqIGJ1aWxkIHhvbmcgduG6q24gZmZtcGVnPWZhbHNlIG3DoCBraMO0bmcgYsOhbyBs4buXaSkuCiAqIC0gaXNBdmFpbGFibGUoKSA9IGxpYmZmbXBlZ0pOSS5zbyDEkcOjIGxvYWQgdGjhuq10IChraMO0bmcgY2jhu4kgY8OzIG3hurd0IHRyb25nIEFQSykuCiAqIC0gc3VwcG9ydHNGb3JtYXQoKSA9IGJ1aWxkIEZGbXBlZyBjaOG7qWEgxJHDum5nIGRlY29kZXIgKGtow7RuZyBjaOG7iSBsb2FkIMSRxrDhu6NjIGxpYikuCiAqIERhbmggc8OhY2ggbWltZSBraOG7m3AgbWFwIGdldENvZGVjTmFtZSgpIHRyb25nIEZmbXBlZ0xpYnJhcnkuamF2YSDhu58gdGFnIDEuOS4zCiAqICjEkcOjIMSR4buNYyBzb3VyY2UgdGjhuq10KTogbeG7l2kgbWltZSBkxrDhu5tpIMSRw6J5IG1hcCB04bubaSAxIGRlY29kZXIgdHJvbmcgbGlzdCBidWlsZAogKiAoZmxhYyBhbGFjIG1wMyBhYWMgb3B1cyB2b3JiaXMgcGNtX211bGF3IHBjbV9hbGF3IGFjMyBlYWMzIGRjYSBtbHAgdHJ1ZWhkKS4KICogS0jDlE5HIHRlc3QgQU1SL0gyNjQg4oCUIGJ1aWxkIGtow7RuZyBlbmFibGUgYW1ybmIvYW1yd2IvaDI2NC9oZXZjLgogKi8KQFJ1bldpdGgoQW5kcm9pZEpVbml0NDo6Y2xhc3MpCmNsYXNzIEZmbXBlZ0RlY29kZXJUZXN0IHsKCiAgICBAVGVzdAogICAgZnVuIGZmbXBlZ0xpYnJhcnlJc0F2YWlsYWJsZSgpIHsKICAgICAgICBhc3NlcnRUcnVlKAogICAgICAgICAgICAibGliZmZtcGVnSk5JLnNvIGRpZCBub3QgbG9hZCDigJQgQUFSIHNoaXBwZWQgYnV0IG5vdCBsb2FkZWQiLAogICAgICAgICAgICBGZm1wZWdMaWJyYXJ5LmlzQXZhaWxhYmxlKCkKICAgICAgICApCiAgICB9CgogICAgQFRlc3QKICAgIGZ1biBmZm1wZWdTdXBwb3J0c1JlcXVpcmVkRm9ybWF0cygpIHsKICAgICAgICBhc3NlcnRUcnVlKCJsaWJmZm1wZWdKTkkuc28gZGlkIG5vdCBsb2FkIiwgRmZtcGVnTGlicmFyeS5pc0F2YWlsYWJsZSgpKQogICAgICAgIHZhbCByZXF1aXJlZCA9IGxpc3RPZigKICAgICAgICAgICAgTWltZVR5cGVzLkFVRElPX0ZMQUMsCiAgICAgICAgICAgIE1pbWVUeXBlcy5BVURJT19BTEFDLAogICAgICAgICAgICBNaW1lVHlwZXMuQVVESU9fTVBFRywKICAgICAgICAgICAgTWltZVR5cGVzLkFVRElPX0FBQywKICAgICAgICAgICAgTWltZVR5cGVzLkFVRElPX09QVVMsCiAgICAgICAgICAgIE1pbWVUeXBlcy5BVURJT19WT1JCSVMsCiAgICAgICAgICAgIE1pbWVUeXBlcy5BVURJT19NTEFXLAogICAgICAgICAgICBNaW1lVHlwZXMuQVVESU9fQUxBVywKICAgICAgICAgICAgTWltZVR5cGVzLkFVRElPX0FDMywKICAgICAgICAgICAgTWltZVR5cGVzLkFVRElPX0VfQUMzLAogICAgICAgICAgICBNaW1lVHlwZXMuQVVESU9fRFRTLAogICAgICAgICAgICBNaW1lVHlwZXMuQVVESU9fVFJVRUhECiAgICAgICAgKQogICAgICAgIGZvciAobWltZSBpbiByZXF1aXJlZCkgewogICAgICAgICAgICBhc3NlcnRUcnVlKAogICAgICAgICAgICAgICAgIkZGbXBlZyBidWlsZCBtaXNzaW5nIGRlY29kZXIgZm9yICRtaW1lIiwKICAgICAgICAgICAgICAgIEZmbXBlZ0xpYnJhcnkuc3VwcG9ydHNGb3JtYXQobWltZSkKICAgICAgICAgICAgKQogICAgICAgIH0KICAgIH0KfQo=
+package one.lethanhdong.dac.player
+
+import androidx.media3.common.MimeTypes
+import androidx.media3.decoder.ffmpeg.FfmpegLibrary
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import org.junit.Assert.assertTrue
+import org.junit.Test
+import org.junit.runner.RunWith
+
+/**
+ * 1.5: guard chống regression "AAR ship nhưng không load" (bẫy 1.9.0/1.9.3:
+ * build xong vẫn ffmpeg=false mà không báo lỗi).
+ * - isAvailable() = libffmpegJNI.so đã load thật (không chỉ có mặt trong APK).
+ * - supportsFormat() = build FFmpeg chứa đúng decoder (không chỉ load được lib).
+ * Danh sách mime khớp map getCodecName() trong FfmpegLibrary.java ở tag 1.9.3
+ * (đã đọc source thật): mỗi mime dưới đây map tới 1 decoder trong list build
+ * (flac alac mp3 aac opus vorbis pcm_mulaw pcm_alaw ac3 eac3 dca mlp truehd).
+ * KHÔNG test AMR/H264 — build không enable amrnb/amrwb/h264/hevc.
+ */
+@RunWith(AndroidJUnit4::class)
+class FfmpegDecoderTest {
+
+    @Test
+    fun ffmpegLibraryIsAvailable() {
+        assertTrue(
+            "libffmpegJNI.so did not load — AAR shipped but not loaded",
+            FfmpegLibrary.isAvailable()
+        )
+    }
+
+    @Test
+    fun ffmpegSupportsRequiredFormats() {
+        assertTrue("libffmpegJNI.so did not load", FfmpegLibrary.isAvailable())
+        val required = listOf(
+            MimeTypes.AUDIO_FLAC,
+            MimeTypes.AUDIO_ALAC,
+            MimeTypes.AUDIO_MPEG,
+            MimeTypes.AUDIO_AAC,
+            MimeTypes.AUDIO_OPUS,
+            MimeTypes.AUDIO_VORBIS,
+            MimeTypes.AUDIO_MLAW,
+            MimeTypes.AUDIO_ALAW,
+            MimeTypes.AUDIO_AC3,
+            MimeTypes.AUDIO_E_AC3,
+            MimeTypes.AUDIO_DTS,
+            MimeTypes.AUDIO_TRUEHD
+        )
+        for (mime in required) {
+            assertTrue(
+                "FFmpeg build missing decoder for $mime",
+                FfmpegLibrary.supportsFormat(mime)
+            )
+        }
+    }
+}
