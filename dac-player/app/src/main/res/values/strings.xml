@@ -5,4 +5,7 @@
     <string name="track_cover">Ảnh bìa</string>
     <!-- 1.5: LicensesActivity -->
     <string name="licenses_missing">Không tìm thấy file giấy phép.</string>
+    <!-- 4.1: contentDescription cho icon thư mục trong item_folder.xml -->
+    <string name="folder_icon">Thư mục</string>
+    <string name="folder_title">Thư mục nhạc</string>
 </resources>
