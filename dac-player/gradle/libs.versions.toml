@@ -52,6 +52,8 @@ media3-session = { group = "androidx.media3", name = "media3-session", version.r
 core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "core-ktx" }
 appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
 coroutines = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
+# 4.6: runTest cho instrumented test logic refresh token.
+coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutines" }
 recyclerview = { group = "androidx.recyclerview", name = "recyclerview", version.ref = "recyclerview" }
 lifecycle-runtime = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycle" }
 # 1.2: mã hoá token (EncryptedSharedPreferences, MasterKey AES-256-GCM).
