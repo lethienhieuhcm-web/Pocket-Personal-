@@ -21,8 +21,9 @@ android {
         // decent-player yêu cầu Android 10+ (API 29) — doc GETTING_STARTED.md
         minSdk = 29
         targetSdk = 36
-        versionCode = 5
-        versionName = "0.4.1-drive-token-fix"
+        // 4.10: bản Phase 4 (4.1→4.9) — deploy lên /dac.
+        versionCode = 6
+        versionName = "0.5.0"
         // 1.2: instrumented test chạy trên emulator CI.
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
