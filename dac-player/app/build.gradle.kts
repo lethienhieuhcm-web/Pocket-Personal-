@@ -200,4 +200,6 @@ dependencies {
     implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
     // Room testing cho instrumented test DAO.
     androidTestImplementation(libs.room.testing)
+    // 4.6: runTest cho test logic refresh token.
+    androidTestImplementation(libs.coroutines.test)
 }
