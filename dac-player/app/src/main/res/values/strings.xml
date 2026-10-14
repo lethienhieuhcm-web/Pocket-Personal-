@@ -1,1 +1,8 @@
-PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiPz4KPHJlc291cmNlcz4KICAgIDxzdHJpbmcgbmFtZT0iYXBwX25hbWUiPkRBQyBQbGF5ZXI8L3N0cmluZz4KICAgIDwhLS0gMS40OiBjb250ZW50RGVzY3JpcHRpb24gY2hvIOG6o25oIGLDrGEgdHJvbmcgaXRlbV90cmFjay54bWwgLS0+CiAgICA8c3RyaW5nIG5hbWU9InRyYWNrX2NvdmVyIj7huqJuaCBiw6xhPC9zdHJpbmc+CiAgICA8IS0tIDEuNTogTGljZW5zZXNBY3Rpdml0eSAtLT4KICAgIDxzdHJpbmcgbmFtZT0ibGljZW5zZXNfbWlzc2luZyI+S2jDtG5nIHTDrG0gdGjhuqV5IGZpbGUgZ2nhuqV5IHBow6lwLjwvc3RyaW5nPgo8L3Jlc291cmNlcz4K
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">DAC Player</string>
+    <!-- 1.4: contentDescription cho ảnh bìa trong item_track.xml -->
+    <string name="track_cover">Ảnh bìa</string>
+    <!-- 1.5: LicensesActivity -->
+    <string name="licenses_missing">Không tìm thấy file giấy phép.</string>
+</resources>
