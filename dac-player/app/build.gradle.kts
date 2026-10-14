@@ -5,6 +5,8 @@ import java.util.Base64
 plugins {
     alias(libs.plugins.android.application)
     // AGP 9.x đã tích hợp sẵn Kotlin support — không cần org.jetbrains.kotlin.android nữa
+    // 1.4: kotlinx.serialization (@Serializable) cho API JSON.
+    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
@@ -94,6 +96,11 @@ dependencies {
     implementation(libs.recyclerview)
     // 1.2: mã hoá token (EncryptedSharedPreferences).
     implementation(libs.security.crypto)
+    // 1.4: Phase 1 Libraries — OkHttp (thay HttpURLConnection) +
+    // kotlinx.serialization (thay JSONObject) + Coil (ảnh bìa).
+    implementation(libs.okhttp)
+    implementation(libs.kotlinx.serialization.json)
+    implementation(libs.coil)
     implementation(libs.lifecycle.runtime)
     implementation(libs.media3.exoplayer)
     implementation(libs.media3.ui)
