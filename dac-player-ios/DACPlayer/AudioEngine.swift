@@ -51,8 +51,12 @@ class AudioEngine: ObservableObject {
         return "AUDIO"
     }
 
-    private var player: AVPlayer?
+    private var player: AVQueuePlayer?
     private var timeObserver: Any?
+    /// 4.5: queue (item → track) để biết bài nào đang phát khi tự chuyển.
+    private var queue: [(item: AVPlayerItem, track: Track)] = []
+    private var currentItemObs: NSKeyValueObservation?
+    private var prefetchTask: Task<Void, Never>?
 
     /// Đọc (sample rate, bit depth) thật từ URL (không đoán).
     /// Bit depth = 0 khi format nén (MP3/AAC) không công bố.
@@ -97,15 +101,8 @@ class AudioEngine: ObservableObject {
             let url = try await api.streamURL(for: track.id)
             let info = await audioInfo(of: url)
             try configureSession(sampleRate: info.sampleRate)
-            sampleRate = info.sampleRate
-            bitDepth = info.bitDepth
-            formatLabel = Self.formatLabel(mimeType: track.mimeType, title: track.title)
-            let item = AVPlayerItem(url: url)
-            player = AVPlayer(playerItem: item)
-            player?.volume = 1.0  // Volume 100%, không attenuate
-            player?.play()
-            currentTrack = track
-            isPlaying = true
+            applyQuality(track: track, info: info)
+            startQueue(items: [(AVPlayerItem(url: url), track)])
         } catch MusicError.message(let msg) {
             errorText = msg
         } catch {
@@ -124,15 +121,102 @@ class AudioEngine: ObservableObject {
             errorText = "Không cấu hình được audio: \(error.localizedDescription)"
             return
         }
+        applyQuality(track: track, info: info)
+        startQueue(items: [(AVPlayerItem(url: fileURL), track)])
+    }
+
+    /**
+     * 4.5: Phát 1 track + prefetch 5 bài sau vào queue → chuyển bài gapless.
+     * Dùng cho cả Thư viện và Thư mục (truyền danh sách đang hiển thị).
+     */
+    func playWithQueue(_ track: Track, from tracks: [Track], via api: MusicApiClient) async {
+        prefetchTask?.cancel()
+        if let local = OfflineManager.shared.localFile(trackId: track.id) {
+            await playLocal(track, fileURL: local)
+        } else {
+            await play(track, via: api)
+        }
+        prefetchTask = Task {
+            guard let idx = tracks.firstIndex(where: { $0.id == track.id }) else { return }
+            for t in tracks.dropFirst(idx + 1).prefix(5) {
+                if Task.isCancelled { return }
+                do {
+                    if let local = OfflineManager.shared.localFile(trackId: t.id) {
+                        enqueueLocal(t, fileURL: local)
+                    } else {
+                        let url = try await api.streamURL(for: t.id)
+                        enqueue(t, url: url)
+                    }
+                } catch {
+                    // Prefetch lỗi → bỏ qua, bài đó sẽ load khi tới lượt
+                }
+            }
+        }
+    }
+
+    /// 4.5: Thêm vào cuối queue (gapless khi cùng format).
+    func enqueue(_ track: Track, url: URL) {
+        let item = AVPlayerItem(url: url)
+        queue.append((item, track))
+        player?.insert(item, after: nil)
+    }
+
+    func enqueueLocal(_ track: Track, fileURL: URL) {
+        let item = AVPlayerItem(url: fileURL)
+        queue.append((item, track))
+        player?.insert(item, after: nil)
+    }
+
+    /// Dựng AVQueuePlayer mới với các item, theo dõi currentItem để cập nhật UI.
+    private func startQueue(items: [(AVPlayerItem, Track)]) {
+        let q = AVQueuePlayer()
+        q.volume = 1.0  // Volume 100%, không attenuate
+        queue = items
+        for (item, _) in items {
+            q.insert(item, after: nil)
+        }
+        player = q
+        currentItemObs = q.observe(\.currentItem, options: [.new]) { [weak self] _, _ in
+            Task { @MainActor in self?.syncCurrentTrack() }
+        }
+        if let first = items.first {
+            currentTrack = first.1
+        }
+        q.play()
+        isPlaying = true
+    }
+
+    /// Queue tự chuyển bài → cập nhật track + quality đang phát.
+    private func syncCurrentTrack() {
+        guard let cur = player?.currentItem else { return }
+        // Dọn các item đã phát xong khỏi đầu queue
+        if let idx = queue.firstIndex(where: { $0.item === cur }) {
+            queue.removeFirst(idx)
+        }
+        guard let entry = queue.first(where: { $0.item === cur }) else { return }
+        let track = entry.track
+        currentTrack = track
+        formatLabel = Self.formatLabel(mimeType: track.mimeType, title: track.title)
+        // Đọc lại sample rate/bit depth của bài mới (header parse, nhanh)
+        Task {
+            let url: URL
+            if let local = OfflineManager.shared.localFile(trackId: track.id) {
+                url = local
+            } else {
+                // Không có URL gốc ở đây — dùng asset của item đang phát
+                guard let assetURL = (cur.asset as? AVURLAsset)?.url else { return }
+                url = assetURL
+            }
+            let info = await audioInfo(of: url)
+            sampleRate = info.sampleRate
+            bitDepth = info.bitDepth
+        }
+    }
+
+    private func applyQuality(track: Track, info: (sampleRate: Double, bitDepth: Int)) {
         sampleRate = info.sampleRate
         bitDepth = info.bitDepth
         formatLabel = Self.formatLabel(mimeType: track.mimeType, title: track.title)
-        let item = AVPlayerItem(url: fileURL)
-        player = AVPlayer(playerItem: item)
-        player?.volume = 1.0
-        player?.play()
-        currentTrack = track
-        isPlaying = true
     }
 
     func togglePlayPause() {
@@ -159,12 +243,18 @@ class AudioEngine: ObservableObject {
     }
 
     func stop() {
+        prefetchTask?.cancel()
+        prefetchTask = nil
+        currentItemObs?.invalidate()
+        currentItemObs = nil
         if let obs = timeObserver {
             player?.removeTimeObserver(obs)
             timeObserver = nil
         }
         player?.pause()
+        player?.removeAllItems()
         player = nil
+        queue.removeAll()
         isPlaying = false
         currentTrack = nil
         sampleRate = 0

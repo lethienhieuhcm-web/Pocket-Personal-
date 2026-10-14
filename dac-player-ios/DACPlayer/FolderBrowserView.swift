@@ -147,14 +147,9 @@ struct FolderBrowserView: View {
         }
     }
 
-    /// 4.3: phát track — ưu tiên file offline đã tải.
+    /// 4.3: phát track — ưu tiên file offline đã tải. 4.5: + prefetch queue gapless.
     private func playTrack(_ track: Track) async {
-        if let local = offline.localFile(trackId: track.id) {
-            statusText = "Đang phát offline: \(track.title)"
-            await engine.playLocal(track, fileURL: local)
-        } else {
-            await engine.play(track, via: api)
-        }
+        await engine.playWithQueue(track, from: tracks, via: api)
     }
 
     /// 4.3: tải track về nghe offline. Bấm lần nữa khi đã tải = xoá.

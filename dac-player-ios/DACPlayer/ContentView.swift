@@ -71,7 +71,8 @@ struct LibraryView: View {
                     List(visibleTracks) { track in
                         Button {
                             Task {
-                                await engine.play(track, via: api)
+                                // 4.5: phát + prefetch queue gapless
+                                await engine.playWithQueue(track, from: Array(visibleTracks), via: api)
                                 showPlayer = true
                             }
                         } label: {
