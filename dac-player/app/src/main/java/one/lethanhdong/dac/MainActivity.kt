@@ -136,6 +136,10 @@ class MainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.sessionsButton).setOnClickListener {
             startActivity(Intent(this@MainActivity, SessionsActivity::class.java))
         }
+        // 4.8: Tìm kiếm metadata
+        findViewById<Button>(R.id.searchButton).setOnClickListener {
+            startActivity(Intent(this@MainActivity, SearchActivity::class.java))
+        }
         findViewById<Button>(R.id.licensesButton).setOnClickListener {
             startActivity(Intent(this@MainActivity, LicensesActivity::class.java))
         }
