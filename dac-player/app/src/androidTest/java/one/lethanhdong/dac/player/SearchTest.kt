@@ -24,7 +24,7 @@ class SearchTest {
                "size":6000,"mimeType":"audio/flac"}
             ],"total":2,"limit":50,"offset":0}
         """.trimIndent()
-        val resp = ApiHttp.json.decodeFromString(SearchResponse.serializer(), json)
+        val resp = ApiHttp.json.decodeFromString(MusicApiClient.SearchResponse.serializer(), json)
         assertEquals(2, resp.files.size)
         assertEquals(2, resp.total)
 
@@ -46,7 +46,7 @@ class SearchTest {
     @Test
     fun parseSearchResponse_empty() {
         val resp = ApiHttp.json.decodeFromString(
-            SearchResponse.serializer(),
+            MusicApiClient.SearchResponse.serializer(),
             """{"files":[],"total":0,"limit":50,"offset":0}"""
         )
         assertTrue(resp.files.isEmpty())
@@ -57,7 +57,7 @@ class SearchTest {
     fun parseSearchResponse_fallbackTotal() {
         // Fallback live Drive: total=-1 (không đếm được)
         val resp = ApiHttp.json.decodeFromString(
-            SearchResponse.serializer(),
+            MusicApiClient.SearchResponse.serializer(),
             """{"files":[],"total":-1,"limit":50,"offset":0}"""
         )
         assertEquals(-1, resp.total)
