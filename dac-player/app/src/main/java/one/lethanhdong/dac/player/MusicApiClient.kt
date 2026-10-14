@@ -358,6 +358,9 @@ class MusicApiClient(
     @Serializable
     private data class PlaylistItemsRequest(val items: List<PlaylistItem>)
 
+    @Serializable
+    private data class PlaylistCreateRequest(val name: String)
+
     /** Lấy danh sách playlist của user. */
     suspend fun listPlaylists(): List<PlaylistSummary> {
         val body = get("/api/dac/playlists")
@@ -368,7 +371,10 @@ class MusicApiClient(
     suspend fun createPlaylist(name: String): String {
         val body = postJson(
             "/api/dac/playlists",
-            ApiHttp.json.encodeToString(mapOf("name" to name)),
+            ApiHttp.json.encodeToString(
+                PlaylistCreateRequest.serializer(),
+                PlaylistCreateRequest(name),
+            ),
         )
         return ApiHttp.json.decodeFromString<PlaylistIdResponse>(body).id
     }
@@ -386,6 +392,12 @@ class MusicApiClient(
 
     /** Thay toàn bộ items của playlist (dùng khi lưu/reorder). */
     suspend fun setPlaylistItems(id: String, items: List<PlaylistItem>) {
-        put("/api/dac/playlists/$id", ApiHttp.json.encodeToString(PlaylistItemsRequest(items)))
+        put(
+            "/api/dac/playlists/$id",
+            ApiHttp.json.encodeToString(
+                PlaylistItemsRequest.serializer(),
+                PlaylistItemsRequest(items),
+            ),
+        )
     }
 }
