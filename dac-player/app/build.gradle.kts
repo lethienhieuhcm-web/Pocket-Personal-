@@ -59,9 +59,13 @@ android {
         // (isDebuggable = true) để cài được như bản debug. x86_64 chỉ cần cho
         // emulator test nên chỉ có ở buildType debug; deploy không thêm x86_64
         // (thừa hưởng arm64-v8a từ defaultConfig).
+        // matchingFallbacks: composite build decent-player/libs chỉ có
+        // buildType debug/release (không có "deploy") — không có dòng này Gradle
+        // báo "No matching variant ... BuildTypeAttr 'deploy'" (run #90).
         create("deploy") {
             isDebuggable = true
             isMinifyEnabled = false
+            matchingFallbacks += listOf("debug")
         }
     }
     signingConfigs {
