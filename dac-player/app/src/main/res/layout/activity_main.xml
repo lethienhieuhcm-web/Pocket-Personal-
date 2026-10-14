@@ -56,6 +56,14 @@
             android:layout_weight="1"
             android:text="Phát / Dừng" />
 
+        <!-- 2.1: Nhập nhạc từ Drive share link -->
+        <Button
+            android:id="@+id/importButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Nhập từ link" />
+
         <Button
             android:id="@+id/logoutButton"
             android:layout_width="0dp"

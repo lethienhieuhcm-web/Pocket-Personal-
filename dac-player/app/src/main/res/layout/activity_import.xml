@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- res/layout/activity_import.xml — plan dac-app 2.1: nhập nhạc từ Drive share link.
+     Luồng: dán link → Kiểm tra → chọn file → Copy → tiến trình → xong. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Nhập nhạc từ link Google Drive"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:gravity="center"
+        android:layout_marginBottom="12dp" />
+
+    <!-- Nhập link -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <EditText
+            android:id="@+id/linkInput"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:hint="Dán link Drive vào đây"
+            android:inputType="textUri"
+            android:importantForAutofill="no" />
+
+        <Button
+            android:id="@+id/resolveButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Kiểm tra" />
+    </LinearLayout>
+
+    <!-- Trạng thái -->
+    <TextView
+        android:id="@+id/importStatus"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text=""
+        android:textSize="13sp"
+        android:layout_marginTop="8dp"
+        android:layout_marginBottom="8dp" />
+
+    <!-- Tiến trình copy -->
+    <ProgressBar
+        android:id="@+id/copyProgress"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:visibility="gone"
+        android:layout_marginBottom="8dp" />
+
+    <!-- Danh sách file -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/importFileList"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+
+    <!-- Nút hành động -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:layout_marginTop="12dp">
+
+        <Button
+            android:id="@+id/copyButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Copy"
+            android:enabled="false" />
+
+        <Button
+            android:id="@+id/doneButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Xong" />
+    </LinearLayout>
+</LinearLayout>
