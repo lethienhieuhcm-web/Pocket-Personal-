@@ -266,7 +266,7 @@ class MusicApiClient(
         )
     }
 
-    @kotlinx.serialization.Serializable
+    /** Kết quả tìm kiếm — không serialize (chỉ dùng nội bộ). */
     data class SearchResult(val tracks: List<Track>, val total: Int)
 
     @kotlinx.serialization.Serializable
