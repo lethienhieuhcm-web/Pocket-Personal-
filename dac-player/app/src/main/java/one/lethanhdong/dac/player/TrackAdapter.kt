@@ -35,18 +35,9 @@ class TrackAdapter(
                 a == b
         }
 
-        /** Badge định dạng từ mimeType — đơn giản D2, đo thật ở phase sau. */
-        fun formatBadge(mimeType: String, title: String): String {
-            val mt = mimeType.lowercase()
-            return when {
-                "flac" in mt || title.lowercase().endsWith(".flac") -> "FLAC"
-                "wav" in mt || title.lowercase().endsWith(".wav") -> "WAV"
-                "mp3" in mt || "mpeg" in mt -> "MP3"
-                "m4a" in mt || "mp4" in mt -> "M4A"
-                "ogg" in mt || "opus" in mt -> "OGG"
-                else -> "AUDIO"
-            }
-        }
+        /** Badge định dạng — 4.4: delegate sang AudioFormat (single source of truth). */
+        fun formatBadge(mimeType: String, title: String): String =
+            AudioFormat.formatLabel(mimeType, title)
     }
 
     inner class TrackViewHolder(view: View) : RecyclerView.ViewHolder(view) {
