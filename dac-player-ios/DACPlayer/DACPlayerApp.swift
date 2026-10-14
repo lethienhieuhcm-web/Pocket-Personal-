@@ -1,4 +1,5 @@
 import SwiftUI
+import GoogleSignIn
 
 @main
 struct DACPlayerApp: App {
@@ -32,6 +33,9 @@ struct DACPlayerApp: App {
                 .environmentObject(api)
                 .environmentObject(copyManager)
                 .environmentObject(art)
+                .onOpenURL { url in
+                    GIDSignIn.sharedInstance.handle(url)
+                }
         }
     }
 }
