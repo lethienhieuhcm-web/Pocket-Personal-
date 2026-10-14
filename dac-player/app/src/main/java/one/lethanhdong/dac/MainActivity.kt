@@ -57,6 +57,9 @@ class MainActivity : AppCompatActivity() {
     /** ID các track đã tải offline — để hiện trạng thái nút tải. */
     private val downloadedIds = mutableSetOf<String>()
 
+    /** Title track đang phát — để ghép badge chất lượng vào status. */
+    private var currentPlayingTitle: String? = null
+
     private lateinit var authManager: AuthManager
     private lateinit var apiClient: MusicApiClient
     private lateinit var driveAuthManager: one.lethanhdong.dac.player.DriveAuthManager
@@ -138,6 +141,16 @@ class MainActivity : AppCompatActivity() {
         }
 
         refreshAuthUi()
+
+        // 4.4: hiện badge chất lượng nguồn → DAC khi đang phát.
+        lifecycleScope.launch {
+            playerManager.get().audioQuality.collect { q ->
+                val t = currentPlayingTitle
+                if (q != null && t != null) {
+                    statusText.text = "Đang phát: $t — ${q.badgeText()}"
+                }
+            }
+        }
     }
 
     private fun refreshAuthUi() {
@@ -203,14 +216,16 @@ class MainActivity : AppCompatActivity() {
                 // 4.3: ưu tiên file offline đã tải.
                 val local = offlineManager.get().localFile(track.id)
                 if (local != null) {
+                    currentPlayingTitle = track.title
                     statusText.text = "Đang phát offline: ${track.title}"
                     playerManager.get().playLocal(Uri.fromFile(local))
                     return@launch
                 }
                 statusText.text = "Đang tải: ${track.title}"
                 val url = apiClient.streamUrl(track.id, this@MainActivity)
+                currentPlayingTitle = track.title
                 statusText.text = "Đang phát: ${track.title}"
-                playerManager.get().playStream(url)
+                playerManager.get().playStream(url, track.title)
             } catch (e: Exception) {
                 Toast.makeText(this@MainActivity, e.message ?: "Lỗi phát nhạc", Toast.LENGTH_LONG).show()
             }

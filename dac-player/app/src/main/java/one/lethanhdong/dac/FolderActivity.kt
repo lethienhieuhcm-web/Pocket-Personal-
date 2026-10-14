@@ -49,6 +49,9 @@ class FolderActivity : AppCompatActivity() {
     /** ID các track đã tải offline — để hiện trạng thái nút tải. */
     private val downloadedIds = mutableSetOf<String>()
 
+    /** Title track đang phát — để ghép badge chất lượng vào status. */
+    private var currentPlayingTitle: String? = null
+
     private lateinit var apiClient: MusicApiClient
     private lateinit var folderAdapter: FolderAdapter
     private lateinit var trackAdapter: TrackAdapter
@@ -88,6 +91,16 @@ class FolderActivity : AppCompatActivity() {
 
         // 4.2: Đồng bộ index trước khi duyệt (lần đầu full scan, sau incremental).
         syncAndLoad()
+
+        // 4.4: hiện badge chất lượng nguồn → DAC khi đang phát.
+        lifecycleScope.launch {
+            playerManager.get().audioQuality.collect { q ->
+                val t = currentPlayingTitle
+                if (q != null && t != null) {
+                    statusText.text = "Đang phát: $t — ${q.badgeText()}"
+                }
+            }
+        }
     }
 
     private fun syncAndLoad() {
@@ -192,14 +205,16 @@ class FolderActivity : AppCompatActivity() {
                 // 4.3: ưu tiên file offline đã tải.
                 val local = offlineManager.get().localFile(track.id)
                 if (local != null) {
+                    currentPlayingTitle = track.title
                     statusText.text = "Đang phát offline: ${track.title}"
                     playerManager.get().playLocal(Uri.fromFile(local))
                     return@launch
                 }
                 statusText.text = "Đang tải: ${track.title}"
                 val url = apiClient.streamUrl(track.id, this@FolderActivity)
+                currentPlayingTitle = track.title
                 statusText.text = "Đang phát: ${track.title}"
-                playerManager.get().playStream(url)
+                playerManager.get().playStream(url, track.title)
             } catch (e: Exception) {
                 Toast.makeText(
                     this@FolderActivity,
