@@ -11,6 +11,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 
@@ -32,7 +33,7 @@ class GoogleSignInManager(
     private val webClientId: String,
 ) {
     @Serializable
-    private data class IdTokenRequest(val idToken: String, val fp: String? = null)
+    private data class IdTokenRequest(val idToken: String)
 
     @Serializable
     data class GoogleLoginResponse(
@@ -41,6 +42,7 @@ class GoogleSignInManager(
         val role: String = "user",
     )
 
+    private val jsonMediaType = "application/json; charset=utf-8".toMediaType()
     private val credentialManager = CredentialManager.create(context)
     private val authManager = AuthManager(context, baseUrl)
 
@@ -75,12 +77,10 @@ class GoogleSignInManager(
         }
 
         // 2. Gửi ID token lên Worker để verify và tạo session
-        val body = ApiHttp.json.encodeToString(
-            IdTokenRequest(idToken, authManager.fingerprint())
-        )
+        val body = ApiHttp.json.encodeToString(IdTokenRequest(idToken))
         val req = Request.Builder()
             .url("$baseUrl/api/auth/google/idtoken")
-            .post(body.toRequestBody(ApiHttp.jsonMediaType))
+            .post(body.toRequestBody(jsonMediaType))
             .build()
 
         ApiHttp.client.newCall(req).execute().use { resp ->
