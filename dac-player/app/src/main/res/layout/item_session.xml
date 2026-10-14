@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 4.7: 1 dòng phiên đăng nhập -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:padding="12dp">
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/deviceLabel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Android · DAC Player"
+            android:textSize="15sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/sessionMeta"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="IP · hoạt động lần cuối"
+            android:textSize="12sp"
+            android:layout_marginTop="2dp" />
+
+        <TextView
+            android:id="@+id/currentBadge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Thiết bị này"
+            android:textSize="11sp"
+            android:layout_marginTop="2dp"
+            android:visibility="gone" />
+    </LinearLayout>
+
+    <Button
+        android:id="@+id/revokeButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Thu hồi"
+        android:minWidth="0dp" />
+</LinearLayout>
