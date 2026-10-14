@@ -2,6 +2,8 @@ package one.lethanhdong.dac.player
 
 import android.content.Context
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import okhttp3.Request
@@ -45,7 +47,7 @@ class MusicApiClient(
     private val driveAuth by lazy { driveAuthManager ?: DriveAuthManager(context) }
 
     /** 4.6: Mutex serialize refresh — tránh bão request khi nhiều call cùng 401. */
-    private val refreshMutex = kotlinx.coroutines.sync.Mutex()
+    private val refreshMutex = Mutex()
 
     /**
      * 4.6: Gọi API với Drive token, tự refresh + thử lại 1 lần khi Worker báo 401.
