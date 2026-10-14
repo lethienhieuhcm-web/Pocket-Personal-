@@ -21,10 +21,21 @@ struct ImportView: View {
         NavigationStack {
             VStack(spacing: 16) {
                 if !driveAuth.isConnected {
-                    Text("Cần kết nối Google Drive trước khi nhập nhạc.")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
+                    VStack(spacing: 8) {
+                        Text("Cần kết nối Google Drive trước khi nhập nhạc.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                        Button("Kết nối Google Drive") {
+                            Task { await driveAuth.signIn() }
+                        }
+                        .buttonStyle(.borderedProminent)
+                        if let err = driveAuth.errorMessage {
+                            Text(err)
+                                .font(.footnote)
+                                .foregroundStyle(.red)
+                        }
+                    }
                 }
 
                 TextField("Dán link Google Drive share", text: $link)
