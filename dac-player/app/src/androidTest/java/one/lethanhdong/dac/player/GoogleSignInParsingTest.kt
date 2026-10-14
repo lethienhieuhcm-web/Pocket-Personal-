@@ -181,11 +181,12 @@ class GoogleSignInParsingTest {
 
     @Test
     fun response500_withServerMessage_mapsToIt() {
+        // Worker trả lỗi dạng {"error": "..."} — app phải hiện đúng message đó
         try {
-            manager.handleIdTokenResponse(500, """{"message":"lỗi nội bộ"}""")
+            manager.handleIdTokenResponse(500, """{"error":"lỗi máy chủ"}""")
             fail("phải throw cho 500")
         } catch (e: IllegalStateException) {
-            assertEquals("lỗi nội bộ", e.message)
+            assertEquals("lỗi máy chủ", e.message)
         }
     }
 
