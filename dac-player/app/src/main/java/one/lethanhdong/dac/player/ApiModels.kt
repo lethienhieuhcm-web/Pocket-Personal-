@@ -59,6 +59,13 @@ data class ErrorResponse(
  */
 class EmailNotVerifiedException : IllegalStateException("Email chưa được xác nhận. Vui lòng kiểm tra hộp thư và bấm link xác nhận.")
 
+/**
+ * Lỗi riêng khi Drive token hết hạn/sai (Worker trả 401 "Drive token invalid").
+ * Khác với hết phiên đăng nhập — UI bắt riêng để hiện "kết nối lại Drive"
+ * thay vì báo nhầm "hết phiên đăng nhập".
+ */
+class DriveTokenInvalidException : IllegalStateException("Drive token hết hạn. Vui lòng kết nối lại Google Drive.")
+
 // --- dac-pass (GET /api/dac/music, /api/dac/stream/{id}) ---
 
 @Serializable

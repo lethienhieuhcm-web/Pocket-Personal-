@@ -29,6 +29,19 @@ class DriveCopyManager(
 
     private val jsonMediaType = "application/json; charset=utf-8".toMediaType()
 
+    /**
+     * Phân biệt 401 do Drive token hết hạn/sai với 401 do hết phiên đăng nhập.
+     * Worker trả {"error":"Drive token invalid"} khi token Drive sai — UI bắt
+     * DriveTokenInvalidException riêng để hiện "kết nối lại Drive".
+     */
+    private fun checkDriveTokenInvalid(body: String): IllegalStateException {
+        val isDriveToken = runCatching {
+            ApiHttp.json.decodeFromString<ErrorResponse>(body).error
+        }.getOrDefault("").contains("Drive token invalid")
+        return if (isDriveToken) DriveTokenInvalidException()
+        else IllegalStateException("Hết phiên đăng nhập (401)")
+    }
+
     /** POST Worker API với auth + drive token. Throw IllegalStateException nếu lỗi. */
     private suspend fun post(
         path: String,
@@ -66,7 +79,7 @@ class DriveCopyManager(
         )
         when (code) {
             200 -> ApiHttp.json.decodeFromString<ResolveResponse>(body)
-            401 -> throw IllegalStateException("Hết phiên đăng nhập (401)")
+            401 -> throw checkDriveTokenInvalid(body)
             400 -> throw IllegalStateException(
                 ApiHttp.readErrorMessage(body) ?: "Link không hợp lệ (400)"
             )
@@ -96,7 +109,7 @@ class DriveCopyManager(
         )
         when (code) {
             200 -> ApiHttp.json.decodeFromString<CopyResponse>(body)
-            401 -> throw IllegalStateException("Hết phiên đăng nhập (401)")
+            401 -> throw checkDriveTokenInvalid(body)
             400, 404, 429, 502 -> throw IllegalStateException(
                 ApiHttp.readErrorMessage(body) ?: "Copy lỗi: HTTP $code"
             )

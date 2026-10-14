@@ -56,7 +56,15 @@ class MusicApiClient(
                 val body = resp.body?.string().orEmpty()
                 when (resp.code) {
                     200 -> body
-                    401 -> throw IllegalStateException("Hết phiên đăng nhập (401)")
+                    401 -> {
+                        val isDriveToken = runCatching {
+                            ApiHttp.json.decodeFromString<ErrorResponse>(body).error
+                        }.getOrDefault("").contains("Drive token invalid")
+                        if (isDriveToken) {
+                            throw DriveTokenInvalidException()
+                        }
+                        throw IllegalStateException("Hết phiên đăng nhập (401)")
+                    }
                     400 -> throw IllegalStateException(
                         ApiHttp.readErrorMessage(body) ?: "Lỗi yêu cầu (400)"
                     )
@@ -140,10 +148,10 @@ class MusicApiClient(
         try {
             val body = get("/api/dac/stream/$id", driveToken)
             return ApiHttp.json.decodeFromString<StreamResponse>(body).url
+        } catch (e: DriveTokenInvalidException) {
+            driveAuth.invalidateToken(driveToken)
+            throw e
         } catch (e: IllegalStateException) {
-            if (e.message?.contains("Drive token invalid") == true) {
-                driveAuth.invalidateToken(driveToken)
-            }
             throw e
         }
     }
