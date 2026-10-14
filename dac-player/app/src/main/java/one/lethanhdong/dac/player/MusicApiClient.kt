@@ -3,7 +3,9 @@ package one.lethanhdong.dac.player
 import android.content.Context
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.Serializable
 import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 
 /**
  * Client gọi Worker API — plan "dac-pass" (Chốt 2026-10-13) + dac-app 1.4.
@@ -45,12 +47,26 @@ class MusicApiClient(
 
     /** GET Worker API, trả về body string. Throw IllegalStateException nếu lỗi. */
     private suspend fun get(path: String, driveToken: String? = null): String =
+        execute(path, driveToken, method = "GET")
+
+    /** POST Worker API (body rỗng), trả về body string. */
+    private suspend fun post(path: String, driveToken: String? = null): String =
+        execute(path, driveToken, method = "POST")
+
+    private suspend fun execute(
+        path: String,
+        driveToken: String? = null,
+        method: String,
+    ): String =
         withContext(Dispatchers.IO) {
             val token = authToken() ?: throw IllegalStateException("Chưa đăng nhập")
             val builder = Request.Builder().url(baseUrl + path)
                 .header("Authorization", "Bearer $token")
             if (driveToken != null) {
                 builder.header("X-Drive-Token", driveToken)
+            }
+            if (method == "POST") {
+                builder.post(ByteArray(0).toRequestBody(null))
             }
             ApiHttp.client.newCall(builder.build()).execute().use { resp ->
                 val body = resp.body?.string().orEmpty()
@@ -126,6 +142,24 @@ class MusicApiClient(
     suspend fun clearCache() {
         MusicDatabase.getInstance(context).trackDao().clear()
     }
+
+    /**
+     * 4.2: Đồng bộ index Drive vào D1 — POST /api/dac/sync.
+     * Lần đầu full scan (lâu), các lần sau incremental (nhanh).
+     * App gọi khi mở màn hình Thư mục / pull-to-refresh.
+     */
+    suspend fun syncIndex(activity: android.app.Activity? = null): SyncResult {
+        val driveToken = driveAuth.getToken(activity)
+        val body = post("/api/dac/sync", driveToken)
+        return ApiHttp.json.decodeFromString(body)
+    }
+
+    @Serializable
+    data class SyncResult(
+        val full: Boolean = false,
+        val synced: Int = 0,
+        val total: Int = 0,
+    )
 
     /**
      * 4.1: Duyệt thư mục Drive — GET /api/dac/folders?parentId=...
