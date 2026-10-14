@@ -20,8 +20,9 @@ struct PlayerView: View {
                         .bold()
                         .multilineTextAlignment(.center)
                         .lineLimit(2)
-                    if engine.sampleRate > 0 {
-                        Text("\(Int(engine.sampleRate)) Hz")
+                    // 4.4: badge chất lượng nguồn → DAC (vd "FLAC • 24-bit • 96 kHz")
+                    if !engine.qualityBadge.isEmpty {
+                        Text(engine.qualityBadge)
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                             .monospacedDigit()
