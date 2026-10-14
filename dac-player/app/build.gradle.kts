@@ -190,9 +190,9 @@ dependencies {
     // vừa là library vừa là namespace gây xung đột accessor trong Gradle.
     implementation("androidx.credentials:credentials:1.3.0")
     implementation("androidx.credentials:credentials-play-services-auth:1.3.0")
-    // GetGoogleIdOption nằm trong googleid (không phải play-services-auth).
-    // Verify qua Google Maven 2026-10-14, latest stable 1.2.1.
-    implementation("com.google.android.libraries.identity.googleid:googleid:1.2.1")
+    // GetGoogleIdOption nằm trong googleid.
+    // 1.2.1 compile bằng Kotlin quá mới (lỗi incompatible) → dùng 1.1.1.
+    implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
     // Room testing cho instrumented test DAO.
     androidTestImplementation(libs.room.testing)
 }
