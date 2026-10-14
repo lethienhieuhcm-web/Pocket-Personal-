@@ -68,18 +68,6 @@ jobs:
         with:
           gradle-version: "9.3.1"
 
-      # DEBUG TẠM (1.5): run #77 fail parse libs.versions.toml dù file đã verify
-      # byte-identical + parser Gradle 9.3.1 parse OK ở local. Dump file trên runner
-      # để xem runner thực sự đọc phải bytes nào. XOÁ step này sau khi rõ nguyên nhân.
-      - name: DEBUG dump catalog file on runner
-        run: |
-          echo "=== pwd ==="; pwd
-          echo "=== sha256 ==="; sha256sum gradle/libs.versions.toml
-          echo "=== bytes ==="; wc -c gradle/libs.versions.toml
-          echo "=== first 3 lines cat -A ==="; head -3 gradle/libs.versions.toml | cat -A
-          echo "=== grep plus ==="; grep -n "+" gradle/libs.versions.toml || echo "no plus found"
-          echo "=== od first 100 bytes ==="; head -c 100 gradle/libs.versions.toml | od -c | head -5
-
       - name: Generate Gradle wrapper
         # Tạo wrapper tại chỗ thay vì push file jar binary qua API
         # (tránh lỗi encode khi upload binary qua GitHub API)
