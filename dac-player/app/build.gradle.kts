@@ -21,8 +21,8 @@ android {
         // decent-player yêu cầu Android 10+ (API 29) — doc GETTING_STARTED.md
         minSdk = 29
         targetSdk = 36
-        versionCode = 4
-        versionName = "0.4.0-google-signin"
+        versionCode = 5
+        versionName = "0.4.1-drive-token-fix"
         // 1.2: instrumented test chạy trên emulator CI.
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
