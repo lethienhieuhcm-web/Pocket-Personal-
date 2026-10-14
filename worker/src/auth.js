@@ -752,3 +752,108 @@ export async function handleGoogleCallback(request, env){
   return new Response(html, {headers:{"Content-Type":"text/html;charset=UTF-8","Cache-Control":"no-store"}});
  }catch(e){ return new Response("Callback error: "+(e.message||e), {status:500}); }
 }
+
+// 2.4: POST /api/auth/google/idtoken — Android Credential Manager flow.
+// Verify Google ID token qua JWKS (không tin client, không cần client_secret).
+// Request: { idToken: "<JWT>" }
+// Response: { token, email, role, ... } giống /api/auth/login
+// Lỗi: 401 { error: 'invalid_token' }
+export async function handleGoogleIdToken(request, env){
+  let d; try{ d = await request.json(); }catch(e){ return jerr("Bad JSON", 400); }
+  const idToken = String(d.idToken || "");
+  if(!idToken) return jerr("Missing idToken", 400);
+
+  // 1. Parse JWT (header.payload.signature)
+  const parts = idToken.split(".");
+  if(parts.length !== 3) return jerr("invalid_token", 401);
+  let header, payload;
+  try{
+    header = JSON.parse(atob(parts[0].replace(/-/g, "+").replace(/_/g, "/")));
+    payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
+  }catch(e){ return jerr("invalid_token", 401); }
+
+  // 2. Fetch Google JWKS, tìm key theo kid
+  let jwks;
+  try{
+    const r = await fetch("https://www.googleapis.com/oauth2/v3/certs");
+    if(!r.ok) return jerr("Failed to fetch JWKS", 500);
+    jwks = await r.json();
+  }catch(e){ return jerr("Failed to fetch JWKS", 500); }
+  const jwk = (jwks.keys || []).find(k => k.kid === header.kid);
+  if(!jwk) return jerr("invalid_token", 401);
+
+  // 3. Verify signature (RS256) bằng Web Crypto
+  try{
+    const key = await crypto.subtle.importKey(
+      "jwk", jwk,
+      { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+      false, ["verify"]
+    );
+    const data = new TextEncoder().encode(parts[0] + "." + parts[1]);
+    const sig = Uint8Array.from(atob(parts[2].replace(/-/g, "+").replace(/_/g, "/")), c => c.charCodeAt(0));
+    const valid = await crypto.subtle.verify("RSASSA-PKCS1-v1_5", key, sig, data);
+    if(!valid) return jerr("invalid_token", 401);
+  }catch(e){ return jerr("invalid_token", 401); }
+
+  // 4. Verify claims (theo checklist Google)
+  const now = Math.floor(Date.now() / 1000);
+  const aud = String(payload.aud || "");
+  // aud phải là Web client ID của mình (config trong Worker secret GOOGLE_WEB_CLIENT_ID)
+  const expectedAud = env.GOOGLE_WEB_CLIENT_ID || "";
+  if(!expectedAud || aud !== expectedAud) return jerr("invalid_token", 401);
+  const iss = String(payload.iss || "");
+  if(iss !== "https://accounts.google.com" && iss !== "accounts.google.com"){
+    return jerr("invalid_token", 401);
+  }
+  if(!payload.exp || payload.exp < now) return jerr("invalid_token", 401);
+  if(payload.email_verified !== true && payload.email_verified !== "true"){
+    return jerr("invalid_token", 401);
+  }
+  const email = String(payload.email || "").toLowerCase();
+  const sub = String(payload.sub || "");
+  if(!email || !sub) return jerr("invalid_token", 401);
+
+  // 5. Tìm hoặc tạo user
+  // - google_sub đã có → login
+  // - email đã tồn tại + email_verified → link (thêm google_sub, giữ password)
+  // - mới → tạo user (verified=true, auth_provider='google')
+  let u = await getUser(env, email);
+  if(u){
+    // Link nếu chưa có google_sub
+    if(!u.google_sub){
+      u.google_sub = sub;
+      u.auth_provider = u.auth_provider || "password"; // giữ provider cũ, thêm google
+      await dbPutUser(env, u);
+    } else if(u.google_sub !== sub){
+      // google_sub khác → token không khớp user (chặn confused deputy)
+      return jerr("invalid_token", 401);
+    }
+  } else {
+    // User mới từ Google — email đã verify bởi Google nên verified=true
+    const salt = btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(16))));
+    u = {
+      email, salt, hash: "", role: "user", ageGroup: "adult",
+      created: Date.now(), verified: true,
+      google_sub: sub, auth_provider: "google",
+      name: String(payload.name || ""), picture: String(payload.picture || ""),
+    };
+    if(u.email === OWNER_EMAIL) u.role = "admin";
+    await dbPutUser(env, u);
+  }
+
+  // 6. Tạo session (giống login)
+  const token = randToken();
+  const fp = makeFingerprint(request, d.fp);
+  const planInfo = getActivePlan(u);
+  await enforceSessionLimit(env, u.email, planInfo.plan === "admin" ? "admin" : planInfo.plan);
+  await dbPutSession(env, {
+    email: u.email, exp: Date.now()+7*86400000, token, fp,
+    ip: request.headers.get("CF-Connecting-IP")||"",
+    ua: request.headers.get("User-Agent")||"", created_at: Date.now()
+  });
+  const role = (u.email === OWNER_EMAIL) ? "admin" : "user";
+  return new Response(JSON.stringify({
+    token, email: u.email, role,
+    ageGroup: u.ageGroup||"adult", plan: planInfo.plan, plan_expires: planInfo.expires,
+  }), {headers:{"Content-Type":"application/json"}});
+}

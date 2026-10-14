@@ -5,7 +5,7 @@ import {handleAIExplain, handleAIQuiz, handleByokProxy, handleAiRelay} from './a
 import {handleStockAgent, handleAgentStatus} from './stock_agent.js';
 import {handleVocabAdd, handleVocabDue, handleVocabReview} from './vocab.js';
 import {handleAnalytics, handleInsights, handleBankGet, handleBankPost, handleReadingsList, handleReadingsCreate, handleReadingGet, handleReadingDelete, handleReadingAudioPut, handleAdminUsers, handleAdminRole, handleAdminDelete} from './library.js';
-import {handleRegister, handleSendCode, handleVerifyCode, handleLogin, handleLogout, handleMe, handleGoogleLogin, handleGoogleCallback, handleListSessions, handleRevokeSession, handleVerifyEmail, handleResendVerification, handleForgotPassword, handleResetPassword, handleResetPasswordPage } from './auth.js';
+import {handleRegister, handleSendCode, handleVerifyCode, handleLogin, handleLogout, handleMe, handleGoogleLogin, handleGoogleCallback, handleGoogleIdToken, handleListSessions, handleRevokeSession, handleVerifyEmail, handleResendVerification, handleForgotPassword, handleResetPassword, handleResetPasswordPage } from './auth.js';
 import {handleGetPlan, handleGetUsage, handleSetPlan} from './billing.js';
 import {handleDriveAuthUrl, handleDriveCallback, handleDriveStatus, handleDriveDisconnect, handleDriveMusic, handleDriveStream, handleDriveUpload} from './drive.js';
 import {handleDacMusic, handleDacStream, handleDacResolve, handleDacCopy} from './dac.js';
@@ -76,6 +76,8 @@ const ROUTES = [
   ['GET',    '/api/auth/me',         handleMe,               'user'],
   ['GET',    '/api/auth/google',     handleGoogleLogin,      'public'],
   ['GET',    '/api/auth/google/callback', handleGoogleCallback, 'custom'],
+  // 2.4: Android Credential Manager — ID token flow (không cần client_secret).
+  ['POST',   '/api/auth/google/idtoken', handleGoogleIdToken, 'public'],
   // --- billing ---
   ['GET',    '/api/user/plan',       handleGetPlan,          'user'],
   ['GET',    '/api/user/usage',      handleGetUsage,         'user'],
@@ -177,6 +179,7 @@ function internalOk(request, env){
 // Limits: {endpoint_pattern: [max_requests, window_seconds]}
 const RATE_LIMITS = {
   "/api/auth/login": [10, 60],       // 10 logins/min per IP
+  "/api/auth/google/idtoken": [10, 60], // 2.4: như login (10/phút)
   "/api/auth/register": [5, 3600],    // 5 registers/hour per IP
   "/api/auth/send-code": [3, 3600],   // 3 codes/hour per IP
   "/api/auth/verify-code": [10, 60],  // 10 verifies/min per IP
