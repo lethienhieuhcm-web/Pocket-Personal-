@@ -20,14 +20,20 @@
         android:label="@string/app_name"
         android:theme="@style/Theme.DacPlayer">
 
+        <!-- 1.3: AuthActivity là màn hình đầu tiên (Đăng nhập / Đăng ký).
+             MainActivity chỉ chạy khi đã đăng nhập; nhận USB_DEVICE_ATTACHED. -->
         <activity
-            android:name=".MainActivity"
+            android:name=".AuthActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+        </activity>
 
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
             <!-- Nhận sự kiện cắm DAC: Android hiện dialog xin quyền,
                  app claim thiết bị trước khi snd-usb-audio của kernel bind -->
             <intent-filter>
