@@ -1,0 +1,152 @@
+# .github/workflows/build-ffmpeg-lgpl.yml — dac-app Phase 1.5
+# Build Media3 FFmpeg decoder AAR (LGPL) from source, one-time per Media3 bump.
+# Recipe pinned (DECISIONS.md D11, verified from real sources 2026-10-14):
+#   - androidx/media tag 1.9.3 (khớp Media3 runtime của app — AAR phải khớp version,
+#     AAR 1.9.0 gắn vào app 1.9.3 sẽ ffmpeg=false mà không báo lỗi).
+#   - FFmpeg branch release/6.0 (README ở đúng tag 1.9.3: "We currently recommend
+#     version 6.0"). KHÔNG lên n7.x — silo ghi rõ n7.x break JNI glue của Media3.
+#   - NDK 27.1.12297006 (CHỐT 1 NDK, theo recipe kroma đã build thật).
+#   - build_ffmpeg.sh của Media3 KHÔNG bật --enable-gpl (đã verify source 1.9.3:
+#     COMMON_OPTIONS chỉ có --disable-everything + --enable-decoder=...).
+#   - CMakeLists ở tag 1.9.3 ĐÃ có sẵn 16 KB max-page-size flag cho ffmpegJNI
+#     → không cần patch như silo (silo ở 1.11.0).
+# Output: media3-decoder-ffmpeg-1.9.3.aar (artifact, 90 ngày) + build-hashes.txt
+# (commit hash thật của Media3 + FFmpeg lúc build — branch release/6.0 vẫn move,
+# hash mới là pin thật). Sau đó tải AAR về, đặt vào dac-player/app/libs/
+# với tên media3-ffmpeg-lgpl.aar (theo plan), rồi làm tiếp bước app (1.5e/1.5f).
+# Chạy: workflow_dispatch (tay) hoặc push sửa chính file workflow này.
+# KHÔNG chạy theo push code app (build 1 lần, dùng cho nhiều build APK sau).
+
+name: Build FFmpeg LGPL AAR
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/build-ffmpeg-lgpl.yml"
+
+jobs:
+  build-ffmpeg-aar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      MEDIA3_TAG: "1.9.3"
+      FFMPEG_BRANCH: "release/6.0"
+      NDK_VERSION: "27.1.12297006"
+      # ANDROID_ABI ở đây là API level floor cho NDK toolchain (README + kroma + silo
+      # đều dùng 21). App minSdk=29, floor 21 vẫn tương thích (chỉ yêu cầu API >= 21).
+      FFMPEG_API_LEVEL: "21"
+
+    steps:
+      # Dọn ổ đĩa TRƯỚC mọi step khác — chuẩn ngành, pattern đã dùng ở build-dac-apk.yml
+      # (run #36: emulator cần 7372MB nhưng chỉ còn 7050MB → FATAL).
+      # android: false là BẮT BUỘC (mặc định true sẽ xoá luôn Android SDK).
+      - name: Free disk space
+        uses: jlumbroso/free-disk-space@main
+        with:
+          android: false
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: false
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Setup Android SDK
+        # ubuntu-latest đã có sẵn Android SDK ở /usr/local/lib/android/sdk.
+        # GITHUB_PATH chỉ có hiệu lực từ step SAU → sdkmanager gọi ở step riêng.
+        run: |
+          echo "ANDROID_HOME=/usr/local/lib/android/sdk" >> $GITHUB_ENV
+          echo "ANDROID_SDK_ROOT=/usr/local/lib/android/sdk" >> $GITHUB_ENV
+          echo "/usr/local/lib/android/sdk/cmdline-tools/latest/bin" >> $GITHUB_PATH
+          echo "/usr/local/lib/android/sdk/platform-tools" >> $GITHUB_PATH
+          yes | sdkmanager --licenses > /dev/null 2>&1 || true
+
+      - name: Install NDK 27.1.12297006 + CMake + platform
+        run: |
+          sdkmanager "ndk;${NDK_VERSION}" "cmake;3.22.1" "platforms;android-36" "build-tools;36.0.0"
+          echo "ANDROID_NDK_HOME=/usr/local/lib/android/sdk/ndk/${NDK_VERSION}" >> $GITHUB_ENV
+          cat "/usr/local/lib/android/sdk/ndk/${NDK_VERSION}/source.properties"
+
+      - name: Clone Media3 at tag 1.9.3
+        run: |
+          git clone --depth 1 --branch "$MEDIA3_TAG" https://github.com/androidx/media.git media3
+          git -C media3 rev-parse HEAD | tee media3-commit.txt
+          echo "Media3 tag $MEDIA3_TAG commit: $(cat media3-commit.txt)"
+
+      - name: Clone FFmpeg release/6.0 into decoder jni
+        run: |
+          MODULE="$PWD/media3/libraries/decoder_ffmpeg/src/main"
+          # Mirror chính (https) trước, fallback mirror GitHub nếu TLS/network chặn.
+          git clone --depth 1 --branch "$FFMPEG_BRANCH" https://git.ffmpeg.org/ffmpeg.git "$MODULE/jni/ffmpeg" \
+            || git clone --depth 1 --branch "$FFMPEG_BRANCH" https://github.com/FFmpeg/FFmpeg.git "$MODULE/jni/ffmpeg"
+          git -C "$MODULE/jni/ffmpeg" rev-parse HEAD | tee ffmpeg-commit.txt
+          echo "FFmpeg branch $FFMPEG_BRANCH commit: $(cat ffmpeg-commit.txt)"
+
+      - name: Guard — build_ffmpeg.sh must NOT contain --enable-gpl
+        # LGPL là yêu cầu cứng (D3). Nếu script upstream một ngày nào đó thêm
+        # --enable-gpl thì build PHẢI dừng, không được lặng lẽ ra AAR GPL.
+        run: |
+          if grep -q "enable-gpl" media3/libraries/decoder_ffmpeg/src/main/jni/build_ffmpeg.sh; then
+            echo "::error::build_ffmpeg.sh contains --enable-gpl — aborting LGPL build"
+            exit 1
+          fi
+          echo "No --enable-gpl in build_ffmpeg.sh: LGPL-only build confirmed"
+
+      - name: Build FFmpeg (LGPL, decoders for dac-app)
+        # Decoders = đúng list plan 1.5 (khớp kroma): flac alac mp3 aac opus vorbis
+        # pcm_mulaw pcm_alaw ac3 eac3 dca mlp truehd. Script tự build 4 ABI
+        # (armeabi-v7a, arm64-v8a, x86, x86_64); AGP strip ABI thừa lúc build APK.
+        run: |
+          MODULE="$PWD/media3/libraries/decoder_ffmpeg/src/main"
+          cd "$MODULE/jni"
+          ./build_ffmpeg.sh "$MODULE" "$ANDROID_NDK_HOME" linux-x86_64 "$FFMPEG_API_LEVEL" \
+            flac alac mp3 aac opus vorbis pcm_mulaw pcm_alaw ac3 eac3 dca mlp truehd
+
+      - name: Assemble decoder AAR
+        # Dùng wrapper CỦA Media3 (gradlew trong checkout), KHÔNG dùng Gradle 9.3.1
+        # của app — Media3 1.9.3 có Gradle/AGP riêng, wrapper của nó mới đúng.
+        run: |
+          cd media3
+          ./gradlew :lib-decoder-ffmpeg:assembleRelease --no-daemon --stacktrace
+
+      - name: Collect AAR + hashes
+        run: |
+          # Media3 redirect buildDir → buildout/ (xem common_config.gradle);
+          # fallback build/outputs/aar/ cho layout tương lai.
+          AAR=$(find media3/libraries/decoder_ffmpeg/buildout/outputs/aar \
+                       media3/libraries/decoder_ffmpeg/build/outputs/aar \
+                       -name "*-release.aar" -print 2>/dev/null | head -n1)
+          test -n "$AAR" && test -f "$AAR" || { echo "::error::AAR not found under buildout|build/outputs/aar"; exit 1; }
+          cp "$AAR" "media3-decoder-ffmpeg-${MEDIA3_TAG}.aar"
+          echo "--- AAR contents (must list one libffmpegJNI.so per ABI + FfmpegAudioRenderer) ---"
+          unzip -l "media3-decoder-ffmpeg-${MEDIA3_TAG}.aar" | grep -E "(\.so|FfmpegAudioRenderer)"
+          sha256sum "media3-decoder-ffmpeg-${MEDIA3_TAG}.aar" | tee aar-sha256.txt
+          {
+            echo "Media3 tag: $MEDIA3_TAG"
+            echo "Media3 commit: $(cat media3-commit.txt)"
+            echo "FFmpeg branch: $FFMPEG_BRANCH"
+            echo "FFmpeg commit: $(cat ffmpeg-commit.txt)"
+            echo "NDK: $NDK_VERSION"
+            cat aar-sha256.txt
+          } | tee build-hashes.txt
+          cat build-hashes.txt >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload AAR artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: media3-decoder-ffmpeg-1.9.3
+          path: |
+            media3-decoder-ffmpeg-1.9.3.aar
+            build-hashes.txt
+            aar-sha256.txt
+          retention-days: 90
