@@ -15,7 +15,16 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 /**
  * 2.4: test phần parse credential của Google Sign-In — không cần tài khoản
  * Google thật, không mở bottom sheet.
+ *
+ * Lưu ý: các key BUNDLE_KEY_* của GoogleIdTokenCredential là internal trong
+ * lib googleid 1.1.1, nên test dùng đúng giá trị string đã verify từ binary
+ * chính thức (googleid-1.1.1.aar trên dl.google.com), không đoán.
  */
+private const val BUNDLE_KEY_ID =
+    "com.google.android.libraries.identity.googleid.BUNDLE_KEY_ID"
+private const val BUNDLE_KEY_ID_TOKEN =
+    "com.google.android.libraries.identity.googleid.BUNDLE_KEY_ID_TOKEN"
+
 @RunWith(AndroidJUnit4::class)
 class GoogleSignInParsingTest {
 
@@ -28,8 +37,9 @@ class GoogleSignInParsingTest {
 
     private fun googleCredential(idToken: String?): CustomCredential {
         val data = Bundle().apply {
+            putString(BUNDLE_KEY_ID, "user@gmail.com")
             if (idToken != null) {
-                putString(GoogleIdTokenCredential.BUNDLE_KEY_ID_TOKEN, idToken)
+                putString(BUNDLE_KEY_ID_TOKEN, idToken)
             }
         }
         return CustomCredential(
@@ -62,6 +72,17 @@ class GoogleSignInParsingTest {
     @Test
     fun missingIdTokenInBundle_returnsNull() {
         val cred = googleCredential(null)
+        assertNull(manager.extractGoogleIdToken(cred))
+    }
+
+    @Test
+    fun missingIdInBundle_returnsNull() {
+        val cred = CustomCredential(
+            type = GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL,
+            data = Bundle().apply {
+                putString(BUNDLE_KEY_ID_TOKEN, "header.payload.signature")
+            },
+        )
         assertNull(manager.extractGoogleIdToken(cred))
     }
 
