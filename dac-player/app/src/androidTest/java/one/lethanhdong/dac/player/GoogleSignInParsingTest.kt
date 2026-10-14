@@ -7,7 +7,11 @@ import androidx.credentials.PasswordCredential
 import androidx.test.core.app.ApplicationProvider
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Assert.fail
+import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -111,5 +115,102 @@ class GoogleSignInParsingTest {
             """{"token":"sess-abc","email":"user@gmail.com","role":"user","verified":true}"""
         )
         assertEquals("sess-abc", resp.token)
+    }
+
+    // ---- handleIdTokenResponse: 2.4 test phần an toàn (không cần mạng) ----
+
+    private val auth = AuthManager(context, "https://example.test")
+
+    @Before
+    fun clearAuthState() {
+        context.deleteSharedPreferences("pp_auth")
+        context.deleteSharedPreferences("pp_auth_enc")
+    }
+
+    @Test
+    fun response200_savesSessionAndReturnsLogin() {
+        val login = manager.handleIdTokenResponse(
+            200,
+            """{"token":"sess-abc","email":"user@gmail.com","role":"user"}""",
+        )
+        assertEquals("sess-abc", login.token)
+        assertTrue("session phải được lưu", auth.isLoggedIn())
+        assertEquals("sess-abc", auth.token())
+        assertEquals("user@gmail.com", auth.email())
+    }
+
+    @Test
+    fun response200_invalidJson_throws() {
+        try {
+            manager.handleIdTokenResponse(200, "not-json")
+            fail("phải throw khi body 200 không parse được")
+        } catch (e: Exception) {
+            assertFalse(auth.isLoggedIn())
+        }
+    }
+
+    @Test
+    fun response200_missingToken_throws() {
+        try {
+            manager.handleIdTokenResponse(200, """{"email":"user@gmail.com"}""")
+            fail("phải throw khi thiếu token")
+        } catch (e: Exception) {
+            assertFalse(auth.isLoggedIn())
+        }
+    }
+
+    @Test
+    fun response401_mapsToInvalidTokenMessage() {
+        try {
+            manager.handleIdTokenResponse(401, """{"error":"invalid_token"}""")
+            fail("phải throw cho 401")
+        } catch (e: IllegalStateException) {
+            assertEquals("Google token không hợp lệ", e.message)
+        }
+    }
+
+    @Test
+    fun response429_mapsToRateLimitMessage() {
+        try {
+            manager.handleIdTokenResponse(429, "")
+            fail("phải throw cho 429")
+        } catch (e: IllegalStateException) {
+            assertEquals("Thử quá nhiều lần, đợi một lúc rồi thử lại", e.message)
+        }
+    }
+
+    @Test
+    fun response500_withServerMessage_mapsToIt() {
+        try {
+            manager.handleIdTokenResponse(500, """{"message":"lỗi nội bộ"}""")
+            fail("phải throw cho 500")
+        } catch (e: IllegalStateException) {
+            assertEquals("lỗi nội bộ", e.message)
+        }
+    }
+
+    @Test
+    fun response500_emptyBody_mapsToFallback() {
+        try {
+            manager.handleIdTokenResponse(500, "")
+            fail("phải throw cho 500")
+        } catch (e: IllegalStateException) {
+            assertEquals("Đăng nhập Google thất bại", e.message)
+        }
+    }
+
+    @Test
+    fun blankWebClientId_throwsNotConfigured() {
+        val unconfigured = GoogleSignInManager(
+            context,
+            baseUrl = "https://example.test",
+            webClientId = "",
+        )
+        try {
+            unconfigured.requireConfigured()
+            fail("phải throw khi webClientId rỗng")
+        } catch (e: IllegalStateException) {
+            assertEquals("Đăng nhập Google chưa được cấu hình", e.message)
+        }
     }
 }
