@@ -7,6 +7,7 @@ struct DACPlayerApp: App {
     @StateObject private var engine: AudioEngine
     @StateObject private var api: MusicApiClient
     @StateObject private var copyManager: DriveCopyManager
+    @StateObject private var art: CoverArtManager
 
     @MainActor
     init() {
@@ -16,8 +17,10 @@ struct DACPlayerApp: App {
         _driveAuth = StateObject(wrappedValue: d)
         _engine = StateObject(wrappedValue: AudioEngine())
         let tokenClosure: () -> String? = { [weak d] in d?.token() }
-        _api = StateObject(wrappedValue: MusicApiClient(auth: a, driveToken: tokenClosure))
+        let client = MusicApiClient(auth: a, driveToken: tokenClosure)
+        _api = StateObject(wrappedValue: client)
         _copyManager = StateObject(wrappedValue: DriveCopyManager(auth: a, driveToken: tokenClosure))
+        _art = StateObject(wrappedValue: CoverArtManager(api: client))
     }
 
     var body: some Scene {
@@ -28,6 +31,7 @@ struct DACPlayerApp: App {
                 .environmentObject(engine)
                 .environmentObject(api)
                 .environmentObject(copyManager)
+                .environmentObject(art)
         }
     }
 }
