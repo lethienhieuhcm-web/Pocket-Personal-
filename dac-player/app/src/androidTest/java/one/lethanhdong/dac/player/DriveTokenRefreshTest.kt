@@ -27,7 +27,7 @@ class DriveTokenRefreshTest {
 
         override suspend fun getToken(activity: android.app.Activity?): String {
             getTokenCalls++
-            return tokens.removeFirst()
+            return tokens.removeAt(0)  // removeFirst() là Java 21 API, không có trên emulator cũ
         }
 
         override fun invalidateToken(token: String) {
