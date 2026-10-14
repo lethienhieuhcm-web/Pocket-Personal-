@@ -81,11 +81,24 @@ jobs:
         # khi đã có đủ 4 secrets: Dac_KEYSTORE_B64/PASSWORD/ALIAS/PASSWORD.
         run: ./gradlew assembleDebug --no-daemon --stacktrace
 
+      - name: Build deploy APK (arm64-only)
+        # 1.6: buildType "deploy" = arm64-v8a only, ký debug key — APK cho trang
+        # /dac. Debug APK có thêm x86_64 (cho emulator) nên 28MB, vượt giới hạn
+        # 25 MiB của Cloudflare Workers assets; bản deploy arm64-only ~25MB.
+        run: ./gradlew assembleDeploy --no-daemon --stacktrace
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: dac-player-apk-debug
           path: dac-player/app/build/outputs/apk/debug/*.apk
+          retention-days: 30
+
+      - name: Upload deploy APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: dac-player-apk-deploy
+          path: dac-player/app/build/outputs/apk/deploy/*.apk
           retention-days: 30
 
   # Job emulator — test 1.2 (EncryptedSharedPreferences) + instrumented test trên máy ảo.
