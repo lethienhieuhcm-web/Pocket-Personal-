@@ -459,8 +459,48 @@ func login(email: String, password: String) async -> Result {
 ### Phase 4 — Hoàn thiện (cả 2 platform)
 
 **Mục tiêu:** Tính năng nâng cao, polish, chuẩn bị launch.
+**Nguyên tắc sắp xếp (học từ ông lớn, chốt 2026-10-14):** table stakes trước (cái nào cả 5 ông đều có thì mình phải có), rồi đến nền tảng tốc độ, rồi đến điểm khác biệt của Drive, rồi polish. Chi tiết nghiên cứu: artifact "DAC Player Competitive Research".
 
-#### Bước 4.1 — Access + Refresh token (cả 2 platform)
+#### Bước 4.1 — Duyệt theo thư mục Drive (cả 2 platform) ✅ PASS 2026-10-14
+
+| Việc | Chi tiết | Học từ |
+|------|----------|--------|
+| Folder tree | Duyệt nhạc theo cây thư mục Drive (thay vì list phẳng hiện tại) | UAPP "True folder playback" — cả 5 ông đều có |
+| Worker API | Endpoint trả cây thư mục + breadcrumb | — |
+| Vì sao trước | Tag nhạc hi-res lộn xộn, folder là nguồn đáng tin duy nhất | Nghiên cứu Q3 |
+
+#### Bước 4.2 — D1 index + sync tăng dần (Worker)
+
+| Việc | Chi tiết | Học từ |
+|------|----------|--------|
+| Index nhạc vào D1 | Lưu cây file + metadata cơ bản per user | Nền cho tìm kiếm nhanh |
+| Incremental sync | Drive changes API (pageToken per user), lần đầu quét full, sau chỉ lấy thay đổi | Dropbox delta API (lý do UAPP/HiBy chọn Dropbox thay vì Drive) |
+| Vì sao | List hàng nghìn file qua Drive API chậm (phân trang) — index làm folder browse nhanh | Khắc phục điểm yếu Drive #2 |
+
+#### Bước 4.3 — Cache offline + retry/backoff (cả 2 platform)
+
+| Việc | Chi tiết | Học từ |
+|------|----------|--------|
+| Cache bài đã nghe | Lưu file local (Room Android / FileManager iOS), LRU, giới hạn dung lượng do user đặt | Ông lớn không ai làm (không stream cloud) — đây là hào của mình |
+| Retry + backoff | Dính 429/quota → backoff mũ, báo UI rõ ràng | Khắc phục điểm yếu Drive #3 |
+| Chế độ offline | Hết mạng vẫn phát bài đã cache | — |
+
+#### Bước 4.4 — Badge sample rate nguồn → DAC (cả 2 platform)
+
+| Việc | Chi tiết | Học từ |
+|------|----------|--------|
+| Hiển thị 2 số | Format nguồn (VD 96kHz/24-bit) + tốc độ thực ra DAC | HiBy output-stats (long-press) — best-in-class |
+| Chứng minh bit-perfect | User thấy DAC nhận đúng rate của file, không resample lén | Điểm yếu của UAPP ("best guess", bị Head-Fi chê) |
+
+#### Bước 4.5 — Gapless playback (cả 2 platform)
+
+| Việc | Chi tiết | Học từ |
+|------|----------|--------|
+| Android | Nếu decent-player hỗ trợ → bật gapless | Neutron "sample accurate" |
+| iOS | AVQueuePlayer hoặc custom gapless logic | — |
+| Nguyên tắc | 1 output stream liên tục, pre-decode bài tiếp ở boundary — KHÔNG crossfade | Onkyo chỉ có crossfade = điểm trừ |
+
+#### Bước 4.6 — Access + Refresh token (cả 2 platform)
 
 | Việc | Chi tiết | Học từ |
 |------|----------|--------|
@@ -468,9 +508,9 @@ func login(email: String, password: String) async -> Result {
 | Rotation | Mỗi lần refresh → cấp refresh token mới, thu hồi cũ | Spotify |
 | Refactor auth | Cần refactor cả Worker + Android + iOS | — |
 
-**Lưu ý:** Cần refactor auth toàn hệ thống (web + Android + iOS). Làm sau khi cả 2 app ổn định.
+**Lưu ý:** Cần refactor auth toàn hệ thống (web + Android + iOS). Làm sau khi tính năng phát nhạc ổn định.
 
-#### Bước 4.2 — Session management UI (cả 2 platform)
+#### Bước 4.7 — Session management UI (cả 2 platform)
 
 | Việc | Chi tiết |
 |------|----------|
@@ -478,21 +518,24 @@ func login(email: String, password: String) async -> Result {
 | Revoke từng session | User bấm → xoá session đó |
 | Device fingerprint | Model + OS + IP + user agent |
 
-#### Bước 4.3 — Tìm kiếm theo metadata (cả 2 platform)
+#### Bước 4.8 — Tìm kiếm theo metadata (cả 2 platform) — HOÀN TẤT 2026-10-15
+
+| Việc | Chi tiết | Trạng thái |
+|------|----------|------------|
+| Search by metadata | Tìm theo tên bài, artist, album (không chỉ tên file); FTS5 trên D1, gõ không dấu vẫn trúng | ✅ Worker live, test 13/13 pass |
+| Index metadata | Dùng D1 index (4.2): cột artist/title/album/search_text + bảng FTS `dac_index_fts` + trigger đồng bộ; sync điền metadata lúc upsert | ✅ live |
+| Fallback đúng | Có index nhưng 0 kết quả → `files:[]`, `total:0`; chỉ fallback Drive khi chưa từng sync | ✅ live test pass |
+| Android | SearchActivity + phân trang + phát/prefetch | ⏳ CI |
+| iOS | SearchView tab Tìm kiếm; PlayerView/ImportView chuyển từ `.sheet` sang `navigationDestination` (cấm modal) | ⏳ CI |
+
+#### Bước 4.9 — Sleep timer + polish (cả 2 platform)
 
 | Việc | Chi tiết |
 |------|----------|
-| Search by metadata | Tìm theo tên bài, artist, album (không chỉ tên file) |
-| Index metadata | Đọc metadata từ file, lưu vào Room (Android) / CoreData (iOS) |
+| Sleep timer | Hẹn giờ dừng phát (15/30/60 phút, hết bài) |
+| Queue/playlist | Sắp xếp queue, lưu playlist lên D1 (đồng bộ 2 máy) |
 
-#### Bước 4.4 — Gapless playback
-
-| Việc | Chi tiết |
-|------|----------|
-| Android | Nếu decent-player hỗ trợ → bật gapless |
-| iOS | AVQueuePlayer hoặc custom gapless logic |
-
-#### Bước 4.5 — Test E2E + Launch
+#### Bước 4.10 — Test E2E + Launch
 
 | Việc | Chi tiết |
 |------|----------|
@@ -931,11 +974,11 @@ Test trên device → Báo cáo
 
 | Tính năng | Chi tiết |
 |-----------|----------|
-| **Duyệt nhạc** | List file audio từ Drive của user (filter: FLAC, WAV, MP3, AAC...) |
-| **Tìm kiếm** | Tìm theo tên file (Phase 4: theo metadata) |
+| **Duyệt nhạc** | Cây thư mục Drive + list file audio (filter: FLAC, WAV, MP3, AAC...) — Phase 4.1 |
+| **Tìm kiếm** | Tìm theo tên file (Phase 4.8: theo metadata, dùng D1 index) |
 | **Phát** | Stream trực tiếp từ Drive → Player → USB DAC bit-perfect |
 | **Phát local** | Chọn file trên máy → phát qua DAC |
-| **Cache** | Cache list nhạc 24h |
+| **Cache** | Phase 4.2: D1 index + sync tăng dần; Phase 4.3: cache offline bài đã nghe |
 | **Hiển thị** | Version app, tên bài, trạng thái DAC |
 
 ### 10.3 Copy nhạc từ folder share — Cả 2 platform
