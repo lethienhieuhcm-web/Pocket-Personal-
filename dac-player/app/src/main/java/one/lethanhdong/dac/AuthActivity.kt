@@ -12,6 +12,7 @@ import kotlinx.coroutines.launch
 import one.lethanhdong.dac.player.AuthManager
 import one.lethanhdong.dac.player.AuthValidator
 import one.lethanhdong.dac.player.EmailNotVerifiedException
+import one.lethanhdong.dac.player.GoogleSignInManager
 
 /**
  * AuthActivity — plan dac-app 1.3: màn hình Đăng nhập / Đăng ký TÁCH RIÊNG
@@ -34,6 +35,10 @@ class AuthActivity : AppCompatActivity() {
     private lateinit var registerButton: Button
     private lateinit var forgotPasswordButton: TextView
     private lateinit var resendButton: Button
+    private lateinit var googleSignInButton: Button
+    // 2.4: Web OAuth client ID — tạo trong Google Cloud Console > Credentials.
+    // Dùng cho `aud` khi Worker verify ID token.
+    private val googleWebClientId = BuildConfig.GOOGLE_WEB_CLIENT_ID
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -48,11 +53,13 @@ class AuthActivity : AppCompatActivity() {
         registerButton = findViewById(R.id.registerButton)
         forgotPasswordButton = findViewById(R.id.forgotPasswordButton)
         resendButton = findViewById(R.id.resendButton)
+        googleSignInButton = findViewById(R.id.googleSignInButton)
 
         loginButton.setOnClickListener { doLogin() }
         registerButton.setOnClickListener { doRegister() }
         forgotPasswordButton.setOnClickListener { doForgotPassword() }
         resendButton.setOnClickListener { doResendVerification() }
+        googleSignInButton.setOnClickListener { doGoogleSignIn() }
     }
 
     private fun showError(message: String) {
@@ -77,6 +84,31 @@ class AuthActivity : AppCompatActivity() {
         registerButton.isEnabled = !busy
         forgotPasswordButton.isEnabled = !busy
         resendButton.isEnabled = !busy
+        googleSignInButton.isEnabled = !busy
+    }
+
+    /**
+     * 2.4: Đăng nhập bằng Google qua Credential Manager.
+     */
+    private fun doGoogleSignIn() {
+        clearError()
+        setBusy(true)
+        lifecycleScope.launch {
+            try {
+                val manager = GoogleSignInManager(
+                    this@AuthActivity,
+                    webClientId = googleWebClientId,
+                )
+                manager.signIn()
+                // Thành công → vào MainActivity
+                startActivity(Intent(this@AuthActivity, MainActivity::class.java))
+                finish()
+            } catch (e: Exception) {
+                showError(e.message ?: "Đăng nhập Google thất bại")
+            } finally {
+                setBusy(false)
+            }
+        }
     }
 
     private fun goToMain() {
