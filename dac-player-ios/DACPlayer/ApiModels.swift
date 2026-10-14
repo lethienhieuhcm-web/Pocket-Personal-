@@ -103,3 +103,23 @@ struct CopyResponse: Codable {
 struct EmailNotVerifiedError: Error {
     let message = "Email chưa được xác nhận. Vui lòng kiểm tra hộp thư và bấm link xác nhận."
 }
+
+// --- 4.1: Duyệt theo thư mục Drive (GET /api/dac/folders) ---
+
+struct DriveFolder: Codable, Identifiable, Hashable {
+    let id: String
+    let name: String
+}
+
+struct BreadcrumbItem: Codable, Hashable {
+    let id: String
+    let name: String
+}
+
+struct FolderListResponse: Codable {
+    let parentId: String
+    let parentName: String
+    let breadcrumb: [BreadcrumbItem]
+    let folders: [DriveFolder]
+    let tracks: [DriveFile]
+}

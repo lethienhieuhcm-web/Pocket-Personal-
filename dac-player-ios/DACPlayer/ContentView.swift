@@ -6,7 +6,18 @@ struct ContentView: View {
     var body: some View {
         Group {
             if auth.isLoggedIn {
-                LibraryView()
+                // 4.1: Tab bar theo UI thống nhất đã Chốt (Thư viện | Thư mục).
+                // Tab Tìm kiếm + Cài đặt thêm ở bước sau theo roadmap.
+                TabView {
+                    LibraryView()
+                        .tabItem {
+                            Label("Thư viện", systemImage: "music.note.list")
+                        }
+                    FolderBrowserView()
+                        .tabItem {
+                            Label("Thư mục", systemImage: "folder")
+                        }
+                }
             } else {
                 AuthView()
             }

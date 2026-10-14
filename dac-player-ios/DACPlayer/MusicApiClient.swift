@@ -126,6 +126,34 @@ class MusicApiClient: ObservableObject {
         tracks = []
     }
 
+    /// 4.1: Duyệt thư mục Drive — GET /api/dac/folders?parentId=...
+    /// Trả về breadcrumb + thư mục con + file nhạc trong thư mục hiện tại.
+    struct FolderListing {
+        let parentId: String
+        let parentName: String
+        let breadcrumb: [BreadcrumbItem]
+        let folders: [DriveFolder]
+        let tracks: [Track]
+    }
+
+    func listFolders(parentId: String = "root") async throws -> FolderListing {
+        let q = parentId.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "root"
+        let data = try await get("/api/dac/folders?parentId=\(q)")
+        let resp = try JSONDecoder().decode(FolderListResponse.self, from: data)
+        let tracks = resp.tracks.map { f -> Track in
+            let ns = f.name as NSString
+            let title = ns.pathExtension.isEmpty ? f.name : ns.deletingPathExtension
+            return Track(id: f.id, title: title, size: f.size, mimeType: f.mimeType)
+        }
+        return FolderListing(
+            parentId: resp.parentId,
+            parentName: resp.parentName,
+            breadcrumb: resp.breadcrumb,
+            folders: resp.folders,
+            tracks: tracks
+        )
+    }
+
     /// Lấy direct Drive URL để stream.
     func streamURL(for id: String) async throws -> URL {
         let data = try await get("/api/dac/stream/\(id)")
