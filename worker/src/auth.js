@@ -88,7 +88,12 @@ export async function handleVerifyEmail(request, env){
   const url = new URL(request.url);
   const token = url.searchParams.get("token") || "";
   if(!token) return new Response("Missing token", {status: 400});
-  const rec = await env.AUTHDB.get(`verify-token/${token}.json`, "json").catch(()=>null);
+  // R2: get() trả về object, phải gọi .json() (không dùng tham số "json" như KV)
+  let rec = null;
+  try{
+    const obj = await env.AUTHDB.get(`verify-token/${token}.json`);
+    if(obj) rec = await obj.json();
+  }catch(e){}
   if(!rec || rec.exp < Date.now()){
     return new Response(verifyPage(false, "This link is invalid or has expired."), {
       headers: {"Content-Type": "text/html;charset=UTF-8"}
@@ -163,7 +168,12 @@ export async function handleResetPassword(request, env){
   const newPw = String(d.newPassword||"");
   if(!token) return jerr("Missing token", 400);
   if(newPw.length < 8) return jerr("Password min 8 chars", 400);
-  const rec = await env.AUTHDB.get(`reset-token/${token}.json`, "json").catch(()=>null);
+  // R2: get() trả về object, phải gọi .json()
+  let rec = null;
+  try{
+    const obj = await env.AUTHDB.get(`reset-token/${token}.json`);
+    if(obj) rec = await obj.json();
+  }catch(e){}
   if(!rec || rec.exp < Date.now()) return jerr("Invalid or expired token", 400);
   const u = await getUser(env, rec.email);
   if(!u) return jerr("Invalid token", 400);
@@ -188,7 +198,14 @@ export async function handleResetPasswordPage(request, env){
   const url = new URL(request.url);
   const token = url.searchParams.get("token") || "";
   // Kiểm tra token còn hiệu lực không (không tiết lộ email)
-  const rec = token ? await env.AUTHDB.get(`reset-token/${token}.json`, "json").catch(()=>null) : null;
+  // R2: get() trả về object, phải gọi .json()
+  let rec = null;
+  try{
+    if(token){
+      const obj = await env.AUTHDB.get(`reset-token/${token}.json`);
+      if(obj) rec = await obj.json();
+    }
+  }catch(e){}
   const valid = rec && rec.exp > Date.now();
   const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Reset password</title>
 <style>body{font-family:system-ui;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#f6f7f9}.box{background:#fff;padding:32px;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.1);max-width:400px;width:90%}h1{font-size:20px;margin:0 0 16px}input{width:100%;padding:12px;margin:8px 0;border:1px solid #ddd;border-radius:8px;box-sizing:border-box;font-size:16px}button{width:100%;padding:12px;background:#0d9d6c;color:#fff;border:0;border-radius:8px;font-size:16px;cursor:pointer;margin-top:8px}button:disabled{opacity:.5}.err{color:#dc2626;font-size:14px;margin-top:8px;display:none}.ok{color:#0d9d6c;font-size:14px;margin-top:8px;display:none}</style></head>
@@ -320,12 +337,16 @@ export async function handleRegister(request, env){
   // 2.2: Kiểm tra web flow đã verify chưa (verified/{email}.json từ verify-code).
   // Nếu web đã verify → verified=true luôn, không gửi email token nữa.
   // Nếu chưa (Android register trực tiếp) → verified=false + gửi email token link.
+  // R2: get() trả về object, phải gọi .json()
   let verified = false;
   try{
-    const marker = await env.AUTHDB.get(`verified/${email}.json`, "json");
-    if(marker && marker.email === email){
-      verified = true;
-      await env.AUTHDB.delete(`verified/${email}.json`).catch(()=>{});
+    const obj = await env.AUTHDB.get(`verified/${email}.json`);
+    if(obj){
+      const marker = await obj.json();
+      if(marker && marker.email === email){
+        verified = true;
+        await env.AUTHDB.delete(`verified/${email}.json`).catch(()=>{});
+      }
     }
   }catch(e){ /* không có marker → chưa verify */ }
   await dbPutUser(env, {
