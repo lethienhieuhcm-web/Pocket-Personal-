@@ -37,7 +37,8 @@ hilt = "2.60.1"
 workmanager = "2.9.1"
 jaudiotagger = "3.0.1"
 # 2.4: Credential Manager cho Google Sign-In (verify qua Google Maven 2026-10-14).
-credentials = "1.3.0"
+# Lưu ý: tên version không được trùng tên library (Gradle xung đột).
+credentials-version = "1.3.0"
 # KSP version phải khớp Kotlin built-in của AGP 9.x (2.2.10), không phải
 # version khai báo trong libs.versions.toml (2.2.20).
 ksp = "2.2.10-2.0.2"
@@ -76,8 +77,8 @@ work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx", version
 # jaudiotagger: đọc/ghi metadata audio (Apache license, không GPL).
 jaudiotagger = { group = "net.jthink", name = "jaudiotagger", version.ref = "jaudiotagger" }
 # 2.4: Credential Manager cho Google Sign-In.
-credentials = { group = "androidx.credentials", name = "credentials", version.ref = "credentials" }
-credentials-play-services-auth = { group = "androidx.credentials", name = "credentials-play-services-auth", version.ref = "credentials" }
+credentials = { group = "androidx.credentials", name = "credentials", version.ref = "credentials-version" }
+credentials-play-services-auth = { group = "androidx.credentials", name = "credentials-play-services-auth", version.ref = "credentials-version" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
