@@ -27,8 +27,10 @@ class AudioEngine: ObservableObject {
                 return 44100
             }
             let descs = try await track.load(.formatDescriptions)
-            guard let fmt = descs.first as? CMAudioFormatDescription,
-                  let asbd = CMAudioFormatDescriptionGetStreamBasicDescription(fmt) else {
+            guard let first = descs.first,
+                  CFGetTypeID(first) == CMAudioFormatDescriptionGetTypeID(),
+                  let asbd = CMAudioFormatDescriptionGetStreamBasicDescription(
+                    first as! CMAudioFormatDescription) else {
                 return 44100
             }
             let sr = asbd.pointee.mSampleRate
