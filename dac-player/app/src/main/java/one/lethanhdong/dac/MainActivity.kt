@@ -3,10 +3,7 @@ package one.lethanhdong.dac
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
-import android.view.View
 import android.widget.Button
-import android.widget.EditText
-import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -23,7 +20,11 @@ import one.lethanhdong.dac.player.PlayerManager
 import one.lethanhdong.dac.player.TrackAdapter
 
 /**
- * MainActivity — plan "dac-pass" (Chốt 2026-10-13).
+ * MainActivity — plan "dac-pass" (Chốt 2026-10-13) + dac-app 1.3.
+ *
+ * 1.3: CHỈ thư viện + phát nhạc. Auth tách sang AuthActivity —
+ * MainActivity chỉ chạy khi đã đăng nhập (chưa đăng nhập → về AuthActivity).
+ * Đăng xuất: nút "Đăng xuất" → POST /api/auth/logout + xoá local → AuthActivity.
  *
  * Xử lý USB intent y chang doc Ma145/decent-player (GETTING_STARTED.md
  * "Handle USB Device Attach").
@@ -42,7 +43,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var trackAdapter: TrackAdapter
 
     private lateinit var statusText: TextView
-    private lateinit var loginForm: LinearLayout
     private lateinit var trackList: RecyclerView
 
     private val pickAudio = registerForActivityResult(
@@ -56,18 +56,25 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        authManager = AuthManager(this)
+        // 1.3: MainActivity chỉ chạy khi đã đăng nhập — chưa đăng nhập → AuthActivity
+        if (!authManager.isLoggedIn()) {
+            startActivity(Intent(this, AuthActivity::class.java))
+            finish()
+            return
+        }
+
         setContentView(R.layout.activity_main)
 
         // Y chang doc ma145 — phải gọi trước khi làm gì khác với USB.
         UsbAudioPermissionHelper.handleIntent(applicationContext, intent)
 
         playerManager = PlayerManager(this)
-        authManager = AuthManager(this)
         apiClient = MusicApiClient(this)
         driveAuthManager = one.lethanhdong.dac.player.DriveAuthManager(this)
 
         statusText = findViewById(R.id.statusText)
-        loginForm = findViewById(R.id.loginForm)
         trackList = findViewById(R.id.trackList)
 
         // Hiện version để user biết đang dùng bản nào (dac-pass 2026-10-13)
@@ -89,28 +96,21 @@ class MainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.playPauseButton).setOnClickListener {
             playerManager.togglePlayPause()
         }
-        findViewById<Button>(R.id.loginButton).setOnClickListener {
-            doLogin()
+        findViewById<Button>(R.id.logoutButton).setOnClickListener {
+            doLogout()
         }
 
         refreshAuthUi()
     }
 
     private fun refreshAuthUi() {
-        if (authManager.isLoggedIn()) {
-            loginForm.visibility = View.GONE
-            trackList.visibility = View.VISIBLE
-            if (apiClient.isDriveConnected()) {
-                statusText.text = "Đã đăng nhập: ${authManager.email()}\nCắm DAC USB để phát bit-perfect"
-                loadTracks()
-            } else {
-                statusText.text = "Đã đăng nhập. Bấm 'Kết nối Drive' để duyệt nhạc."
-                showDriveConnectPrompt()
-            }
+        // 1.3: tới đây là đã đăng nhập (onCreate đã gate). Chỉ còn Drive + track list.
+        if (apiClient.isDriveConnected()) {
+            statusText.text = "Đã đăng nhập: ${authManager.email()}\nCắm DAC USB để phát bit-perfect"
+            loadTracks()
         } else {
-            loginForm.visibility = View.VISIBLE
-            trackList.visibility = View.GONE
-            statusText.text = "Đăng nhập để duyệt nhạc trên Google Drive"
+            statusText.text = "Đã đăng nhập. Bấm 'Kết nối Drive' để duyệt nhạc."
+            showDriveConnectPrompt()
         }
     }
 
@@ -134,21 +134,11 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun doLogin() {
-        val email = findViewById<EditText>(R.id.emailInput).text.toString()
-        val password = findViewById<EditText>(R.id.passwordInput).text.toString()
-        if (email.isBlank() || password.isBlank()) {
-            Toast.makeText(this, "Nhập email và mật khẩu", Toast.LENGTH_SHORT).show()
-            return
-        }
+    private fun doLogout() {
         lifecycleScope.launch {
-            try {
-                authManager.login(email, password)
-                Toast.makeText(this@MainActivity, "Đăng nhập thành công", Toast.LENGTH_SHORT).show()
-                refreshAuthUi()
-            } catch (e: Exception) {
-                Toast.makeText(this@MainActivity, e.message ?: "Lỗi đăng nhập", Toast.LENGTH_LONG).show()
-            }
+            authManager.logout()
+            startActivity(Intent(this@MainActivity, AuthActivity::class.java))
+            finish()
         }
     }
 
@@ -187,7 +177,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
-        playerManager.release()
+        // 1.3: onCreate có thể return sớm (chưa đăng nhập → AuthActivity)
+        // → playerManager chưa init, không được release.
+        if (::playerManager.isInitialized) playerManager.release()
         super.onDestroy()
     }
 }
