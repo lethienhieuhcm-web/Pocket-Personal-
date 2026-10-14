@@ -7,7 +7,7 @@ struct ContentView: View {
         Group {
             if auth.isLoggedIn {
                 // 4.1: Tab bar theo UI thống nhất đã Chốt (Thư viện | Thư mục).
-                // Tab Tìm kiếm + Cài đặt thêm ở bước sau theo roadmap.
+                // 4.7: thêm tab Cài đặt. Tab Tìm kiếm thêm ở 4.8.
                 TabView {
                     LibraryView()
                         .tabItem {
@@ -16,6 +16,10 @@ struct ContentView: View {
                     FolderBrowserView()
                         .tabItem {
                             Label("Thư mục", systemImage: "folder")
+                        }
+                    SettingsView()
+                        .tabItem {
+                            Label("Cài đặt", systemImage: "gear")
                         }
                 }
             } else {

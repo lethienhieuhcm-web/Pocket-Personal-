@@ -137,10 +137,93 @@ class AuthManager: ObservableObject {
         isLoggedIn = false
         email = nil
     }
+
+    /// 4.7: Liệt kê các phiên đăng nhập đang hoạt động.
+    /// GET /api/auth/sessions → {sessions:[{token_prefix,current,ip,ua,created_at,last_active}]}
+    func listSessions() async throws -> [LoginSession] {
+        guard let t = token() else { throw AuthError.message("Chưa đăng nhập") }
+        let url = URL(string: Self.baseURL + "/api/auth/sessions")!
+        var req = URLRequest(url: url)
+        req.setValue("Bearer \(t)", forHTTPHeaderField: "Authorization")
+        let (data, resp) = try await URLSession.shared.data(for: req)
+        let code = (resp as? HTTPURLResponse)?.statusCode ?? 0
+        guard code == 200 else {
+            throw AuthError.message(errorMessage(data, fallback: "Không tải được danh sách phiên"))
+        }
+        return try JSONDecoder().decode(SessionsResponse.self, from: data).sessions
+    }
+
+    /// 4.7: Thu hồi 1 phiên (không phải phiên hiện tại — server từ chối).
+    @discardableResult
+    func revokeSession(prefix: String) async throws -> Int {
+        guard let t = token() else { throw AuthError.message("Chưa đăng nhập") }
+        let (data, code) = try await post(
+            "/api/auth/sessions/revoke",
+            body: ["token_prefix": prefix],
+            bearer: t
+        )
+        guard code == 200 else {
+            throw AuthError.message(errorMessage(data, fallback: "Không thu hồi được phiên"))
+        }
+        return (try? JSONDecoder().decode(RevokeResponse.self, from: data))?.revoked ?? 0
+    }
+
+    /// 4.7: Đăng xuất tất cả thiết bị khác (giữ phiên hiện tại).
+    @discardableResult
+    func revokeAllOthers() async throws -> Int {
+        guard let t = token() else { throw AuthError.message("Chưa đăng nhập") }
+        let (data, code) = try await post(
+            "/api/auth/sessions/revoke",
+            body: ["all_others": true],
+            bearer: t
+        )
+        guard code == 200 else {
+            throw AuthError.message(errorMessage(data, fallback: "Không đăng xuất được các thiết bị khác"))
+        }
+        return (try? JSONDecoder().decode(RevokeResponse.self, from: data))?.revoked ?? 0
+    }
 }
 
 struct EmptyBody: Codable {}
 
 enum AuthError: Error {
     case message(String)
+}
+
+/// 4.7: 1 phiên đăng nhập (từ GET /api/auth/sessions).
+struct LoginSession: Codable, Identifiable {
+    var id: String { token_prefix }
+    var token_prefix: String = ""
+    var current: Bool = false
+    var ip: String = ""
+    var ua: String = ""
+    var created_at: Double = 0
+    var last_active: Double = 0
+
+    /// Tên thiết bị gọn từ UA. Không đoán quá đà.
+    var deviceLabel: String {
+        let u = ua.lowercased()
+        let os: String
+        if u.contains("android") { os = "Android" }
+        else if u.contains("iphone") || u.contains("ipad") { os = "iOS" }
+        else if u.contains("windows") { os = "Windows" }
+        else if u.contains("mac os") { os = "macOS" }
+        else if u.contains("linux") { os = "Linux" }
+        else { os = "Thiết bị" }
+        let app = (u.contains("dac") || u.contains("lethanhdong")) ? "DAC Player" : "Trình duyệt"
+        return "\(os) · \(app)"
+    }
+
+    /// Thời điểm hoạt động cuối (ms → Date).
+    var lastActiveDate: Date {
+        Date(timeIntervalSince1970: last_active / 1000)
+    }
+}
+
+struct SessionsResponse: Codable {
+    var sessions: [LoginSession] = []
+}
+
+struct RevokeResponse: Codable {
+    var revoked: Int = 0
 }
