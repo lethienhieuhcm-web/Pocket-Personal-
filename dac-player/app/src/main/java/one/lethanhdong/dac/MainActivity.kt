@@ -20,6 +20,7 @@ import one.lethanhdong.dac.player.CoverArt
 import one.lethanhdong.dac.player.DriveTokenInvalidException
 import one.lethanhdong.dac.player.MusicApiClient
 import one.lethanhdong.dac.player.PlayerManager
+import one.lethanhdong.dac.player.OfflineManager
 import one.lethanhdong.dac.player.TrackAdapter
 import javax.inject.Inject
 
@@ -48,6 +49,13 @@ class MainActivity : AppCompatActivity() {
      */
     @Inject
     lateinit var playerManager: dagger.Lazy<PlayerManager>
+
+    /** 4.3: quản lý file offline. */
+    @Inject
+    lateinit var offlineManager: dagger.Lazy<OfflineManager>
+
+    /** ID các track đã tải offline — để hiện trạng thái nút tải. */
+    private val downloadedIds = mutableSetOf<String>()
 
     private lateinit var authManager: AuthManager
     private lateinit var apiClient: MusicApiClient
@@ -102,6 +110,8 @@ class MainActivity : AppCompatActivity() {
             onTrackClick = { track -> playTrack(track) },
             // 1.4: ImageLoader ảnh bìa (Coil + CoverArtFetcher).
             imageLoader = CoverArt.imageLoader(this, apiClient),
+            onDownloadClick = { track -> downloadTrack(track) },
+            isDownloaded = { id -> downloadedIds.contains(id) },
         )
         trackList.layoutManager = LinearLayoutManager(this)
         trackList.adapter = trackAdapter
@@ -174,6 +184,8 @@ class MainActivity : AppCompatActivity() {
             try {
                 val tracks = apiClient.listMusic(forceRefresh, this@MainActivity)
                 trackAdapter.submitList(tracks)
+                refreshDownloadedState(tracks.map { it.id })
+                trackAdapter.notifyDataSetChanged()
                 if (tracks.isEmpty()) {
                     statusText.text = "Chưa có file nhạc trên Google Drive"
                 }
@@ -188,6 +200,13 @@ class MainActivity : AppCompatActivity() {
     private fun playTrack(track: MusicApiClient.Track) {
         lifecycleScope.launch {
             try {
+                // 4.3: ưu tiên file offline đã tải.
+                val local = offlineManager.get().localFile(track.id)
+                if (local != null) {
+                    statusText.text = "Đang phát offline: ${track.title}"
+                    playerManager.get().playLocal(Uri.fromFile(local))
+                    return@launch
+                }
                 statusText.text = "Đang tải: ${track.title}"
                 val url = apiClient.streamUrl(track.id, this@MainActivity)
                 statusText.text = "Đang phát: ${track.title}"
@@ -196,6 +215,43 @@ class MainActivity : AppCompatActivity() {
                 Toast.makeText(this@MainActivity, e.message ?: "Lỗi phát nhạc", Toast.LENGTH_LONG).show()
             }
         }
+    }
+
+    /** 4.3: Tải track về nghe offline. Bấm lần nữa khi đã tải = xoá. */
+    private fun downloadTrack(track: MusicApiClient.Track) {
+        lifecycleScope.launch {
+            try {
+                if (downloadedIds.contains(track.id)) {
+                    offlineManager.get().delete(track.id)
+                    downloadedIds.remove(track.id)
+                    trackAdapter.notifyDataSetChanged()
+                    statusText.text = "Đã xoá bản offline: ${track.title}"
+                    return@launch
+                }
+                statusText.text = "Đang tải: ${track.title}"
+                val url = apiClient.streamUrl(track.id, this@MainActivity)
+                offlineManager.get().download(track.id, track.title, url) { done, total ->
+                    if (total > 0) {
+                        runOnUiThread {
+                            statusText.text =
+                                "Đang tải: ${track.title} — ${done * 100 / total}%"
+                        }
+                    }
+                }
+                downloadedIds.add(track.id)
+                trackAdapter.notifyDataSetChanged()
+                statusText.text = "Đã tải xong: ${track.title}"
+            } catch (e: Exception) {
+                Toast.makeText(this@MainActivity, e.message ?: "Lỗi tải về", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    /** 4.3: refresh trạng thái đã tải sau khi load danh sách. */
+    private suspend fun refreshDownloadedState(trackIds: List<String>) {
+        val all = offlineManager.get().downloadedTracks().map { it.trackId }.toSet()
+        downloadedIds.clear()
+        downloadedIds.addAll(trackIds.filter { all.contains(it) })
     }
 
     override fun onNewIntent(intent: Intent) {

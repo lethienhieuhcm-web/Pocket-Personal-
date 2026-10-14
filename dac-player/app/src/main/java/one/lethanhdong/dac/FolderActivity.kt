@@ -1,5 +1,6 @@
 package one.lethanhdong.dac
 
+import android.net.Uri
 import android.os.Bundle
 import android.view.ViewGroup
 import android.widget.Button
@@ -21,6 +22,7 @@ import one.lethanhdong.dac.player.DriveTokenInvalidException
 import one.lethanhdong.dac.player.FolderAdapter
 import one.lethanhdong.dac.player.MusicApiClient
 import one.lethanhdong.dac.player.PlayerManager
+import one.lethanhdong.dac.player.OfflineManager
 import one.lethanhdong.dac.player.TrackAdapter
 import javax.inject.Inject
 
@@ -39,6 +41,13 @@ class FolderActivity : AppCompatActivity() {
 
     @Inject
     lateinit var playerManager: dagger.Lazy<PlayerManager>
+
+    /** 4.3: quản lý file offline. */
+    @Inject
+    lateinit var offlineManager: dagger.Lazy<OfflineManager>
+
+    /** ID các track đã tải offline — để hiện trạng thái nút tải. */
+    private val downloadedIds = mutableSetOf<String>()
 
     private lateinit var apiClient: MusicApiClient
     private lateinit var folderAdapter: FolderAdapter
@@ -64,6 +73,8 @@ class FolderActivity : AppCompatActivity() {
         trackAdapter = TrackAdapter(
             onTrackClick = { track -> playTrack(track) },
             imageLoader = CoverArt.imageLoader(this, apiClient),
+            onDownloadClick = { track -> downloadTrack(track) },
+            isDownloaded = { id -> downloadedIds.contains(id) },
         )
         findViewById<RecyclerView>(R.id.folderContentList).apply {
             layoutManager = LinearLayoutManager(this@FolderActivity)
@@ -106,6 +117,8 @@ class FolderActivity : AppCompatActivity() {
                 val listing = apiClient.listFolders(parentId, this@FolderActivity)
                 folderAdapter.submitList(listing.folders)
                 trackAdapter.submitList(listing.tracks)
+                refreshDownloadedState(listing.tracks.map { it.id })
+                trackAdapter.notifyDataSetChanged()
                 renderBreadcrumb(listing.breadcrumb)
                 statusText.text =
                     "${listing.folders.size} thư mục • ${listing.tracks.size} bài"
@@ -176,6 +189,13 @@ class FolderActivity : AppCompatActivity() {
     private fun playTrack(track: MusicApiClient.Track) {
         lifecycleScope.launch {
             try {
+                // 4.3: ưu tiên file offline đã tải.
+                val local = offlineManager.get().localFile(track.id)
+                if (local != null) {
+                    statusText.text = "Đang phát offline: ${track.title}"
+                    playerManager.get().playLocal(Uri.fromFile(local))
+                    return@launch
+                }
                 statusText.text = "Đang tải: ${track.title}"
                 val url = apiClient.streamUrl(track.id, this@FolderActivity)
                 statusText.text = "Đang phát: ${track.title}"
@@ -188,5 +208,46 @@ class FolderActivity : AppCompatActivity() {
                 ).show()
             }
         }
+    }
+
+    /** 4.3: Tải track về nghe offline. Bấm lần nữa khi đã tải = xoá. */
+    private fun downloadTrack(track: MusicApiClient.Track) {
+        lifecycleScope.launch {
+            try {
+                if (downloadedIds.contains(track.id)) {
+                    offlineManager.get().delete(track.id)
+                    downloadedIds.remove(track.id)
+                    trackAdapter.notifyDataSetChanged()
+                    statusText.text = "Đã xoá bản offline: ${track.title}"
+                    return@launch
+                }
+                statusText.text = "Đang tải: ${track.title}"
+                val url = apiClient.streamUrl(track.id, this@FolderActivity)
+                offlineManager.get().download(track.id, track.title, url) { done, total ->
+                    if (total > 0) {
+                        runOnUiThread {
+                            statusText.text =
+                                "Đang tải: ${track.title} — ${done * 100 / total}%"
+                        }
+                    }
+                }
+                downloadedIds.add(track.id)
+                trackAdapter.notifyDataSetChanged()
+                statusText.text = "Đã tải xong: ${track.title}"
+            } catch (e: Exception) {
+                Toast.makeText(
+                    this@FolderActivity,
+                    e.message ?: "Lỗi tải về",
+                    Toast.LENGTH_LONG,
+                ).show()
+            }
+        }
+    }
+
+    /** 4.3: refresh trạng thái đã tải sau khi load danh sách. */
+    private suspend fun refreshDownloadedState(trackIds: List<String>) {
+        val all = offlineManager.get().downloadedTracks().map { it.trackId }.toSet()
+        downloadedIds.clear()
+        downloadedIds.addAll(trackIds.filter { all.contains(it) })
     }
 }
