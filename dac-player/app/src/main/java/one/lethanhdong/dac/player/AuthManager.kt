@@ -115,12 +115,18 @@ class AuthManager(
 
     /**
      * 2.4: Lưu session từ Google Sign-In (đã verify ID token ở Worker).
+     *
+     * 4.3: dùng commit() đồng bộ thay vì apply() — sau khi hàm return,
+     * session CHẮC CHẮN đã ghi đĩa. apply() ghi async: test @Before
+     * deleteSharedPreferences có thể chạy trước khi ghi xong, rồi write
+     * muộn tạo lại file → test sau thấy session "ma" (flaky).
+     * Caller đã ở background thread (sau network call) nên commit() an toàn.
      */
     fun saveGoogleSession(token: String, email: String) {
         prefs.edit()
             .putString("session_token", token)
             .putString("authEmail", email)
-            .apply()
+            .commit()
     }
 
     /**
