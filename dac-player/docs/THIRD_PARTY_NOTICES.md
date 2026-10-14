@@ -1,1 +1,76 @@
-IyBUaGlyZC1QYXJ0eSBOb3RpY2VzIOKAlCBkYWMtYXBwCgpUaGlzIGFwcGxpY2F0aW9uIHVzZXMgdGhlIGZvbGxvd2luZyBvcGVuLXNvdXJjZSBjb21wb25lbnRzLgoKPiBOZ3Xhu5NuOiBwbGFuIGNoaSB0aeG6v3QgZGFjLWFwcCDCpyAiU3RlcCAwLjQg4oCUIENyZWF0ZSBsaWNlbnNlIHRlbXBsYXRlIiAoc2tlbGV0b24gZ+G7kWMpICsKPiBpbnZlbnRvcnkgdGjhuq10IFBoYXNlIDAuMiAoMjAyNi0xMC0xMykuIENo4buJIGdoaSBuaOG7r25nIGfDrCDEkcOjIHZlcmlmeSB04burIGNvZGUgLyByZXBvIHRo4bqtdC4KPiBUaMawIHZp4buHbiBjaMawYSB0aMOqbSB2w6BvIGNvZGUgdGjDrCBnaGkgIihjaMawYSB0aMOqbSDigJQgUGhhc2UgWCkiIMSR4buDIGtow7RuZyBi4buLYSBsw6AgxJHDoyBkw7luZy4KPiBD4bqtcCBuaOG6rXQgY29tbWl0IGhhc2ggLyB2ZXJzaW9uIG3hu5dpIGtoaSB0aMOqbSBob+G6t2MgbsOibmcgY+G6pXAgdGjGsCB2aeG7h24uCgojIyBGRm1wZWcKLSBMaWNlbnNlOiBMR1BMIHYyLjEgb3IgbGF0ZXIKLSBTb3VyY2U6IGh0dHBzOi8vZ2l0LmZmbXBlZy5vcmcvZmZtcGVnLmdpdAotIENvbW1pdDogYGIzN2JmODFhN2E5NzgyNDM4ZTRmZTA2YTI0OTMyOWUyNzk2OTQ0OTRgIChicmFuY2ggYHJlbGVhc2UvNi4wYCwgdmVyaWZ5IDIwMjYtMTAtMTQgdOG7qyBgYnVpbGQtaGFzaGVzLnR4dGAgY+G7p2EgQ0kgcnVuICMxIHdvcmtmbG93ICJCdWlsZCBGRm1wZWcgTEdQTCBBQVIiKQotIEFBUjogYGFwcC9saWJzL21lZGlhMy1mZm1wZWctbGdwbC5hYXJgIOKAlCBidWlsZCB04burIGFuZHJvaWR4L21lZGlhIHRhZyBgMS45LjNgIChjb21taXQgYDliOGIxM2QxNzdjZjlhM2NlOTk3NzczY2E1MTMzN2FjZjVhY2M2MzlgKSwgTkRLIGAyNy4xLjEyMjk3MDA2YCwgU0hBLTI1NiBgNmM0N2NkN2Y5YzdhMjlmN2Y1MzRhODAxMGI5Yzc3NzVmZjMxYTkwMTk5OTI3M2ZlNWZlNGE5NTEzMzM1OWEwZmAKLSBVc2VkIGZvcjogQXVkaW8gZGVjb2RpbmcgKEFQRSwgQUxBQywgZXRjLikKLSAqKlRy4bqhbmcgdGjDoWkgKDIwMjYtMTAtMTQpOiDEkMODIHRoYXkgdGjhur8gSmVsbHlmaW4gR1BMLioqIEFBUiBGRm1wZWcgTEdQTCB04buxIGJ1aWxkLCBraMO0bmcgYC0tZW5hYmxlLWdwbGAgKENJIGd1YXJkIGNo4bq3bikuIFhlbSBt4bulYyAiSmVsbHlmaW4iIGLDqm4gZMaw4bubaSAoxJHDoyB4b8OhIGto4buPaSBjb2RlKS4KCiMjIGRlY2VudC1wbGF5ZXIgLyBkZWNlbnQtdXNiLWF1ZGlvLWRyaXZlcgotIExpY2Vuc2U6IE1JVAotIFNvdXJjZTogaHR0cHM6Ly9naXRodWIuY29tL01hMTQ1L2RlY2VudC1wbGF5ZXIKLSBDb21taXQgKENJIHBpbiwgxJHDoyB2ZXJpZnkgdHJvbmcgYC5naXRodWIvd29ya2Zsb3dzL2J1aWxkLWRhYy1hcGsueW1sYCk6IGBkMDM5ZjlkNmIxZWMzMDkwMWE1Y2Q2ZWRmNzJjMjljZGUzNjJhNTQ5YAotIFVzZWQgZm9yOiBCaXQtcGVyZmVjdCBVU0IgQXVkaW8gQ2xhc3MgMi4wIG91dHB1dCBvbiBBbmRyb2lkCi0gTW9kdWxlcyBkw7luZyAocXVhIGNvbXBvc2l0ZSBidWlsZCwgc3BhcnNlLWNoZWNrb3V0IGNo4buJIGBsaWJzL2ApOgogIC0gYGRlY2VudC11c2ItYXVkaW8tZHJpdmVyYAogIC0gYGRlY2VudC11c2ItYXVkaW8td3JhcHBlci1tZWRpYTNgCiAgLSBgZGVjZW50LW1lZGlhMy1kZWNvZGVyLWZsYWNgCi0gS0jDlE5HIGTDuW5nOiBgZHJpdmVyL0ZlbGljaXR5L2AgKEFHUEwtMy4wKSDigJQgxJHDoyBsb+G6oWksIGtow7RuZyBjaGVja291dC4KCiMjIEFuZHJvaWRYIE1lZGlhMyAoRXhvUGxheWVyKQotIExpY2Vuc2U6IEFwYWNoZSAyLjAKLSBWZXJzaW9uICjEkcOjIHZlcmlmeSBgZ3JhZGxlL2xpYnMudmVyc2lvbnMudG9tbGApOiAxLjkuMwotIFVzZWQgZm9yOiBQbGF5YmFjayBmcmFtZXdvcmsKCiMjIGxpYkZMQUMKLSBMaWNlbnNlOiBCU0QKLSBVc2VkIGZvcjogRkxBQyBkZWNvZGluZwotIEdoaSBjaMO6OiBkw7luZyBxdWEgYGRlY2VudC1tZWRpYTMtZGVjb2Rlci1mbGFjYCAoZGVjb2RlIEZMQUMgcmEgaW50ZWdlciB0aMO0IHThuqFpIGV4dHJhY3RvcikuCiAgTuG6v3UgRkZtcGVnIHjhu60gbMO9IEZMQUMgKGtoaSBjaMawYSBjw7MgbGliRkxBQykgdGjDrCBkZWNvZGUgcmEgZmxvYXQzMiwgZHJpdmVyIGNodXnhu4NuIG5nxrDhu6NjIGLhurFuZyB4wrcyXk4uCgojIyBBbmRyb2lkWCAvIEtvdGxpbiAoxJHDoyBjw7MgdHJvbmcgY29kZSkKLSBMaWNlbnNlOiBBcGFjaGUgMi4wCi0gVmVyc2lvbnMgKMSRw6MgdmVyaWZ5IGBncmFkbGUvbGlicy52ZXJzaW9ucy50b21sYCk6CiAgLSBjb3JlLWt0eCAxLjE4LjAsIGFwcGNvbXBhdCAxLjcuMSwgcmVjeWNsZXJ2aWV3IDEuNC4wLCBsaWZlY3ljbGUtcnVudGltZS1rdHggMi45LjIKICAtIGtvdGxpbngtY29yb3V0aW5lcy1hbmRyb2lkIDEuMTAuMiwgS290bGluIDIuMi4yMCwgQUdQIDkuMS4wCi0gVXNlZCBmb3I6IFVJIGNvbXBvbmVudHMsIGFzeW5jIHByb2dyYW1taW5nCgojIyBDb2lsIC8gT2tIdHRwIC8ga290bGlueC5zZXJpYWxpemF0aW9uIC8gUm9vbSAvIEhpbHQgLyBXb3JrTWFuYWdlciAvIGV0Yy4KKGZpbGwgYXMgbGlicmFyaWVzIGFyZSBhZGRlZCkKCi0gQ29pbCAyLjcuMCDigJQgTG9hZCDhuqNuaCBiw6xhIGFsYnVtIOKAlCBBcGFjaGUgMi4wIOKAlCAqKsSRw6MgdGjDqm0gKFBoYXNlIDEuNCwgQ0kgcnVuICM2NikqKgotIE9rSHR0cCA0LjEyLjAg4oCUIE5ldHdvcmtpbmcsIHRoYXkgSHR0cFVSTENvbm5lY3Rpb24g4oCUIEFwYWNoZSAyLjAg4oCUICoqxJHDoyB0aMOqbSAoUGhhc2UgMS40LCBDSSBydW4gIzY2KSoqCi0ga290bGlueC5zZXJpYWxpemF0aW9uLWpzb24gMS43LjMg4oCUIFBhcnNlIEpTT04sIHRoYXkgb3JnLmpzb24g4oCUIEFwYWNoZSAyLjAg4oCUICoqxJHDoyB0aMOqbSAoUGhhc2UgMS40LCBDSSBydW4gIzY2KSoqCi0gTWVkaWFNZXRhZGF0YVJldHJpZXZlciDigJQgxJDhu41jIG1ldGFkYXRhIChBbmRyb2lkIFNESywga2jDtG5nIGPhuqduIGRlcGVuZGVuY3kpIOKAlCAqKsSRw6MgZMO5bmcgKFBoYXNlIDEuNCwgQ0kgcnVuICM2NikqKgotIFJvb20gMi42LjEgKCsgcm9vbS1rdHgpIOKAlCBDYWNoZSB0aMawIHZp4buHbiBuaOG6oWMg4oCUIEFwYWNoZSAyLjAg4oCUICoqY2jGsGEgdGjDqm0gKFBoYXNlIDIuMykqKgotIEhpbHQgMi41MiDigJQgRGVwZW5kZW5jeSBpbmplY3Rpb24g4oCUIEFwYWNoZSAyLjAg4oCUICoqY2jGsGEgdGjDqm0gKFBoYXNlIDIuMykqKgotIFdvcmtNYW5hZ2VyIDIuOS4xIOKAlCBCYWNrZ3JvdW5kIGNvcHkvc3luYyDigJQgQXBhY2hlIDIuMCDigJQgKipjaMawYSB0aMOqbSAoUGhhc2UgMi4zKSoqCi0gamF1ZGlvdGFnZ2VyIDMuMC4xIChob+G6t2MgYuG6o24gQXBhY2hlIG3hu5tpIG5o4bqldCBsw7pjIHRow6ptKSDigJQgxJDhu41jL2doaSB0YWdzIOKAlCBBcGFjaGUgMi4wIOKAlCAqKmNoxrBhIHRow6ptIChQaGFzZSAyLjMpKioKCiMjIGlPUyBjb21wb25lbnRzIChQaGFzZSAzIOKAlCBjaMawYSBi4bqvdCDEkeG6p3UpCi0gS2luZ2Zpc2hlciAoTUlUKSDigJQgTG9hZCDhuqNuaCBiw6xhIOKAlCAqKmNoxrBhIHRow6ptKioKLSBHb29nbGUgU2lnbi1JbiBTREsgKEFwYWNoZSAyLjApIOKAlCBEcml2ZSBhdXRoIGlPUyDigJQgKipjaMawYSB0aMOqbSoqCi0gVVJMU2Vzc2lvbiAoQXBwbGUsIGJ1aWx0LWluKSDigJQgTmV0d29ya2luZyDigJQgKipjaMawYSB0aMOqbSoqCi0gQ29kYWJsZSAoQXBwbGUsIGJ1aWx0LWluKSDigJQgUGFyc2UgSlNPTiDigJQgKipjaMawYSB0aMOqbSoqCi0gQVZGb3VuZGF0aW9uIChBcHBsZSwgYnVpbHQtaW4pIOKAlCBQbGF5YmFjayArIG1ldGFkYXRhIOKAlCAqKmNoxrBhIHRow6ptKioKLSBDb3JlQXVkaW8gKEFwcGxlLCBidWlsdC1pbikg4oCUIERBQyBvdXRwdXQg4oCUICoqY2jGsGEgdGjDqm0qKgoKIyMgSmVsbHlmaW4gRkZtcGVnIGRlY29kZXIgKMSQw4MgTE/huqBJIOKAlCDEkcOjIHhvw6Ega2jhu49pIGNvZGUg4bufIFBoYXNlIDEuNSwgQ+G6pE0gZMO5bmcgbOG6oWkpCi0gTGljZW5zZTogR1BMLTMuMCDigJQgKipraMO0bmcgxJHGsOG7o2MgZMO5bmcgdHJvbmcgYXBwIMSRw7NuZyoqCi0gxJDDoyB4b8OhIDIwMjYtMTAtMTQ6IGBpbXBsZW1lbnRhdGlvbihsaWJzLm1lZGlhMy5mZm1wZWcuZGVjb2RlcilgIHRyb25nIGBhcHAvYnVpbGQuZ3JhZGxlLmt0c2AgKyBlbnRyeSBgbWVkaWEzLWZmbXBlZy1kZWNvZGVyYCB0cm9uZyBgZ3JhZGxlL2xpYnMudmVyc2lvbnMudG9tbGAuCi0gVGhheSBi4bqxbmc6IEFBUiBGRm1wZWcgTEdQTCB04buxIGJ1aWxkICh4ZW0gbeG7pWMgRkZtcGVnIOG7nyB0csOqbikuCgojIyBOZ2jEqWEgduG7pSBMR1BMIChraGkgUGhhc2UgMS41IHhvbmcpCi0gQ3VuZyBj4bqlcCBzb3VyY2UgRkZtcGVnOiBsaW5rIHThu5tpIGdpdC5mZm1wZWcub3JnICsgZ2hpIGNvbW1pdCBoYXNoIHRyb25nIHJlcG8uCi0gR2hpIGxpY2Vuc2U6IGZpbGUgbsOgeSB0cm9uZyBhcHAgKFNldHRpbmdzIOKGkiBBYm91dCDihpIgT3BlbiBTb3VyY2UgTGljZW5zZXMpLgotIENobyBwaMOpcCB0aGF5IHRo4bq/IGxpYjogQUFSIGNo4bupYSBGRm1wZWcgZMaw4bubaSBk4bqhbmcgYC5zb2AgcmnDqm5nIChkeW5hbWljIGxpbmspLgotIEtow7RuZyBz4butYSBGRm1wZWc6IGTDuW5nIG5ndXnDqm4gYuG6o24sIGtow7RuZyBwYXRjaC4gTuG6v3UgY8OzIHBhdGNoIOKGkiBwaOG6o2kgY8O0bmcga2hhaSBwYXRjaC4K
+# Third-Party Notices — dac-app
+
+This application uses the following open-source components.
+
+> Nguồn: plan chi tiết dac-app § "Step 0.4 — Create license template" (skeleton gốc) +
+> inventory thật Phase 0.2 (2026-10-13). Chỉ ghi những gì đã verify từ code / repo thật.
+> Thư viện chưa thêm vào code thì ghi "(chưa thêm — Phase X)" để không bịa là đã dùng.
+> Cập nhật commit hash / version mỗi khi thêm hoặc nâng cấp thư viện.
+
+## FFmpeg
+- License: LGPL v2.1 or later
+- Source: https://git.ffmpeg.org/ffmpeg.git
+- Commit: `b37bf81a7a9782438e4fe06a249329e279694494` (branch `release/6.0`, verify 2026-10-14 từ `build-hashes.txt` của CI run #1 workflow "Build FFmpeg LGPL AAR")
+- AAR: `app/libs/media3-ffmpeg-lgpl.aar` — build từ androidx/media tag `1.9.3` (commit `9b8b13d177cf9a3ce997773ca51337acf5acc639`), NDK `27.1.12297006`, SHA-256 `6c47cd7f9c7a29f7f534a8010b9c7775ff31a901999273fe5fe4a95133359a0f`
+- Used for: Audio decoding (APE, ALAC, etc.)
+- **Trạng thái (2026-10-14): ĐÃ thay thế Jellyfin GPL.** AAR FFmpeg LGPL tự build, không `--enable-gpl` (CI guard chặn). Xem mục "Jellyfin" bên dưới (đã xoá khỏi code).
+
+## decent-player / decent-usb-audio-driver
+- License: MIT
+- Source: https://github.com/Ma145/decent-player
+- Commit (CI pin, đã verify trong `.github/workflows/build-dac-apk.yml`): `d039f9d6b1ec30901a5cd6edf72c29cde362a549`
+- Used for: Bit-perfect USB Audio Class 2.0 output on Android
+- Modules dùng (qua composite build, sparse-checkout chỉ `libs/`):
+  - `decent-usb-audio-driver`
+  - `decent-usb-audio-wrapper-media3`
+  - `decent-media3-decoder-flac`
+- KHÔNG dùng: `driver/Felicity/` (AGPL-3.0) — đã loại, không checkout.
+
+## AndroidX Media3 (ExoPlayer)
+- License: Apache 2.0
+- Version (đã verify `gradle/libs.versions.toml`): 1.9.3
+- Used for: Playback framework
+
+## libFLAC
+- License: BSD
+- Used for: FLAC decoding
+- Ghi chú: dùng qua `decent-media3-decoder-flac` (decode FLAC ra integer thô tại extractor).
+  Nếu FFmpeg xử lý FLAC (khi chưa có libFLAC) thì decode ra float32, driver chuyển ngược bằng x·2^N.
+
+## AndroidX / Kotlin (đã có trong code)
+- License: Apache 2.0
+- Versions (đã verify `gradle/libs.versions.toml`):
+  - core-ktx 1.18.0, appcompat 1.7.1, recyclerview 1.4.0, lifecycle-runtime-ktx 2.9.2
+  - kotlinx-coroutines-android 1.10.2, Kotlin 2.2.20, AGP 9.1.0
+- Used for: UI components, async programming
+
+## Coil / OkHttp / kotlinx.serialization / Room / Hilt / WorkManager / etc.
+(fill as libraries are added)
+
+- Coil 2.7.0 — Load ảnh bìa album — Apache 2.0 — **đã thêm (Phase 1.4, CI run #66)**
+- OkHttp 4.12.0 — Networking, thay HttpURLConnection — Apache 2.0 — **đã thêm (Phase 1.4, CI run #66)**
+- kotlinx.serialization-json 1.7.3 — Parse JSON, thay org.json — Apache 2.0 — **đã thêm (Phase 1.4, CI run #66)**
+- MediaMetadataRetriever — Đọc metadata (Android SDK, không cần dependency) — **đã dùng (Phase 1.4, CI run #66)**
+- Room 2.6.1 (+ room-ktx) — Cache thư viện nhạc — Apache 2.0 — **chưa thêm (Phase 2.3)**
+- Hilt 2.52 — Dependency injection — Apache 2.0 — **chưa thêm (Phase 2.3)**
+- WorkManager 2.9.1 — Background copy/sync — Apache 2.0 — **chưa thêm (Phase 2.3)**
+- jaudiotagger 3.0.1 (hoặc bản Apache mới nhất lúc thêm) — Đọc/ghi tags — Apache 2.0 — **chưa thêm (Phase 2.3)**
+
+## iOS components (Phase 3 — chưa bắt đầu)
+- Kingfisher (MIT) — Load ảnh bìa — **chưa thêm**
+- Google Sign-In SDK (Apache 2.0) — Drive auth iOS — **chưa thêm**
+- URLSession (Apple, built-in) — Networking — **chưa thêm**
+- Codable (Apple, built-in) — Parse JSON — **chưa thêm**
+- AVFoundation (Apple, built-in) — Playback + metadata — **chưa thêm**
+- CoreAudio (Apple, built-in) — DAC output — **chưa thêm**
+
+## Jellyfin FFmpeg decoder (ĐÃ LOẠI — đã xoá khỏi code ở Phase 1.5, CẤM dùng lại)
+- License: GPL-3.0 — **không được dùng trong app đóng**
+- Đã xoá 2026-10-14: `implementation(libs.media3.ffmpeg.decoder)` trong `app/build.gradle.kts` + entry `media3-ffmpeg-decoder` trong `gradle/libs.versions.toml`.
+- Thay bằng: AAR FFmpeg LGPL tự build (xem mục FFmpeg ở trên).
+
+## Nghĩa vụ LGPL (khi Phase 1.5 xong)
+- Cung cấp source FFmpeg: link tới git.ffmpeg.org + ghi commit hash trong repo.
+- Ghi license: file này trong app (Settings → About → Open Source Licenses).
+- Cho phép thay thế lib: AAR chứa FFmpeg dưới dạng `.so` riêng (dynamic link).
+- Không sửa FFmpeg: dùng nguyên bản, không patch. Nếu có patch → phải công khai patch.
