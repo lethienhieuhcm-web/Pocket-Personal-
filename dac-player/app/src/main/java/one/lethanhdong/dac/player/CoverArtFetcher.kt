@@ -50,7 +50,8 @@ class CoverArtFetcher(
             val url = apiClient.streamUrl(key.trackId)
             val art = MediaMetadataReader.embeddedArtFromUrl(url) ?: return null
             val source: BufferedSource = Buffer().write(art)
-            FetchResult.OfSource(
+            // Coil 2: FetchResult.Source (không phải OfSource — đó là tên của Coil 3).
+            FetchResult.Source(
                 source = source,
                 mimeType = CoverArt.guessMime(art),
                 dataSource = DataSource.NETWORK,
