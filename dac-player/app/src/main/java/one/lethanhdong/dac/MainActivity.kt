@@ -132,6 +132,10 @@ class MainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.logoutButton).setOnClickListener {
             doLogout()
         }
+        // 4.7: Quản lý phiên đăng nhập
+        findViewById<Button>(R.id.sessionsButton).setOnClickListener {
+            startActivity(Intent(this@MainActivity, SessionsActivity::class.java))
+        }
         findViewById<Button>(R.id.licensesButton).setOnClickListener {
             startActivity(Intent(this@MainActivity, LicensesActivity::class.java))
         }
