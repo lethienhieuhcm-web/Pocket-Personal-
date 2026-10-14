@@ -6,6 +6,25 @@
 	objectVersion = 56;
 	objects = {
 
+/* Begin XCRemoteSwiftPackageReference section */
+		EE4FDCC946348862F23B48F3 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/google/GoogleSignIn-iOS";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 8.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		EE2F148E6EB4997FB1E017A2 /* GoogleSignIn */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = EE4FDCC946348862F23B48F3 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
+			productName = GoogleSignIn;
+		};
+/* End XCSwiftPackageProductDependency section */
+
 /* Begin PBXBuildFile section */
 		A4FCEF1C31CB4F37928A1F37 /* DACPlayerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 499474AFECFF40A2AC3C40B0 /* DACPlayerApp.swift */; };
 		DEC77034EDEB4ED197463091 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8F7E1DEF6334C67BEB5F9E0 /* ContentView.swift */; };
@@ -42,6 +61,7 @@
 		7218E0485E9047718351A168 /* ImportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportView.swift; sourceTree = "<group>"; };
 		E26551B4C80E45FAB0A62847 /* CoverArtManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverArtManager.swift; sourceTree = "<group>"; };
 		3633D515310942E581255289 /* TrackArtworkView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrackArtworkView.swift; sourceTree = "<group>"; };
+		7C8B1E2F4A5D6C7E8F0A1B2C /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		ED68EDB9D4FE40E5AC21D31D /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -83,6 +103,7 @@
 				7218E0485E9047718351A168 /* ImportView.swift */,
 				E26551B4C80E45FAB0A62847 /* CoverArtManager.swift */,
 				3633D515310942E581255289 /* TrackArtworkView.swift */,
+				7C8B1E2F4A5D6C7E8F0A1B2C /* Info.plist */,
 				ED68EDB9D4FE40E5AC21D31D /* Assets.xcassets */,
 			);
 			path = DACPlayer;
@@ -119,6 +140,9 @@
 			dependencies = (
 			);
 			name = DACPlayer;
+			packageProductDependencies = (
+				EE2F148E6EB4997FB1E017A2 /* GoogleSignIn */,
+			);
 			productName = DACPlayer;
 			productReference = 465A6D50DC7448B490CE53C4 /* DACPlayer.app */;
 			productType = "com.apple.product-type.application";
@@ -146,6 +170,9 @@
 				en,
 			);
 			mainGroup = 031EAE9FD5C442258BD27E2A;
+			packageReferences = (
+				EE4FDCC946348862F23B48F3 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
+			);
 			productRefGroup = 700D275FE3C845FA9C2F9AD3 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -252,7 +279,8 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				GENERATE_INFOPLIST_FILE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = DACPlayer/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "DAC Player";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -263,7 +291,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = one.lethanhdong.dacapp;
+				PRODUCT_BUNDLE_IDENTIFIER = one.lethanhdong.dacplayer;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -279,7 +307,8 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				GENERATE_INFOPLIST_FILE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = DACPlayer/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "DAC Player";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -290,7 +319,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = one.lethanhdong.dacapp;
+				PRODUCT_BUNDLE_IDENTIFIER = one.lethanhdong.dacplayer;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				SWIFT_EMIT_LOC_STRINGS = YES;
