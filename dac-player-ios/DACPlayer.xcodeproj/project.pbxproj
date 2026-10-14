@@ -42,6 +42,7 @@
 		F4798FF5483049C190471291 /* CoverArtManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = E26551B4C80E45FAB0A62847 /* CoverArtManager.swift */; };
 		0C49889E0EEF43EEA06CE5C4 /* TrackArtworkView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3633D515310942E581255289 /* TrackArtworkView.swift */; };
 		5B4DF315ACA2449ABAAC86D7 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = ED68EDB9D4FE40E5AC21D31D /* Assets.xcassets */; };
+		B88327190C0F4A1352419BCF /* FolderBrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 094BE9323F231BE255E35565 /* FolderBrowserView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -63,6 +64,7 @@
 		3633D515310942E581255289 /* TrackArtworkView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrackArtworkView.swift; sourceTree = "<group>"; };
 		7C8B1E2F4A5D6C7E8F0A1B2C /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		ED68EDB9D4FE40E5AC21D31D /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		094BE9323F231BE255E35565 /* FolderBrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderBrowserView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -103,6 +105,7 @@
 				7218E0485E9047718351A168 /* ImportView.swift */,
 				E26551B4C80E45FAB0A62847 /* CoverArtManager.swift */,
 				3633D515310942E581255289 /* TrackArtworkView.swift */,
+				094BE9323F231BE255E35565 /* FolderBrowserView.swift */,
 				7C8B1E2F4A5D6C7E8F0A1B2C /* Info.plist */,
 				ED68EDB9D4FE40E5AC21D31D /* Assets.xcassets */,
 			);
