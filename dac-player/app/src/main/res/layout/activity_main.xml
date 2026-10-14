@@ -64,6 +64,14 @@
             android:layout_weight="1"
             android:text="Nhập từ link" />
 
+        <!-- 4.1: Duyệt nhạc theo thư mục Drive -->
+        <Button
+            android:id="@+id/folderButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Thư mục" />
+
         <Button
             android:id="@+id/logoutButton"
             android:layout_width="0dp"
