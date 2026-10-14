@@ -6,7 +6,9 @@
 # - Java 21 (jvmToolchain(21) mọi module)
 [versions]
 agp = "9.1.0"
-kotlin = "2.2.20"
+# 2.3: Kotlin phải khớp AGP 9.x built-in (2.2.10) để KSP hoạt động.
+# KSP 2.2.10-2.0.2 build cho Kotlin 2.2.10; dùng 2.2.20 gây "unexpected jvm signature V".
+kotlin = "2.2.10"
 media3 = "1.9.3"
 core-ktx = "1.18.0"
 appcompat = "1.7.1"
