@@ -28,10 +28,11 @@ security-crypto = "1.1.0"
 androidx-test = "1.7.0"
 test-ext-junit = "1.3.0"
 # 2.3: Phase 2 Libraries — verify qua Google Maven + Maven Central (2026-10-14):
-# room 2.6.1, hilt 2.60.1 (2.52 không tương thích AGP 9.x — lỗi "Android BaseExtension not found"),
+# room 2.8.5 (latest; 2.6.1 không tương thích KSP 2.x — lỗi "unexpected jvm signature V"),
+# hilt 2.60.1 (2.52 không tương thích AGP 9.x — lỗi "Android BaseExtension not found"),
 # work-runtime-ktx 2.9.1, jaudiotagger 3.0.1 (net.jthink).
 # KSP version = Kotlin version (2.2.20) theo doc Google.
-room = "2.6.1"
+room = "2.8.5"
 hilt = "2.60.1"
 workmanager = "2.9.1"
 jaudiotagger = "3.0.1"
