@@ -36,8 +36,8 @@ class AuthActivity : AppCompatActivity() {
     private lateinit var forgotPasswordButton: TextView
     private lateinit var resendButton: Button
     private lateinit var googleSignInButton: Button
-    // 2.4: Web OAuth client ID — tạo trong Google Cloud Console > Credentials.
-    // Dùng cho `aud` khi Worker verify ID token.
+    // 2.4: Web OAuth client ID (client Web app của lethanhdong.one, đã verify
+    // từ flow OAuth live 2026-10-14). Dùng cho `aud` khi Worker verify ID token.
     private val googleWebClientId = BuildConfig.GOOGLE_WEB_CLIENT_ID
 
     override fun onCreate(savedInstanceState: Bundle?) {
