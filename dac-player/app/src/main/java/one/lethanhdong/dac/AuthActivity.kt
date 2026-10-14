@@ -11,6 +11,7 @@ import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import one.lethanhdong.dac.player.AuthManager
 import one.lethanhdong.dac.player.AuthValidator
+import one.lethanhdong.dac.player.EmailNotVerifiedException
 
 /**
  * AuthActivity — plan dac-app 1.3: màn hình Đăng nhập / Đăng ký TÁCH RIÊNG
@@ -20,6 +21,8 @@ import one.lethanhdong.dac.player.AuthValidator
  * MainActivity chỉ chạy khi đã đăng nhập; chưa đăng nhập → về đây.
  * Lỗi hiển thị inline trong [errorText] (không Toast — Toast trôi mất,
  * user không đọc kịp message rate limit).
+ *
+ * 2.2: Thêm luồng xác nhận email (token link) + quên mật khẩu.
  */
 class AuthActivity : AppCompatActivity() {
 
@@ -29,6 +32,8 @@ class AuthActivity : AppCompatActivity() {
     private lateinit var errorText: TextView
     private lateinit var loginButton: Button
     private lateinit var registerButton: Button
+    private lateinit var forgotPasswordButton: TextView
+    private lateinit var resendButton: Button
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -41,9 +46,13 @@ class AuthActivity : AppCompatActivity() {
         errorText = findViewById(R.id.errorText)
         loginButton = findViewById(R.id.loginButton)
         registerButton = findViewById(R.id.registerButton)
+        forgotPasswordButton = findViewById(R.id.forgotPasswordButton)
+        resendButton = findViewById(R.id.resendButton)
 
         loginButton.setOnClickListener { doLogin() }
         registerButton.setOnClickListener { doRegister() }
+        forgotPasswordButton.setOnClickListener { doForgotPassword() }
+        resendButton.setOnClickListener { doResendVerification() }
     }
 
     private fun showError(message: String) {
@@ -51,13 +60,23 @@ class AuthActivity : AppCompatActivity() {
         errorText.visibility = View.VISIBLE
     }
 
+    private fun showInfo(message: String) {
+        errorText.text = message
+        errorText.setTextColor(getColor(android.R.color.holo_green_dark))
+        errorText.visibility = View.VISIBLE
+    }
+
     private fun clearError() {
         errorText.visibility = View.GONE
+        errorText.setTextColor(getColor(android.R.color.holo_red_dark))
+        resendButton.visibility = View.GONE
     }
 
     private fun setBusy(busy: Boolean) {
         loginButton.isEnabled = !busy
         registerButton.isEnabled = !busy
+        forgotPasswordButton.isEnabled = !busy
+        resendButton.isEnabled = !busy
     }
 
     private fun goToMain() {
@@ -79,6 +98,10 @@ class AuthActivity : AppCompatActivity() {
             try {
                 authManager.login(email, password)
                 goToMain()
+            } catch (e: EmailNotVerifiedException) {
+                // 2.2: hiện nút gửi lại email xác nhận
+                showError(e.message ?: "Email chưa được xác nhận")
+                resendButton.visibility = View.VISIBLE
             } catch (e: Exception) {
                 showError(e.message ?: "Lỗi đăng nhập")
             } finally {
@@ -99,12 +122,60 @@ class AuthActivity : AppCompatActivity() {
         setBusy(true)
         lifecycleScope.launch {
             try {
-                authManager.register(email, password)
-                // Đăng ký xong → tự động đăng nhập luôn (plan 1.3)
-                authManager.login(email, password)
-                goToMain()
+                val result = authManager.register(email, password)
+                if (result.needsVerification) {
+                    // 2.2: đăng ký xong nhưng chưa verify → báo user check email
+                    showInfo("Đã gửi email xác nhận. Vui lòng bấm link trong email rồi đăng nhập.")
+                    resendButton.visibility = View.VISIBLE
+                } else {
+                    // Đã verify (web flow) → tự động đăng nhập luôn (plan 1.3)
+                    authManager.login(email, password)
+                    goToMain()
+                }
             } catch (e: Exception) {
                 showError(e.message ?: "Lỗi đăng ký")
+            } finally {
+                setBusy(false)
+            }
+        }
+    }
+
+    private fun doForgotPassword() {
+        val email = emailInput.text.toString().trim()
+        if (!android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+            showError("Vui lòng nhập email trước")
+            return
+        }
+        clearError()
+        setBusy(true)
+        lifecycleScope.launch {
+            try {
+                authManager.forgotPassword(email)
+                // Luôn báo đã gửi (server không tiết lộ email có tồn tại)
+                showInfo("Nếu email này đã đăng ký, bạn sẽ nhận được link đặt lại mật khẩu.")
+            } catch (e: Exception) {
+                showError(e.message ?: "Lỗi gửi email")
+            } finally {
+                setBusy(false)
+            }
+        }
+    }
+
+    private fun doResendVerification() {
+        val email = emailInput.text.toString().trim()
+        if (!android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+            showError("Vui lòng nhập email trước")
+            return
+        }
+        clearError()
+        setBusy(true)
+        lifecycleScope.launch {
+            try {
+                authManager.resendVerification(email)
+                showInfo("Đã gửi lại email xác nhận. Vui lòng kiểm tra hộp thư.")
+                resendButton.visibility = View.VISIBLE
+            } catch (e: Exception) {
+                showError(e.message ?: "Lỗi gửi email")
             } finally {
                 setBusy(false)
             }
