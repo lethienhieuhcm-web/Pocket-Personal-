@@ -25,4 +25,16 @@ object AppModule {
     @Provides
     @Singleton
     fun provideTrackDao(db: MusicDatabase): TrackDao = db.trackDao()
+
+    /**
+     * 4.1: PlayerManager singleton — 1 ExoPlayer duy nhất cho cả app.
+     * Nhạc tiếp tục phát khi chuyển giữa các màn hình (Main ↔ Folder),
+     * đúng kiến trúc của Spotify/UAPP. Dùng application context để
+     * ExoPlayer không giữ reference tới Activity đã destroy.
+     */
+    @Provides
+    @Singleton
+    fun providePlayerManager(
+        @ApplicationContext context: Context
+    ): PlayerManager = PlayerManager(context)
 }
