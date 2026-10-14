@@ -69,6 +69,26 @@ class AudioEngine: ObservableObject {
         }
     }
 
+    /// 4.3: Phát file đã tải offline (không cần mạng/Drive token).
+    func playLocal(_ track: Track, fileURL: URL) async {
+        stop()
+        errorText = nil
+        let sr = await sampleRate(of: fileURL)
+        do {
+            try configureSession(sampleRate: sr)
+        } catch {
+            errorText = "Không cấu hình được audio: \(error.localizedDescription)"
+            return
+        }
+        sampleRate = sr
+        let item = AVPlayerItem(url: fileURL)
+        player = AVPlayer(playerItem: item)
+        player?.volume = 1.0
+        player?.play()
+        currentTrack = track
+        isPlaying = true
+    }
+
     func togglePlayPause() {
         guard player != nil else { return }
         if isPlaying {
