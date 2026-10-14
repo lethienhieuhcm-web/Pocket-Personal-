@@ -33,18 +33,13 @@ class MusicApiClient(
     )
 
     companion object {
-        private const val CACHE_PREFS = "dac_music_cache"
-        private const val KEY_CACHE_JSON = "music_list"
-        private const val KEY_CACHE_TIME = "music_list_time"
         // Cache 24h — user bấm "Làm mới" để force refresh
+        // 2.3: cache lưu trong Room (TrackEntity.cachedAt), không còn SharedPreferences.
         const val CACHE_TTL_MS = 24 * 60 * 60 * 1000L
     }
 
     private val auth by lazy { AuthManager(context, baseUrl) }
     private val driveAuth by lazy { DriveAuthManager(context) }
-    private val cachePrefs by lazy {
-        context.getSharedPreferences(CACHE_PREFS, Context.MODE_PRIVATE)
-    }
 
     private fun authToken(): String? = auth.token()
 
@@ -84,6 +79,8 @@ class MusicApiClient(
 
     /**
      * Lấy danh sách nhạc từ Drive qua Worker (dac-pass).
+     * 2.3: Cache bằng Room (thay SharedPreferences JSON) — query offline,
+     * survive restart, không giới hạn size.
      * @param forceRefresh true để bỏ qua cache.
      * @param activity Activity để hiện dialog xin quyền Drive (nếu cần).
      */
@@ -91,34 +88,43 @@ class MusicApiClient(
         forceRefresh: Boolean = false,
         activity: android.app.Activity? = null,
     ): List<Track> {
-        // Đọc cache nếu còn hạn và không force refresh
+        val dao = MusicDatabase.getInstance(context).trackDao()
+        // Đọc cache Room nếu còn hạn và không force refresh
         if (!forceRefresh) {
-            val cachedTime = cachePrefs.getLong(KEY_CACHE_TIME, 0)
-            val cachedJson = cachePrefs.getString(KEY_CACHE_JSON, null)
-            if (cachedJson != null && System.currentTimeMillis() - cachedTime < CACHE_TTL_MS) {
-                try {
-                    return parseTracks(ApiHttp.json.decodeFromString<MusicListResponse>(cachedJson))
-                } catch (e: Exception) {
-                    // Cache hỏng → fetch mới
+            val oldest = dao.oldestCachedAt()
+            if (oldest != null && System.currentTimeMillis() - oldest < CACHE_TTL_MS) {
+                val cached = dao.getAll()
+                if (cached.isNotEmpty()) {
+                    return cached.map { Track(it.id, it.title, it.size, it.mimeType) }
                 }
             }
         }
 
         val driveToken = driveAuth.getToken(activity)
         val body = get("/api/dac/music", driveToken)
+        val tracks = parseTracks(ApiHttp.json.decodeFromString<MusicListResponse>(body))
 
-        // Lưu cache (body đã là JSON chuẩn từ Worker)
-        cachePrefs.edit()
-            .putString(KEY_CACHE_JSON, body)
-            .putLong(KEY_CACHE_TIME, System.currentTimeMillis())
-            .apply()
+        // Lưu cache Room (xoá cũ, chèn mới với timestamp)
+        val now = System.currentTimeMillis()
+        dao.clear()
+        dao.insertAll(tracks.map {
+            TrackEntity(it.id, it.title, it.size, it.mimeType, now)
+        })
 
-        return parseTracks(ApiHttp.json.decodeFromString<MusicListResponse>(body))
+        return tracks
     }
 
-    /** Xoá cache danh sách nhạc. */
-    fun clearCache() {
-        cachePrefs.edit().remove(KEY_CACHE_JSON).remove(KEY_CACHE_TIME).apply()
+    /** Xoá cache danh sách nhạc (Room). */
+    suspend fun clearCache() {
+        MusicDatabase.getInstance(context).trackDao().clear()
+    }
+
+    /**
+     * Tìm kiếm trong cache offline (2.3: Room query, không cần mạng).
+     */
+    suspend fun searchOffline(query: String): List<Track> {
+        val dao = MusicDatabase.getInstance(context).trackDao()
+        return dao.search(query).map { Track(it.id, it.title, it.size, it.mimeType) }
     }
 
     /**
