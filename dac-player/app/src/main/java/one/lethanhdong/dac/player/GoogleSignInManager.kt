@@ -80,9 +80,7 @@ class GoogleSignInManager(
      * @throws IllegalStateException với message user-friendly khi lỗi.
      */
     suspend fun signIn(): GoogleLoginResponse = withContext(Dispatchers.IO) {
-        if (webClientId.isBlank()) {
-            throw IllegalStateException("Đăng nhập Google chưa được cấu hình")
-        }
+        requireConfigured()
         // 1. Lấy Google ID token qua Credential Manager
         val googleIdOption = GetGoogleIdOption.Builder()
             .setServerClientId(webClientId)
@@ -111,20 +109,38 @@ class GoogleSignInManager(
             .build()
 
         ApiHttp.client.newCall(req).execute().use { resp ->
-            val respBody = resp.body?.string().orEmpty()
-            when (resp.code) {
-                200 -> {
-                    val loginResp = ApiHttp.json.decodeFromString<GoogleLoginResponse>(respBody)
-                    // Lưu session như login thường
-                    authManager.saveGoogleSession(loginResp.token, loginResp.email)
-                    loginResp
-                }
-                401 -> throw IllegalStateException("Google token không hợp lệ")
-                429 -> throw IllegalStateException("Thử quá nhiều lần, đợi một lúc rồi thử lại")
-                else -> throw IllegalStateException(
-                    ApiHttp.readErrorMessage(respBody) ?: "Đăng nhập Google thất bại"
-                )
+            handleIdTokenResponse(resp.code, resp.body?.string().orEmpty())
+        }
+    }
+
+    /**
+     * Báo lỗi user-friendly khi Web client ID chưa được cấu hình — tách riêng để test.
+     * @throws IllegalStateException khi [webClientId] rỗng.
+     */
+    internal fun requireConfigured() {
+        if (webClientId.isBlank()) {
+            throw IllegalStateException("Đăng nhập Google chưa được cấu hình")
+        }
+    }
+
+    /**
+     * Xử lý response từ Worker /api/auth/google/idtoken — tách riêng để test.
+     * @return GoogleLoginResponse khi 200 (đã lưu session).
+     * @throws IllegalStateException với message user-friendly cho các lỗi.
+     */
+    internal fun handleIdTokenResponse(code: Int, respBody: String): GoogleLoginResponse {
+        when (code) {
+            200 -> {
+                val loginResp = ApiHttp.json.decodeFromString<GoogleLoginResponse>(respBody)
+                // Lưu session như login thường
+                authManager.saveGoogleSession(loginResp.token, loginResp.email)
+                return loginResp
             }
+            401 -> throw IllegalStateException("Google token không hợp lệ")
+            429 -> throw IllegalStateException("Thử quá nhiều lần, đợi một lúc rồi thử lại")
+            else -> throw IllegalStateException(
+                ApiHttp.readErrorMessage(respBody) ?: "Đăng nhập Google thất bại"
+            )
         }
     }
 }
