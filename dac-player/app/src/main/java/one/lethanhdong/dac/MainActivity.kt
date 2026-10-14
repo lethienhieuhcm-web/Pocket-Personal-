@@ -15,6 +15,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.decent.usbaudio.UsbAudioPermissionHelper
 import kotlinx.coroutines.launch
 import one.lethanhdong.dac.player.AuthManager
+import one.lethanhdong.dac.player.CoverArt
 import one.lethanhdong.dac.player.MusicApiClient
 import one.lethanhdong.dac.player.PlayerManager
 import one.lethanhdong.dac.player.TrackAdapter
@@ -86,7 +87,11 @@ class MainActivity : AppCompatActivity() {
             // Không lấy được version → bỏ qua, không crash
         }
 
-        trackAdapter = TrackAdapter { track -> playTrack(track) }
+        trackAdapter = TrackAdapter(
+            onTrackClick = { track -> playTrack(track) },
+            // 1.4: ImageLoader ảnh bìa (Coil + CoverArtFetcher).
+            imageLoader = CoverArt.imageLoader(this, apiClient),
+        )
         trackList.layoutManager = LinearLayoutManager(this)
         trackList.adapter = trackAdapter
 
