@@ -7,7 +7,7 @@ struct ContentView: View {
         Group {
             if auth.isLoggedIn {
                 // 4.1: Tab bar theo UI thống nhất đã Chốt (Thư viện | Thư mục).
-                // 4.7: thêm tab Cài đặt. Tab Tìm kiếm thêm ở 4.8.
+                // 4.7: thêm tab Cài đặt. 4.8: thêm tab Tìm kiếm.
                 TabView {
                     LibraryView()
                         .tabItem {
@@ -16,6 +16,10 @@ struct ContentView: View {
                     FolderBrowserView()
                         .tabItem {
                             Label("Thư mục", systemImage: "folder")
+                        }
+                    SearchView()
+                        .tabItem {
+                            Label("Tìm kiếm", systemImage: "magnifyingglass")
                         }
                     SettingsView()
                         .tabItem {
@@ -83,7 +87,7 @@ struct LibraryView: View {
                             HStack(spacing: 12) {
                                 TrackArtworkView(track: track)
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text(track.title)
+                                    Text(track.displayTitle)
                                         .lineLimit(1)
                                     Text(formatSize(track.size))
                                         .font(.footnote)

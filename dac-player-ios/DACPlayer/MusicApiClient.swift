@@ -15,11 +15,37 @@ struct Track: Identifiable, Codable, Hashable {
     let title: String
     let size: Int64
     let mimeType: String
+    /// 4.8: artist parse từ tên file; rỗng nếu không khớp quy ước.
+    var artist: String = ""
+
+    /// Tên hiển thị: "Nghệ sĩ - Tên bài" khi có artist.
+    var displayTitle: String {
+        artist.isEmpty ? title : "\(artist) - \(title)"
+    }
 }
 
 private struct MusicCache: Codable {
     let cachedAt: Int64  // epoch millis
     let tracks: [Track]
+}
+
+private struct SearchResponse: Codable {
+    var files: [SearchFile] = []
+    var total: Int = 0
+}
+
+private struct SearchFile: Codable {
+    var id: String = ""
+    var name: String = ""
+    var artist: String = ""
+    var title: String = ""
+    var size: Int64 = 0
+    var mimeType: String = ""
+}
+
+struct SearchResult {
+    var tracks: [Track]
+    var total: Int
 }
 
 private struct StreamResponse: Codable {
@@ -225,6 +251,58 @@ class MusicApiClient: ObservableObject {
     }
 
     /// Lấy direct Drive URL để stream.
+    /// 4.8: Tìm kiếm metadata trong D1 index (phân trang).
+    /// Chưa sync → Worker fallback tìm live Drive (total=-1).
+    func search(query: String, limit: Int = 50, offset: Int = 0) async throws -> SearchResult {
+        // 4.6: 401 drive-token-invalid → refresh token + thử lại 1 lần.
+        var refreshed = false
+        while true {
+            do {
+                return try await performSearch(query: query, limit: limit, offset: offset)
+            } catch MusicError.driveTokenInvalid {
+                if refreshed { throw MusicError.driveTokenInvalid }
+                refreshed = true
+                try? await GIDSignIn.sharedInstance.currentUser?.refreshTokensIfNeeded()
+            }
+        }
+    }
+
+    private func performSearch(query: String, limit: Int, offset: Int) async throws -> SearchResult {
+        var comp = URLComponents(string: AuthManager.baseURL + "/api/dac/search")!
+        comp.queryItems = [
+            URLQueryItem(name: "q", value: query),
+            URLQueryItem(name: "limit", value: String(limit)),
+            URLQueryItem(name: "offset", value: String(offset)),
+        ]
+        let url = comp.url!
+        var req = URLRequest(url: url)
+        guard let token = auth.token() else {
+            throw MusicError.message("Chưa đăng nhập")
+        }
+        req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        if let dt = driveToken() {
+            req.setValue(dt, forHTTPHeaderField: "X-Drive-Token")
+        }
+        let (data, resp) = try await URLSession.shared.data(for: req)
+        let code = (resp as? HTTPURLResponse)?.statusCode ?? 0
+        if code == 401 {
+            if let err = try? JSONDecoder().decode(ErrorResponse.self, from: data),
+               err.error.contains("Drive token invalid") {
+                throw MusicError.driveTokenInvalid
+            }
+            throw MusicError.message("Hết phiên đăng nhập (401)")
+        }
+        guard code == 200 else {
+            throw MusicError.message("Tìm kiếm lỗi: HTTP \(code)")
+        }
+        let decoded = try JSONDecoder().decode(SearchResponse.self, from: data)
+        let tracks = decoded.files.map { f in
+            Track(id: f.id, title: f.title.isEmpty ? f.name : f.title,
+                  size: f.size, mimeType: f.mimeType, artist: f.artist)
+        }
+        return SearchResult(tracks: tracks, total: decoded.total)
+    }
+
     func streamURL(for id: String) async throws -> URL {
         let data = try await get("/api/dac/stream/\(id)")
         let resp = try JSONDecoder().decode(StreamResponse.self, from: data)

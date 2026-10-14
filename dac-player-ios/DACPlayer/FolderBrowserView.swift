@@ -76,7 +76,7 @@ struct FolderBrowserView: View {
                                         HStack(spacing: 12) {
                                             TrackArtworkView(track: track)
                                             VStack(alignment: .leading, spacing: 2) {
-                                                Text(track.title).lineLimit(1)
+                                                Text(track.displayTitle).lineLimit(1)
                                                 Text(formatSize(track.size))
                                                     .font(.footnote)
                                                     .foregroundStyle(.secondary)
