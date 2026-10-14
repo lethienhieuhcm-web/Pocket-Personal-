@@ -20,6 +20,8 @@
 		E74415799DEC4E139316E7B1 /* DriveLinkParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 966A6446FEDC4BB38127830D /* DriveLinkParser.swift */; };
 		7A552C096D814F1994FE2F4F /* DriveCopyManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C199B2D6A1D54E57941F7C3B /* DriveCopyManager.swift */; };
 		232EC81E81BB43D081C16197 /* ImportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7218E0485E9047718351A168 /* ImportView.swift */; };
+		F4798FF5483049C190471291 /* CoverArtManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = E26551B4C80E45FAB0A62847 /* CoverArtManager.swift */; };
+		0C49889E0EEF43EEA06CE5C4 /* TrackArtworkView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3633D515310942E581255289 /* TrackArtworkView.swift */; };
 		5B4DF315ACA2449ABAAC86D7 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = ED68EDB9D4FE40E5AC21D31D /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
@@ -38,6 +40,8 @@
 		966A6446FEDC4BB38127830D /* DriveLinkParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DriveLinkParser.swift; sourceTree = "<group>"; };
 		C199B2D6A1D54E57941F7C3B /* DriveCopyManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DriveCopyManager.swift; sourceTree = "<group>"; };
 		7218E0485E9047718351A168 /* ImportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportView.swift; sourceTree = "<group>"; };
+		E26551B4C80E45FAB0A62847 /* CoverArtManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverArtManager.swift; sourceTree = "<group>"; };
+		3633D515310942E581255289 /* TrackArtworkView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrackArtworkView.swift; sourceTree = "<group>"; };
 		ED68EDB9D4FE40E5AC21D31D /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -77,6 +81,8 @@
 				966A6446FEDC4BB38127830D /* DriveLinkParser.swift */,
 				C199B2D6A1D54E57941F7C3B /* DriveCopyManager.swift */,
 				7218E0485E9047718351A168 /* ImportView.swift */,
+				E26551B4C80E45FAB0A62847 /* CoverArtManager.swift */,
+				3633D515310942E581255289 /* TrackArtworkView.swift */,
 				ED68EDB9D4FE40E5AC21D31D /* Assets.xcassets */,
 			);
 			path = DACPlayer;
@@ -178,6 +184,8 @@
 				E74415799DEC4E139316E7B1 /* DriveLinkParser.swift in Sources */,
 				7A552C096D814F1994FE2F4F /* DriveCopyManager.swift in Sources */,
 				232EC81E81BB43D081C16197 /* ImportView.swift in Sources */,
+				F4798FF5483049C190471291 /* CoverArtManager.swift in Sources */,
+				0C49889E0EEF43EEA06CE5C4 /* TrackArtworkView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
