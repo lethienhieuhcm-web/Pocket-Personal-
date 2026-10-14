@@ -100,6 +100,34 @@ class MusicApiClient: ObservableObject {
         try await request(path, method: "POST")
     }
 
+    /// 4.9: POST JSON.
+    private func postJson(_ path: String, body: Data) async throws -> Data {
+        try await requestWithBody(path, method: "POST", body: body)
+    }
+
+    /// 4.9: PUT JSON.
+    private func put(_ path: String, body: Data) async throws -> Data {
+        try await requestWithBody(path, method: "PUT", body: body)
+    }
+
+    /// 4.9: DELETE.
+    private func delete(_ path: String) async throws {
+        _ = try await request(path, method: "DELETE")
+    }
+
+    private func requestWithBody(_ path: String, method: String, body: Data) async throws -> Data {
+        var refreshed = false
+        while true {
+            do {
+                return try await performRequest(path, method: method, body: body)
+            } catch MusicError.driveTokenInvalid {
+                if refreshed { throw MusicError.driveTokenInvalid }
+                refreshed = true
+                try? await GIDSignIn.sharedInstance.currentUser?.refreshTokensIfNeeded()
+            }
+        }
+    }
+
     /// 4.3: backoff cho retry — exponential 1s → 2s → 4s (cap 8s) + jitter.
     static func backoffNs(_ attempt: Int) -> UInt64 {
         let base = min(1_000_000_000 * (1 << (attempt - 1)), 8_000_000_000)
@@ -125,7 +153,7 @@ class MusicApiClient: ObservableObject {
         }
     }
 
-    private func performRequest(_ path: String, method: String) async throws -> Data {
+    private func performRequest(_ path: String, method: String, body: Data? = nil) async throws -> Data {
         guard let token = auth.token() else {
             throw MusicError.message("Chưa đăng nhập")
         }
@@ -133,6 +161,10 @@ class MusicApiClient: ObservableObject {
         var req = URLRequest(url: url)
         req.httpMethod = method
         req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        if let body = body {
+            req.httpBody = body
+            req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        }
         if let dt = driveToken() {
             req.setValue(dt, forHTTPHeaderField: "X-Drive-Token")
         }
@@ -310,6 +342,72 @@ class MusicApiClient: ObservableObject {
             throw MusicError.message("URL stream không hợp lệ")
         }
         return url
+    }
+
+    // MARK: - 4.9: Playlist lưu trên D1 (đồng bộ giữa 2 máy)
+
+    struct PlaylistSummary: Codable, Identifiable {
+        var id: String
+        var name: String
+        var itemCount: Int = 0
+    }
+
+    struct PlaylistItem: Codable {
+        var fileId: String = ""
+        var name: String = ""
+        var artist: String = ""
+        var title: String = ""
+        var mimeType: String = ""
+        var size: Int64 = 0
+    }
+
+    private struct PlaylistListResponse: Codable {
+        var playlists: [PlaylistSummary] = []
+    }
+
+    private struct PlaylistDetailResponse: Codable {
+        var id: String = ""
+        var name: String = ""
+        var items: [PlaylistItem] = []
+    }
+
+    private struct PlaylistIdResponse: Codable {
+        var id: String = ""
+        var name: String = ""
+    }
+
+    private struct PlaylistItemsRequest: Codable {
+        var items: [PlaylistItem]
+    }
+
+    /// Lấy danh sách playlist của user.
+    func listPlaylists() async throws -> [PlaylistSummary] {
+        let data = try await get("/api/dac/playlists")
+        return try JSONDecoder().decode(PlaylistListResponse.self, from: data).playlists
+    }
+
+    /// Tạo playlist mới, trả về id.
+    func createPlaylist(name: String) async throws -> String {
+        let body = try JSONEncoder().encode(["name": name])
+        let data = try await postJson("/api/dac/playlists", body: body)
+        return try JSONDecoder().decode(PlaylistIdResponse.self, from: data).id
+    }
+
+    /// Xoá playlist (kèm items).
+    func deletePlaylist(id: String) async throws {
+        try await delete("/api/dac/playlists/\(id)")
+    }
+
+    /// Lấy items của 1 playlist (đúng thứ tự).
+    func getPlaylistItems(id: String) async throws -> [PlaylistItem] {
+        let data = try await get("/api/dac/playlists/\(id)")
+        return try JSONDecoder().decode(PlaylistDetailResponse.self, from: data).items
+    }
+
+    /// Thay toàn bộ items của playlist.
+    func setPlaylistItems(id: String, items: [PlaylistItem]) async throws {
+        let body = try JSONEncoder().encode(PlaylistItemsRequest(items: items))
+        _ = try await put("/api/dac/playlists/\(id)", body: body)
     }
 }
 

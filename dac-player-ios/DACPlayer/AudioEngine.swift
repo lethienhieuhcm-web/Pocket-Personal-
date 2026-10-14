@@ -154,17 +154,45 @@ class AudioEngine: ObservableObject {
         }
     }
 
+    /// 4.9: Phát toàn bộ danh sách track (dùng khi mở playlist) —
+    /// bài đầu phát ngay, các bài sau enqueue dần (bỏ qua bài lỗi).
+    func playAll(_ tracks: [Track], via api: MusicApiClient) async {
+        prefetchTask?.cancel()
+        guard let first = tracks.first else { return }
+        if let local = OfflineManager.shared.localFile(trackId: first.id) {
+            await playLocal(first, fileURL: local)
+        } else {
+            await play(first, via: api)
+        }
+        // Bài đầu lỗi (không phát được) → không enqueue tiếp.
+        guard player != nil else { return }
+        for t in tracks.dropFirst() {
+            do {
+                if let local = OfflineManager.shared.localFile(trackId: t.id) {
+                    enqueueLocal(t, fileURL: local)
+                } else {
+                    let url = try await api.streamURL(for: t.id)
+                    enqueue(t, url: url)
+                }
+            } catch {
+                // Bỏ qua bài lỗi (vd: file đã xoá), giữ các bài còn lại.
+            }
+        }
+    }
+
     /// 4.5: Thêm vào cuối queue (gapless khi cùng format).
     func enqueue(_ track: Track, url: URL) {
         let item = AVPlayerItem(url: url)
         queue.append((item, track))
         player?.insert(item, after: nil)
+        publishQueue()
     }
 
     func enqueueLocal(_ track: Track, fileURL: URL) {
         let item = AVPlayerItem(url: fileURL)
         queue.append((item, track))
         player?.insert(item, after: nil)
+        publishQueue()
     }
 
     /// Dựng AVQueuePlayer mới với các item, theo dõi currentItem để cập nhật UI.
@@ -172,6 +200,9 @@ class AudioEngine: ObservableObject {
         let q = AVQueuePlayer()
         q.volume = 1.0  // Volume 100%, không attenuate
         queue = items
+        // 4.9: bài đầu của queue mới chưa phải "hết bài" → bỏ qua 1 lần sleep check.
+        skipSleepCheck = true
+        publishQueue()
         for (item, _) in items {
             q.insert(item, after: nil)
         }
@@ -194,6 +225,14 @@ class AudioEngine: ObservableObject {
             queue.removeFirst(idx)
         }
         guard let entry = queue.first(where: { $0.item === cur }) else { return }
+        // 4.9: "hết bài" — chỉ khi queue TỰ chuyển (không phải lần đầu dựng queue
+        // hay user đổi bài tay, 2 trường hợp này đã set skipSleepCheck).
+        let auto = !skipSleepCheck
+        skipSleepCheck = false
+        publishQueue()
+        if auto, case .endOfTrack = sleepState {
+            fireSleep()
+        }
         let track = entry.track
         currentTrack = track
         formatLabel = Self.formatLabel(mimeType: track.mimeType, title: track.title)
@@ -260,5 +299,97 @@ class AudioEngine: ObservableObject {
         sampleRate = 0
         bitDepth = 0
         formatLabel = ""
+        publishQueue()
+    }
+
+    // MARK: - 4.9: Queue reorder/remove + sleep timer
+
+    /// Snapshot queue cho SwiftUI (kể cả bài đang phát ở [0]).
+    @Published private(set) var queueSnapshot: [Track] = []
+
+    private func publishQueue() {
+        queueSnapshot = queue.map { $0.track }
+    }
+
+    /// Đổi chỗ 2 bài trong queue. Không cho di chuyển bài đang phát ([0]).
+    func moveTrack(from: Int, to: Int) {
+        guard from != to, from >= 1, to >= 1,
+              queue.indices.contains(from), queue.indices.contains(to),
+              let q = player else { return }
+        let entry = queue.remove(at: from)
+        queue.insert(entry, at: to)
+        q.remove(entry.item)
+        q.insert(entry.item, after: queue[to - 1].item)
+        publishQueue()
+    }
+
+    /// Xoá 1 bài khỏi queue. Không xoá bài đang phát ([0]) / khi chỉ còn 1 bài.
+    @discardableResult
+    func removeTrack(at index: Int) -> Bool {
+        guard queue.count > 1, index >= 1, queue.indices.contains(index),
+              let q = player else { return false }
+        let entry = queue.remove(at: index)
+        q.remove(entry.item)
+        publishQueue()
+        return true
+    }
+
+    /// 4.9: trạng thái hẹn giờ ngủ.
+    enum SleepState: Equatable {
+        case off
+        case countdown(TimeInterval)
+        case endOfTrack
+    }
+    @Published private(set) var sleepState: SleepState = .off
+    private var sleepTask: Task<Void, Never>?
+
+    /// Bỏ qua 1 lần kiểm tra "hết bài" ngay sau khi dựng queue mới
+    /// (bài đầu tiên chưa phải "hết bài"; user đổi bài tay cũng không tính).
+    private var skipSleepCheck = false
+
+    /// Hẹn giờ dừng phát sau [minutes] phút.
+    func startSleep(minutes: Int) {
+        cancelSleep()
+        let total = TimeInterval(minutes * 60)
+        sleepState = .countdown(total)
+        sleepTask = Task {
+            var left = total
+            while left > 0 && !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
+                left -= 1
+                self.sleepState = .countdown(max(0, left))
+            }
+            if !Task.isCancelled { self.fireSleep() }
+        }
+    }
+
+    /// Dừng phát khi hết bài đang phát (chỉ khi tự chuyển, không tính đổi tay).
+    func startSleepEndOfTrack() {
+        cancelSleep()
+        sleepState = .endOfTrack
+    }
+
+    func cancelSleep() {
+        sleepTask?.cancel()
+        sleepTask = nil
+        if sleepState != .off { sleepState = .off }
+    }
+
+    private func fireSleep() {
+        sleepState = .off
+        player?.pause()
+        isPlaying = false
+    }
+
+    var sleepStatusText: String {
+        switch sleepState {
+        case .off:
+            return "Hẹn giờ: tắt"
+        case .endOfTrack:
+            return "Hẹn giờ: dừng khi hết bài đang phát"
+        case .countdown(let left):
+            let s = Int(left)
+            return String(format: "Hẹn giờ: còn %d:%02d", s / 60, s % 60)
+        }
     }
 }

@@ -10,6 +10,8 @@ struct PlayerView: View {
     @State private var duration: Double = 0
     @State private var isSeeking = false
     @State private var timer: Timer?
+    // 4.9: mở màn hình Hàng chờ.
+    @State private var showQueue = false
 
     var body: some View {
         // 4.8: không dùng .sheet (cấm modal) — view này luôn được push qua
@@ -73,6 +75,13 @@ struct PlayerView: View {
                         dismiss()
                     }
                 }
+                // 4.9: Hàng chờ + hẹn giờ + playlist (full-page, không modal).
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Hàng chờ") { showQueue = true }
+                }
+            }
+            .navigationDestination(isPresented: $showQueue) {
+                QueueView()
             }
             .onAppear(perform: startTimer)
             .onDisappear(perform: stopTimer)
