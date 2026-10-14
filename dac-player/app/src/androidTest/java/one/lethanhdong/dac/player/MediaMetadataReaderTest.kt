@@ -24,7 +24,10 @@ import java.io.FileOutputStream
 class MediaMetadataReaderTest {
 
     private fun copyAssetToFile(name: String): File {
-        val ctx: Context = InstrumentationRegistry.getInstrumentation().targetContext
+        // Dùng instrumentation context (test APK), KHÔNG dùng targetContext (app APK):
+        // file ở src/androidTest/assets/ chỉ đóng gói vào test APK, targetContext.assets
+        // (src/main/assets/) không có chúng → FileNotFoundException (lỗi CI run #64).
+        val ctx: Context = InstrumentationRegistry.getInstrumentation().context
         val out = File(ctx.cacheDir, name)
         ctx.assets.open(name).use { input ->
             FileOutputStream(out).use { output -> input.copyTo(output) }
