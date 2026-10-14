@@ -889,3 +889,149 @@ async function refreshDacMetadata(env, email) {
     }));
   }
 }
+
+// --- 4.9: Playlist lưu trên D1 (đồng bộ giữa 2 máy) ---
+//
+// Schema tạo qua D1 REST API khi deploy (bài học 4.8: DDL qua worker
+// binding không tin được). ensureDacPlaylistSchema chỉ giữ IF NOT EXISTS.
+
+async function ensureDacPlaylistSchema(env) {
+  try {
+    await env.DB.prepare(
+      `CREATE TABLE IF NOT EXISTS dac_playlists (
+         email TEXT NOT NULL, playlist_id TEXT NOT NULL, name TEXT NOT NULL,
+         created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL,
+         PRIMARY KEY (email, playlist_id))`
+    ).run();
+    await env.DB.prepare(
+      `CREATE TABLE IF NOT EXISTS dac_playlist_items (
+         email TEXT NOT NULL, playlist_id TEXT NOT NULL, position INTEGER NOT NULL,
+         file_id TEXT NOT NULL DEFAULT '', name TEXT NOT NULL DEFAULT '',
+         artist TEXT NOT NULL DEFAULT '', title TEXT NOT NULL DEFAULT '',
+         mime_type TEXT NOT NULL DEFAULT '', size INTEGER NOT NULL DEFAULT 0,
+         PRIMARY KEY (email, playlist_id, position))`
+    ).run();
+  } catch (e) { /* schema đã có từ migration */ }
+}
+
+function dacPlaylistId(requestUrl) {
+  const id = new URL(requestUrl).pathname.split('/').pop() || '';
+  return /^[a-zA-Z0-9_-]{1,64}$/.test(id) ? id : '';
+}
+
+/** GET /api/dac/playlists → {playlists:[{id,name,itemCount,createdAt,updatedAt}]} */
+export async function handleDacPlaylistList(request, env) {
+  const s = await getSession(request, env);
+  if (!s) return jerr('Not logged in', 401);
+  const email = s.email.toLowerCase();
+  await ensureDacPlaylistSchema(env);
+  const rows = await env.DB.prepare(
+    `SELECT p.playlist_id, p.name, p.created_at, p.updated_at,
+            (SELECT COUNT(*) FROM dac_playlist_items i
+             WHERE i.email=p.email AND i.playlist_id=p.playlist_id) AS n
+     FROM dac_playlists p WHERE p.email=? ORDER BY p.updated_at DESC`
+  ).bind(email).all();
+  return sJson({
+    playlists: (rows.results || []).map(r => ({
+      id: r.playlist_id, name: r.name, itemCount: r.n || 0,
+      createdAt: r.created_at, updatedAt: r.updated_at,
+    })),
+  });
+}
+
+/** POST /api/dac/playlists {name} → {id,name} */
+export async function handleDacPlaylistCreate(request, env) {
+  const s = await getSession(request, env);
+  if (!s) return jerr('Not logged in', 401);
+  const email = s.email.toLowerCase();
+  let name = '';
+  try { name = String((await request.json()).name || '').trim().slice(0, 80); }
+  catch (e) { /* giữ name rỗng → 400 bên dưới */ }
+  if (!name) return jerr('Missing name', 400);
+  await ensureDacPlaylistSchema(env);
+  const id = 'pl_' + [...crypto.getRandomValues(new Uint8Array(8))]
+    .map(b => b.toString(16).padStart(2, '0')).join('');
+  const now = Date.now();
+  await env.DB.prepare(
+    'INSERT INTO dac_playlists(email,playlist_id,name,created_at,updated_at) VALUES(?,?,?,?,?)'
+  ).bind(email, id, name, now, now).run();
+  return sJson({ id, name });
+}
+
+/** DELETE /api/dac/playlists/{id} → {ok:true} */
+export async function handleDacPlaylistDelete(request, env) {
+  const s = await getSession(request, env);
+  if (!s) return jerr('Not logged in', 401);
+  const email = s.email.toLowerCase();
+  const id = dacPlaylistId(request.url);
+  if (!id) return jerr('Bad id', 400);
+  await ensureDacPlaylistSchema(env);
+  await env.DB.batch([
+    env.DB.prepare('DELETE FROM dac_playlist_items WHERE email=? AND playlist_id=?').bind(email, id),
+    env.DB.prepare('DELETE FROM dac_playlists WHERE email=? AND playlist_id=?').bind(email, id),
+  ]);
+  return sJson({ ok: true });
+}
+
+/** GET /api/dac/playlists/{id} → {id,name,items:[{fileId,name,artist,title,mimeType,size}]} */
+export async function handleDacPlaylistGet(request, env) {
+  const s = await getSession(request, env);
+  if (!s) return jerr('Not logged in', 401);
+  const email = s.email.toLowerCase();
+  const id = dacPlaylistId(request.url);
+  if (!id) return jerr('Bad id', 400);
+  await ensureDacPlaylistSchema(env);
+  const p = await env.DB.prepare(
+    'SELECT playlist_id,name,created_at,updated_at FROM dac_playlists WHERE email=? AND playlist_id=?'
+  ).bind(email, id).first();
+  if (!p) return jerr('Not found', 404);
+  const rows = await env.DB.prepare(
+    `SELECT file_id,name,artist,title,mime_type,size FROM dac_playlist_items
+     WHERE email=? AND playlist_id=? ORDER BY position`
+  ).bind(email, id).all();
+  return sJson({
+    id: p.playlist_id, name: p.name, createdAt: p.created_at, updatedAt: p.updated_at,
+    items: (rows.results || []).map(r => ({
+      fileId: r.file_id, name: r.name, artist: r.artist || '', title: r.title || '',
+      mimeType: r.mime_type || '', size: r.size || 0,
+    })),
+  });
+}
+
+/** PUT /api/dac/playlists/{id} {items:[...]} → thay toàn bộ items, {ok:true,count} */
+export async function handleDacPlaylistSetItems(request, env) {
+  const s = await getSession(request, env);
+  if (!s) return jerr('Not logged in', 401);
+  const email = s.email.toLowerCase();
+  const id = dacPlaylistId(request.url);
+  if (!id) return jerr('Bad id', 400);
+  let items = null;
+  try { items = (await request.json()).items; } catch (e) { /* → 400 */ }
+  if (!Array.isArray(items) || items.length > 500) return jerr('Bad items', 400);
+  await ensureDacPlaylistSchema(env);
+  const p = await env.DB.prepare(
+    'SELECT playlist_id FROM dac_playlists WHERE email=? AND playlist_id=?'
+  ).bind(email, id).first();
+  if (!p) return jerr('Not found', 404);
+  const now = Date.now();
+  const stmts = [
+    env.DB.prepare('DELETE FROM dac_playlist_items WHERE email=? AND playlist_id=?').bind(email, id),
+  ];
+  items.forEach((it, i) => {
+    stmts.push(env.DB.prepare(
+      `INSERT INTO dac_playlist_items
+         (email,playlist_id,position,file_id,name,artist,title,mime_type,size)
+       VALUES(?,?,?,?,?,?,?,?,?)`
+    ).bind(email, id, i,
+      String(it.fileId || '').slice(0, 64), String(it.name || '').slice(0, 200),
+      String(it.artist || '').slice(0, 100), String(it.title || '').slice(0, 200),
+      String(it.mimeType || '').slice(0, 100), parseInt(it.size, 10) || 0));
+  });
+  stmts.push(env.DB.prepare(
+    'UPDATE dac_playlists SET updated_at=? WHERE email=? AND playlist_id=?'
+  ).bind(now, email, id));
+  for (let i = 0; i < stmts.length; i += 80) {
+    await env.DB.batch(stmts.slice(i, i + 80));
+  }
+  return sJson({ ok: true, count: items.length });
+}
