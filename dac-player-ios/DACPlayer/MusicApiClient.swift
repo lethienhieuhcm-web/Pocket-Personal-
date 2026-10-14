@@ -73,6 +73,12 @@ class MusicApiClient: ObservableObject {
         try await request(path, method: "POST")
     }
 
+    /// 4.3: backoff cho retry — exponential 1s → 2s → 4s (cap 8s) + jitter.
+    static func backoffNs(_ attempt: Int) -> UInt64 {
+        let base = min(1_000_000_000 * (1 << (attempt - 1)), 8_000_000_000)
+        return UInt64(base) + UInt64.random(in: 0...500_000_000)
+    }
+
     private func request(_ path: String, method: String) async throws -> Data {
         guard let token = auth.token() else {
             throw MusicError.message("Chưa đăng nhập")
@@ -84,23 +90,44 @@ class MusicApiClient: ObservableObject {
         if let dt = driveToken() {
             req.setValue(dt, forHTTPHeaderField: "X-Drive-Token")
         }
-        let (data, resp) = try await URLSession.shared.data(for: req)
-        let code = (resp as? HTTPURLResponse)?.statusCode ?? 0
-        switch code {
-        case 200:
-            return data
-        case 401:
-            if let err = try? JSONDecoder().decode(ErrorResponse.self, from: data),
-               err.error.contains("Drive token invalid") {
-                throw MusicError.driveTokenInvalid
+        // 4.3: retry — chỉ GET/HEAD (idempotent) khi 429/503 hoặc lỗi mạng.
+        // POST (sync/copy) không retry mù để tránh ghi trùng.
+        let idempotent = (method == "GET" || method == "HEAD")
+        var attempt = 0
+        while true {
+            attempt += 1
+            let data: Data
+            let resp: URLResponse
+            do {
+                (data, resp) = try await URLSession.shared.data(for: req)
+            } catch {
+                if idempotent && attempt < 3 {
+                    try await Task.sleep(nanoseconds: Self.backoffNs(attempt))
+                    continue
+                }
+                throw error
             }
-            throw MusicError.message("Hết phiên đăng nhập (401)")
-        default:
-            if let err = try? JSONDecoder().decode(ErrorResponse.self, from: data),
-               !err.error.isEmpty {
-                throw MusicError.message(err.error)
+            let code = (resp as? HTTPURLResponse)?.statusCode ?? 0
+            if (code == 429 || code == 503) && idempotent && attempt < 3 {
+                try await Task.sleep(nanoseconds: Self.backoffNs(attempt))
+                continue
             }
-            throw MusicError.message("API lỗi: HTTP \(code)")
+            switch code {
+            case 200:
+                return data
+            case 401:
+                if let err = try? JSONDecoder().decode(ErrorResponse.self, from: data),
+                   err.error.contains("Drive token invalid") {
+                    throw MusicError.driveTokenInvalid
+                }
+                throw MusicError.message("Hết phiên đăng nhập (401)")
+            default:
+                if let err = try? JSONDecoder().decode(ErrorResponse.self, from: data),
+                   !err.error.isEmpty {
+                    throw MusicError.message(err.error)
+                }
+                throw MusicError.message("API lỗi: HTTP \(code)")
+            }
         }
     }
 

@@ -17,6 +17,7 @@ struct FolderBrowserView: View {
     @State private var tracks: [Track] = []
     @State private var statusText: String? = nil
     @State private var isLoading = false
+    @StateObject private var offline = OfflineManager.shared
 
     var body: some View {
         NavigationStack {
@@ -68,18 +69,31 @@ struct FolderBrowserView: View {
 
                         Section {
                             ForEach(tracks) { track in
-                                Button {
-                                    Task { await engine.play(track, via: api) }
-                                } label: {
-                                    HStack(spacing: 12) {
-                                        TrackArtworkView(track: track)
-                                        VStack(alignment: .leading, spacing: 2) {
-                                            Text(track.title).lineLimit(1)
-                                            Text(formatSize(track.size))
-                                                .font(.footnote)
-                                                .foregroundStyle(.secondary)
+                                HStack(spacing: 12) {
+                                    Button {
+                                        Task { await playTrack(track) }
+                                    } label: {
+                                        HStack(spacing: 12) {
+                                            TrackArtworkView(track: track)
+                                            VStack(alignment: .leading, spacing: 2) {
+                                                Text(track.title).lineLimit(1)
+                                                Text(formatSize(track.size))
+                                                    .font(.footnote)
+                                                    .foregroundStyle(.secondary)
+                                            }
                                         }
                                     }
+                                    .buttonStyle(.plain)
+                                    Spacer()
+                                    // 4.3: tải về nghe offline (bấm lần nữa = xoá)
+                                    Button {
+                                        Task { await downloadTrack(track) }
+                                    } label: {
+                                        Image(systemName: offline.downloadedIds.contains(track.id)
+                                              ? "checkmark.circle.fill" : "arrow.down.circle")
+                                            .foregroundStyle(.blue)
+                                    }
+                                    .buttonStyle(.plain)
                                 }
                             }
                         } header: {
@@ -133,8 +147,34 @@ struct FolderBrowserView: View {
         }
     }
 
-    private func drillDown(_ folder: DriveFolder) {
-        navStack.append(currentId)
+    /// 4.3: phát track — ưu tiên file offline đã tải.
+    private func playTrack(_ track: Track) async {
+        if let local = offline.localFile(trackId: track.id) {
+            statusText = "Đang phát offline: \(track.title)"
+            await engine.playLocal(track, fileURL: local)
+        } else {
+            await engine.play(track, via: api)
+        }
+    }
+
+    /// 4.3: tải track về nghe offline. Bấm lần nữa khi đã tải = xoá.
+    private func downloadTrack(_ track: Track) async {
+        if offline.isDownloaded(trackId: track.id) {
+            offline.delete(trackId: track.id)
+            statusText = "Đã xoá bản offline: \(track.title)"
+            return
+        }
+        do {
+            statusText = "Đang tải: \(track.title)"
+            let url = try await api.streamURL(for: track.id)
+            try await offline.download(trackId: track.id, title: track.title, from: url)
+            statusText = "Đã tải xong: \(track.title)"
+        } catch {
+            statusText = "Không tải được: \(error.localizedDescription)"
+        }
+    }
+
+    private func drillDown(_ folder: DriveFolder) {        navStack.append(currentId)
         Task { await load(id: folder.id) }
     }
 
