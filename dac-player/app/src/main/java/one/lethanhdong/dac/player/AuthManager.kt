@@ -217,4 +217,104 @@ class AuthManager(
         }
         prefs.edit().remove("session_token").remove("authEmail").apply()
     }
+
+    /**
+     * 4.7: Liệt kê các phiên đăng nhập đang hoạt động của user.
+     * GET /api/auth/sessions → {sessions:[{token_prefix,current,ip,ua,created_at,last_active}]}
+     */
+    suspend fun listSessions(): List<LoginSession> = withContext(Dispatchers.IO) {
+        val token = token() ?: throw IllegalStateException("Chưa đăng nhập")
+        val request = Request.Builder()
+            .url("$baseUrl/api/auth/sessions")
+            .header("Authorization", "Bearer $token")
+            .get()
+            .build()
+        ApiHttp.client.newCall(request).execute().use { resp ->
+            val body = resp.body?.string().orEmpty()
+            if (resp.code != 200) {
+                throw IllegalStateException(
+                    ApiHttp.readErrorMessage(body) ?: "Không tải được danh sách phiên"
+                )
+            }
+            ApiHttp.json.decodeFromString<SessionsResponse>(body).sessions
+        }
+    }
+
+    /**
+     * 4.7: Thu hồi 1 phiên (không phải phiên hiện tại — server từ chối).
+     * POST /api/auth/sessions/revoke {token_prefix}
+     */
+    suspend fun revokeSession(tokenPrefix: String): Int = withContext(Dispatchers.IO) {
+        val token = token() ?: throw IllegalStateException("Chưa đăng nhập")
+        val body = ApiHttp.json.encodeToString(mapOf("token_prefix" to tokenPrefix))
+        val request = Request.Builder()
+            .url("$baseUrl/api/auth/sessions/revoke")
+            .header("Authorization", "Bearer $token")
+            .post(jsonBody(body))
+            .build()
+        ApiHttp.client.newCall(request).execute().use { resp ->
+            val respBody = resp.body?.string().orEmpty()
+            if (resp.code != 200) {
+                throw IllegalStateException(
+                    ApiHttp.readErrorMessage(respBody) ?: "Không thu hồi được phiên"
+                )
+            }
+            ApiHttp.json.decodeFromString<RevokeResponse>(respBody).revoked
+        }
+    }
+
+    /**
+     * 4.7: Đăng xuất tất cả thiết bị khác (giữ phiên hiện tại).
+     * POST /api/auth/sessions/revoke {all_others:true}
+     */
+    suspend fun revokeAllOthers(): Int = withContext(Dispatchers.IO) {
+        val token = token() ?: throw IllegalStateException("Chưa đăng nhập")
+        val body = ApiHttp.json.encodeToString(mapOf("all_others" to true))
+        val request = Request.Builder()
+            .url("$baseUrl/api/auth/sessions/revoke")
+            .header("Authorization", "Bearer $token")
+            .post(jsonBody(body))
+            .build()
+        ApiHttp.client.newCall(request).execute().use { resp ->
+            val respBody = resp.body?.string().orEmpty()
+            if (resp.code != 200) {
+                throw IllegalStateException(
+                    ApiHttp.readErrorMessage(respBody) ?: "Không đăng xuất được các thiết bị khác"
+                )
+            }
+            ApiHttp.json.decodeFromString<RevokeResponse>(respBody).revoked
+        }
+    }
 }
+
+/** 4.7: 1 phiên đăng nhập (từ GET /api/auth/sessions). */
+@kotlinx.serialization.Serializable
+data class LoginSession(
+    val token_prefix: String = "",
+    val current: Boolean = false,
+    val ip: String = "",
+    val ua: String = "",
+    val created_at: Long = 0,
+    val last_active: Long = 0,
+) {
+    /** Tên thiết bị gọn từ UA, vd "Android 14 · Chrome Mobile". Không đoán quá đà. */
+    fun deviceLabel(): String {
+        val u = ua.lowercase()
+        val os = when {
+            u.contains("android") -> "Android"
+            u.contains("iphone") || u.contains("ipad") -> "iOS"
+            u.contains("windows") -> "Windows"
+            u.contains("mac os") -> "macOS"
+            u.contains("linux") -> "Linux"
+            else -> "Thiết bị"
+        }
+        val app = if (u.contains("dac") || u.contains("lethanhdong")) "DAC Player" else "Trình duyệt"
+        return "$os · $app"
+    }
+}
+
+@kotlinx.serialization.Serializable
+internal data class SessionsResponse(val sessions: List<LoginSession> = emptyList())
+
+@kotlinx.serialization.Serializable
+private data class RevokeResponse(val revoked: Int = 0)
