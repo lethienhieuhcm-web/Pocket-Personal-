@@ -83,4 +83,12 @@
         android:layout_height="wrap_content"
         android:text="Gửi lại email xác nhận"
         android:visibility="gone" />
+
+    <!-- 2.4: Đăng nhập bằng Google (Credential Manager) -->
+    <Button
+        android:id="@+id/googleSignInButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="Đăng nhập bằng Google" />
 </LinearLayout>
