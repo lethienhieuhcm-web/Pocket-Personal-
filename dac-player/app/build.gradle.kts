@@ -62,10 +62,14 @@ android {
         // matchingFallbacks: composite build decent-player/libs chỉ có
         // buildType debug/release (không có "deploy") — không có dòng này Gradle
         // báo "No matching variant ... BuildTypeAttr 'deploy'" (run #90).
+        // signingConfig: buildType custom KHÔNG tự hưởng debug signing như
+        // buildType debug — không có dòng này AGP ra APK unsigned (run #91
+        // cho ra app-deploy-unsigned.apk), không cài được.
         create("deploy") {
             isDebuggable = true
             isMinifyEnabled = false
             matchingFallbacks += listOf("debug")
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
     signingConfigs {
