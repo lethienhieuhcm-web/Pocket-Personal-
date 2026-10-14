@@ -528,12 +528,13 @@ func login(email: String, password: String) async -> Result {
 | Android | SearchActivity + phân trang + phát/prefetch | ⏳ CI |
 | iOS | SearchView tab Tìm kiếm; PlayerView/ImportView chuyển từ `.sheet` sang `navigationDestination` (cấm modal) | ⏳ CI |
 
-#### Bước 4.9 — Sleep timer + polish (cả 2 platform)
+#### Bước 4.9 — Sleep timer + polish (cả 2 platform) ✅ HOÀN TẤT 15/10/2026
 
-| Việc | Chi tiết |
-|------|----------|
-| Sleep timer | Hẹn giờ dừng phát (15/30/60 phút, hết bài) |
-| Queue/playlist | Sắp xếp queue, lưu playlist lên D1 (đồng bộ 2 máy) |
+| Việc | Chi tiết | Trạng thái |
+|------|----------|------------|
+| Sleep timer | Hẹn giờ dừng phát (Tắt/15/30/60 phút, hết bài); panel inline, không popup | ✅ Worker n/a; Android CI 85/85; iOS CI pass |
+| Queue | Màn hình Hàng chờ full-page: kéo-thả đổi thứ tự, vuốt xoá (không đụng bài đang phát) | ✅ Android + iOS |
+| Playlist | API D1 (`GET/POST/DELETE /api/dac/playlists`, `GET/PUT /api/dac/playlists/{id}`) — lưu/mở/xoá, đồng bộ 2 máy; live test 12/12 | ✅ Worker + Android + iOS |
 
 #### Bước 4.10 — Test E2E + Launch
 
