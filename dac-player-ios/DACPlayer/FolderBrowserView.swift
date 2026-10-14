@@ -108,6 +108,19 @@ struct FolderBrowserView: View {
         isLoading = true
         defer { isLoading = false }
         do {
+            // 4.2: Đồng bộ index trước khi duyệt (chỉ khi mở tab lần đầu).
+            if id == "root" && breadcrumb.isEmpty {
+                statusText = "Đang đồng bộ thư viện…"
+                do {
+                    let r = try await api.syncIndex()
+                    statusText = r.full
+                        ? "Đã đồng bộ \(r.total) file (lần đầu)."
+                        : "Đã đồng bộ (\(r.synced) thay đổi)."
+                } catch {
+                    // Sync lỗi → vẫn duyệt bằng live Drive (fallback ở Worker)
+                    statusText = "Đồng bộ lỗi, dùng dữ liệu trực tiếp."
+                }
+            }
             let listing = try await api.listFolders(parentId: id)
             breadcrumb = listing.breadcrumb
             folders = listing.folders

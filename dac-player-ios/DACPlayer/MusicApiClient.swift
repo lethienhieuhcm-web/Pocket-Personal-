@@ -65,11 +65,21 @@ class MusicApiClient: ObservableObject {
 
     /// GET Worker API. Throw nếu lỗi.
     private func get(_ path: String) async throws -> Data {
+        try await request(path, method: "GET")
+    }
+
+    /// POST Worker API (body rỗng). Throw nếu lỗi.
+    private func post(_ path: String) async throws -> Data {
+        try await request(path, method: "POST")
+    }
+
+    private func request(_ path: String, method: String) async throws -> Data {
         guard let token = auth.token() else {
             throw MusicError.message("Chưa đăng nhập")
         }
         let url = URL(string: AuthManager.baseURL + path)!
         var req = URLRequest(url: url)
+        req.httpMethod = method
         req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         if let dt = driveToken() {
             req.setValue(dt, forHTTPHeaderField: "X-Drive-Token")
@@ -124,6 +134,19 @@ class MusicApiClient: ObservableObject {
     func clearCache() {
         try? FileManager.default.removeItem(at: cacheURL)
         tracks = []
+    }
+
+    /// 4.2: Đồng bộ index Drive vào D1 — POST /api/dac/sync.
+    /// Lần đầu full scan (lâu), các lần sau incremental (nhanh).
+    struct SyncResult: Codable {
+        let full: Bool
+        let synced: Int
+        let total: Int
+    }
+
+    func syncIndex() async throws -> SyncResult {
+        let data = try await post("/api/dac/sync")
+        return try JSONDecoder().decode(SyncResult.self, from: data)
     }
 
     /// 4.1: Duyệt thư mục Drive — GET /api/dac/folders?parentId=...
