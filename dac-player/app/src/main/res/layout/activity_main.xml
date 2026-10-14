@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- res/layout/activity_main.xml — plan "dac" D2: login + danh sách nhạc + phát -->
+<!-- res/layout/activity_main.xml — plan "dac" D2: danh sách nhạc + phát
+     1.3: form đăng nhập đã chuyển sang activity_auth.xml (AuthActivity) -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -26,44 +27,12 @@
         android:gravity="center"
         android:layout_marginBottom="12dp" />
 
-    <!-- Form đăng nhập (ẩn khi đã login) -->
-    <LinearLayout
-        android:id="@+id/loginForm"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:visibility="gone">
-
-        <EditText
-            android:id="@+id/emailInput"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="Email"
-            android:inputType="textEmailAddress"
-            android:layout_marginBottom="8dp" />
-
-        <EditText
-            android:id="@+id/passwordInput"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="Mật khẩu"
-            android:inputType="textPassword"
-            android:layout_marginBottom="8dp" />
-
-        <Button
-            android:id="@+id/loginButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Đăng nhập" />
-    </LinearLayout>
-
-    <!-- Danh sách nhạc từ R2 (hiện khi đã login) -->
+    <!-- Danh sách nhạc từ R2 (MainActivity chỉ chạy khi đã đăng nhập) -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/trackList"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1"
-        android:visibility="gone" />
+        android:layout_weight="1" />
 
     <!-- Điều khiển phát -->
     <LinearLayout
@@ -86,5 +55,12 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:text="Phát / Dừng" />
+
+        <Button
+            android:id="@+id/logoutButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Đăng xuất" />
     </LinearLayout>
 </LinearLayout>
