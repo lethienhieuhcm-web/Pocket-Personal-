@@ -1,14 +1,20 @@
 import {handleBookResult, handleBookUpload, handleBookList, handleBookGet, handleAdminBooksPending, handleAdminBooksApprove} from './books.js';
-import {handleTTS, handleVoices, handleQuota, handleTranslate, handleDict} from './content.js';
-import {handleAIExplain, handleAIQuiz} from './ai.js';
-import {handleStockAgent} from './stock_agent.js';
+import {handleTTS, handleVoices, handleQuota, handleTranslate, handleDict, handleCloneVoice} from './content.js';
+import {handleCollectionsList, handleCollectionGet, handleAdminCollectionCreate, handleAdminCollectionDelete, handleAdminItemCreate, handleAdminItemDelete} from './collections.js';
+import {handleAIExplain, handleAIQuiz, handleByokProxy, handleAiRelay} from './ai.js';
+import {handleStockAgent, handleAgentStatus} from './stock_agent.js';
 import {handleVocabAdd, handleVocabDue, handleVocabReview} from './vocab.js';
 import {handleAnalytics, handleInsights, handleBankGet, handleBankPost, handleReadingsList, handleReadingsCreate, handleReadingGet, handleReadingDelete, handleReadingAudioPut, handleAdminUsers, handleAdminRole, handleAdminDelete} from './library.js';
-import {handleRegister, handleSendCode, handleVerifyCode, handleLogin, handleLogout, handleMe, handleGoogleLogin, handleGoogleCallback, handleListSessions, handleRevokeSession } from './auth.js';
+import {handleRegister, handleSendCode, handleVerifyCode, handleLogin, handleLogout, handleMe, handleGoogleLogin, handleGoogleCallback, handleListSessions, handleRevokeSession, handleVerifyEmail, handleResendVerification, handleForgotPassword, handleResetPassword, handleResetPasswordPage } from './auth.js';
 import {handleGetPlan, handleGetUsage, handleSetPlan} from './billing.js';
-import {handleDriveAuthUrl, handleDriveCallback, handleDriveStatus, handleDriveDisconnect, handleDriveMusic, handleDriveStream} from './drive.js';
+import {handleDriveAuthUrl, handleDriveCallback, handleDriveStatus, handleDriveDisconnect, handleDriveMusic, handleDriveStream, handleDriveUpload} from './drive.js';
+import {handleDacMusic, handleDacStream, handleDacResolve, handleDacCopy} from './dac.js';
 import {handleSpotifyAuthUrl, handleSpotifyCallback, handleSpotifyStatus, handleSpotifySearch} from './spotify.js';
-import {getSession, getUser} from './auth.js';
+import {handleBrowse, handleBrowseWs} from './browser.js';
+import { drizzle } from "drizzle-orm/d1";
+import { and, eq, lt, sql } from "drizzle-orm";
+import { rateLimits } from "./schema.js";
+import {getSession, getUser, OWNER_EMAIL} from './auth.js';
 import {jerr} from './utils.js';
 import {hStockVersion, hStockIndices, hStockQuote, hStockOhlcv, hStockSymbols, hStockScreener, hStockScreener2, hStockFundamentals, hStockNews, hStockEvents, hStockBacktest, hStockCompare, hWatchlistGet, hWatchlistAdd, hWatchlistDel, hPortfolio, hTxnAdd, hTxnDel, hTxnNote, hCostHistory, hAlertsGet, hAlertsAdd, hAlertsDel, hAlertsBySymbol, hTargetsGet, hTargetsSet, hTargetsDel, hPinStatus, hPinSet, hPinVerify, hPinDel, hMigrateR2ToD1, hStockPublish, hStockReportData, hStockAlertDone, hStockTargetDone} from './stock.js';
 
@@ -58,6 +64,12 @@ const ROUTES = [
   ['POST',   '/api/auth/verify-code',handleVerifyCode,       'public'],
   ['POST',   '/api/auth/register',   handleRegister,         'public'],
   ['POST',   '/api/auth/login',      handleLogin,            'public'],
+  // 2.2: email verification (token link) + password reset
+  ['GET',    '/api/auth/verify',     handleVerifyEmail,      'public'],
+  ['POST',   '/api/auth/resend-verification', handleResendVerification, 'public'],
+  ['POST',   '/api/auth/forgot-password', handleForgotPassword, 'public'],
+  ['POST',   '/api/auth/reset-password',  handleResetPassword,  'public'],
+  ['GET',    '/reset-password',          handleResetPasswordPage, 'public'],
   ['GET',    '/api/auth/sessions',         handleListSessions,     'user'],
   ['POST',   '/api/auth/sessions/revoke',  handleRevokeSession,    'user'],
   ['POST',   '/api/auth/logout',     handleLogout,           'user'],
@@ -74,6 +86,12 @@ const ROUTES = [
   ['GET',    '/api/drive/music',     handleDriveMusic,       'user'],
   ['GET',    '/api/drive/stream/*',  handleDriveStream,      'user'],
   ['POST',   '/api/drive/disconnect',handleDriveDisconnect,  'user'],
+  ['POST',   '/api/drive/upload',    handleDriveUpload,      'user'],
+  // --- dac-pass (Chốt 2026-10-13): nhạc từ Drive user, Worker passthrough ---
+  ['GET',    '/api/dac/music',       handleDacMusic,           'user'],
+  ['GET',    '/api/dac/stream/*',    handleDacStream,            'user'],
+  ['POST',   '/api/dac/resolve',     handleDacResolve,           'user'],
+  ['POST',   '/api/dac/copy',        handleDacCopy,              'user'],
   // --- spotify ---
   ['GET',    '/api/spotify/auth-url',handleSpotifyAuthUrl,   'user'],
   ['GET',    '/api/spotify/callback',handleSpotifyCallback,  'custom'],
@@ -84,12 +102,22 @@ const ROUTES = [
   ['POST',   '/api/tts',             handleTTS,              'user'],
   ['GET',    '/api/voices',          handleVoices,           'user'],
   ['GET',    '/api/quota',           handleQuota,            'user'],
+  ['POST',   '/api/admin/clone-voice', handleCloneVoice,     'admin'],
   ['POST',   '/api/translate',       handleTranslate,        'user'],
   ['POST',   '/api/ai/explain',      handleAIExplain,        'user'],
   ['POST',   '/api/ai/quiz',         handleAIQuiz,           'user'],
+  ['POST',   '/api/ai/relay',        handleAiRelay,          'user'],
+  ['POST',   '/api/byok/proxy',      handleByokProxy,        'user'],
   ['POST',   '/api/vocab/add',        handleVocabAdd,         'user'],
   ['GET',    '/api/vocab/due',        handleVocabDue,         'user'],
   ['POST',   '/api/vocab/review',     handleVocabReview,      'user'],
+  // --- collections (content library) ---
+  ['GET',    '/api/collections',     handleCollectionsList,  'user'],
+  ['GET',    '/api/collections/*',   (q,w,e)=>handleCollectionGet(e,w,q.split('/').pop()), 'user'],
+  ['POST',   '/api/admin/collections', handleAdminCollectionCreate, 'admin'],
+  ['DELETE', '/api/admin/collections/*', (q,w,e)=>handleAdminCollectionDelete(e,w,q.split('/').pop()), 'admin'],
+  ['POST',   '/api/admin/collections/*/items', (q,w,e)=>{ const p=q.split('/'); return handleAdminItemCreate(e,w,p[4]); }, 'admin'],
+  ['DELETE', '/api/admin/items/*',   (q,w,e)=>handleAdminItemDelete(e,w,q.split('/').pop()), 'admin'],
   // --- stock ---
   ['GET',    '/api/stock/version',   hStockVersion,          'user'],
   ['GET',    '/api/stock/indices',   hStockIndices,          'user'],
@@ -115,6 +143,7 @@ const ROUTES = [
   ['POST',   '/api/stock/alerts',    hAlertsAdd,             'user'],
   ['DELETE', '/api/stock/alerts/*',  hAlertsDel,             'user'],
   ['POST',   '/api/stock/agent',    handleStockAgent,       'user'],
+  ['GET',    '/api/stock/agent/status', handleAgentStatus,   'user'],
   ['GET',    '/api/stock/targets',   hTargetsGet,            'user'],
   ['POST',   '/api/stock/targets',   hTargetsSet,            'user'],
   ['DELETE', '/api/stock/targets/*', hTargetsDel,            'user'],
@@ -122,6 +151,10 @@ const ROUTES = [
   ['POST',   '/api/stock/pin',       hPinSet,                'user'],
   ['POST',   '/api/stock/pin/verify',hPinVerify,             'user'],
   ['DELETE', '/api/stock/pin',       hPinDel,                'user'],
+  // --- proxy browser (P0 Chốt 2026-10-12: Worker fetch trực tiếp, không VM) ---
+  ['GET',    '/api/browse',          handleBrowse,           'custom'],
+  ['POST',   '/api/browse',          handleBrowse,           'custom'],
+  ['GET',    '/api/browse-ws',       handleBrowseWs,        'custom'],
   // --- internal (VM crons / processor) ---
   ['POST',   '/api/internal/migrate-r2-d1', hMigrateR2ToD1, 'internal'],
   ['GET',    '/api/internal/stock-alerts-by-symbol', hAlertsBySymbol, 'internal'],
@@ -147,8 +180,12 @@ const RATE_LIMITS = {
   "/api/auth/register": [5, 3600],    // 5 registers/hour per IP
   "/api/auth/send-code": [3, 3600],   // 3 codes/hour per IP
   "/api/auth/verify-code": [10, 60],  // 10 verifies/min per IP
+  "/api/auth/resend-verification": [3, 3600], // 3 resends/hour per IP (2.2)
+  "/api/auth/forgot-password": [3, 3600],     // 3 resets/hour per IP (2.2)
+  "/api/auth/reset-password": [10, 60],       // 10 attempts/min per IP (2.2)
   "/api/analytics": [30, 60],         // 30 analytics/min per IP (spam prevention)
   "/api/tts": [20, 60],               // 20 TTS/min per IP (cost protection)
+  "/api/browse": [100, 60],          // 100 browse/min per IP (1 page ≈ 50 asset requests)
 };
 
 async function checkRateLimit(request, env, path){
@@ -157,15 +194,18 @@ async function checkRateLimit(request, env, path){
     if(!path.startsWith(pattern)) continue;
     const windowStart = Math.floor(Date.now()/1000/windowSec)*windowSec;
     try{
-      // Clean old windows (opportunistic)
-      await env.DB.prepare("DELETE FROM rate_limits WHERE window_start < ?")
-        .bind(windowStart - windowSec).run();
+      const db = drizzle(env.DB);
+      // Clean old windows (opportunistic) — CHỈ dọn đúng endpoint này (1.1 root-cause fix).
+      // Bản cũ không filter endpoint → xoá cả hàng của endpoint khác (vd: login-failed
+      // dùng cửa sổ 15 phút bị login 1 phút xoá mất ngay request sau, lock không bao giờ đạt 5).
+      await db.delete(rateLimits).where(and(eq(rateLimits.endpoint, pattern), lt(rateLimits.windowStart, windowStart - windowSec)));
       // Increment or insert
-      const r = await env.DB.prepare(
-        "INSERT INTO rate_limits (ip, endpoint, window_start, count) VALUES (?, ?, ?, 1) " +
-        "ON CONFLICT(ip, endpoint, window_start) DO UPDATE SET count = count + 1 RETURNING count"
-      ).bind(ip, pattern, windowStart).run();
-      const count = r.results?.[0]?.count || 1;
+      const rows = await db.insert(rateLimits).values({ ip, endpoint: pattern, windowStart, count: 1 })
+        .onConflictDoUpdate({
+          target: [rateLimits.ip, rateLimits.endpoint, rateLimits.windowStart],
+          set: { count: sql`${rateLimits.count} + 1` },
+        }).returning({ count: rateLimits.count });
+      const count = rows[0]?.count || 1;
       if(count > maxReq){
         return new Response(JSON.stringify({error: "Too many requests. Please try again later."}),
           {status: 429, headers: {"Content-Type": "application/json", "Retry-After": String(windowSec)}});
@@ -223,6 +263,11 @@ export default {
   async fetch(request, env, ctx){
     const _u = new URL(request.url);
     const url = new URL(request.url);
+    // FIT F6: ép HTTPS — Safari iPhone báo "Not Secure" nếu vào bằng http://
+    if (url.protocol === "http:") {
+      url.protocol = "https:";
+      return Response.redirect(url.toString(), 301);
+    }
     if (url.pathname === "/voice/" || url.pathname === "/voice") {
       return serveAsset(env, "/english/voice.html"+url.search);
    }
@@ -245,6 +290,10 @@ export default {
       "/chess/sw.js": "/english/chess-sw.js",
       "/music/manifest.json": "/english/music-manifest.json",
       "/music/sw.js": "/english/music-sw.js",
+      "/browser/manifest.json": "/english/browser-manifest.json",
+      "/browser/sw.js": "/english/browser-sw.js",
+      "/talk/manifest.json": "/english/talk-manifest.json",
+      "/talk/sw.js": "/english/talk-sw.js",
    };
     if (PWA_MAP[url.pathname]) {
       const r = await env.ASSETS.fetch(new Request(new URL(PWA_MAP[url.pathname], url.origin), request));
@@ -259,6 +308,12 @@ export default {
    }
     if (url.pathname === "/policy" || url.pathname === "/policy.html") {
       return serveAsset(env, "/english/policy.html"+url.search);
+   }
+    if (url.pathname === "/dac" || url.pathname === "/dac.html") {
+      return serveAsset(env, "/english/dac.html"+url.search);
+   }
+    if (url.pathname === "/dac-player-debug.apk") {
+      return serveAsset(env, "/english/dac-player-debug.apk");
    }
     if (url.pathname === "/admin" || url.pathname === "/admin/" || url.pathname === "/admin.html") {
       return serveAsset(env, "/english/admin.html"+url.search);

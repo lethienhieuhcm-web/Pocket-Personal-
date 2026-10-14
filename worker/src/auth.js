@@ -1,8 +1,11 @@
-import { jerr, randToken } from './utils.js';
+import { jerr, randToken, sJson } from './utils.js';
 import { dbGetUser, dbPutUser, dbGetSession, dbPutSession, dbDeleteSession, dbCountUsers } from './db.js';
+import { drizzle } from "drizzle-orm/d1";
+import { eq, and, gt, ne, asc, desc, lt, sql } from "drizzle-orm";
+import { sessions, rateLimits } from "./schema.js";
 
 // Hardcoded administrator account
-const OWNER_EMAIL = "lethienhieuhcm@gmail.com";
+export const OWNER_EMAIL = "lethienhieuhcm@gmail.com";
 
 /* ---------- server auth + RBAC (PHASE 3: D1 primary, R2 fallback via db.js) ---------- */
 // Account DB (separate R2 bucket "english-lab-auth", binding AUTHDB):
@@ -23,7 +26,11 @@ export async function getSession(request, env){
   const auth = request.headers.get("Authorization") || "";
   const m = auth.match(/^Bearer (.+)$/);
   if(!m) return null;
-  return dbGetSession(env, m[1]); // {email, exp, token} | null
+  let tok = m[1];
+  // Chịu được token cũ bị lưu dạng JSON-quoted: Bearer "abc" -> abc.
+  // (Frontend từ bản này chỉ ghi chuỗi thường; đây là phòng thủ cho token cũ.)
+  if(tok.length >= 2 && tok[0] === '"' && tok[tok.length-1] === '"') tok = tok.slice(1, -1);
+  return dbGetSession(env, tok); // {email, exp, token} | null
 }
 
 export async function getUser(env, email){
@@ -31,6 +38,195 @@ export async function getUser(env, email){
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+// ---- 2.2: Email helper (tái dùng cho verify + reset, theo pattern GitHub) ----
+async function sendEmail(env, to, subject, html){
+  if(!env.RESEND_API_KEY) return false;
+  try{
+    const r = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${env.RESEND_API_KEY}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        from: "Pocket Personal <noreply@lethanhdong.one>",
+        to,
+        subject,
+        html
+      })
+    });
+    return r.ok;
+  }catch(e){
+    console.error("Email send failed:", e);
+    return false;
+  }
+}
+
+// ---- 2.2: Email verification via token link (pattern GitHub) ----
+// Token lưu KV: verify-token/{token} -> {email, exp} (24h)
+// Khác với web flow (6-digit code): link 1-click, UX tốt hơn trên mobile.
+const VERIFY_TOKEN_TTL = 24*3600*1000; // 24 giờ
+
+async function sendVerificationEmail(env, email){
+  const token = randToken();
+  await env.AUTHDB.put(`verify-token/${token}.json`, JSON.stringify({
+    email: email.toLowerCase(), exp: Date.now() + VERIFY_TOKEN_TTL
+  }), {httpMetadata: {contentType: "application/json"}});
+  const link = `https://lethanhdong.one/api/auth/verify?token=${token}`;
+  const sent = await sendEmail(env, email,
+    "Verify your email — Pocket Personal",
+    `<p>Welcome! Click the link below to verify your email address:</p>
+     <p><a href="${link}" style="display:inline-block;padding:12px 24px;background:#0d9d6c;color:#fff;text-decoration:none;border-radius:8px">Verify email</a></p>
+     <p>Or copy this link: <br><code>${link}</code></p>
+     <p>This link expires in 24 hours.</p>`
+  );
+  return {token, sent};
+}
+
+export async function handleVerifyEmail(request, env){
+  const url = new URL(request.url);
+  const token = url.searchParams.get("token") || "";
+  if(!token) return new Response("Missing token", {status: 400});
+  const rec = await env.AUTHDB.get(`verify-token/${token}.json`, "json").catch(()=>null);
+  if(!rec || rec.exp < Date.now()){
+    return new Response(verifyPage(false, "This link is invalid or has expired."), {
+      headers: {"Content-Type": "text/html;charset=UTF-8"}
+    });
+  }
+  const u = await getUser(env, rec.email);
+  if(!u){
+    return new Response(verifyPage(false, "Account not found."), {
+      headers: {"Content-Type": "text/html;charset=UTF-8"}
+    });
+  }
+  u.verified = true;
+  await dbPutUser(env, u);
+  await env.AUTHDB.delete(`verify-token/${token}.json`);
+  // Xoá marker web flow nếu có (đồng bộ 2 flow)
+  await env.AUTHDB.delete(`verified/${rec.email}.json`).catch(()=>{});
+  return new Response(verifyPage(true, "Your email has been verified. You can now log in to the app."), {
+    headers: {"Content-Type": "text/html;charset=UTF-8"}
+  });
+}
+
+function verifyPage(ok, msg){
+  const title = ok ? "Email verified" : "Verification failed";
+  const color = ok ? "#0d9d6c" : "#dc2626";
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title>
+<style>body{font-family:system-ui;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#f6f7f9}.box{text-align:center;max-width:400px;padding:32px}.icon{font-size:48px;margin-bottom:16px}h1{color:${color};font-size:24px}p{color:#6b7280;line-height:1.6}</style></head>
+<body><div class="box"><div class="icon">${ok ? "✅" : "❌"}</div><h1>${title}</h1><p>${msg}</p></div></body></html>`;
+}
+
+export async function handleResendVerification(request, env){
+  let d; try{ d = await request.json(); }catch(e){ return jerr("Bad JSON", 400); }
+  const email = String(d.email||"").trim().toLowerCase();
+  if(!EMAIL_RE.test(email)) return jerr("Enter a valid email address", 400);
+  const u = await getUser(env, email);
+  // Không tiết lộ email có tồn tại không (chống enumeration) — luôn trả ok
+  if(u && u.verified !== true){
+    await sendVerificationEmail(env, email);
+  }
+  return new Response(JSON.stringify({ok:true}), {headers:{"Content-Type":"application/json"}});
+}
+
+// ---- 2.2: Password reset via token link (pattern GitHub/Google) ----
+// Token lưu KV: reset-token/{token} -> {email, exp} (1 giờ, single-use)
+const RESET_TOKEN_TTL = 3600*1000; // 1 giờ
+
+export async function handleForgotPassword(request, env){
+  let d; try{ d = await request.json(); }catch(e){ return jerr("Bad JSON", 400); }
+  const email = String(d.email||"").trim().toLowerCase();
+  if(!EMAIL_RE.test(email)) return jerr("Enter a valid email address", 400);
+  const u = await getUser(env, email);
+  // Luôn trả ok để không lộ email có tồn tại (chống enumeration, như GitHub)
+  if(u){
+    const token = randToken();
+    await env.AUTHDB.put(`reset-token/${token}.json`, JSON.stringify({
+      email: email, exp: Date.now() + RESET_TOKEN_TTL
+    }), {httpMetadata: {contentType: "application/json"}});
+    const link = `https://lethanhdong.one/reset-password?token=${token}`;
+    await sendEmail(env, email,
+      "Reset your password — Pocket Personal",
+      `<p>Click the link below to reset your password:</p>
+       <p><a href="${link}" style="display:inline-block;padding:12px 24px;background:#0d9d6c;color:#fff;text-decoration:none;border-radius:8px">Reset password</a></p>
+       <p>Or copy this link: <br><code>${link}</code></p>
+       <p>This link expires in 1 hour. If you didn't request this, ignore this email.</p>`
+    );
+  }
+  return new Response(JSON.stringify({ok:true}), {headers:{"Content-Type":"application/json"}});
+}
+
+export async function handleResetPassword(request, env){
+  let d; try{ d = await request.json(); }catch(e){ return jerr("Bad JSON", 400); }
+  const token = String(d.token||"");
+  const newPw = String(d.newPassword||"");
+  if(!token) return jerr("Missing token", 400);
+  if(newPw.length < 8) return jerr("Password min 8 chars", 400);
+  const rec = await env.AUTHDB.get(`reset-token/${token}.json`, "json").catch(()=>null);
+  if(!rec || rec.exp < Date.now()) return jerr("Invalid or expired token", 400);
+  const u = await getUser(env, rec.email);
+  if(!u) return jerr("Invalid token", 400);
+  // Đổi mật khẩu → xoá tất cả sessions (như GitHub: password change invalidates sessions)
+  const salt = btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(16))));
+  u.salt = salt;
+  u.hash = await pbkdf2Hash(newPw, salt);
+  await dbPutUser(env, u);
+  await env.AUTHDB.delete(`reset-token/${token}.json`);
+  // Xoá sessions cũ
+  try{
+    const db = drizzle(env.DB);
+    const rows = await db.select({token: sessions.token}).from(sessions)
+      .where(eq(sessions.email, rec.email));
+    for(const r of rows) await dbDeleteSession(env, r.token);
+  }catch(e){ /* best effort */ }
+  return new Response(JSON.stringify({ok:true}), {headers:{"Content-Type":"application/json"}});
+}
+
+// GET /reset-password?token=... — trang đặt mật khẩu mới (cho link trong email)
+export async function handleResetPasswordPage(request, env){
+  const url = new URL(request.url);
+  const token = url.searchParams.get("token") || "";
+  // Kiểm tra token còn hiệu lực không (không tiết lộ email)
+  const rec = token ? await env.AUTHDB.get(`reset-token/${token}.json`, "json").catch(()=>null) : null;
+  const valid = rec && rec.exp > Date.now();
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Reset password</title>
+<style>body{font-family:system-ui;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#f6f7f9}.box{background:#fff;padding:32px;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.1);max-width:400px;width:90%}h1{font-size:20px;margin:0 0 16px}input{width:100%;padding:12px;margin:8px 0;border:1px solid #ddd;border-radius:8px;box-sizing:border-box;font-size:16px}button{width:100%;padding:12px;background:#0d9d6c;color:#fff;border:0;border-radius:8px;font-size:16px;cursor:pointer;margin-top:8px}button:disabled{opacity:.5}.err{color:#dc2626;font-size:14px;margin-top:8px;display:none}.ok{color:#0d9d6c;font-size:14px;margin-top:8px;display:none}</style></head>
+<body><div class="box">
+<h1>Đặt mật khẩu mới</h1>
+${valid ? `
+<input type="password" id="pw1" placeholder="Mật khẩu mới (tối thiểu 8 ký tự)" autocomplete="new-password">
+<input type="password" id="pw2" placeholder="Nhập lại mật khẩu mới" autocomplete="new-password">
+<button id="btn" onclick="doReset()">Đặt lại mật khẩu</button>
+<div class="err" id="err"></div><div class="ok" id="ok"></div>
+<script>
+async function doReset(){
+  const p1 = document.getElementById('pw1').value;
+  const p2 = document.getElementById('pw2').value;
+  const err = document.getElementById('err'), ok = document.getElementById('ok');
+  err.style.display = 'none'; ok.style.display = 'none';
+  if(p1.length < 8){ err.textContent = 'Mật khẩu tối thiểu 8 ký tự'; err.style.display = 'block'; return; }
+  if(p1 !== p2){ err.textContent = 'Hai mật khẩu không khớp'; err.style.display = 'block'; return; }
+  const btn = document.getElementById('btn'); btn.disabled = true;
+  try{
+    const r = await fetch('/api/auth/reset-password', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({token: ${JSON.stringify(token)}, newPassword: p1})
+    });
+    const j = await r.json().catch(()=>({}));
+    if(!r.ok) throw new Error(j.error || 'Failed');
+    ok.textContent = 'Đặt lại mật khẩu thành công! Bạn có thể đăng nhập trong app.';
+    ok.style.display = 'block';
+    document.getElementById('pw1').style.display = 'none';
+    document.getElementById('pw2').style.display = 'none';
+    btn.style.display = 'none';
+  }catch(e){ err.textContent = e.message; err.style.display = 'block'; btn.disabled = false; }
+}
+</script>` : `
+<p style="color:#dc2626">Link này không hợp lệ hoặc đã hết hạn. Vui lòng yêu cầu link mới từ app.</p>`}
+</div></body></html>`;
+  return new Response(html, {headers: {"Content-Type": "text/html;charset=UTF-8", "Cache-Control": "no-store"}});
+}
 
 export async function handleSendCode(request, env){
   let d; try{ d = await request.json(); }catch(e){ return jerr("Bad JSON", 400); }
@@ -121,23 +317,121 @@ export async function handleRegister(request, env){
   const role = (email === OWNER_EMAIL) ? "admin" : "user";
   const salt = btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(16))));
   const hash = await pbkdf2Hash(pw, salt);
+  // 2.2: Kiểm tra web flow đã verify chưa (verified/{email}.json từ verify-code).
+  // Nếu web đã verify → verified=true luôn, không gửi email token nữa.
+  // Nếu chưa (Android register trực tiếp) → verified=false + gửi email token link.
+  let verified = false;
+  try{
+    const marker = await env.AUTHDB.get(`verified/${email}.json`, "json");
+    if(marker && marker.email === email){
+      verified = true;
+      await env.AUTHDB.delete(`verified/${email}.json`).catch(()=>{});
+    }
+  }catch(e){ /* không có marker → chưa verify */ }
   await dbPutUser(env, {
     email, salt, hash, role, dob: dob||null, ageGroup, created: Date.now(),
-    plan: "free", plan_expires: null, plan_history: []
+    plan: "free", plan_expires: null, plan_history: [],
+    verified
   });
-  return new Response(JSON.stringify({ok:true, role, ageGroup, email, plan:"free"}), {headers:{"Content-Type":"application/json"}});
+  let sent = false;
+  if(!verified){
+    const r = await sendVerificationEmail(env, email);
+    sent = r.sent;
+  }
+  return new Response(JSON.stringify({ok:true, role, ageGroup, email, plan:"free", verified, needsVerification: !verified, emailSent: sent}), {headers:{"Content-Type":"application/json"}});
+}
+
+// ---- dac-app Phase 1.1: per-(email+fingerprint) failed-login lock + timing equalization ----
+// Chốt C (2026-10-13): key = email + fingerprint, BỎ IP khỏi key.
+// Lý do: IP xoay — sandbox mỗi request 1 IPv6 khác (đã chứng minh bằng D1), user thật đổi
+// WiFi/4G/CGNAT cũng xoay IP → per-(IP+email) không bao giờ đủ 5. Fingerprint (UA + screen/tz/lang,
+// hàm makeFingerprint đã có, VPN-proof) ổn định theo thiết bị, không theo IP.
+// Tái dùng bảng D1 rate_limits đã có (PK: ip, endpoint, windowStart) — KHÔNG tạo bảng mới (8d).
+// Cột `ip` lưu "fp:<fingerprint>" cho hàng login-failed (để phân biệt với IP thật của hàng generic).
+// endpoint = "/api/auth/login-failed:<sha256hex(email)>" — hash email để không lưu PII plain text.
+// Cửa sổ CỐ ĐỊNH 15 phút, khớp pattern checkRateLimit trong index.js (không phải sliding window — ghi rõ giới hạn).
+// Đếm cả email không tồn tại để không lộ email có tồn tại qua 429 vs 401.
+// Lưu ý: attacker có thể spoof fingerprint (đặt cùng UA + fp body) nếu biết fingerprint victim —
+// khó hơn nhiều so với per-email (chỉ cần email), và lock chỉ 15 phút. App Android cần gửi `fp`
+// ở 1.3 để fingerprint phân biệt thiết bị tốt nhất (hiện chỉ dựa UA khi không có fp).
+const LOGIN_FAIL_WINDOW_SEC = 900; // 15 phút
+const LOGIN_FAIL_MAX = 5;
+const LOGIN_FAIL_PREFIX = "/api/auth/login-failed:";
+// Salt giả cho email không tồn tại: 16 byte 0 → base64 "AAAAAAAAAAAAAAAAAAAAAA=="
+// PBKDF2 chạy đủ 100k vòng như user thật → thời gian tương đương (chống timing attack).
+const DUMMY_SALT_B64 = "AAAAAAAAAAAAAAAAAAAAAA==";
+
+async function loginFailEndpoint(email){
+  const data = new TextEncoder().encode(String(email||"").toLowerCase());
+  const buf = await crypto.subtle.digest("SHA-256", data);
+  const hex = [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,"0")).join("");
+  return LOGIN_FAIL_PREFIX + hex;
+}
+
+function loginFailClientKey(fp){ return "fp:" + String(fp||""); }
+
+async function checkLoginLocked(env, fp, email){
+  try{
+    const endpoint = await loginFailEndpoint(email);
+    const ipKey = loginFailClientKey(fp);
+    const windowStart = Math.floor(Date.now()/1000/LOGIN_FAIL_WINDOW_SEC)*LOGIN_FAIL_WINDOW_SEC;
+    const db = drizzle(env.DB);
+    // Dọn cửa sổ cũ cho đúng (fingerprint, endpoint) này — chỉ giữ cửa sổ hiện tại.
+    await db.delete(rateLimits).where(and(eq(rateLimits.ip, ipKey), eq(rateLimits.endpoint, endpoint), lt(rateLimits.windowStart, windowStart)));
+    const rows = await db.select({ count: rateLimits.count }).from(rateLimits)
+      .where(and(eq(rateLimits.ip, ipKey), eq(rateLimits.endpoint, endpoint), eq(rateLimits.windowStart, windowStart))).limit(1);
+    const count = rows[0]?.count ?? 0;
+    return { locked: count >= LOGIN_FAIL_MAX, count };
+  }catch(e){ return { locked: false, count: 0 }; } // fail-open: lỗi DB không chặn login
+}
+
+async function recordLoginFailed(env, fp, email){
+  try{
+    const endpoint = await loginFailEndpoint(email);
+    const ipKey = loginFailClientKey(fp);
+    const windowStart = Math.floor(Date.now()/1000/LOGIN_FAIL_WINDOW_SEC)*LOGIN_FAIL_WINDOW_SEC;
+    const db = drizzle(env.DB);
+    await db.insert(rateLimits).values({ ip: ipKey, endpoint, windowStart, count: 1 })
+      .onConflictDoUpdate({
+        target: [rateLimits.ip, rateLimits.endpoint, rateLimits.windowStart],
+        set: { count: sql`${rateLimits.count} + 1` },
+      });
+  }catch(e){} // fail-open
+}
+
+async function clearLoginFailed(env, fp, email){
+  try{
+    const endpoint = await loginFailEndpoint(email);
+    const ipKey = loginFailClientKey(fp);
+    const db = drizzle(env.DB);
+    await db.delete(rateLimits).where(and(eq(rateLimits.ip, ipKey), eq(rateLimits.endpoint, endpoint)));
+  }catch(e){} // fail-open
 }
 
 export async function handleLogin(request, env){
   let d; try{ d = await request.json(); }catch(e){ return jerr("Bad JSON", 400); }
   const email = String(d.email||"").trim().toLowerCase();
-  const u = await getUser(env, email);
-  if(!u) return jerr("Invalid credentials", 401);
-  const hash = await pbkdf2Hash(String(d.password||""), u.salt);
-  if(hash !== u.hash) return jerr("Invalid credentials", 401);
-  const token = randToken();
-  const fp = makeFingerprint(request, d.fp);
+  const password = String(d.password||"");
   const ip = request.headers.get("CF-Connecting-IP") || "";
+  const fp = makeFingerprint(request, d.fp); // Chốt C: lock key = email + fingerprint, không dùng IP
+  // 1.1-C: khoá per (email+fingerprint) sau 5 lần sai / 15 phút — check TRƯỚC PBKDF2.
+  const lock = await checkLoginLocked(env, fp, email);
+  if(lock.locked) return jerr("Too many failed attempts. Try again in 15 minutes.", 429);
+  // 1.1: timing equalization — luôn chạy PBKDF2 đủ vòng, kể cả khi user không tồn tại.
+  const u = await getUser(env, email);
+  const hash = await pbkdf2Hash(password, u ? u.salt : DUMMY_SALT_B64);
+  if(!u || hash !== u.hash){
+    await recordLoginFailed(env, fp, email);
+    return jerr("Invalid credentials", 401);
+  }
+  // 2.2: Chặn login nếu email chưa verify (user cũ không có field → cho qua, grandfathered).
+  if(u.verified === false){
+    return new Response(JSON.stringify({error: "email_not_verified", needsVerification: true}),
+      {status: 403, headers: {"Content-Type": "application/json"}});
+  }
+  // Login đúng → xoá đếm sai để user không bị khoá oan vì lần sai cũ.
+  await clearLoginFailed(env, fp, email);
+  const token = randToken();
   const planInfo = getActivePlan(u);
   // Enforce concurrent session limit (kicks oldest if over)
   await enforceSessionLimit(env, u.email, planInfo.plan === "admin" ? "admin" : planInfo.plan);
@@ -151,10 +445,12 @@ export async function handleListSessions(request, env){
   const s = await getSession(request, env);
   if(!s) return jerr("Not logged in", 401);
   try{
-    const rows = await env.DB.prepare(
-      "SELECT token, data, updated_at FROM sessions WHERE email=? AND exp>? ORDER BY updated_at DESC"
-    ).bind(s.email.toLowerCase(), Date.now()).all();
-    const list = (rows.results||[]).map(r => {
+    const db = drizzle(env.DB);
+    const rows = await db.select({ token: sessions.token, data: sessions.data, updatedAt: sessions.updatedAt })
+      .from(sessions)
+      .where(and(eq(sessions.email, s.email.toLowerCase()), gt(sessions.exp, Date.now())))
+      .orderBy(desc(sessions.updatedAt));
+    const list = rows.map(r => {
       let d = {};
       try{ d = JSON.parse(r.data||"{}"); }catch(e){}
       return {
@@ -162,8 +458,8 @@ export async function handleListSessions(request, env){
         current: r.token === s.token,
         ip: d.ip || "",
         ua: (d.ua||"").slice(0, 80),
-        created_at: d.created_at || r.updated_at,
-        last_active: r.updated_at
+        created_at: d.created_at || r.updatedAt,
+        last_active: r.updatedAt
       };
     });
     return sJson({sessions: list});
@@ -177,19 +473,18 @@ export async function handleRevokeSession(request, env){
   let d; try{ d = await request.json(); }catch(e){ d = {}; }
   const prefix = String(d.token_prefix||"");
   try{
+    const db = drizzle(env.DB);
     if(d.all_others){
-      const rows = await env.DB.prepare(
-        "SELECT token FROM sessions WHERE email=? AND token!=?"
-      ).bind(s.email.toLowerCase(), s.token).all();
-      for(const r of (rows.results||[])) await dbDeleteSession(env, r.token);
-      return sJson({ok:true, revoked: (rows.results||[]).length});
+      const rows = await db.select({ token: sessions.token }).from(sessions)
+        .where(and(eq(sessions.email, s.email.toLowerCase()), ne(sessions.token, s.token)));
+      for(const r of rows) await dbDeleteSession(env, r.token);
+      return sJson({ok:true, revoked: rows.length});
     }
     if(prefix){
-      const rows = await env.DB.prepare(
-        "SELECT token FROM sessions WHERE email=?"
-      ).bind(s.email.toLowerCase()).all();
+      const rows = await db.select({ token: sessions.token }).from(sessions)
+        .where(eq(sessions.email, s.email.toLowerCase()));
       let n = 0;
-      for(const r of (rows.results||[])){
+      for(const r of rows){
         if(r.token.startsWith(prefix) && r.token !== s.token){
           await dbDeleteSession(env, r.token);
           n++;
@@ -219,6 +514,11 @@ export async function handleMe(request, env){
 // Plan durations in milliseconds (all new plans are monthly)
 export const PLAN_DURATIONS = {
   monthly: 30 * 86400000,
+  // 5-tier packages (all monthly billing, added 2026-10-07)
+  hocsinh: 30 * 86400000,
+  sinhvien: 30 * 86400000,
+  dilam: 30 * 86400000,
+  nhadautu: 30 * 86400000,
   // legacy (kept for backward compat, mapped to 30d)
   weekly: 30 * 86400000,
   yearly: 30 * 86400000,
@@ -227,28 +527,28 @@ export const PLAN_DURATIONS = {
 export const PLANS = {
   free: {
     id: "free", price: 0,
-    apps: ["chess", "music", "english"],
-    limits: { english_scans: 5, english_chars: 1000, english_uploads: 0, voice_chars: 0, watchlist: 0, portfolio_txns: 0, backtest: 0, alerts: 0, ai_calls: 10, agent_calls: 5 },
+    apps: ["chess", "music", "english", "voice", "browser"],
+    limits: { english_chars: 1000, english_uploads: 0, voice_chars: 2000, watchlist: 0, portfolio_txns: 0, backtest: 0, alerts: 0, ai_calls: 10, agent_calls: 5, browse_pages: 20 },
   },
   hocsinh: {
     id: "hocsinh", price: 29000,
-    apps: ["chess", "music", "english"],
-    limits: { english_scans: 50, english_chars: 5000, english_uploads: 3, voice_chars: 0, watchlist: 0, portfolio_txns: 0, backtest: 0, alerts: 0, ai_calls: 30, agent_calls: 20 },
+    apps: ["chess", "music", "english", "voice", "browser"],
+    limits: { english_chars: 5000, english_uploads: 3, voice_chars: 5000, watchlist: 0, portfolio_txns: 0, backtest: 0, alerts: 0, ai_calls: 30, agent_calls: 20, browse_pages: 50 },
   },
   sinhvien: {
     id: "sinhvien", price: 49000,
-    apps: ["chess", "music", "english", "voice"],
-    limits: { english_scans: 100, english_chars: 10000, english_uploads: 10, voice_chars: 30000, watchlist: 0, portfolio_txns: 0, backtest: 0, alerts: 0, ai_calls: 50, agent_calls: 30 },
+    apps: ["chess", "music", "english", "voice", "browser"],
+    limits: { english_chars: 10000, english_uploads: 10, voice_chars: 30000, watchlist: 0, portfolio_txns: 0, backtest: 0, alerts: 0, ai_calls: 50, agent_calls: 30, browse_pages: 100 },
   },
   dilam: {
     id: "dilam", price: 99000,
-    apps: ["chess", "music", "english", "voice", "stocks_basic"],
-    limits: { english_scans: 200, english_chars: 20000, english_uploads: 30, voice_chars: 100000, watchlist: 20, portfolio_txns: 0, backtest: 0, alerts: 0, ai_calls: 100, agent_calls: 60 },
+    apps: ["chess", "music", "english", "voice", "stocks_basic", "browser"],
+    limits: { english_chars: 20000, english_uploads: 30, voice_chars: 100000, watchlist: 20, portfolio_txns: 0, backtest: 0, alerts: 0, ai_calls: 100, agent_calls: 60, browse_pages: 200 },
   },
   nhadautu: {
     id: "nhadautu", price: 149000,
-    apps: ["chess", "music", "english", "voice", "stocks_full"],
-    limits: { english_scans: 500, english_chars: 50000, english_uploads: 100, voice_chars: 300000, watchlist: 20, portfolio_txns: 200, backtest: 10, alerts: 20, ai_calls: 200, agent_calls: 150 },
+    apps: ["chess", "music", "english", "voice", "stocks_full", "browser"],
+    limits: { english_chars: 50000, english_uploads: 100, voice_chars: 300000, watchlist: 20, portfolio_txns: 200, backtest: 10, alerts: 20, ai_calls: 200, agent_calls: 150, browse_pages: 500 },
   },
 };
 export const PLAN_IDS = Object.keys(PLANS);
@@ -256,7 +556,9 @@ export const PLAN_IDS = Object.keys(PLANS);
 // kind: "daily" (usage per day), "monthly" (usage per month), "cap" (max count),
 //       "per_request" (opts.value checked against limit), "access" (app only)
 const FEATURES = {
-  english_scan:     { app: "english", limit: "english_scans",   usage: "english_scans",   kind: "daily" },
+  // english_scan đã xoá (Chốt 2026-10-11): scan OCR chạy 100% phía client
+  // (Tesseract.js), server không có endpoint để đếm nên quota này không
+  // enforce được. Giữ cột DB cho tương thích, không config limit nữa.
   english_text:     { app: "english", limit: "english_chars",   kind: "per_request" },
   english_upload:   { app: "english", limit: "english_uploads", usage: "english_uploads", kind: "monthly" },
   voice_tts:        { app: "voice",   limit: "voice_chars",     usage: "tts_chars",       kind: "daily" },
@@ -266,6 +568,7 @@ const FEATURES = {
   stocks_backtest:  { app: ["stocks_full"], limit: "backtest",  usage: "backtest_count",   kind: "daily" },
   stocks_alert:     { app: ["stocks_full"], limit: "alerts",    usage: "alerts_count",     kind: "cap" },
   stock_agent:      { app: "english", limit: "agent_calls", usage: "agent_calls", kind: "daily" },
+  browse_pages:     { app: "browser", limit: "browse_pages", usage: "browse_pages", kind: "daily" },
   // legacy aliases (kept for backward compat)
   dict:             { app: "english", limit: "dict_lookups", usage: "dict",      kind: "daily", legacy_limit: 50 },
   ai_explain:       { app: "english", limit: "ai_calls", usage: "ai_calls", kind: "daily" },
@@ -302,15 +605,15 @@ export function makeFingerprint(request, bodyFp){
 export async function enforceSessionLimit(env, email, plan){
   const limit = SESSION_LIMITS[plan] ?? 1;
   try{
-    const rows = await env.DB.prepare(
-      "SELECT token, updated_at FROM sessions WHERE email=? AND exp>? ORDER BY updated_at ASC"
-    ).bind(email.toLowerCase(), Date.now()).all();
-    const sessions = rows.results || [];
-    if(sessions.length >= limit){
+    const db = drizzle(env.DB);
+    const rows = await db.select({ token: sessions.token, updatedAt: sessions.updatedAt }).from(sessions)
+      .where(and(eq(sessions.email, email.toLowerCase()), gt(sessions.exp, Date.now())))
+      .orderBy(asc(sessions.updatedAt));
+    if(rows.length >= limit){
       // Delete oldest to make room for the new one
-      const toDelete = sessions.slice(0, sessions.length - limit + 1);
+      const toDelete = rows.slice(0, rows.length - limit + 1);
       for(const s of toDelete){
-        await env.DB.prepare("DELETE FROM sessions WHERE token=?").bind(s.token).run();
+        await db.delete(sessions).where(eq(sessions.token, s.token));
       }
       return toDelete.length;
     }
