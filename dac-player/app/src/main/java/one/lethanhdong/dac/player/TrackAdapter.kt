@@ -3,6 +3,7 @@ package one.lethanhdong.dac.player
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.recyclerview.widget.DiffUtil
@@ -20,6 +21,10 @@ import one.lethanhdong.dac.R
 class TrackAdapter(
     private val onTrackClick: (MusicApiClient.Track) -> Unit,
     private val imageLoader: ImageLoader,
+    /** 4.3: bấm nút tải → activity xử lý download. Null = ẩn nút tải. */
+    private val onDownloadClick: ((MusicApiClient.Track) -> Unit)? = null,
+    /** 4.3: track đã tải offline chưa — để hiện trạng thái nút. */
+    private val isDownloaded: (String) -> Boolean = { false },
 ) : ListAdapter<MusicApiClient.Track, TrackAdapter.TrackViewHolder>(DIFF) {
 
     companion object {
@@ -48,6 +53,7 @@ class TrackAdapter(
         private val coverView: ImageView = view.findViewById(R.id.coverView)
         private val titleView: TextView = view.findViewById(R.id.titleView)
         private val badgeView: TextView = view.findViewById(R.id.badgeView)
+        private val downloadButton: ImageButton = view.findViewById(R.id.downloadButton)
 
         fun bind(track: MusicApiClient.Track) {
             titleView.text = track.title
@@ -59,6 +65,18 @@ class TrackAdapter(
                 crossfade(true)
             }
             itemView.setOnClickListener { onTrackClick(track) }
+            // 4.3: nút tải offline.
+            if (onDownloadClick != null) {
+                downloadButton.visibility = View.VISIBLE
+                val done = isDownloaded(track.id)
+                downloadButton.alpha = if (done) 1f else 0.5f
+                downloadButton.contentDescription = view.context.getString(
+                    if (done) R.string.downloaded_offline else R.string.download_offline
+                )
+                downloadButton.setOnClickListener { onDownloadClick.invoke(track) }
+            } else {
+                downloadButton.visibility = View.GONE
+            }
         }
     }
 

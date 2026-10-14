@@ -8,10 +8,19 @@ import androidx.room.RoomDatabase
 /**
  * 2.3: Room database cho music library cache.
  * Thay SharedPreferences JSON — query offline, không giới hạn size.
+ *
+ * 4.3: version 2 — thêm bảng offline_tracks (file nhạc tải về nghe offline).
+ * Dùng fallbackToDestructiveMigration: đây là cache (tải lại được), không phải
+ * data người dùng nhập — xoá và build lại schema an toàn.
  */
-@Database(entities = [TrackEntity::class], version = 1, exportSchema = false)
+@Database(
+    entities = [TrackEntity::class, OfflineTrackEntity::class],
+    version = 2,
+    exportSchema = false,
+)
 abstract class MusicDatabase : RoomDatabase() {
     abstract fun trackDao(): TrackDao
+    abstract fun offlineTrackDao(): OfflineTrackDao
 
     companion object {
         private const val DB_NAME = "dac_music.db"
@@ -25,7 +34,9 @@ abstract class MusicDatabase : RoomDatabase() {
                     context.applicationContext,
                     MusicDatabase::class.java,
                     DB_NAME
-                ).build().also { INSTANCE = it }
+                )
+                    .fallbackToDestructiveMigration()
+                    .build().also { INSTANCE = it }
             }
     }
 }
