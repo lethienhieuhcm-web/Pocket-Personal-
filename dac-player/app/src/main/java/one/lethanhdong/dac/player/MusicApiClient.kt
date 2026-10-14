@@ -128,6 +128,43 @@ class MusicApiClient(
     }
 
     /**
+     * 4.1: Duyệt thư mục Drive — GET /api/dac/folders?parentId=...
+     * Trả về breadcrumb + thư mục con + file nhạc trong thư mục hiện tại.
+     * Không cache (duyệt từng cấp, cần tươi).
+     */
+    data class FolderListing(
+        val parentId: String,
+        val parentName: String,
+        val breadcrumb: List<BreadcrumbItem>,
+        val folders: List<DriveFolder>,
+        val tracks: List<Track>,
+    )
+
+    suspend fun listFolders(
+        parentId: String = "root",
+        activity: android.app.Activity? = null,
+    ): FolderListing {
+        val driveToken = driveAuth.getToken(activity)
+        val encoded = java.net.URLEncoder.encode(parentId, "UTF-8")
+        val body = get("/api/dac/folders?parentId=$encoded", driveToken)
+        val resp = ApiHttp.json.decodeFromString<FolderListResponse>(body)
+        return FolderListing(
+            parentId = resp.parentId,
+            parentName = resp.parentName,
+            breadcrumb = resp.breadcrumb,
+            folders = resp.folders,
+            tracks = resp.tracks.map { f ->
+                Track(
+                    id = f.id,
+                    title = f.name.substringBeforeLast("."),
+                    size = f.size,
+                    mimeType = f.mimeType,
+                )
+            },
+        )
+    }
+
+    /**
      * Tìm kiếm trong cache offline (2.3: Room query, không cần mạng).
      */
     suspend fun searchOffline(query: String): List<Track> {
