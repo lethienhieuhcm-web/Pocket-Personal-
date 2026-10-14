@@ -133,17 +133,6 @@ class MusicApiClient: ObservableObject {
     }
 }
 
-private struct MusicListResponse: Codable {
-    let files: [DriveFile]
-}
-
-private struct DriveFile: Codable {
-    let id: String
-    let name: String
-    let size: Int64
-    let mimeType: String
-}
-
 enum MusicError: Error {
     case message(String)
 }

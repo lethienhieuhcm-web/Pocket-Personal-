@@ -25,6 +25,7 @@ struct LibraryView: View {
     @State private var errorText: String? = nil
     @State private var isLoading = false
     @State private var showPlayer = false
+    @State private var showImport = false
 
     private var visibleTracks: [Track] {
         searchText.isEmpty ? api.tracks : api.searchOffline(searchText)
@@ -71,6 +72,11 @@ struct LibraryView: View {
             }
             .navigationTitle("Thư viện nhạc")
             .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Nhập từ link") {
+                        showImport = true
+                    }
+                }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Đăng xuất") {
                         Task { await auth.logout() }
@@ -79,6 +85,9 @@ struct LibraryView: View {
             }
             .sheet(isPresented: $showPlayer) {
                 PlayerView()
+            }
+            .sheet(isPresented: $showImport) {
+                ImportView()
             }
             .task {
                 await reload()
