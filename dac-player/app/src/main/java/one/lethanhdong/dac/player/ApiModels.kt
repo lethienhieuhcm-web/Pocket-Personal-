@@ -118,3 +118,26 @@ data class CopyResponse(
     val mimeType: String = "",
     val method: String = "",
 )
+
+// --- dac-app 4.1: Duyệt theo thư mục Drive ---
+
+@Serializable
+data class DriveFolder(
+    val id: String,
+    val name: String = "",
+)
+
+@Serializable
+data class BreadcrumbItem(
+    val id: String,
+    val name: String = "",
+)
+
+@Serializable
+data class FolderListResponse(
+    val parentId: String = "root",
+    val parentName: String = "",
+    val breadcrumb: List<BreadcrumbItem> = emptyList(),
+    val folders: List<DriveFolder> = emptyList(),
+    val tracks: List<DriveFile> = emptyList(),
+)
