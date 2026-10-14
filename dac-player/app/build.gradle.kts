@@ -186,8 +186,10 @@ dependencies {
     implementation(libs.work.runtime.ktx)
     implementation(libs.jaudiotagger)
     // 2.4: Credential Manager cho Google Sign-In.
-    implementation(libs.credentials)
-    implementation(libs.credentials.play.services.auth)
+    // Khai báo trực tiếp (không qua version catalog) vì tên "credentials"
+    // vừa là library vừa là namespace gây xung đột accessor trong Gradle.
+    implementation("androidx.credentials:credentials:1.3.0")
+    implementation("androidx.credentials:credentials-play-services-auth:1.3.0")
     // Room testing cho instrumented test DAO.
     androidTestImplementation(libs.room.testing)
 }
