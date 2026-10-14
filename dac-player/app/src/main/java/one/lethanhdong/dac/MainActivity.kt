@@ -107,6 +107,10 @@ class MainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.licensesButton).setOnClickListener {
             startActivity(Intent(this@MainActivity, LicensesActivity::class.java))
         }
+        // 2.1: Nhập nhạc từ Drive share link
+        findViewById<Button>(R.id.importButton).setOnClickListener {
+            startActivity(Intent(this@MainActivity, ImportActivity::class.java))
+        }
 
         refreshAuthUi()
     }
@@ -182,6 +186,14 @@ class MainActivity : AppCompatActivity() {
         // Y chang doc ma145 — xử lý khi DAC được cắm lúc app đang chạy.
         UsbAudioPermissionHelper.handleIntent(applicationContext, intent)
         setIntent(intent)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // 2.1: về từ ImportActivity → refresh library (có thể đã copy file mới)
+        if (::apiClient.isInitialized && apiClient.isDriveConnected()) {
+            loadTracks(forceRefresh = true)
+        }
     }
 
     override fun onDestroy() {
