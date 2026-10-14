@@ -3,17 +3,23 @@ package one.lethanhdong.dac.player
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
 import android.widget.TextView
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
+import coil.ImageLoader
+import coil.load
+import one.lethanhdong.dac.R
 
 /**
- * Adapter danh sách nhạc — plan "dac" D2.
- * Hiển thị title + badge định dạng (kiểu UAPP: FLAC, MP3...).
+ * Adapter danh sách nhạc — plan "dac" D2 + dac-app 1.4 (ảnh bìa Coil).
+ * Hiển thị ảnh bìa + title + badge định dạng (kiểu UAPP: FLAC, MP3...).
+ * Ảnh bìa = ảnh nhúng trong file (CoverArtFetcher); không có → placeholder ic_music_note.
  */
 class TrackAdapter(
     private val onTrackClick: (MusicApiClient.Track) -> Unit,
+    private val imageLoader: ImageLoader,
 ) : ListAdapter<MusicApiClient.Track, TrackAdapter.TrackViewHolder>(DIFF) {
 
     companion object {
@@ -39,19 +45,26 @@ class TrackAdapter(
     }
 
     inner class TrackViewHolder(view: View) : RecyclerView.ViewHolder(view) {
-        private val titleView: TextView = view.findViewById(android.R.id.text1)
-        private val badgeView: TextView = view.findViewById(android.R.id.text2)
+        private val coverView: ImageView = view.findViewById(R.id.coverView)
+        private val titleView: TextView = view.findViewById(R.id.titleView)
+        private val badgeView: TextView = view.findViewById(R.id.badgeView)
 
         fun bind(track: MusicApiClient.Track) {
             titleView.text = track.title
             badgeView.text = formatBadge(track.mimeType, track.title)
+            // 1.4: ảnh bìa qua Coil (CoverArtFetcher → ảnh nhúng, cache theo id+size).
+            coverView.load(CoverArtKey(track.id, track.size), imageLoader) {
+                placeholder(R.drawable.ic_music_note)
+                error(R.drawable.ic_music_note)
+                crossfade(true)
+            }
             itemView.setOnClickListener { onTrackClick(track) }
         }
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): TrackViewHolder {
         val view = LayoutInflater.from(parent.context)
-            .inflate(android.R.layout.simple_list_item_2, parent, false)
+            .inflate(R.layout.item_track, parent, false)
         return TrackViewHolder(view)
     }
 
