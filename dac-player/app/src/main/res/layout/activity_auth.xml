@@ -61,5 +61,26 @@
         android:id="@+id/registerButton"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Đăng ký tài khoản mới" />
+        android:text="Đăng ký tài khoản mới"
+        android:layout_marginBottom="8dp" />
+
+    <!-- 2.2: Quên mật khẩu -->
+    <TextView
+        android:id="@+id/forgotPasswordButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Quên mật khẩu?"
+        android:textSize="14sp"
+        android:gravity="center"
+        android:textColor="@android:color/holo_blue_dark"
+        android:padding="8dp"
+        android:layout_marginBottom="8dp" />
+
+    <!-- 2.2: Gửi lại email xác nhận (chỉ hiện khi login báo email_not_verified) -->
+    <Button
+        android:id="@+id/resendButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Gửi lại email xác nhận"
+        android:visibility="gone" />
 </LinearLayout>
