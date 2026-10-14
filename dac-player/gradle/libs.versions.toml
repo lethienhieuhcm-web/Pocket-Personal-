@@ -1,1 +1,55 @@
-IyBncmFkbGUvbGlicy52ZXJzaW9ucy50b21sIOKAlCBwbGFuICJkYWMiCiMgVOG6pXQgY+G6oyB2ZXJzaW9uIHZlcmlmeSB04burIGRlY2VudC1wbGF5ZXIvbGlicyAoY2xvbmUgMjAyNi0xMC0xMik6CiMgLSBtZWRpYTMgMS45LjMgKGxpYnMvZGVjZW50LXVzYi1hdWRpby13cmFwcGVyLW1lZGlhMy9idWlsZC5ncmFkbGUua3RzKQojIC0gY29yZS1rdHggMS4xOC4wIChsaWJzIG1vZHVsZXMpCiMgLSBBR1AgOS4xLjAgKGxpYnMvYnVpbGQuZ3JhZGxlLmt0cykKIyAtIEphdmEgMjEgKGp2bVRvb2xjaGFpbigyMSkgbeG7jWkgbW9kdWxlKQpbdmVyc2lvbnNdCmFncCA9ICI5LjEuMCIKa290bGluID0gIjIuMi4yMCIKbWVkaWEzID0gIjEuOS4zIgpjb3JlLWt0eCA9ICIxLjE4LjAiCmFwcGNvbXBhdCA9ICIxLjcuMSIKY29yb3V0aW5lcyA9ICIxLjEwLjIiCnJlY3ljbGVydmlldyA9ICIxLjQuMCIKbGlmZWN5Y2xlID0gIjIuOS4yIgojIDEuNDogUGhhc2UgMSBMaWJyYXJpZXMg4oCUIHZlcmlmeSBxdWEgTWF2ZW4gQ2VudHJhbCBzZWFyY2ggQVBJICgyMDI2LTEwLTE0KToKIyBjb2lsIDIuNy4wIChsYXRlc3QgMi54KSwgb2todHRwIDQuMTIuMCAobGF0ZXN0IHN0YWJsZSA0Lng7IDUueCBsw6AgYWxwaGEpLAojIGtvdGxpbngtc2VyaWFsaXphdGlvbi1qc29uIDEuNy4zLiBTZXJpYWxpemF0aW9uIHBsdWdpbiA9IEtvdGxpbiB2ZXJzaW9uICgyLjIuMjApLgpjb2lsID0gIjIuNy4wIgpva2h0dHAgPSAiNC4xMi4wIgprb3RsaW54LXNlcmlhbGl6YXRpb24tanNvbiA9ICIxLjcuMyIKIyAxLjI6IEVuY3J5cHRlZFNoYXJlZFByZWZlcmVuY2VzIOKAlCB2ZXJpZnkgdGjhuq10IHF1YSBHb29nbGUgTWF2ZW4gKDIwMjYtMTAtMTMpOgojIHNlY3VyaXR5LWNyeXB0byAxLjEuMCA9IHN0YWJsZSBt4bubaSBuaOG6pXQgKHJlbGVhc2UgMjAyNS0wNy0zMCkuCnNlY3VyaXR5LWNyeXB0byA9ICIxLjEuMCIKIyBJbnN0cnVtZW50ZWQgdGVzdCAoZW11bGF0b3IgQ0kpOiBhbmRyb2lkeC50ZXN0IGxhdGVzdCB2ZXJpZnkgcXVhIEdvb2dsZSBNYXZlbiAoMjAyNi0xMC0xMykuCmFuZHJvaWR4LXRlc3QgPSAiMS43LjAiCnRlc3QtZXh0LWp1bml0ID0gIjEuMy4wIgoKW2xpYnJhcmllc10KbWVkaWEzLWV4b3BsYXllciA9IHsgZ3JvdXAgPSAiYW5kcm9pZHgubWVkaWEzIiwgbmFtZSA9ICJtZWRpYTMtZXhvcGxheWVyIiwgdmVyc2lvbi5yZWYgPSAibWVkaWEzIiB9Cm1lZGlhMy11aSA9IHsgZ3JvdXAgPSAiYW5kcm9pZHgubWVkaWEzIiwgbmFtZSA9ICJtZWRpYTMtdWkiLCB2ZXJzaW9uLnJlZiA9ICJtZWRpYTMiIH0KbWVkaWEzLXNlc3Npb24gPSB7IGdyb3VwID0gImFuZHJvaWR4Lm1lZGlhMyIsIG5hbWUgPSAibWVkaWEzLXNlc3Npb24iLCB2ZXJzaW9uLnJlZiA9ICJtZWRpYTMiIH0KIyAxLjU6IEZGbXBlZyBkZWNvZGVyIGzDoCBBQVIgdOG7sSBidWlsZCDhu58gYXBwL2xpYnMvbWVkaWEzLWZmbXBlZy1sZ3BsLmFhcgojIChpbXBsZW1lbnRhdGlvbihmaWxlcyguLi4pKSB0cm9uZyBhcHAvYnVpbGQuZ3JhZGxlLmt0cyksIGtow7RuZyBxdWEgTWF2ZW4uCiMgSmVsbHlmaW4gR1BMIChvcmcuamVsbHlmaW4ubWVkaWEzKSDEkcOjIHhvw6Eg4oCUIEPhuqRNIHRow6ptIGzhuqFpLgpjb3JlLWt0eCA9IHsgZ3JvdXAgPSAiYW5kcm9pZHguY29yZSIsIG5hbWUgPSAiY29yZS1rdHgiLCB2ZXJzaW9uLnJlZiA9ICJjb3JlLWt0eCIgfQphcHBjb21wYXQgPSB7IGdyb3VwID0gImFuZHJvaWR4LmFwcGNvbXBhdCIsIG5hbWUgPSAiYXBwY29tcGF0IiwgdmVyc2lvbi5yZWYgPSAiYXBwY29tcGF0IiB9CmNvcm91dGluZXMgPSB7IGdyb3VwID0gIm9yZy5qZXRicmFpbnMua290bGlueCIsIG5hbWUgPSAia290bGlueC1jb3JvdXRpbmVzLWFuZHJvaWQiLCB2ZXJzaW9uLnJlZiA9ICJjb3JvdXRpbmVzIiB9CnJlY3ljbGVydmlldyA9IHsgZ3JvdXAgPSAiYW5kcm9pZHgucmVjeWNsZXJ2aWV3IiwgbmFtZSA9ICJyZWN5Y2xlcnZpZXciLCB2ZXJzaW9uLnJlZiA9ICJyZWN5Y2xlcnZpZXciIH0KbGlmZWN5Y2xlLXJ1bnRpbWUgPSB7IGdyb3VwID0gImFuZHJvaWR4LmxpZmVjeWNsZSIsIG5hbWUgPSAibGlmZWN5Y2xlLXJ1bnRpbWUta3R4IiwgdmVyc2lvbi5yZWYgPSAibGlmZWN5Y2xlIiB9CiMgMS4yOiBtw6MgaG/DoSB0b2tlbiAoRW5jcnlwdGVkU2hhcmVkUHJlZmVyZW5jZXMsIE1hc3RlcktleSBBRVMtMjU2LUdDTSkuCnNlY3VyaXR5LWNyeXB0byA9IHsgZ3JvdXAgPSAiYW5kcm9pZHguc2VjdXJpdHkiLCBuYW1lID0gInNlY3VyaXR5LWNyeXB0byIsIHZlcnNpb24ucmVmID0gInNlY3VyaXR5LWNyeXB0byIgfQojIDEuNDogUGhhc2UgMSBMaWJyYXJpZXMgKENvaWwg4bqjbmggYsOsYSArIE9rSHR0cCArIHNlcmlhbGl6YXRpb24pLgpjb2lsID0geyBncm91cCA9ICJpby5jb2lsLWt0IiwgbmFtZSA9ICJjb2lsIiwgdmVyc2lvbi5yZWYgPSAiY29pbCIgfQpva2h0dHAgPSB7IGdyb3VwID0gImNvbS5zcXVhcmV1cC5va2h0dHAzIiwgbmFtZSA9ICJva2h0dHAiLCB2ZXJzaW9uLnJlZiA9ICJva2h0dHAiIH0Ka290bGlueC1zZXJpYWxpemF0aW9uLWpzb24gPSB7IGdyb3VwID0gIm9yZy5qZXRicmFpbnMua290bGlueCIsIG5hbWUgPSAia290bGlueC1zZXJpYWxpemF0aW9uLWpzb24iLCB2ZXJzaW9uLnJlZiA9ICJrb3RsaW54LXNlcmlhbGl6YXRpb24tanNvbiIgfQojIEluc3RydW1lbnRlZCB0ZXN0IChjaOG6oXkgdHLDqm4gZW11bGF0b3IgQ0kpLgphbmRyb2lkeC10ZXN0LWV4dC1qdW5pdCA9IHsgZ3JvdXAgPSAiYW5kcm9pZHgudGVzdC5leHQiLCBuYW1lID0gImp1bml0IiwgdmVyc2lvbi5yZWYgPSAidGVzdC1leHQtanVuaXQiIH0KYW5kcm9pZHgtdGVzdC1ydW5uZXIgPSB7IGdyb3VwID0gImFuZHJvaWR4LnRlc3QiLCBuYW1lID0gInJ1bm5lciIsIHZlcnNpb24ucmVmID0gImFuZHJvaWR4LXRlc3QiIH0KYW5kcm9pZHgtdGVzdC1jb3JlID0geyBncm91cCA9ICJhbmRyb2lkeC50ZXN0IiwgbmFtZSA9ICJjb3JlIiwgdmVyc2lvbi5yZWYgPSAiYW5kcm9pZHgtdGVzdCIgfQoKW3BsdWdpbnNdCmFuZHJvaWQtYXBwbGljYXRpb24gPSB7IGlkID0gImNvbS5hbmRyb2lkLmFwcGxpY2F0aW9uIiwgdmVyc2lvbi5yZWYgPSAiYWdwIiB9CiMgMS40OiBrb3RsaW54LnNlcmlhbGl6YXRpb24g4oCUIHZlcnNpb24gPSBLb3RsaW4gdmVyc2lvbiAoMi4yLjIwKS4Ka290bGluLXNlcmlhbGl6YXRpb24gPSB7IGlkID0gIm9yZy5qZXRicmFpbnMua290bGluLnBsdWdpbi5zZXJpYWxpemF0aW9uIiwgdmVyc2lvbi5yZWYgPSAia290bGluIiB9Cg==
+# gradle/libs.versions.toml — plan "dac"
+# Tất cả version verify từ decent-player/libs (clone 2026-10-12):
+# - media3 1.9.3 (libs/decent-usb-audio-wrapper-media3/build.gradle.kts)
+# - core-ktx 1.18.0 (libs modules)
+# - AGP 9.1.0 (libs/build.gradle.kts)
+# - Java 21 (jvmToolchain(21) mọi module)
+[versions]
+agp = "9.1.0"
+kotlin = "2.2.20"
+media3 = "1.9.3"
+core-ktx = "1.18.0"
+appcompat = "1.7.1"
+coroutines = "1.10.2"
+recyclerview = "1.4.0"
+lifecycle = "2.9.2"
+# 1.4: Phase 1 Libraries — verify qua Maven Central search API (2026-10-14):
+# coil 2.7.0 (latest 2.x), okhttp 4.12.0 (latest stable 4.x; 5.x là alpha),
+# kotlinx-serialization-json 1.7.3. Serialization plugin = Kotlin version (2.2.20).
+coil = "2.7.0"
+okhttp = "4.12.0"
+kotlinx-serialization-json = "1.7.3"
+# 1.2: EncryptedSharedPreferences — verify thật qua Google Maven (2026-10-13):
+# security-crypto 1.1.0 = stable mới nhất (release 2025-07-30).
+security-crypto = "1.1.0"
+# Instrumented test (emulator CI): androidx.test latest verify qua Google Maven (2026-10-13).
+androidx-test = "1.7.0"
+test-ext-junit = "1.3.0"
+
+[libraries]
+media3-exoplayer = { group = "androidx.media3", name = "media3-exoplayer", version.ref = "media3" }
+media3-ui = { group = "androidx.media3", name = "media3-ui", version.ref = "media3" }
+media3-session = { group = "androidx.media3", name = "media3-session", version.ref = "media3" }
+# 1.5: FFmpeg decoder là AAR tự build ở app/libs/media3-ffmpeg-lgpl.aar
+# (implementation(files(...)) trong app/build.gradle.kts), không qua Maven.
+# Jellyfin GPL (org.jellyfin.media3) đã xoá — CẤM thêm lại.
+core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "core-ktx" }
+appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
+coroutines = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
+recyclerview = { group = "androidx.recyclerview", name = "recyclerview", version.ref = "recyclerview" }
+lifecycle-runtime = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycle" }
+# 1.2: mã hoá token (EncryptedSharedPreferences, MasterKey AES-256-GCM).
+security-crypto = { group = "androidx.security", name = "security-crypto", version.ref = "security-crypto" }
+# 1.4: Phase 1 Libraries (Coil ảnh bìa + OkHttp + serialization).
+coil = { group = "io.coil-kt", name = "coil", version.ref = "coil" }
+okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
+kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinx-serialization-json" }
+# Instrumented test (chạy trên emulator CI).
+androidx-test-ext-junit = { group = "androidx.test.ext", name = "junit", version.ref = "test-ext-junit" }
+androidx-test-runner = { group = "androidx.test", name = "runner", version.ref = "androidx-test" }
+androidx-test-core = { group = "androidx.test", name = "core", version.ref = "androidx-test" }
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "agp" }
+# 1.4: kotlinx.serialization — version = Kotlin version (2.2.20).
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
