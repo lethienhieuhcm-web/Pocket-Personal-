@@ -98,6 +98,19 @@ android {
     }
     buildFeatures {
         viewBinding = true
+        // 2.4: BuildConfig cho GOOGLE_WEB_CLIENT_ID
+        buildConfig = true
+    }
+
+    // 2.4: Web OAuth client ID cho Google Sign-In (tạo trong Google Cloud Console).
+    // Dùng cho `aud` khi Worker verify ID token. Để trống nếu chưa cấu hình.
+    buildTypes {
+        getByName("debug") {
+            buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"\"")
+        }
+        getByName("release") {
+            buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"\"")
+        }
     }
 
     // 1.5: Licenses screen đọc THIRD_PARTY_NOTICES.md — copy file docs/ vào assets
@@ -172,6 +185,9 @@ dependencies {
     ksp(libs.hilt.compiler)
     implementation(libs.work.runtime.ktx)
     implementation(libs.jaudiotagger)
+    // 2.4: Credential Manager cho Google Sign-In.
+    implementation(libs.credentials)
+    implementation(libs.credentials.play.services.auth)
     // Room testing cho instrumented test DAO.
     androidTestImplementation(libs.room.testing)
 }
