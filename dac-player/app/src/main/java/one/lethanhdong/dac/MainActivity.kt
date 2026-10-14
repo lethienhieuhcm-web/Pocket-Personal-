@@ -14,6 +14,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.decent.usbaudio.UsbAudioPermissionHelper
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import one.lethanhdong.dac.player.AuthManager
 import one.lethanhdong.dac.player.CoverArt
