@@ -222,20 +222,32 @@ export async function handleDacSync(request, env) {
       const chunk = files.slice(i, i + 50);
       const stmts = chunk.map(f => {
         const isFolder = f.mimeType === 'application/vnd.google-apps.folder' ? 1 : 0;
+        // 4.8: metadata tìm kiếm — artist/title parse từ tên file ngay lúc sync;
+        // album điền sau từ tên thư mục cha (refreshDacMetadata).
+        let artist = '', title = '', searchText = '';
+        if (!isFolder) {
+          const at = parseArtistTitle(f.name || '');
+          artist = at.artist; title = at.title;
+          searchText = dacSearchText(f.name || '', artist, title, '');
+        }
         return env.DB.prepare(
-          `INSERT INTO dac_index (email,file_id,name,mime_type,size,parent_id,is_folder,updated_at)
-           VALUES (?,?,?,?,?,?,?,?)
+          `INSERT INTO dac_index (email,file_id,name,mime_type,size,parent_id,is_folder,updated_at,artist,title,album,search_text)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
            ON CONFLICT(email,file_id) DO UPDATE SET
              name=excluded.name, mime_type=excluded.mime_type, size=excluded.size,
-             parent_id=excluded.parent_id, is_folder=excluded.is_folder, updated_at=excluded.updated_at`
+             parent_id=excluded.parent_id, is_folder=excluded.is_folder, updated_at=excluded.updated_at,
+             artist=excluded.artist, title=excluded.title, search_text=excluded.search_text`
         ).bind(email, f.id, f.name || '', f.mimeType || '',
-               f.size ? parseInt(f.size, 10) : 0, normParent(f.parents, rootId), isFolder, now);
+               f.size ? parseInt(f.size, 10) : 0, normParent(f.parents, rootId), isFolder, now,
+               artist, title, '', searchText);
       });
       await env.DB.batch(stmts);
     }
   }
 
   try {
+    // 4.8: migration idempotent cho cột metadata + bảng FTS (chạy mỗi lần sync).
+    await ensureDacSearchSchema(env);
     // Lấy ID thật của My Drive root (để chuẩn hoá parent).
     let rootId = '';
     try {
@@ -275,6 +287,8 @@ export async function handleDacSync(request, env) {
       const total = await env.DB.prepare(
         'SELECT COUNT(*) as c FROM dac_index WHERE email=?'
       ).bind(email).first();
+      // 4.8: điền album (tên thư mục cha) + rebuild search_text sau full scan.
+      await refreshDacMetadata(env, email);
       return sJson({ full: true, synced, total: total ? total.c : 0 });
     }
 
@@ -318,6 +332,8 @@ export async function handleDacSync(request, env) {
     const total = await env.DB.prepare(
       'SELECT COUNT(*) as c FROM dac_index WHERE email=?'
     ).bind(email).first();
+    // 4.8: điền album (tên thư mục cha) + rebuild search_text sau incremental.
+    await refreshDacMetadata(env, email);
     return sJson({ full: false, synced, total: total ? total.c : 0 });
   } catch (e) {
     if (e.status === 401) return jerr('Drive token invalid', 401);
@@ -694,13 +710,16 @@ export async function handleDacCopy(request, env) {
 }
 
 /**
- * 4.8: Tìm kiếm metadata trong D1 index.
+ * 4.8: Tìm kiếm metadata trong D1 index (FTS5).
  * GET /api/dac/search?q=...&limit=50&offset=0
- * → {files:[{id,name,artist,title,size,mimeType}], total, limit, offset}
+ * → {files:[{id,name,artist,title,album,size,mimeType}], total, limit, offset}
  *
- * - Tìm theo tên file (LIKE, không phân biệt hoa thường với ASCII).
+ * - Tìm theo tên file + artist + title + album (không chỉ tên file),
+ *   không phân biệt hoa thường; gõ không dấu vẫn trúng (bản unaccent trong index).
  * - artist/title parse từ quy ước tên file "Nghệ sĩ - Tên bài.ext";
- *   không có dấu " - " thì artist rỗng, title = tên file (không bịa).
+ *   không khớp thì artist rỗng, title = tên file không đuôi (không bịa).
+ * - album = tên thư mục chứa file (quy ước thư viện nhạc); rỗng nếu ở root.
+ * - Có index nhưng query không trúng → files:[], total:0 (KHÔNG fallback Drive).
  * - Chưa sync (không có index) → fallback tìm live trên Drive
  *   (name contains), trả total=-1 (Drive không đếm tổng rẻ được).
  */
@@ -713,34 +732,46 @@ export async function handleDacSearch(request, env) {
   const limit = Math.min(100, Math.max(1, parseInt(url.searchParams.get('limit') || '50', 10) || 50));
   const offset = Math.max(0, parseInt(url.searchParams.get('offset') || '0', 10) || 0);
   const email = s.email.toLowerCase();
-  // Escape ký tự đặc biệt của LIKE
-  const like = '%' + q.replace(/[\\%_]/g, c => '\\' + c) + '%';
 
+  await ensureDacSearchSchema(env);
+
+  // Chỉ fallback Drive khi user chưa từng sync (hoàn toàn không có index).
+  let hasIndex = false;
   try {
-    const count = await env.DB.prepare(
-      `SELECT COUNT(*) as c FROM dac_index
-       WHERE email=? AND is_folder=0 AND name LIKE ? ESCAPE '\\'`
-    ).bind(email, like).first();
-    if (count && count.c > 0) {
-      const rows = await env.DB.prepare(
-        `SELECT file_id,name,mime_type,size FROM dac_index
-         WHERE email=? AND is_folder=0 AND name LIKE ? ESCAPE '\\'
-         ORDER BY name LIMIT ? OFFSET ?`
-      ).bind(email, like, limit, offset).all();
-      const files = (rows.results || []).map(r => {
-        const at = parseArtistTitle(r.name || '');
-        return {
-          id: r.file_id,
-          name: r.name,
-          artist: at.artist,
-          title: at.title,
-          size: r.size || 0,
-          mimeType: r.mime_type || mimeFor(r.name || ''),
-        };
-      });
-      return sJson({ files, total: count.c, limit, offset });
-    }
-  } catch (e) { /* fallback live Drive bên dưới */ }
+    const c = await env.DB.prepare(
+      'SELECT COUNT(*) as c FROM dac_index WHERE email=?'
+    ).bind(email).first();
+    hasIndex = !!(c && c.c > 0);
+  } catch (e) { /* coi như chưa có index → fallback bên dưới */ }
+
+  if (hasIndex) {
+    // FTS5: tách token chữ/số, mỗi token thành prefix query (tìm theo từng chữ).
+    // Ký tự đặc biệt của FTS (" * :) bị loại ở tokenize nên không phá query.
+    const tokens = (q.toLowerCase().match(/[\p{L}\p{N}]+/gu) || [])
+      .map(t => t.replace(/["*]/g, '')).filter(Boolean);
+    if (!tokens.length) return sJson({ files: [], total: 0, limit, offset });
+    const match = tokens.map(t => t + '*').join(' ');
+    const fromWhere = `FROM dac_index_fts JOIN dac_index d ON d.rowid = dac_index_fts.rowid
+      WHERE dac_index_fts MATCH ? AND dac_index_fts.email = ? AND d.is_folder = 0`;
+    const totalRow = await env.DB.prepare(
+      `SELECT COUNT(*) as c ${fromWhere}`
+    ).bind(match, email).first();
+    const total = totalRow ? totalRow.c : 0;
+    const rows = await env.DB.prepare(
+      `SELECT d.file_id, d.name, d.artist, d.title, d.album, d.mime_type, d.size
+       ${fromWhere} ORDER BY rank LIMIT ? OFFSET ?`
+    ).bind(match, email, limit, offset).all();
+    const files = (rows.results || []).map(r => ({
+      id: r.file_id,
+      name: r.name,
+      artist: r.artist || '',
+      title: r.title || (r.name || '').replace(/\.[^.]+$/, ''),
+      album: r.album || '',
+      size: r.size || 0,
+      mimeType: r.mime_type || mimeFor(r.name || ''),
+    }));
+    return sJson({ files, total, limit, offset });
+  }
 
   // Fallback: tìm live trên Drive (chưa sync index)
   const driveToken = request.headers.get('X-Drive-Token');
@@ -760,7 +791,7 @@ export async function handleDacSearch(request, env) {
     const files = (j.files || []).map(f => {
       const at = parseArtistTitle(f.name || '');
       return {
-        id: f.id, name: f.name, artist: at.artist, title: at.title,
+        id: f.id, name: f.name, artist: at.artist, title: at.title, album: '',
         size: parseInt(f.size || '0', 10) || 0,
         mimeType: f.mimeType || mimeFor(f.name || ''),
       };
@@ -781,4 +812,80 @@ function parseArtistTitle(name) {
   const m = base.match(/^(.+?)\s+[-–—]\s+(.+)$/);
   if (m) return { artist: m[1].trim(), title: m[2].trim() };
   return { artist: '', title: base };
+}
+
+/** Bỏ dấu tiếng Việt để tìm không dấu vẫn trúng (gõ "tinh" ra "tình"). */
+function unaccent(s) {
+  return (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
+/**
+ * 4.8: text cho FTS — tên file + artist + title + album, kèm bản không dấu,
+ * lowercase. Chỉ dùng những gì có, không bịa metadata.
+ */
+function dacSearchText(name, artist, title, album) {
+  const raw = [name, artist, title, album].filter(Boolean).join(' ');
+  return (raw + ' ' + unaccent(raw)).toLowerCase();
+}
+
+/**
+ * 4.8: migration idempotent cho cột metadata + bảng FTS5 + trigger đồng bộ.
+ * Chạy mỗi lần sync/search nên phải rẻ và không fail khi đã chạy rồi.
+ */
+async function ensureDacSearchSchema(env) {
+  for (const c of ['artist', 'title', 'album', 'search_text']) {
+    try {
+      await env.DB.prepare(
+        `ALTER TABLE dac_index ADD COLUMN ${c} TEXT NOT NULL DEFAULT ''`
+      ).run();
+    } catch (e) { /* cột đã tồn tại */ }
+  }
+  await env.DB.prepare(
+    `CREATE VIRTUAL TABLE IF NOT EXISTS dac_index_fts USING
+     fts5(text, email UNINDEXED, file_id UNINDEXED, tokenize='unicode61')`
+  ).run();
+  await env.DB.prepare(
+    `CREATE TRIGGER IF NOT EXISTS trg_dac_fts_ins AFTER INSERT ON dac_index BEGIN
+       INSERT INTO dac_index_fts(rowid, text, email, file_id)
+       VALUES (new.rowid, new.search_text, new.email, new.file_id);
+     END`
+  ).run();
+  await env.DB.prepare(
+    `CREATE TRIGGER IF NOT EXISTS trg_dac_fts_upd AFTER UPDATE ON dac_index BEGIN
+       DELETE FROM dac_index_fts WHERE rowid = old.rowid;
+       INSERT INTO dac_index_fts(rowid, text, email, file_id)
+       VALUES (new.rowid, new.search_text, new.email, new.file_id);
+     END`
+  ).run();
+  await env.DB.prepare(
+    `CREATE TRIGGER IF NOT EXISTS trg_dac_fts_del AFTER DELETE ON dac_index BEGIN
+       DELETE FROM dac_index_fts WHERE rowid = old.rowid;
+     END`
+  ).run();
+}
+
+/**
+ * 4.8: điền album = tên thư mục cha + rebuild search_text cho mọi track.
+ * album ở đây là quy ước thư viện nhạc (thư mục chứa file), không phải
+ * tag đọc từ trong file — rỗng nếu file nằm ở root Drive.
+ * Idempotent, chạy sau mỗi lần sync (full + incremental).
+ */
+async function refreshDacMetadata(env, email) {
+  const rows = await env.DB.prepare(
+    `SELECT d.rowid AS rid, d.name, d.artist, d.title, p.name AS pname
+     FROM dac_index d LEFT JOIN dac_index p
+       ON p.email = d.email AND p.file_id = d.parent_id AND p.is_folder = 1
+     WHERE d.email = ? AND d.is_folder = 0`
+  ).bind(email).all();
+  const list = rows.results || [];
+  for (let i = 0; i < list.length; i += 50) {
+    const chunk = list.slice(i, i + 50);
+    await env.DB.batch(chunk.map(r => {
+      const album = r.pname || '';
+      const st = dacSearchText(r.name || '', r.artist || '', r.title || '', album);
+      return env.DB.prepare(
+        'UPDATE dac_index SET album=?, search_text=? WHERE rowid=?'
+      ).bind(album, st, r.rid);
+    }));
+  }
 }
