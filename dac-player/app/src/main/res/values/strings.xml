@@ -7,5 +7,7 @@
     <string name="licenses_missing">Không tìm thấy file giấy phép.</string>
     <!-- 4.1: contentDescription cho icon thư mục trong item_folder.xml -->
     <string name="folder_icon">Thư mục</string>
+    <string name="download_offline">Tải về nghe offline</string>
+    <string name="downloaded_offline">Đã tải về</string>
     <string name="folder_title">Thư mục nhạc</string>
 </resources>
