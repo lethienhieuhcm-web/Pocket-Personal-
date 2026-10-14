@@ -6,6 +6,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 
@@ -88,10 +89,23 @@ class MusicApiClient(
     private suspend fun post(path: String, driveToken: String? = null): String =
         execute(path, driveToken, method = "POST")
 
+    /** POST JSON lên Worker API. */
+    private suspend fun postJson(path: String, json: String): String =
+        execute(path, method = "POST", jsonBody = json)
+
+    /** PUT JSON lên Worker API. */
+    private suspend fun put(path: String, json: String): String =
+        execute(path, method = "PUT", jsonBody = json)
+
+    /** DELETE Worker API. */
+    private suspend fun delete(path: String): String =
+        execute(path, method = "DELETE")
+
     private suspend fun execute(
         path: String,
         driveToken: String? = null,
         method: String,
+        jsonBody: String? = null,
     ): String =
         withContext(Dispatchers.IO) {
             val token = authToken() ?: throw IllegalStateException("Chưa đăng nhập")
@@ -100,8 +114,12 @@ class MusicApiClient(
             if (driveToken != null) {
                 builder.header("X-Drive-Token", driveToken)
             }
-            if (method == "POST") {
+            if (jsonBody != null) {
+                builder.method(method, jsonBody.toRequestBody("application/json".toMediaType()))
+            } else if (method == "POST") {
                 builder.post(ByteArray(0).toRequestBody(null))
+            } else if (method == "DELETE") {
+                builder.delete()
             }
             ApiHttp.client.newCall(builder.build()).execute().use { resp ->
                 val body = resp.body?.string().orEmpty()
@@ -302,4 +320,72 @@ class MusicApiClient(
 
     /** Kiểm tra đã kết nối Drive chưa. */
     fun isDriveConnected(): Boolean = driveAuth.selectedAccount() != null
+
+    // ---------- 4.9: Playlist lưu trên D1 (đồng bộ giữa 2 máy) ----------
+
+    /** 1 playlist (tóm tắt, không kèm items). */
+    @Serializable
+    data class PlaylistSummary(
+        val id: String,
+        val name: String,
+        val itemCount: Int = 0,
+    )
+
+    /** 1 bài trong playlist. */
+    @Serializable
+    data class PlaylistItem(
+        val fileId: String = "",
+        val name: String = "",
+        val artist: String = "",
+        val title: String = "",
+        val mimeType: String = "",
+        val size: Long = 0,
+    )
+
+    @Serializable
+    private data class PlaylistListResponse(val playlists: List<PlaylistSummary> = emptyList())
+
+    @Serializable
+    private data class PlaylistDetailResponse(
+        val id: String = "",
+        val name: String = "",
+        val items: List<PlaylistItem> = emptyList(),
+    )
+
+    @Serializable
+    private data class PlaylistIdResponse(val id: String = "", val name: String = "")
+
+    @Serializable
+    private data class PlaylistItemsRequest(val items: List<PlaylistItem>)
+
+    /** Lấy danh sách playlist của user. */
+    suspend fun listPlaylists(): List<PlaylistSummary> {
+        val body = get("/api/dac/playlists")
+        return ApiHttp.json.decodeFromString<PlaylistListResponse>(body).playlists
+    }
+
+    /** Tạo playlist mới, trả về id. */
+    suspend fun createPlaylist(name: String): String {
+        val body = postJson(
+            "/api/dac/playlists",
+            ApiHttp.json.encodeToString(mapOf("name" to name)),
+        )
+        return ApiHttp.json.decodeFromString<PlaylistIdResponse>(body).id
+    }
+
+    /** Xoá playlist (kèm items). */
+    suspend fun deletePlaylist(id: String) {
+        delete("/api/dac/playlists/$id")
+    }
+
+    /** Lấy items của 1 playlist (đúng thứ tự). */
+    suspend fun getPlaylistItems(id: String): List<PlaylistItem> {
+        val body = get("/api/dac/playlists/$id")
+        return ApiHttp.json.decodeFromString<PlaylistDetailResponse>(body).items
+    }
+
+    /** Thay toàn bộ items của playlist (dùng khi lưu/reorder). */
+    suspend fun setPlaylistItems(id: String, items: List<PlaylistItem>) {
+        put("/api/dac/playlists/$id", ApiHttp.json.encodeToString(PlaylistItemsRequest(items)))
+    }
 }

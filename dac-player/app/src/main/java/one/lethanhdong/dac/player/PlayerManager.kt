@@ -66,17 +66,11 @@ class PlayerManager(private val context: Context) {
     }
 
     fun playSingleStream(url: String, title: String) {
-        player.clearMediaItems()
-        player.setMediaItem(mediaItem(url, title))
-        player.prepare()
-        player.play()
+        playQueue(listOf(QueueEntry(synthTrack(title), url, null)))
     }
 
     fun playSingleLocal(uri: Uri, title: String) {
-        player.clearMediaItems()
-        player.setMediaItem(mediaItem(uri.toString(), title))
-        player.prepare()
-        player.play()
+        playQueue(listOf(QueueEntry(synthTrack(title), null, uri)))
     }
 
     /**
@@ -84,11 +78,70 @@ class PlayerManager(private val context: Context) {
      * track liên tiếp cùng format (không reconfigure sink).
      */
     fun enqueueStream(url: String, title: String) {
-        player.addMediaItem(mediaItem(url, title))
+        enqueueEntry(QueueEntry(synthTrack(title), url, null))
     }
 
     fun enqueueLocal(uri: Uri, title: String) {
-        player.addMediaItem(mediaItem(uri.toString(), title))
+        enqueueEntry(QueueEntry(synthTrack(title), null, uri))
+    }
+
+    // ---------- 4.9: Queue có metadata Track (reorder + lưu playlist) ----------
+
+    /**
+     * 1 entry trong queue — giữ Track gốc (có Drive file id) để lưu playlist
+     * lên D1 và hiện artist. url = stream Drive, localUri = file đã tải offline.
+     */
+    data class QueueEntry(
+        val track: MusicApiClient.Track,
+        val url: String?,
+        val localUri: Uri?,
+    )
+
+    private val queueEntries = mutableListOf<QueueEntry>()
+
+    private fun synthTrack(title: String): MusicApiClient.Track =
+        MusicApiClient.Track(id = "", title = title, size = 0, mimeType = "", artist = "")
+
+    private fun enqueueEntry(entry: QueueEntry) {
+        queueEntries.add(entry)
+        player.addMediaItem(mediaItem(entry.url ?: entry.localUri.toString(), entry.track.title))
+    }
+
+    /**
+     * Phát 1 danh sách Track từ vị trí [startIndex] (thay toàn bộ queue cũ).
+     * Activity tự resolve URL trước rồi gọi — PlayerManager chỉ giữ entry.
+     */
+    fun playQueue(entries: List<QueueEntry>, startIndex: Int = 0) {
+        require(entries.isNotEmpty())
+        val idx = startIndex.coerceIn(entries.indices)
+        queueEntries.clear()
+        queueEntries.addAll(entries)
+        player.clearMediaItems()
+        entries.forEach { e ->
+            player.addMediaItem(mediaItem(e.url ?: e.localUri.toString(), e.track.title))
+        }
+        player.seekToDefaultPosition(idx)
+        player.prepare()
+        player.play()
+    }
+
+    /** Queue hiện tại (kể cả bài đang phát) — gọi trên main thread. */
+    fun currentQueueEntries(): List<QueueEntry> = queueEntries.toList()
+
+    /** Đổi chỗ 2 bài trong queue (kéo-thả). */
+    fun moveQueueItem(from: Int, to: Int) {
+        if (from == to || from !in queueEntries.indices || to !in queueEntries.indices) return
+        val e = queueEntries.removeAt(from)
+        queueEntries.add(to, e)
+        player.moveMediaItem(from, to)
+    }
+
+    /** Xoá 1 bài khỏi queue — không xoá khi chỉ còn 1 bài. Trả về true nếu đã xoá. */
+    fun removeQueueItem(index: Int): Boolean {
+        if (queueEntries.size <= 1 || index !in queueEntries.indices) return false
+        queueEntries.removeAt(index)
+        player.removeMediaItem(index)
+        return true
     }
 
     /** Số bài đang chờ trong queue (không tính bài đang phát). */
@@ -130,6 +183,9 @@ class PlayerManager(private val context: Context) {
     private val _currentTitle = MutableStateFlow<String?>(null)
     val currentTitle: StateFlow<String?> = _currentTitle.asStateFlow()
 
+    /** 4.9: callback khi queue tự chuyển bài (sleep timer "hết bài"). */
+    var onAutoTransition: (() -> Unit)? = null
+
     /**
      * ExoPlayer bắt buộc truy cập trên thread đã tạo (main) — scope này chạy
      * trên Main. Chỉ phần đọc file header (jaudiotagger, blocking) mới
@@ -147,6 +203,10 @@ class PlayerManager(private val context: Context) {
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                 _currentTitle.value = mediaItem?.mediaMetadata?.title?.toString()
                 updateQuality()
+                // 4.9: sleep timer "hết bài" — chỉ khi tự chuyển (không phải bấm tay).
+                if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO) {
+                    onAutoTransition?.invoke()
+                }
             }
         })
     }

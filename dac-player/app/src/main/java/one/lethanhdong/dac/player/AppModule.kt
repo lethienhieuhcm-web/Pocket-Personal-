@@ -42,4 +42,9 @@ object AppModule {
     fun providePlayerManager(
         @ApplicationContext context: Context
     ): PlayerManager = PlayerManager(context)
+
+    /** 4.9: SleepTimer singleton — sống qua chuyển màn hình, tự pause PlayerManager. */
+    @Provides
+    @Singleton
+    fun provideSleepTimer(playerManager: PlayerManager): SleepTimer = SleepTimer(playerManager)
 }
