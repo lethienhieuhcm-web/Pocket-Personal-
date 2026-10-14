@@ -16,6 +16,12 @@ appcompat = "1.7.1"
 coroutines = "1.10.2"
 recyclerview = "1.4.0"
 lifecycle = "2.9.2"
+# 1.4: Phase 1 Libraries — verify qua Maven Central search API (2026-10-14):
+# coil 2.7.0 (latest 2.x), okhttp 4.12.0 (latest stable 4.x; 5.x là alpha),
+# kotlinx-serialization-json 1.7.3. Serialization plugin = Kotlin version (2.2.20).
+coil = "2.7.0"
+okhttp = "4.12.0"
+kotlinx-serialization-json = "1.7.3"
 # 1.2: EncryptedSharedPreferences — verify thật qua Google Maven (2026-10-13):
 # security-crypto 1.1.0 = stable mới nhất (release 2025-07-30).
 security-crypto = "1.1.0"
@@ -37,6 +43,10 @@ recyclerview = { group = "androidx.recyclerview", name = "recyclerview", version
 lifecycle-runtime = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycle" }
 # 1.2: mã hoá token (EncryptedSharedPreferences, MasterKey AES-256-GCM).
 security-crypto = { group = "androidx.security", name = "security-crypto", version.ref = "security-crypto" }
+# 1.4: Phase 1 Libraries (Coil ảnh bìa + OkHttp + serialization).
+coil = { group = "io.coil-kt", name = "coil", version.ref = "coil" }
+okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
+kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinx-serialization-json" }
 # Instrumented test (chạy trên emulator CI).
 androidx-test-ext-junit = { group = "androidx.test.ext", name = "junit", version.ref = "test-ext-junit" }
 androidx-test-runner = { group = "androidx.test", name = "runner", version.ref = "androidx-test" }
@@ -44,3 +54,5 @@ androidx-test-core = { group = "androidx.test", name = "core", version.ref = "an
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
+# 1.4: kotlinx.serialization — version = Kotlin version (2.2.20).
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
