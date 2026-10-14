@@ -36,4 +36,13 @@
             android:layout_height="wrap_content"
             android:textSize="12sp" />
     </LinearLayout>
+
+    <!-- 4.3: Tải về nghe offline -->
+    <ImageButton
+        android:id="@+id/downloadButton"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:src="@drawable/ic_download"
+        android:contentDescription="@string/download_offline" />
 </LinearLayout>
