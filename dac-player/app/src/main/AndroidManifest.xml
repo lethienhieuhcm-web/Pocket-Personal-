@@ -56,5 +56,11 @@
         <activity
             android:name=".ImportActivity"
             android:exported="false" />
+
+        <!-- 4.1: Màn hình duyệt nhạc theo thư mục Drive.
+             Không exported (chỉ mở từ trong app). -->
+        <activity
+            android:name=".FolderActivity"
+            android:exported="false" />
     </application>
 </manifest>
