@@ -114,6 +114,16 @@ class AuthManager(
         }
 
     /**
+     * 2.4: Lưu session từ Google Sign-In (đã verify ID token ở Worker).
+     */
+    fun saveGoogleSession(token: String, email: String) {
+        prefs.edit()
+            .putString("session_token", token)
+            .putString("authEmail", email)
+            .apply()
+    }
+
+    /**
      * Đăng ký tài khoản mới. Trả về RegisterResponse (có needsVerification).
      * 2.2: nếu needsVerification=true, user phải bấm link trong email trước khi login.
      */
