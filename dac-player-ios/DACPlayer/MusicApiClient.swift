@@ -255,7 +255,6 @@ class MusicApiClient: ObservableObject {
             // lỗi thì im lặng giữ cache
         }
     }
-    }
 
     /// Lấy danh sách nhạc từ Drive qua Worker. Cache 24h, forceRefresh để bỏ qua.
     @discardableResult
