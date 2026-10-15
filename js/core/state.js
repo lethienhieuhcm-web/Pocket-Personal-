@@ -11,8 +11,18 @@ export const LV_W = {A1:1,A2:2,B1:3,B2:4,C1:5,C2:6};
 export const LV_COLOR = {A1:"#4ade80",A2:"#a3e635",B1:"#facc15",B2:"#fb923c",C1:"#f87171",C2:"#c084fc"};
 
 export const state = {
-  // auth
-  authToken: (()=>{ try{ const t = localStorage.getItem("elab_authToken"); if(!t) return null; try{ const p = JSON.parse(t); return typeof p==="string" ? p : t; }catch(e){ return t; } }catch(e){ return null; } })(), // plain string, unwrap JSON if needed (RULES.md 8)
+  // auth — token luôn ở dạng chuỗi thường (RULES.md 8).
+  // Tự migrate các giá trị cũ còn sót: "\"abc\"" (do bản cũ ghi qua store.set)
+  // -> ghi lại chuỗi thường; "null" (do bản cũ logout ghi) -> xoá.
+  authToken: (()=>{ try{
+    const t = localStorage.getItem("elab_authToken");
+    if(!t) return null;
+    if(t === "null"){ try{ localStorage.removeItem("elab_authToken"); }catch(e){} return null; }
+    try{ const p = JSON.parse(t);
+      if(typeof p === "string"){ try{ localStorage.setItem("elab_authToken", p); }catch(e){} return p; }
+      return t;
+    }catch(e){ return t; }
+  }catch(e){ return null; } })(),
   authUser: store.get("authUser", null), // {email, role, ageGroup}
   userKey: null, // bank encryption key (from password, RAM only)
   authMode: "login", // "login" | "reg"
@@ -40,7 +50,15 @@ export const state = {
   bank: [], // NEVER load from shared localStorage — per-user isolation required
   bankQ: "", bankLv: "",
   // ui
-  uiLang: store.get("uiLang", "en"),
+  uiLang: (()=>{
+    // Một key duy nhất "elab_uiLang", chuỗi thường (RULES.md 8).
+    // Migrate bản cũ: module từng ghi JSON-quoted ("\"vi\"") -> bóc ngoặc, ghi lại.
+    try{
+      let l = localStorage.getItem("elab_uiLang");
+      if(l && l.charAt(0) === '"'){ l = l.replace(/"/g, ""); try{ localStorage.setItem("elab_uiLang", l); }catch(e){} }
+      return ["en","vi","zh","ko"].indexOf(l) >= 0 ? l : "en";
+    }catch(e){ return "en"; }
+  })(),
   uiMode: "adult", // "kid" | "adult", set from authUser.ageGroup
   // misc
   readCanvas: null, readTessLoading: null,

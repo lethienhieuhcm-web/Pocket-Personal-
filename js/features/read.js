@@ -179,7 +179,7 @@ export async function autoExtractVocab(){
   $("sentBarClose").onclick = hideSentBar;
   $("viewArticle").onclick = ()=>{ state.readView="article"; hideSentBar(); hideDictPop(); renderReadView(); };
   $("viewCards").onclick = ()=>{ state.readView="cards"; hideSentBar(); hideDictPop(); renderReadView(); };
-  $("readQuizBtn").onclick = ()=>openQuiz();
+  const qBtn = $("readQuizBtn"); if(qBtn) qBtn.onclick = ()=>openQuiz();
   $("readClear").onclick = async ()=>{
     if(!await inlineConfirm(t("clearScanQ"), t("confirmYes"), t("confirmNo"))) return;
     hideDictPop();

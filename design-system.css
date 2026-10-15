@@ -1,43 +1,92 @@
 /* ============================================================
    POCKET PERSONAL — UNIFIED DESIGN SYSTEM (Tinh gọn / Refined)
-   Version: 2.0 | Date: 2026-10-06
+   Version: 3.0 | Date: 2026-10-11
    Direction: multi-platform neutral — soft depth, gradient accents,
    floating glass surfaces. All new pages MUST use this file.
+   Token architecture: 3 layers (Material 3 style) —
+     Layer 1 `--pp-ref-*`  = primitive values, never used directly in components
+     Layer 2 `--pp-*`      = semantic meaning, used in components
+     Layer 3 `--pp-{component}-*` = component-specific, references layer 2
+   Dark mode overrides ONLY layer 2.
    ============================================================ */
 
+/* 8b 2026-10-12: global box-sizing — chuẩn big tech, tránh width:100% + padding bị tràn */
+*, *::before, *::after { box-sizing: border-box; }
+
 :root{
-  /* Colors - Light (default) */
-  --pp-bg:#f6f7f9;
-  --pp-bg2:#eef0f4;
-  --pp-card:#ffffff;
-  --pp-ink:#14181f;
-  --pp-mut:#6b7280;
-  --pp-line:#e8ebf0;
-  --pp-accent:#0d9d6c;
-  --pp-accent-hover:#0b7a56;
-  --pp-danger:#ef4444;
-  --pp-warning:#f59e0b;
+  /* ===== LAYER 1 — Primitive ===== */
+  --pp-ref-green-500:#0d9d6c;
+  --pp-ref-green-700:#0b7a56;
+  --pp-ref-red-500:#ef4444;
+  --pp-ref-amber-500:#f59e0b;
+  --pp-ref-neutral-50:#f6f7f9;
+  --pp-ref-neutral-100:#eef0f4;
+  --pp-ref-neutral-200:#e8ebf0;
+  --pp-ref-neutral-500:#6b7280;
+  --pp-ref-neutral-900:#14181f;
+  --pp-ref-white:#ffffff;
+  --pp-ref-space-1:8px;
+  --pp-ref-space-2:16px;
+  --pp-ref-space-3:24px;
+  --pp-ref-space-4:32px;
+  --pp-ref-radius-sm:10px;
+  --pp-ref-radius-md:14px;
+  --pp-ref-radius-lg:20px;
+  --pp-ref-radius-full:999px;
+
+  /* ===== LAYER 2 — Semantic (Light, default) ===== */
+  --pp-bg:var(--pp-ref-neutral-50);
+  --pp-bg2:var(--pp-ref-neutral-100);
+  --pp-card:var(--pp-ref-white);
+  --pp-ink:var(--pp-ref-neutral-900);
+  --pp-mut:var(--pp-ref-neutral-500);
+  --pp-line:var(--pp-ref-neutral-200);
+  --pp-accent:var(--pp-ref-green-500);
+  --pp-accent-hover:var(--pp-ref-green-700);
+  --pp-danger:var(--pp-ref-red-500);
+  --pp-warning:var(--pp-ref-amber-500);
 
   /* Accent gradient (primary actions) */
   --pp-grad:linear-gradient(135deg,var(--pp-accent),var(--pp-accent-hover));
 
-  /* Spacing (8px grid) */
-  --pp-s1:8px; --pp-s2:16px; --pp-s3:24px; --pp-s4:32px;
+  /* Spacing (8px grid) — shorthand, references layer 1 */
+  --pp-s1:var(--pp-ref-space-1); --pp-s2:var(--pp-ref-space-2);
+  --pp-s3:var(--pp-ref-space-3); --pp-s4:var(--pp-ref-space-4);
 
-  /* Radius */
-  --pp-r-sm:10px; --pp-r-md:14px; --pp-r-lg:20px; --pp-r-full:999px;
+  /* Radius — shorthand, references layer 1 */
+  --pp-r-sm:var(--pp-ref-radius-sm); --pp-r-md:var(--pp-ref-radius-md);
+  --pp-r-lg:var(--pp-ref-radius-lg); --pp-r-full:var(--pp-ref-radius-full);
 
   /* Font */
   --pp-font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
 
+  /* Type scale — fixed rem (no clamp() inside app UI, big-tech standard).
+     1rem = 16px. Vietnamese diacritics need line-height >= 1.4. */
+  --pp-text-xs:0.75rem;    /* 12px — labels, metadata */
+  --pp-text-sm:0.875rem;   /* 14px — secondary text */
+  --pp-text-base:1rem;     /* 16px — body text */
+  --pp-text-lg:1.125rem;   /* 18px — small headings */
+  --pp-text-xl:1.25rem;    /* 20px — headings */
+  --pp-text-2xl:1.5rem;    /* 24px — large headings */
+  --pp-text-3xl:1.875rem;   /* 30px — display headings */
+  --pp-leading-tight:1.25; /* headings */
+  --pp-leading-base:1.5;   /* body text */
+  --pp-leading-vi:1.4;     /* minimum for Vietnamese diacritics */
+
   /* Shadow - soft, layered */
   --pp-shadow:0 1px 2px rgba(20,24,31,.04),0 4px 16px rgba(20,24,31,.06);
   --pp-shadow-lg:0 2px 4px rgba(20,24,31,.05),0 12px 32px rgba(20,24,31,.12);
+
+  /* ===== LAYER 3 — Component ===== */
+  --pp-btn-primary-bg:var(--pp-accent);
+  --pp-btn-primary-bg-hover:var(--pp-accent-hover);
+  --pp-tabbar-bg:var(--pp-card);
 }
 
-/* Dark mode - same layout, inverted colors.
-   body.pp-dark = design-system pages; body.dark = English Lab's own theme */
-body.pp-dark, body.dark{
+/* Dark mode — overrides ONLY layer 2 semantic tokens.
+   body.pp-dark = design-system pages; body.dark = English Lab's own theme;
+   html.pp-dark = cho script theme ở <head> (tránh nháy khi load) */
+html.pp-dark, body.pp-dark, body.dark{
   --pp-bg:#101418;
   --pp-bg2:#1a2029;
   --pp-card:#1a2029;
@@ -50,15 +99,19 @@ body.pp-dark, body.dark{
 
 /* Base */
 .pp-body{font-family:var(--pp-font);background:var(--pp-bg);color:var(--pp-ink);
-  min-height:100vh;margin:0;-webkit-font-smoothing:antialiased}
+  min-height:100vh;min-height:100dvh;margin:0;-webkit-font-smoothing:antialiased;line-height:var(--pp-leading-base)}
+/* Fix 2026-10-13: body.dark (English Lab) không có class pp-body nên nền không đổi màu.
+   Áp background theo theme cho mọi selector dark mode đã định nghĩa ở trên. */
+body.dark,body.pp-dark,html.pp-dark body{background:var(--pp-bg);color:var(--pp-ink)}
 
 /* Header - consistent across all pages */
 .pp-header{display:flex;align-items:center;gap:12px;padding:12px 16px;
+  padding-top:calc(12px + env(safe-area-inset-top)); /* tránh tai thỏ iPhone */
   border-bottom:1px solid var(--pp-line);position:sticky;top:0;z-index:10;
   background:var(--pp-bg)}
-.pp-back{color:var(--pp-accent);text-decoration:none;font-weight:600;font-size:15px;
+.pp-back{color:var(--pp-accent);text-decoration:none;font-weight:600;font-size:var(--pp-text-sm);
   display:flex;align-items:center;gap:4px}
-.pp-title{font-size:18px;font-weight:700;margin:0}
+.pp-title{font-size:var(--pp-text-lg);font-weight:700;margin:0}
 .pp-header-actions{margin-left:auto;display:flex;gap:8px}
 
 /* Layout */
@@ -71,7 +124,7 @@ body.pp-dark, body.dark{
 
 /* Buttons */
 .pp-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;
-  padding:10px 18px;border-radius:var(--pp-r-md);font-size:15px;font-weight:600;
+  padding:10px 18px;border-radius:var(--pp-r-md);font-size:var(--pp-text-sm);font-weight:600;
   cursor:pointer;border:1px solid var(--pp-line);background:var(--pp-card);color:var(--pp-ink);
   font-family:var(--pp-font);transition:all .15s}
 .pp-btn:active{transform:scale(.97)}
@@ -79,16 +132,16 @@ body.pp-dark, body.dark{
 .pp-btn.primary:hover{filter:brightness(1.05)}
 .pp-btn.danger{background:var(--pp-danger);border-color:var(--pp-danger);color:#fff}
 .pp-btn.block{width:100%}
-.pp-btn.sm{padding:6px 12px;font-size:13px}
+.pp-btn.sm{padding:6px 12px;font-size:var(--pp-text-xs)}
 .pp-btn:disabled{opacity:.5;cursor:not-allowed}
 
 /* Inputs */
 .pp-input{width:100%;padding:12px 14px;border:1px solid var(--pp-line);border-radius:var(--pp-r-md);
-  font-size:15px;font-family:var(--pp-font);background:var(--pp-card);color:var(--pp-ink);outline:none}
+  font-size:var(--pp-text-sm);font-family:var(--pp-font);background:var(--pp-card);color:var(--pp-ink);outline:none}
 .pp-input:focus{border-color:var(--pp-accent)}
 .pp-select{padding:10px 12px;border:1px solid var(--pp-line);border-radius:var(--pp-r-md);
-  font-size:15px;background:var(--pp-card);color:var(--pp-ink);font-family:var(--pp-font)}
-.pp-label{display:block;font-size:13px;font-weight:600;color:var(--pp-mut);margin:0 0 6px}
+  font-size:var(--pp-text-sm);background:var(--pp-card);color:var(--pp-ink);font-family:var(--pp-font)}
+.pp-label{display:block;font-size:var(--pp-text-xs);font-weight:600;color:var(--pp-mut);margin:0 0 6px}
 
 /* Icons - SVG outline only, NO emoji in UI */
 .pp-ic{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2;
@@ -100,49 +153,53 @@ body.pp-dark, body.dark{
 .pp-item{display:flex;align-items:center;gap:12px;padding:12px;border-radius:var(--pp-r-md);cursor:pointer}
 .pp-item:hover{background:var(--pp-bg2)}
 .pp-item .pp-item-body{flex:1;min-width:0}
-.pp-item .pp-item-title{font-weight:600;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pp-item .pp-item-sub{font-size:13px;color:var(--pp-mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pp-item .pp-item-title{font-weight:600;font-size:var(--pp-text-sm);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pp-item .pp-item-sub{font-size:var(--pp-text-xs);color:var(--pp-mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 /* Tabs */
 .pp-tabs{display:flex;gap:8px;margin-bottom:var(--pp-s2);overflow-x:auto;padding-bottom:4px}
 .pp-tab{padding:8px 18px;border-radius:var(--pp-r-full);border:1px solid var(--pp-line);
-  background:var(--pp-card);color:var(--pp-mut);font-size:14px;font-weight:600;cursor:pointer;
+  background:var(--pp-card);color:var(--pp-mut);font-size:var(--pp-text-sm);font-weight:600;cursor:pointer;
   white-space:nowrap;font-family:var(--pp-font)}
 .pp-tab.active{background:var(--pp-accent);border-color:var(--pp-accent);color:#fff}
 
 /* Hint / empty state */
-.pp-hint{font-size:13px;color:var(--pp-mut);line-height:1.5}
+.pp-hint{font-size:var(--pp-text-xs);color:var(--pp-mut);line-height:1.5}
 .pp-empty{text-align:center;padding:48px 24px;color:var(--pp-mut)}
 .pp-empty .pp-empty-ic{font-size:48px;margin-bottom:12px;opacity:.5}
-.pp-empty h3{color:var(--pp-ink);margin:0 0 8px;font-size:16px}
+.pp-empty h3{color:var(--pp-ink);margin:0 0 8px;font-size:var(--pp-text-base)}
 
 /* Toast */
 .pp-toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);
-  background:#1a1a1a;color:#fff;padding:12px 20px;border-radius:var(--pp-r-md);font-size:14px;
+  background:#1a1a1a;color:#fff;padding:12px 20px;border-radius:var(--pp-r-md);font-size:var(--pp-text-sm);
   opacity:0;pointer-events:none;transition:all .3s;z-index:100;max-width:90vw;text-align:center}
 .pp-toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
-/* Responsive breakpoints */
-/* Mobile: < 640px (default styles) */
-/* Tablet: 640px - 1024px */
+/* Responsive breakpoints — size classes (Apple HIG style, by width not device) */
+/* compact: < 640px = 1 column (default styles) */
+/* regular: >= 640px = 2 columns, side-by-side */
 @media(min-width:640px){
   .pp-main{padding:var(--pp-s3)}
+  .pp-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:var(--pp-s2)}
+  .pp-cards-2{display:grid;grid-template-columns:1fr 1fr;gap:var(--pp-s2)}
 }
-/* Desktop: > 1024px */
+/* wide: >= 1024px */
 @media(min-width:1024px){
   .pp-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:var(--pp-s2)}
   .pp-grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--pp-s2)}
+  .pp-cards-3{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--pp-s2)}
 }
 
 /* Floating glass tabbar (Liquid-Glass principles, CSS-only, cross-platform) */
 .pp-tabbar{position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));
   max-width:540px;margin:0 auto;z-index:60;display:flex;padding:8px 6px;border-radius:26px;
   border:1px solid var(--pp-line);box-shadow:var(--pp-shadow-lg);
+  background:var(--pp-card); /* fallback khi browser không hỗ trợ color-mix (Safari < 16.2) */
   background:color-mix(in srgb, var(--pp-card) 78%, transparent);
   -webkit-backdrop-filter:blur(20px) saturate(1.5);backdrop-filter:blur(20px) saturate(1.5)}
 .pp-tabbar button{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;
   background:none;border:none;cursor:pointer;padding:7px 2px;border-radius:18px;
-  color:var(--pp-mut);font-family:var(--pp-font);font-size:10.5px;font-weight:700;
+  color:var(--pp-mut);font-family:var(--pp-font);font-size:var(--pp-text-xs);font-weight:700;
   min-height:52px;justify-content:center}
 .pp-tabbar button:active{transform:scale(.94)}
 .pp-tabbar button .pp-ic{width:22px;height:22px}
@@ -150,6 +207,17 @@ body.pp-dark, body.dark{
 .pp-tabbar button.active .pp-ic{filter:drop-shadow(0 2px 6px rgba(13,157,108,.4))}
 /* page bottom spacing for tabbar */
 .pp-has-tabbar{padding-bottom:110px}
+
+/* ===== FIT F2: containment & text utilities (luật cứng) ===== */
+/* Flex/grid children default min-width:auto -> text dài đẩy vỡ layout.
+   Mọi phần tử flex/grid chứa chữ phải có min-width:0. */
+.pp-item-body, .pp-card-body, .pp-row-text, .pp-flex-text{min-width:0}
+/* Text truncation: một dòng ellipsis, nhiều dòng line-clamp */
+.pp-truncate{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pp-clamp-2{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+  overflow:hidden;word-break:break-word;min-width:0}
+.pp-clamp-3{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;
+  overflow:hidden;word-break:break-word;min-width:0}
 
 /* Microinteractions */
 .pp-btn:active{transform:scale(.97)}
@@ -162,7 +230,7 @@ body.pp-dark, body.dark{
 .pp-skeleton::after{content:"";position:absolute;inset:0;
   background:linear-gradient(90deg,transparent,rgba(255,255,255,.55),transparent);
   animation:pp-shimmer 1.4s infinite}
-body.pp-dark .pp-skeleton::after,body.dark .pp-skeleton::after{
+html.pp-dark .pp-skeleton::after,body.pp-dark .pp-skeleton::after,body.dark .pp-skeleton::after{
   background:linear-gradient(90deg,transparent,rgba(255,255,255,.08),transparent)}
 @keyframes pp-shimmer{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
 
@@ -180,16 +248,41 @@ body.pp-dark .pp-skeleton::after,body.dark .pp-skeleton::after{
 
 /* Language dropdown (shared component) */
 .pp-langdrop{position:relative;display:inline-block}
-.pp-langdrop-btn{display:flex;align-items:center;gap:6px;background:var(--pp-card);border:1px solid var(--pp-line);border-radius:999px;padding:7px 12px;cursor:pointer;color:var(--pp-text);font-weight:700;font-size:13px;transition:all .15s}
+.pp-langdrop-btn{display:flex;align-items:center;gap:6px;background:var(--pp-card);border:1px solid var(--pp-line);border-radius:999px;padding:7px 12px;cursor:pointer;color:var(--pp-text);font-weight:700;font-size:var(--pp-text-xs);transition:all .15s}
 .pp-langdrop-btn:hover{border-color:var(--pp-accent)}
 .pp-langdrop-btn .ic{width:16px;height:16px}
+/* FIT: nút theme tròn chuẩn — không méo trên màn hình hẹp */
+.pp-themebtn{display:flex;align-items:center;justify-content:center;width:38px;height:38px;flex:0 0 38px;
+box-sizing:border-box;background:var(--pp-card);border:1px solid var(--pp-line);border-radius:50%;
+cursor:pointer;color:var(--pp-text);transition:all .15s;padding:0}
+.pp-themebtn:hover{border-color:var(--pp-accent)}
+.pp-themebtn .ic{width:16px;height:16px;flex:0 0 16px}
 .pp-langdrop-btn .chev{width:12px;height:12px;color:var(--pp-mut);transition:transform .15s}
 .pp-langdrop.open .pp-langdrop-btn .chev{transform:rotate(180deg)}
 .pp-langdrop-menu{position:absolute;top:calc(100% + 6px);right:0;min-width:160px;background:var(--pp-card);border:1px solid var(--pp-line);border-radius:16px;box-shadow:0 8px 24px rgba(0,0,0,.12);padding:6px;display:none;z-index:50}
 .pp-langdrop.open .pp-langdrop-menu{display:block}
-.pp-langdrop-item{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:none;border:none;padding:10px 12px;border-radius:10px;cursor:pointer;color:var(--pp-text);font-size:14px}
+.pp-langdrop-item{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:none;border:none;padding:10px 12px;border-radius:10px;cursor:pointer;color:var(--pp-text);font-size:var(--pp-text-sm)}
 .pp-langdrop-item:hover{background:var(--pp-bg)}
 .pp-langdrop-item.active{color:var(--pp-accent);font-weight:700}
 .pp-langdrop-item .code{font-weight:700;min-width:32px}
-.pp-langdrop-item .name{color:var(--pp-mut);font-size:13px}
+.pp-langdrop-item .name{color:var(--pp-mut);font-size:var(--pp-text-xs)}
 .pp-langdrop-item.active .name{color:var(--pp-accent)}
+
+/* 8b 2026-10-12 BUG-5: từ click được trong bài đọc — thiếu CSS nên trông như text thường */
+.rword{padding:3px 2px;border-radius:6px;cursor:pointer;border-bottom:2px dotted #c9a35c}
+.rword:hover{background:rgba(16,163,127,.1)}
+.rword:active{background:var(--pp-accent);color:#fff}
+#readArticle .rword{border-bottom:1px dotted #d6c8a4;padding:1px;cursor:pointer}
+#readArticle .rword:hover{border-bottom-color:var(--pp-accent);background:rgba(16,163,127,.1)}
+
+/* G6 2026-10-13: Shared app-row component (gốc). Nguồn duy nhất cho card pattern.
+   Dùng ở: hub (app list), index (settings cards), landing. Không định nghĩa lại ở HTML. */
+.pp-apps{display:flex;flex-direction:column;gap:10px;width:100%}
+.pp-app-row{display:flex;align-items:center;gap:14px;background:var(--pp-card);border:1px solid var(--pp-line);border-radius:var(--pp-r-lg,20px);padding:13px 14px;color:var(--pp-ink);font-family:var(--pp-font);text-decoration:none;transition:transform .15s,box-shadow .15s}
+.pp-app-row:hover{box-shadow:0 4px 16px rgba(0,0,0,.08)}
+.pp-app-row:active{transform:scale(.98)}
+.pp-app-ic{width:46px;height:46px;border-radius:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:var(--pp-bg);color:var(--pp-ink)}
+.pp-app-tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.pp-app-name{font-weight:700;font-size:var(--pp-text-base);font-family:var(--pp-font);color:var(--pp-ink)}
+.pp-app-desc{font-size:var(--pp-text-xs);color:var(--pp-mut);font-family:var(--pp-font);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pp-app-go{font-size:var(--pp-text-xl);font-weight:700;color:var(--pp-mut);flex-shrink:0;font-family:var(--pp-font)}

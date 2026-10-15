@@ -279,11 +279,13 @@ export function renderDictPop(w, entry){
             if(sentEl) sentence = sentEl.textContent.slice(0, 500);
           }
         }catch(e){}
-        // BYOK: stream từng chunk khi dùng key riêng, fallback server khi lỗi
-        let streamed = "";
-        const r = await explainWithFallback(w, sentence, lang, (chunk)=>{
-          streamed += chunk;
-          aiRes.innerHTML = esc(streamed).replace(/\n/g, "<br>");
+        // BYOK: dùng key riêng qua relay, fallback server khi lỗi.
+        // tốc T2: stream chữ chảy dần vào aiRes (thay vì chờ full).
+        let aiStreamed = "";
+        const r = await explainWithFallback(w, sentence, lang, function(chunk){
+          if(!aiStreamed) aiRes.innerHTML = "";
+          aiStreamed += chunk;
+          aiRes.innerHTML = esc(aiStreamed).replace(/\n/g, "<br>");
         });
         if(r.explanation){
           aiRes.innerHTML = esc(r.explanation).replace(/\n/g, "<br>");
@@ -292,7 +294,8 @@ export function renderDictPop(w, entry){
         }
         // Indicator: đang dùng key của bạn hay server
         try{
-          const via = (window.__elabT ? window.__elabT(r.via === 'direct' ? 'byok_via_direct' : 'byok_via_server') : r.via);
+          const viaKey = r.via === 'proxy' ? 'byok_via_direct' : (r.via === 'cache' ? 'byok_via_cache' : 'byok_via_server');
+          const via = (window.__elabT ? window.__elabT(viaKey) : r.via);
           const ind = document.createElement("div");
           ind.className = "hint";
           ind.style.cssText = "font-size:11px;margin-top:6px;opacity:0.7";

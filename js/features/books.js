@@ -15,7 +15,7 @@ export async function renderBookList(){
   box.innerHTML = '<div class="pp-skeleton" style="height:54px;margin-bottom:8px"></div>'.repeat(3);
   try{
     const j = await apiCall("/api/books");
-    if(!j.books.length){ box.innerHTML = '<div class="hint">No books yet. Upload a PDF to start.</div>'; return; }
+    if(!j.books.length){ box.innerHTML = '<div class="hint">No books yet. Upload a PDF or EPUB to start.</div>'; return; }
     box.innerHTML = "";
     j.books.forEach(b=>{
       const d = document.createElement("div");
@@ -62,19 +62,25 @@ export function openChapter(c){
 }
 // Wiring for book surfaces (was top-level in index.html).
 export function bindBooks(){
-  $("bookFile").onclick = (e)=>{ if(!state.authToken){ e.preventDefault(); toast("Login first"); openAuth(); } };
+  // i18n labels for upload UI (set here; HTML shell dict lacks these keys)
+  const upBtn = $("bookUploadBtn"); if(upBtn){ upBtn.textContent = t("uploadBtn") || "Upload"; upBtn.onclick = ()=>$("bookFile").click(); }
+  const goBtn = $("bookTitleGo"); if(goBtn) goBtn.textContent = t("uploadBtn") || "Upload";
+  const cancelBtn = $("bookTitleCancel"); if(cancelBtn) cancelBtn.textContent = t("cancel") || "Cancel";
+  const fileInput = $("bookFile");
+  if(fileInput){
+  fileInput.onclick = (e)=>{ if(!state.authToken){ e.preventDefault(); toast("Login first"); openAuth(); } };
   let pendingFile = null;
-  $("bookFile").onchange = ()=>{
-    const f = $("bookFile").files[0];
+  fileInput.onchange = ()=>{
+    const f = fileInput.files[0];
     if(!f) return;
-    if(f.size > 50*1024*1024){ toast("Max 50MB"); $("bookFile").value = ""; return; }
+    if(f.size > 50*1024*1024){ toast("Max 50MB"); fileInput.value = ""; return; }
     pendingFile = f;
     $("bookTitleInput").value = f.name.replace(/\.(pdf|epub)$/i,"");
     $("bookTitleInput").placeholder = t("bookTitlePh");
     $("bookTitleRow").style.display = "";
     $("bookTitleInput").focus();
   };
-  const cancelUpload = ()=>{ pendingFile = null; $("bookFile").value = ""; $("bookTitleRow").style.display = "none"; };
+  const cancelUpload = ()=>{ pendingFile = null; fileInput.value = ""; $("bookTitleRow").style.display = "none"; };
   $("bookTitleCancel").onclick = cancelUpload;
   $("bookTitleGo").onclick = async ()=>{
     const f = pendingFile;
@@ -94,9 +100,12 @@ export function bindBooks(){
       toast(t("uploadedProcessing"));
       renderBookList();
     }catch(e){ toast(e.message); }
-    pendingFile = null; $("bookFile").value = "";
+    pendingFile = null; fileInput.value = "";
   };
-  $("bookBack").onclick = ()=>{ $("bookDetailCard").style.display = "none"; };
-  $("chapterBack").onclick = ()=>{ $("chapterCard").style.display = "none"; };
+  }
+  const bookBack = $("bookBack"); if(bookBack) bookBack.onclick = ()=>{ $("bookDetailCard").style.display = "none"; };
+  const chapterBack = $("chapterBack"); if(chapterBack) chapterBack.onclick = ()=>{ $("chapterCard").style.display = "none"; };
 }
+// Tab lazy-load hook (inline switchTab calls window._elabLoadBooks like library)
+window._elabLoadBooks = renderBookList;
 
