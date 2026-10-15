@@ -110,6 +110,7 @@ function getToken(){ try{ return localStorage.getItem('elab_authToken')||''; }ca
 const token = getToken();
 if(!token){ location.href='/login'; return; }
 
+function getDriveToken(){ try{ return sessionStorage.getItem('dac_drive_token')||''; }catch(e){ return ''; } }
 function setDriveToken(t){ try{ sessionStorage.setItem('dac_drive_token', t); }catch(e){} }
 
 async function api(path, opts){
@@ -122,38 +123,27 @@ async function api(path, opts){
 const audio = document.getElementById('audio');
 const audioPf = document.getElementById('audioPrefetch');
 let queue = [], qIndex = -1, currentTrack = null;
-// v3.0: server quản Drive token, client không cần gửi X-Drive-Token nữa.
+let driveToken = getDriveToken();
 
-// ===== Drive connect (v3.0) =====
-// Server quản hết token. Client chỉ kiểm tra status.
-// 2 trạng thái: (1) đã kết nối → vào luôn; (2) chưa → hiện nút OAuth.
+// ===== Drive connect =====
 const driveConnectEl = document.getElementById('driveConnect');
 const mainView = document.getElementById('mainView');
-
-async function initDrive(){
-  // Xử lý OAuth callback (?drive=ok)
-  const params = new URLSearchParams(location.search);
-  if(params.get('drive')==='ok'){
-    history.replaceState(null,'',location.pathname);
-  }
-  // Kiểm tra đã kết nối Drive chưa
-  try{
-    const r = await api('/api/dac/drive-status');
-    if(r){
-      const j = await r.json();
-      if(j.connected){
-        driveConnectEl.style.display='none'; mainView.style.display='block';
-        loadFolder('root');
-        return;
-      }
-    }
-  }catch(e){}
-  // Chưa kết nối → hiện nút
+if(!driveToken){
   driveConnectEl.style.display='block'; mainView.style.display='none';
   document.getElementById('btnConnect').onclick = async ()=>{
-    const r = await api('/api/drive/auth-url?return_to='+encodeURIComponent('/dacplayer/'));
+    const r = await api('/api/drive/auth-url');
     if(r){ const j = await r.json(); if(j.url) location.href = j.url; }
   };
+  // Kiểm tra OAuth callback (?drive_token=...)
+  const params = new URLSearchParams(location.search);
+  const cbToken = params.get('drive_token');
+  if(cbToken){ setDriveToken(cbToken); driveToken = cbToken;
+    history.replaceState(null,'',location.pathname);
+    driveConnectEl.style.display='none'; mainView.style.display='block';
+    loadFolder('root');
+  }
+} else {
+  loadFolder('root');
 }
 
 // ===== IndexedDB cache =====
@@ -200,7 +190,7 @@ async function loadFolder(parentId){
   // 2. Fetch mới nền (revalidate)
   try{
     const headers = {'Authorization':'Bearer '+token};
-    // v3.0: server tự lấy token từ D1, không cần header
+    if(driveToken) headers['X-Drive-Token'] = driveToken;
     const r = await fetch('/api/dac/folders?parentId='+encodeURIComponent(parentId), {headers:headers});
     if(r.status===401){ location.href='/login'; return; }
     if(!r.ok) throw new Error('HTTP '+r.status);
@@ -281,7 +271,7 @@ async function playTrack(idx){
   showLoading(true);
   try{
     const headers = {'Authorization':'Bearer '+token};
-    // v3.0: server tự lấy token từ D1, không cần header
+    if(driveToken) headers['X-Drive-Token'] = driveToken;
     const r = await fetch('/api/dac/stream/'+encodeURIComponent(currentTrack.id), {headers:headers});
     if(!r.ok) throw new Error('Stream failed: '+r.status);
     const j = await r.json();
@@ -329,7 +319,7 @@ function prefetchNext(){
   prefetched = ni;
   const nt = queue[ni];
   const headers = {'Authorization':'Bearer '+token};
-  // v3.0: server tự lấy token từ D1, không cần header
+  if(driveToken) headers['X-Drive-Token'] = driveToken;
   fetch('/api/dac/stream/'+encodeURIComponent(nt.id), {headers:headers})
     .then(r=>r.json()).then(j=>{ if(j.url) audioPf.src = j.url; }).catch(()=>{});
 }
@@ -382,7 +372,6 @@ function setupMediaSession(){
 
 // ===== Init =====
 openDB();
-initDrive();
 })();
 </script>
 </body>
