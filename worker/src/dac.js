@@ -16,6 +16,31 @@
 // Auth: session Pocket Personal + X-Drive-Token header.
 import { getSession } from './auth.js';
 import { jerr, sJson } from './utils.js';
+import { drizzle } from "drizzle-orm/d1";
+import { eq } from "drizzle-orm";
+import { driveTokens } from "./schema.js";
+
+/**
+ * Lấy Drive token: ưu tiên header X-Drive-Token (client gửi),
+ * fallback đọc từ D1 driveTokens (user đã kết nối qua /music/).
+ * Trả về null nếu không có.
+ */
+async function getDriveToken(request, env, email){
+  const h = request.headers.get('X-Drive-Token');
+  if(h) return h;
+  if(!email) return null;
+  try{
+    const db = drizzle(env.DB);
+    const rows = await db.select({accessToken: driveTokens.accessToken, expiresAt: driveTokens.expiresAt})
+      .from(driveTokens).where(eq(driveTokens.email, email.toLowerCase())).limit(1);
+    if(rows.length && rows[0].accessToken){
+      // Kiểm tra hết hạn (cho phép lệch 60s)
+      if(rows[0].expiresAt && rows[0].expiresAt < Date.now()-60000) return null;
+      return rows[0].accessToken;
+    }
+  }catch(e){}
+  return null;
+}
 
 // Chỉ nhận file audio
 const AUDIO_EXT = /\.(flac|wav|mp3|m4a|aac|ogg|opus|aiff|alac)$/i;
@@ -116,7 +141,7 @@ export async function handleDacMusic(request, env) {
       return sJson({ files });
     }
   } catch (e) { /* fallback live */ }
-  const driveToken = request.headers.get('X-Drive-Token');
+  const driveToken = await getDriveToken(request, env, s.email);
   if (!driveToken) return jerr('Drive not connected', 400);
   try {
     const q = encodeURIComponent("mimeType contains 'audio/' and trashed=false");
@@ -154,7 +179,7 @@ export async function handleDacMusic(request, env) {
 export async function handleDacStream(request, env) {
   const s = await getSession(request, env);
   if (!s) return jerr('Not logged in', 401);
-  const driveToken = request.headers.get('X-Drive-Token');
+  const driveToken = await getDriveToken(request, env, s.email);
   if (!driveToken) return jerr('Drive not connected', 400);
   const fileId = new URL(request.url).pathname.split('/').pop() || '';
   if (!fileId || !/^[a-zA-Z0-9_-]+$/.test(fileId)) return jerr('Bad file id', 400);
@@ -199,7 +224,7 @@ export async function handleDacStream(request, env) {
 export async function handleDacSync(request, env) {
   const s = await getSession(request, env);
   if (!s) return jerr('Not logged in', 401);
-  const driveToken = request.headers.get('X-Drive-Token');
+  const driveToken = await getDriveToken(request, env, s.email);
   if (!driveToken) return jerr('Drive not connected', 400);
   const email = s.email.toLowerCase();
   const headers = { 'Authorization': 'Bearer ' + driveToken };
@@ -425,7 +450,7 @@ export async function handleDacFolders(request, env) {
     const indexed = await dacIndexFolder(env, s.email.toLowerCase(), parentId);
     if (indexed) return sJson(indexed);
   } catch (e) { /* fallback live */ }
-  const driveToken = request.headers.get('X-Drive-Token');
+  const driveToken = await getDriveToken(request, env, s.email);
   if (!driveToken) return jerr('Drive not connected', 400);
   const headers = { 'Authorization': 'Bearer ' + driveToken };
   try {
@@ -508,7 +533,7 @@ export async function handleDacFolders(request, env) {
 export async function handleDacResolve(request, env) {
   const s = await getSession(request, env);
   if (!s) return jerr('Not logged in', 401);
-  const driveToken = request.headers.get('X-Drive-Token');
+  const driveToken = await getDriveToken(request, env, s.email);
   if (!driveToken) return jerr('Drive not connected', 400);
 
   let body;
@@ -628,7 +653,7 @@ async function recordCopy(env, userId, sourceId, name, size, method) {
 export async function handleDacCopy(request, env) {
   const s = await getSession(request, env);
   if (!s) return jerr('Not logged in', 401);
-  const driveToken = request.headers.get('X-Drive-Token');
+  const driveToken = await getDriveToken(request, env, s.email);
   if (!driveToken) return jerr('Drive not connected', 400);
 
   let body;
@@ -774,7 +799,7 @@ export async function handleDacSearch(request, env) {
   }
 
   // Fallback: tìm live trên Drive (chưa sync index)
-  const driveToken = request.headers.get('X-Drive-Token');
+  const driveToken = await getDriveToken(request, env, s.email);
   if (!driveToken) return jerr('Drive not connected', 400);
   try {
     // Escape dấu ' cho query Drive
