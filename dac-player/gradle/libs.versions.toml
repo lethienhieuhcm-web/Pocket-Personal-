@@ -66,6 +66,9 @@ kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-
 androidx-test-ext-junit = { group = "androidx.test.ext", name = "junit", version.ref = "test-ext-junit" }
 androidx-test-runner = { group = "androidx.test", name = "runner", version.ref = "androidx-test" }
 androidx-test-core = { group = "androidx.test", name = "core", version.ref = "androidx-test" }
+# 4.10: Espresso UI tap-through test trên emulator CI (3.7.0 stable, verify qua
+# Google Maven 2026-10-15; cùng họ với androidx-test 1.7.0).
+espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version = "3.7.0" }
 # 2.3: Phase 2 Libraries (Room cache + Hilt DI + WorkManager + jaudiotagger).
 room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
 room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }

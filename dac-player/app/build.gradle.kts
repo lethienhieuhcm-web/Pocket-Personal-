@@ -182,6 +182,8 @@ dependencies {
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.androidx.test.core)
+    // 4.10: Espresso UI tap-through (AuthActivity/MainActivity) trên emulator CI.
+    androidTestImplementation(libs.espresso.core)
     // 2.3: Phase 2 Libraries — Room (cache library) + Hilt (DI) +
     // WorkManager (background copy) + jaudiotagger (đọc tag).
     implementation(libs.room.runtime)
