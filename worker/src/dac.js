@@ -318,12 +318,20 @@ export async function handleDacSync(request, env) {
     }
 
     // --- Incremental sync ---
+    // Đồng bộ thông minh: nếu page token hết hạn (410) → tự full sync lại
     let pageToken = state.page_token;
     let newStart = null;
+    let needFullSync = false;
     do {
+      let j;
       const url = `https://www.googleapis.com/drive/v3/changes?pageToken=${encodeURIComponent(pageToken)}` +
         `&fields=changes(fileId,removed,file(id,name,mimeType,size,parents)),nextPageToken,newStartPageToken&pageSize=1000`;
-      const j = await driveFetch(url);
+      try {
+        j = await driveFetch(url);
+      } catch (e) {
+        if (e.status === 410) { needFullSync = true; break; }
+        throw e;
+      }
       const upserts = [];
       const deletes = [];
       for (const c of (j.changes || [])) {
@@ -359,6 +367,11 @@ export async function handleDacSync(request, env) {
     ).bind(email).first();
     // 4.8: điền album (tên thư mục cha) + rebuild search_text sau incremental.
     await refreshDacMetadata(env, email);
+    if (needFullSync) {
+      // Page token hết hạn → xoá state, lần sync sau sẽ full scan
+      await env.DB.prepare('DELETE FROM dac_sync_state WHERE email=?').bind(email).run();
+      return sJson({ full: false, synced: 0, total: total ? total.c : 0, needFullSync: true });
+    }
     return sJson({ full: false, synced, total: total ? total.c : 0 });
   } catch (e) {
     if (e.status === 401) return jerr('Drive token invalid', 401);
@@ -859,7 +872,15 @@ export async function handleDacLibrary(request, env) {
     size: r.size || 0,
     mimeType: r.mime_type || mimeFor(r.name || ''),
   }));
-  return sJson({ files, total, limit, offset });
+  // Đồng bộ thông minh: trả lastSync để client quyết định có cần refresh
+  let lastSync = 0;
+  try {
+    const st = await env.DB.prepare(
+      'SELECT updated_at FROM dac_sync_state WHERE email=?'
+    ).bind(email).first();
+    lastSync = (st && st.updated_at) || 0;
+  } catch (e) { /* bỏ qua */ }
+  return sJson({ files, total, limit, offset, lastSync });
 }
 
 /**

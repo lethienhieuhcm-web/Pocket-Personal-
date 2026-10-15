@@ -60,7 +60,7 @@ body{background:#0d1117;color:#e6edf3;margin:0;font-family:var(--pp-font);paddin
 <div class="dp-header">
   <div style="display:flex;align-items:center;justify-content:space-between">
     <h1>🎵 DAC Player</h1>
-    <button id="btnSync" class="dp-btn" style="padding:8px 16px;font-size:14px">🔄 Đồng bộ</button>
+    <button id="btnSync" title="Đồng bộ thư viện" style="background:none;border:none;color:#8b949e;font-size:20px;cursor:pointer;padding:8px">⟳</button>
   </div>
   <input class="dp-search" id="searchBox" type="search" placeholder="Tìm kiếm nhạc..." autocomplete="off">
   <div id="syncStatus" style="font-size:12px;color:#8b949e;margin-top:4px;display:none"></div>
@@ -187,6 +187,10 @@ async function loadLibrary(){
     if(!r) return;
     const j = await r.json();
     libraryCache = j.files || [];
+    // Tự sync nếu dữ liệu cũ hơn 15 phút
+    if(j.lastSync && Date.now() - j.lastSync > SYNC_STALE_MS){
+      smartSync(false);
+    }
     if(!libraryCache.length){
       list.innerHTML = '<div class="dp-center">Chưa có nhạc.<br>Chạy đồng bộ Drive để quét thư viện.</div>';
       return;
@@ -267,8 +271,39 @@ function loadArtists(){
   });
 }
 
-// Nút Đồng bộ Drive
-document.getElementById('btnSync').onclick = async ()=>{
+// Đồng bộ thông minh: tự sync ngầm nếu cache cũ hơn 15 phút
+const SYNC_STALE_MS = 15 * 60 * 1000;
+async function smartSync(force){
+  const btn = document.getElementById('btnSync');
+  const st = document.getElementById('syncStatus');
+  btn.textContent = '↻';
+  st.style.display = 'block';
+  st.textContent = 'Đang cập nhật thư viện...';
+  try{
+    const r = await api('/api/dac/sync', {method:'POST'});
+    if(!r){ st.style.display='none'; btn.textContent='⟳'; return; }
+    const j = await r.json();
+    if(j.needFullSync){
+      // Page token hết hạn, cần full sync lại
+      st.textContent = 'Đang quét lại toàn bộ...';
+      const r2 = await api('/api/dac/sync', {method:'POST'});
+      if(r2) await r2.json();
+    }
+    st.textContent = '✓ Đã cập nhật';
+    setTimeout(()=>{ st.style.display='none'; }, 3000);
+    libraryCache = null;
+    if(currentTab === 'songs') loadLibrary(true);
+    else if(currentTab === 'folders') loadFolder('root');
+    else if(currentTab === 'albums') loadAlbums();
+    else if(currentTab === 'artists') loadArtists();
+  }catch(e){
+    st.style.display='none'; // lỗi thì im lặng
+  }
+  btn.textContent = '⟳';
+}
+
+// Nút đồng bộ thủ công (trong header, nhỏ)
+document.getElementById('btnSync').onclick = ()=> smartSync(true);
   const btn = document.getElementById('btnSync');
   const st = document.getElementById('syncStatus');
   btn.disabled = true;
@@ -280,7 +315,7 @@ document.getElementById('btnSync').onclick = async ()=>{
     if(!r){ btn.disabled=false; btn.textContent='🔄 Đồng bộ'; return; }
     const j = await r.json();
     st.textContent = 'Xong! Đã quét ' + (j.synced||0) + '/' + (j.total||0) + ' file.';
-    libraryCache = null; // xoá cache để tải lại
+    libraryCache = null;
     if(currentTab === 'songs') loadLibrary();
     else if(currentTab === 'folders') loadFolder('root');
     else if(currentTab === 'albums') loadAlbums();

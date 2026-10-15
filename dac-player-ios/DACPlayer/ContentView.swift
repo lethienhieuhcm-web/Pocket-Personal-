@@ -61,9 +61,26 @@ struct LibraryView: View {
     @State private var showImport = false
     /// Redesign 80/20: 0=Bài hát, 1=Album, 2=Nghệ sĩ
     @State private var libraryTab = 0
+    /// Đồng bộ thông minh: tự sync nếu cache cũ hơn 15 phút
+    @State private var isSyncing = false
+    @State private var lastSyncText = "" 
 
     private var visibleTracks: [Track] {
         searchText.isEmpty ? api.tracks : api.searchOffline(searchText)
+    }
+
+    /// Đồng bộ thông minh: tự sync ngầm nếu cache cũ hơn 15 phút
+    private func smartSync(force: Bool) async {
+        let lastSync = api.lastSync
+        let stale = Date().timeIntervalSince1970 * 1000 - Double(lastSync) > 15 * 60 * 1000
+        guard force || stale else { return }
+        isSyncing = true
+        await api.syncLibrary()
+        isSyncing = false
+        if api.lastSync > 0 {
+            let mins = Int((Date().timeIntervalSince1970 * 1000 - Double(api.lastSync)) / 60000)
+            lastSyncText = mins < 1 ? "vừa xong" : "\(mins) phút trước"
+        }
     }
 
     var body: some View {

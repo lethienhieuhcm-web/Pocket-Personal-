@@ -77,6 +77,8 @@ class MusicApiClient: ObservableObject {
     private let driveToken: () -> String?
 
     @Published private(set) var tracks: [Track] = []
+    /// Đồng bộ thông minh: timestamp lần sync cuối (ms)
+    @Published private(set) var lastSync: Int64 = 0
 
     init(auth: AuthManager, driveToken: @escaping () -> String?) {
         self.auth = auth
@@ -240,7 +242,18 @@ class MusicApiClient: ObservableObject {
         }
         saveCache(list)
         tracks = list
+        lastSync = resp.lastSync ?? 0
         return list
+
+    /// Đồng bộ thông minh: gọi POST /api/dac/sync rồi refresh library
+    func syncLibrary() async {
+        do {
+            _ = try await post("/api/dac/sync", body: Data())
+            _ = try await listLibrary(forceRefresh: true)
+        } catch {
+            // lỗi thì im lặng giữ cache
+        }
+    }
     }
 
     /// Lấy danh sách nhạc từ Drive qua Worker. Cache 24h, forceRefresh để bỏ qua.
