@@ -131,7 +131,7 @@ const mainView = document.getElementById('mainView');
 if(!driveToken){
   driveConnectEl.style.display='block'; mainView.style.display='none';
   document.getElementById('btnConnect').onclick = async ()=>{
-    const r = await api('/api/drive/auth-url');
+    const r = await api('/api/drive/auth-url?return_to=' + encodeURIComponent('/dacplayer/'));
     if(r){ const j = await r.json(); if(j.url) location.href = j.url; }
   };
   // Kiểm tra OAuth callback (?drive_token=...)

@@ -23,6 +23,12 @@ export async function handleDriveAuthUrl(request, env){
   if(!s) return jerr("Not logged in", 401);
   const cfg = getOAuthConfig(env);
   if(!cfg.client_id) return jerr("Drive not configured", 500);
+  // return_to: frontend truyền path muốn quay về sau OAuth (vd /dacplayer/)
+  const url = new URL(request.url);
+  let returnTo = url.searchParams.get("return_to") || "/english/#settings";
+  // Chỉ cho phép path nội bộ để chống open redirect
+  if(!returnTo.startsWith("/")) returnTo = "/english/#settings";
+  const state = s.token + "|" + returnTo;
   const params = new URLSearchParams({
     client_id: cfg.client_id,
     redirect_uri: cfg.redirect_uri,
@@ -30,7 +36,7 @@ export async function handleDriveAuthUrl(request, env){
     scope: "https://www.googleapis.com/auth/drive.readonly",
     access_type: "offline",
     prompt: "consent",
-    state: s.token, // use session token as state
+    state: state,
   });
   return jok({url: "https://accounts.google.com/o/oauth2/v2/auth?"+params.toString()});
 }
@@ -56,8 +62,14 @@ export async function handleDriveCallback(request, env){
   if(!tokRes.ok) return new Response("Token exchange failed", {status:500});
   const tok = await tokRes.json();
 
+  // state = "session_token|return_path"
+  const sepIdx = state.indexOf("|");
+  const sessToken = sepIdx >= 0 ? state.slice(0, sepIdx) : state;
+  let returnTo = sepIdx >= 0 ? state.slice(sepIdx + 1) : "/english/#settings";
+  if(!returnTo.startsWith("/")) returnTo = "/english/#settings";
+
   // Get user email from session
-  const sess = await dbGetSession(env, state);
+  const sess = await dbGetSession(env, sessToken);
   if(!sess) return new Response("Invalid session", {status:401});
 
   // Store tokens
@@ -77,8 +89,17 @@ export async function handleDriveCallback(request, env){
     },
   });
 
-  // Redirect to settings with success
-  return Response.redirect("https://lethanhdong.one/english/#settings?drive=ok", 302);
+  // Redirect về đúng app đã bắt đầu OAuth
+  const sep = returnTo.includes("?") ? "&" : (returnTo.includes("#") ? "" : "?");
+  // Nếu returnTo có hash, thêm param trước hash
+  let dest = "https://lethanhdong.one" + returnTo;
+  if(returnTo.includes("#")){
+    const [p, h] = returnTo.split("#");
+    dest = "https://lethanhdong.one" + p + (p.includes("?") ? "&" : "?") + "drive=ok#" + h;
+  } else {
+    dest = "https://lethanhdong.one" + returnTo + (returnTo.includes("?") ? "&drive=ok" : "?drive=ok");
+  }
+  return Response.redirect(dest, 302);
 }
 
 // GET /api/drive/status — check if connected

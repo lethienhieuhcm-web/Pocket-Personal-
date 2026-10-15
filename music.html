@@ -423,7 +423,7 @@ async function checkGDrive(){
 async function connectGDrive(){
   try{
     const tok = localStorage.getItem('elab_authToken');
-    const r = await fetch('/api/drive/auth-url',{headers:{'Authorization':'Bearer '+tok}});
+    const r = await fetch('/api/drive/auth-url?return_to='+encodeURIComponent('/music/'),{headers:{'Authorization':'Bearer '+tok}});
     const j = await r.json();
     if(j.url) location.href = j.url;
     else toast(I18N[LANG].toast_no_link);
