@@ -694,14 +694,12 @@ function getGoogleCfg(env){
 export async function handleGoogleLogin(request, env){
   const cfg = getGoogleCfg(env);
   if(!cfg.client_id) return jerr("Google not configured", 500);
-  // v3.0 Phase B: xin luôn scope Drive để DAC player dùng ngay (1 lần duy nhất).
-  // User thấy 1 màn hình consent với cả 2 quyền.
   const params = new URLSearchParams({
     client_id: cfg.client_id,
     redirect_uri: cfg.redirect_uri,
     response_type: "code",
-    scope: "openid email profile https://www.googleapis.com/auth/drive.readonly",
-    access_type: "offline",
+    scope: "openid email profile",
+    access_type: "online",
     prompt: "select_account",
   });
   return new Response(JSON.stringify({url: "https://accounts.google.com/o/oauth2/v2/auth?"+params.toString()}), {headers:{"Content-Type":"application/json"}});
@@ -748,25 +746,6 @@ export async function handleGoogleCallback(request, env){
   const planInfo = getActivePlan(u);
   await enforceSessionLimit(env, u.email, planInfo.plan === "admin" ? "admin" : planInfo.plan);
   await dbPutSession(env, {email: u.email, exp: Date.now()+7*86400000, token, fp, ip: request.headers.get("CF-Connecting-IP")||"", ua: request.headers.get("User-Agent")||"", created_at: Date.now()});
-  // v3.0 Phase B: nếu được cấp refresh_token (scope Drive) → lưu vào driveTokens
-  // để DAC player dùng ngay không cần kết nối lại.
-  try{
-    if(tok.refresh_token && tok.access_token){
-      const { drizzle } = await import("drizzle-orm/d1");
-      const { driveTokens } = await import("./schema.js");
-      const db = drizzle(env.DB);
-      await db.insert(driveTokens).values({
-        email: email,
-        accessToken: tok.access_token,
-        refreshToken: tok.refresh_token,
-        expiresAt: Date.now()+(tok.expires_in||3600)*1000,
-        createdAt: Date.now(),
-      }).onConflictDoUpdate({
-        target: driveTokens.email,
-        set: {accessToken: tok.access_token, refreshToken: tok.refresh_token, expiresAt: Date.now()+(tok.expires_in||3600)*1000},
-      });
-    }
-  }catch(e){ /* không chặn login nếu lưu Drive token thất bại */ }
   // Redirect to hub with token in hash (frontend picks it up)
   // Return loading page instead of 302 (better UX - user sees progress)
   const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>...</title><style>body{font-family:system-ui;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#f6f7f9}.box{text-align:center;color:#6b7280}.spin{width:40px;height:40px;border:4px solid #e8ebf0;border-top-color:#0d9d6c;border-radius:50%;animation:s 1s linear infinite;margin:0 auto 16px}@keyframes s{to{transform:rotate(360deg)}}</style></head><body><div class="box"><div class="spin"></div><div id="msg">Signing in...</div></div><script>var L=(navigator.language||"en").slice(0,2);var T={vi:"Đang đăng nhập...",en:"Signing in...",zh:"正在登录...",ko:"로그인 중..."};document.getElementById("msg").textContent=T[L]||T.en;location.href="https://lethanhdong.one/hub#token=${token}";</script></body></html>`;
