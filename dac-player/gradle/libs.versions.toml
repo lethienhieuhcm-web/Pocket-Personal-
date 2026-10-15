@@ -12,7 +12,6 @@ kotlin = "2.2.10"
 media3 = "1.9.3"
 core-ktx = "1.18.0"
 appcompat = "1.7.1"
-material = "1.12.0"
 coroutines = "1.10.2"
 recyclerview = "1.4.0"
 lifecycle = "2.9.2"
@@ -52,7 +51,6 @@ media3-session = { group = "androidx.media3", name = "media3-session", version.r
 # Jellyfin GPL (org.jellyfin.media3) đã xoá — CẤM thêm lại.
 core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "core-ktx" }
 appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
-material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 coroutines = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
 # 4.6: runTest cho instrumented test logic refresh token.
 coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutines" }

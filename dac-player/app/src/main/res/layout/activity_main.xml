@@ -2,7 +2,6 @@
 <!-- res/layout/activity_main.xml — plan "dac" D2: danh sách nhạc + phát
      1.3: form đăng nhập đã chuyển sang activity_auth.xml (AuthActivity) -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
@@ -28,31 +27,35 @@
         android:gravity="center"
         android:layout_marginBottom="12dp" />
 
-    <!-- Redesign 80/20: tabs Bài hát / Album / Nghệ sĩ -->
-    <com.google.android.material.tabs.TabLayout
-        android:id="@+id/libraryTabs"
+    <!-- Redesign 80/20: tabs Bài hát / Album / Nghệ sĩ (Button đơn giản) -->
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="8dp"
-        app:tabMode="fixed"
-        app:tabGravity="fill">
+        android:orientation="horizontal"
+        android:layout_marginBottom="8dp">
 
-        <com.google.android.material.tabs.TabItem
-            android:layout_width="wrap_content"
+        <Button
+            android:id="@+id/tabSongs"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_weight="1"
             android:text="Bài hát" />
 
-        <com.google.android.material.tabs.TabItem
-            android:layout_width="wrap_content"
+        <Button
+            android:id="@+id/tabAlbums"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_weight="1"
             android:text="Album" />
 
-        <com.google.android.material.tabs.TabItem
-            android:layout_width="wrap_content"
+        <Button
+            android:id="@+id/tabArtists"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_weight="1"
             android:text="Nghệ sĩ" />
 
-    </com.google.android.material.tabs.TabLayout>
+    </LinearLayout>
 
     <!-- Danh sách nhạc từ R2 (MainActivity chỉ chạy khi đã đăng nhập) -->
     <androidx.recyclerview.widget.RecyclerView

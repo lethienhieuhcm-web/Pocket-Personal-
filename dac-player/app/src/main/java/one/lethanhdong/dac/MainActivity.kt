@@ -11,7 +11,6 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.util.UnstableApi
 import androidx.recyclerview.widget.LinearLayoutManager
-import com.google.android.material.tabs.TabLayout
 import androidx.recyclerview.widget.RecyclerView
 import com.decent.usbaudio.UsbAudioPermissionHelper
 import dagger.hilt.android.AndroidEntryPoint
@@ -72,7 +71,9 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var statusText: TextView
     private lateinit var trackList: RecyclerView
-    private lateinit var libraryTabs: TabLayout
+    private lateinit var tabSongs: Button
+    private lateinit var tabAlbums: Button
+    private lateinit var tabArtists: Button
     /** Redesign 80/20: toàn bộ tracks để nhóm theo album/nghệ sĩ */
     private var allTracks: List<MusicApiClient.Track> = emptyList()
     /** 0=Bài hát, 1=Album, 2=Nghệ sĩ */
@@ -130,15 +131,12 @@ class MainActivity : AppCompatActivity() {
         trackList.adapter = trackAdapter
 
         // Redesign 80/20: tabs Bài hát / Album / Nghệ sĩ
-        libraryTabs = findViewById(R.id.libraryTabs)
-        libraryTabs.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
-            override fun onTabSelected(tab: TabLayout.Tab?) {
-                currentTab = tab?.position ?: 0
-                renderCurrentTab()
-            }
-            override fun onTabUnselected(tab: TabLayout.Tab?) {}
-            override fun onTabReselected(tab: TabLayout.Tab?) {}
-        })
+        tabSongs = findViewById(R.id.tabSongs)
+        tabAlbums = findViewById(R.id.tabAlbums)
+        tabArtists = findViewById(R.id.tabArtists)
+        tabSongs.setOnClickListener { currentTab = 0; renderCurrentTab() }
+        tabAlbums.setOnClickListener { currentTab = 1; renderCurrentTab() }
+        tabArtists.setOnClickListener { currentTab = 2; renderCurrentTab() }
 
         findViewById<Button>(R.id.pickButton).setOnClickListener {
             pickAudio.launch("audio/*")
