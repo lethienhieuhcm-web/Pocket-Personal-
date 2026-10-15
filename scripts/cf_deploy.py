@@ -523,9 +523,7 @@ def main():
         f"{API}/accounts/{ACCOUNT}/workers/scripts/{WORKER}",
         data=body, method="PUT")
     req.add_header("Content-Type", f"multipart/form-data; boundary={b2}")
-    add_surrogate_to_request(
-        req, "custom.cloudflare", entry_name="access_token", allowed_hosts=ALLOWED
-    )
+    _auth_request(req)
     with urllib.request.urlopen(req, timeout=60) as resp:
         dep = read_json_response(resp)
     # 8b: log chi tiết response để debug silent failure (2026-10-11)
@@ -651,9 +649,7 @@ def purge_cache():
     data = json.dumps({"purge_everything": True}).encode()
     req = urllib.request.Request(url, data=data, method="POST")
     req.add_header("Content-Type", "application/json")
-    add_surrogate_to_request(
-        req, "custom.cloudflare", entry_name="access_token", allowed_hosts=ALLOWED
-    )
+    _auth_request(req)
     with urllib.request.urlopen(req, timeout=30) as resp:
         result = read_json_response(resp)
     if result.get("success"):
