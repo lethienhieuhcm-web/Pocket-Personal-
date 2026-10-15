@@ -28,6 +28,7 @@
 /* Begin PBXBuildFile section */
 		A4FCEF1C31CB4F37928A1F37 /* DACPlayerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 499474AFECFF40A2AC3C40B0 /* DACPlayerApp.swift */; };
 		DEC77034EDEB4ED197463091 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8F7E1DEF6334C67BEB5F9E0 /* ContentView.swift */; };
+		0B00093A401241A2972932D8 /* MiniPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE46BC8BDC634200B01FA5F9 /* MiniPlayer.swift */; };
 		DFD1B7D769CF44FABAC85AF2 /* KeychainHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5BBC126FB934B58AA079D65 /* KeychainHelper.swift */; };
 		AE80B7FE721B4043B0115CA5 /* ApiModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2770726566514301A7E49075 /* ApiModels.swift */; };
 		892AD585B804445E94F41CF7 /* AuthManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = E05D4DB247FF41928E7A1F15 /* AuthManager.swift */; };
@@ -54,6 +55,7 @@
 		465A6D50DC7448B490CE53C4 /* DACPlayer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DACPlayer.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		499474AFECFF40A2AC3C40B0 /* DACPlayerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DACPlayerApp.swift; sourceTree = "<group>"; };
 		A8F7E1DEF6334C67BEB5F9E0 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		BE46BC8BDC634200B01FA5F9 /* MiniPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MiniPlayer.swift; sourceTree = "<group>"; };
 		F5BBC126FB934B58AA079D65 /* KeychainHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainHelper.swift; sourceTree = "<group>"; };
 		2770726566514301A7E49075 /* ApiModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApiModels.swift; sourceTree = "<group>"; };
 		E05D4DB247FF41928E7A1F15 /* AuthManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthManager.swift; sourceTree = "<group>"; };
@@ -102,6 +104,7 @@
 			children = (
 				499474AFECFF40A2AC3C40B0 /* DACPlayerApp.swift */,
 				A8F7E1DEF6334C67BEB5F9E0 /* ContentView.swift */,
+				BE46BC8BDC634200B01FA5F9 /* MiniPlayer.swift */,
 				F5BBC126FB934B58AA079D65 /* KeychainHelper.swift */,
 				2770726566514301A7E49075 /* ApiModels.swift */,
 				E05D4DB247FF41928E7A1F15 /* AuthManager.swift */,
@@ -218,6 +221,7 @@
 			files = (
 				A4FCEF1C31CB4F37928A1F37 /* DACPlayerApp.swift in Sources */,
 				DEC77034EDEB4ED197463091 /* ContentView.swift in Sources */,
+				0B00093A401241A2972932D8 /* MiniPlayer.swift in Sources */,
 				DFD1B7D769CF44FABAC85AF2 /* KeychainHelper.swift in Sources */,
 				AE80B7FE721B4043B0115CA5 /* ApiModels.swift in Sources */,
 				892AD585B804445E94F41CF7 /* AuthManager.swift in Sources */,
