@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'worker/**'
+      - '.github/workflows/deploy-worker.yml'
       - 'js/**'
       - '*.html'
       - '*.css'
