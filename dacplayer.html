@@ -125,26 +125,36 @@ const audioPf = document.getElementById('audioPrefetch');
 let queue = [], qIndex = -1, currentTrack = null;
 let driveToken = getDriveToken();
 
-// ===== Drive connect =====
+// ===== Drive connect (server-side token) =====
 const driveConnectEl = document.getElementById('driveConnect');
 const mainView = document.getElementById('mainView');
-if(!driveToken){
-  driveConnectEl.style.display='block'; mainView.style.display='none';
-  document.getElementById('btnConnect').onclick = async ()=>{
-    const r = await api('/api/drive/auth-url?return_to=' + encodeURIComponent('/dacplayer/'));
-    if(r){ const j = await r.json(); if(j.url) location.href = j.url; }
-  };
-  // Kiểm tra OAuth callback (?drive_token=...)
-  const params = new URLSearchParams(location.search);
-  const cbToken = params.get('drive_token');
-  if(cbToken){ setDriveToken(cbToken); driveToken = cbToken;
-    history.replaceState(null,'',location.pathname);
-    driveConnectEl.style.display='none'; mainView.style.display='block';
-    loadFolder('root');
-  }
-} else {
-  loadFolder('root');
+
+function showMain(){ driveConnectEl.style.display='none'; mainView.style.display='block'; }
+function showConnect(){ driveConnectEl.style.display='block'; mainView.style.display='none'; }
+
+document.getElementById('btnConnect').onclick = async ()=>{
+  const r = await api('/api/drive/auth-url?return_to=' + encodeURIComponent('/dacplayer/'));
+  if(r){ const j = await r.json(); if(j.url) location.href = j.url; }
+};
+
+// Kiểm tra trạng thái Drive từ server (không cần token ở client)
+async function checkDriveStatus(){
+  const r = await api('/api/drive/status');
+  if(!r) return false;
+  const j = await r.json();
+  return j.connected === true;
 }
+
+(async ()=>{
+  // Dọn ?drive=ok sau OAuth callback
+  const params = new URLSearchParams(location.search);
+  if(params.get('drive') === 'ok'){
+    history.replaceState(null, '', location.pathname);
+  }
+  const connected = await checkDriveStatus();
+  if(connected){ showMain(); loadFolder('root'); }
+  else { showConnect(); }
+})();
 
 // ===== IndexedDB cache =====
 let db = null;
