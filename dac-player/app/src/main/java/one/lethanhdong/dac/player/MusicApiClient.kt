@@ -173,7 +173,7 @@ class MusicApiClient(
     suspend fun syncLibrary(activity: android.app.Activity? = null) {
         try {
             withDriveToken(activity) { driveToken ->
-                post("/api/dac/sync", "", driveToken)
+                post("/api/dac/sync", driveToken)
             }
             listLibrary(forceRefresh = true, activity = activity)
         } catch (e: Exception) {
