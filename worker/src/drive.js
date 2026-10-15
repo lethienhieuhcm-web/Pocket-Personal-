@@ -90,7 +90,6 @@ export async function handleDriveCallback(request, env){
   });
 
   // Redirect về đúng app đã bắt đầu OAuth
-  const sep = returnTo.includes("?") ? "&" : (returnTo.includes("#") ? "" : "?");
   // Nếu returnTo có hash, thêm param trước hash
   let dest = "https://lethanhdong.one" + returnTo;
   if(returnTo.includes("#")){

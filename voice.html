@@ -794,7 +794,7 @@ $("driveBtn").addEventListener("click", async () => {
       // Chưa kết nối: mở trang authorize ở tab mới, poll chờ xong (tối đa 2 phút).
       // Nếu user đóng tab mà chưa xong thì dừng ngay, không treo nút.
       btn.textContent = t.driveNeedConnect;
-      const au = await api("/api/drive/auth-url").catch(() => null);
+      const au = await api("/api/drive/auth-url?return_to=" + encodeURIComponent("/voice/")).catch(() => null);
       if(!au || !au.url) throw new Error("auth");
       const authTab = window.open(au.url, "_blank");
       let ok = false;
