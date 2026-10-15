@@ -1,5 +1,4 @@
 import SwiftUI
-import SwiftData
 import GoogleSignIn
 
 @main
@@ -18,15 +17,11 @@ struct DACPlayerApp: App {
         _auth = StateObject(wrappedValue: a)
         _driveAuth = StateObject(wrappedValue: d)
         _engine = StateObject(wrappedValue: AudioEngine())
-        // v3.0: server tự quản Drive token (D1 + auto-refresh), client không cần gửi nữa.
-        let tokenClosure: () -> String? = { nil }
+        let tokenClosure: () -> String? = { [weak d] in d?.token() }
         let client = MusicApiClient(auth: a, driveToken: tokenClosure)
         _api = StateObject(wrappedValue: client)
         _copyManager = StateObject(wrappedValue: DriveCopyManager(auth: a, driveToken: tokenClosure))
         _art = StateObject(wrappedValue: CoverArtManager(api: client))
-        // v3.0: đăng ký background sync
-        DriveSyncScheduler.register(api: client)
-        DriveSyncScheduler.scheduleNext()
     }
 
     var body: some Scene {
@@ -42,6 +37,5 @@ struct DACPlayerApp: App {
                     GIDSignIn.sharedInstance.handle(url)
                 }
         }
-        .modelContainer(for: [CachedFolder.self])
     }
 }
