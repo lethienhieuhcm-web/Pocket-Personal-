@@ -21,14 +21,6 @@
 .pp-tabbar button .ic{width:22px;height:22px}
 .menutile{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:var(--pp-card);border:1px solid var(--pp-line);border-radius:16px;padding:14px 16px;margin-bottom:8px;cursor:pointer;font-size:var(--pp-text-sm);color:var(--pp-text)}
 .menutile:active{transform:scale(.98)}
-.pp-app-row{display:flex;align-items:center;gap:14px;background:var(--pp-card);border-radius:var(--pp-r-lg,20px);padding:13px 14px;color:var(--pp-text);transition:transform .15s,box-shadow .15s}
-.pp-app-row:hover{box-shadow:0 4px 16px rgba(0,0,0,.08)}
-.pp-app-row:active{transform:scale(.98)}
-.pp-app-ic{width:46px;height:46px;border-radius:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.pp-app-tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
-.pp-app-name{font-weight:700;font-size:var(--pp-text-sm)}
-.pp-app-desc{font-size:var(--pp-text-xs);color:var(--pp-mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pp-app-go{font-size:var(--pp-text-xl);color:var(--pp-mut);flex-shrink:0}
 .menutile .ic{width:24px;height:24px;color:var(--pp-accent)}
 .card{background:var(--pp-card);border:1px solid var(--pp-line);border-radius:16px;padding:16px;margin-bottom:12px}
 .hint{font-size:var(--pp-text-xs);color:var(--pp-mut)}
@@ -36,6 +28,8 @@
 .btn.ghost{background:var(--pp-bg);color:var(--pp-text);border:1px solid var(--pp-line)}
 .btn:active{transform:scale(.98)}
 </style>
+<script>/* Gốc theme: snippet chuẩn, không sửa. Controller ở js/shared/theme.js */
+try{var s=localStorage.getItem('pp_theme');if(!s){s=localStorage.getItem('elab_theme')||localStorage.getItem('hub_theme');if(s)localStorage.setItem('pp_theme',s)}var d=s?s==='dark':matchMedia('(prefers-color-scheme: dark)').matches;if(d)document.documentElement.classList.add('pp-dark')}catch(e){}</script>
 </head>
 <body>
 <!-- SVG sprite -->
@@ -49,6 +43,23 @@
 <symbol id="i-gear" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></symbol>
 <symbol id="i-user" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></symbol>
 <symbol id="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></symbol>
+<symbol id="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></symbol>
+<symbol id="i-play" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></symbol>
+<symbol id="i-pause" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></symbol>
+<symbol id="i-volume" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></symbol>
+<symbol id="i-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></symbol>
+<symbol id="i-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></symbol>
+<symbol id="i-edit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></symbol>
+<symbol id="i-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></symbol>
+<symbol id="i-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></symbol>
+<symbol id="i-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+<symbol id="i-unlock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></symbol>
+<symbol id="i-key" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></symbol>
+<symbol id="i-logout" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></symbol>
+<symbol id="i-layers" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></symbol>
+<symbol id="i-compass" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></symbol>
+<symbol id="i-doc" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></symbol>
+<symbol id="i-crown" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 8l4 4 5-6 5 6 4-4-1.6 10H4.6L3 8z"/><line x1="5" y1="21" x2="19" y2="21"/></symbol>
 <symbol id="i-globe" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></symbol>
 <symbol id="i-chevron-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></symbol>
 </svg>
@@ -114,7 +125,7 @@
         <button class="btn" id="scanPhotoBtn"><span data-i18n="take_photo">Take photo</span></button>
         <button class="btn ghost" id="scanGalleryBtn"><span data-i18n="gallery">Gallery</span></button>
       </div>
-      <textarea id="scanTextInput" rows="4" style="width:100%;border:1px solid var(--pp-line);border-radius:12px;padding:12px" data-i18n-ph="paste_hint" placeholder="Paste English text here..."></textarea>
+      <textarea id="scanTextInput" rows="4" style="width:100%;box-sizing:border-box;border:1px solid var(--pp-line);border-radius:12px;padding:12px" data-i18n-ph="paste_hint" placeholder="Paste English text here..."></textarea>
       <button class="btn" id="scanGoBtn" style="width:100%;margin-top:12px"><span data-i18n="create_reading">Create reading</span></button>
     </div>
   </div>
@@ -146,7 +157,33 @@
     <button class="pp-iconbtn" id="booksBackBtn" aria-label="Back"><svg class="ic"><use href="#i-back"/></svg></button>
     <div class="card">
       <h3 style="margin:0"><span data-i18n="books_title">Books</span></h3>
+      <div style="margin:12px 0">
+        <input type="file" id="bookFile" accept=".pdf,.epub" style="display:none">
+        <button class="btn primary" id="bookUploadBtn" style="width:100%"></button>
+      </div>
+      <div id="bookTitleRow" style="display:none;margin-bottom:12px">
+        <input id="bookTitleInput" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--pp-line)" maxlength="100">
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button class="btn primary" id="bookTitleGo" style="flex:1"></button>
+          <button class="btn" id="bookTitleCancel"></button>
+        </div>
+      </div>
       <div id="bookList"></div>
+      <div id="bookEmptyState" class="hint" style="display:none"></div>
+    </div>
+    <div class="card" id="bookDetailCard" style="display:none;margin-top:12px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <button class="pp-iconbtn" id="bookBack" aria-label="Back"><svg class="ic"><use href="#i-back"/></svg></button>
+        <h3 style="margin:0" id="bookDetailTitleTxt"></h3>
+      </div>
+      <div id="bookChapters"></div>
+    </div>
+    <div class="card" id="chapterCard" style="display:none;margin-top:12px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <button class="pp-iconbtn" id="chapterBack" aria-label="Back"><svg class="ic"><use href="#i-back"/></svg></button>
+        <h3 style="margin:0" id="chapterTitleTxt"></h3>
+      </div>
+      <div id="chapterSents"></div>
     </div>
   </div>
 
@@ -206,10 +243,15 @@
   </div>
 </main>
 
-<div class="toast" id="toast" style="display:none;position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#14181f;color:#fff;padding:10px 16px;border-radius:12px;z-index:100"></div>
+<div class="toast" id="toast" style="display:none;position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--pp-ink);color:var(--pp-bg);padding:10px 16px;border-radius:12px;z-index:100"></div>
 
 <script>
 (function(){
+  // Gốc theme (G3): shared module cung cấp window.__elabTheme controller.
+  // Snippet ở <head> đã chống flash; module này xử lý toggle/apply runtime.
+  import('./js/shared/theme.js').catch(function(){});
+  // Gốc i18n (G2): shared module cung cấp window.__elabI18n.
+  import('./js/shared/i18n.js').catch(function(){});
   var B="__BUILD__";
   function $(id){ return document.getElementById(id); }
   // Tab switching - hub-style navigation (no tabbar)
@@ -222,7 +264,7 @@
     try{ window.scrollTo(0,0); }catch(e){}
     // Lazy load tab content - inline (no module dependency)
     if(name==="audio"){ loadAudioLibInline(); }
-    if(name==="books"){ loadBooksInline(); }
+    if(name==="books"){ if(window._elabLoadBooks){ try{ window._elabLoadBooks(); }catch(e){} } }
     if(name==="progress"){ loadProgressInline(); }
     if(name==="profile"){ loadProfileInline(); }
     if(name==="settings"){ loadSettingsInline(); }
@@ -317,108 +359,112 @@
   function loadSettingsInline(){
     var box=$("settingsContent");
     if(!box) return;
-    box.innerHTML='<div style="margin-bottom:16px"><div class="hint" style="margin-bottom:8px">Language</div>'
-      +'<div class="pp-langdrop" id="langDropSettings">'
-      +'<button class="pp-langdrop-btn" aria-label="Language">'
-      +'<svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>'
-      +'<span class="pp-langdrop-cur">VI</span>'
-      +'<svg class="chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>'
-      +'</button>'
-      +'<div class="pp-langdrop-menu" role="listbox">'
+    // Redesign 2026-10-13: card pattern theo hub (icon + title + desc + chevron).
+    box.innerHTML='<div class="pp-apps">'
+      // Language card
+      +'<div class="pp-app-row" id="langCard" style="cursor:pointer">'
+      +'<div class="pp-app-ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></div>'
+      +'<div class="pp-app-tx"><div class="pp-app-name"><span data-i18n="settings_lang">Ngôn ngữ</span></div><div class="pp-app-desc"><span class="pp-langdrop-cur">VI</span></div></div>'
+      +'<div class="pp-app-go">›</div></div>'
+      +'<div class="pp-langdrop" id="langDropSettings" style="display:none;margin:-6px 0 10px">'
+      +'<div class="pp-langdrop-menu" role="listbox" style="position:static;display:block;box-shadow:none;border:1px solid var(--pp-line);border-radius:14px">'
       +'<button class="pp-langdrop-item" data-lang="vi"><span class="code">VI</span><span class="name">Tiếng Việt</span></button>'
       +'<button class="pp-langdrop-item" data-lang="en"><span class="code">EN</span><span class="name">English</span></button>'
       +'<button class="pp-langdrop-item" data-lang="zh"><span class="code">中文</span><span class="name">中文</span></button>'
       +'<button class="pp-langdrop-item" data-lang="ko"><span class="code">한국어</span><span class="name">한국어</span></button>'
       +'</div></div>'
+      // Theme card
+      +'<div class="pp-app-row" id="themeCard" style="cursor:pointer">'
+      +'<div class="pp-app-ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></div>'
+      +'<div class="pp-app-tx"><div class="pp-app-name"><span data-i18n="settings_theme">Giao diện</span></div><div class="pp-app-desc" id="themeDesc">Theo hệ thống</div></div>'
+      +'<div class="pp-app-go">›</div></div>'
+      +'<button id="themeToggle2" style="display:none">Toggle</button>'
+      // AI Key card (expanded form)
+      +'<div class="pp-app-row" style="flex-direction:column;align-items:stretch;cursor:default">'
+      +'<div style="display:flex;align-items:center;gap:14px;width:100%">'
+      +'<div class="pp-app-ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg></div>'
+      +'<div class="pp-app-tx"><div class="pp-app-name"><span data-i18n="byok_title">AI Key</span></div><div class="pp-app-desc" id="byokShareHint" data-i18n="byok_shared_hint">Đang dùng chung</div></div>'
       +'</div>'
-      +'<div><div class="hint" style="margin-bottom:8px">Theme</div>'
-      +'<button class="btn ghost" id="themeToggle2">Toggle dark/light</button></div>'
-      +'<div style="margin-top:20px"><div class="hint" style="margin-bottom:8px"><span data-i18n="byok_title">AI key</span></div>'
-      +'<div class="hint" style="margin-bottom:8px;font-size:12px"><span data-i18n="byok_hint">Paste your key</span></div>'
-      +'<div style="display:flex;gap:8px;margin-bottom:8px">'
+      +'<div style="margin-top:12px;display:flex;flex-direction:column;gap:10px">'
+      +'<label style="display:flex;gap:8px;align-items:center;cursor:pointer;font-size:13px;color:var(--pp-mut)">'
+      +'<input type="checkbox" id="byokCustom" style="width:auto">'
+      +'<span data-i18n="byok_custom">Cài đặt riêng cho app này</span></label>'
+      +'<div><div class="hint" style="font-size:12px;margin-bottom:4px"><span data-i18n="byok_endpoint">API endpoint</span></div>'
+      +'<input type="url" id="byokEndpoint" style="width:100%" data-i18n-ph="byok_endpoint_ph" placeholder="https://api.../v1" autocomplete="off" autocapitalize="off" spellcheck="false"></div>'
+      +'<div><div class="hint" style="font-size:12px;margin-bottom:4px"><span data-i18n="byok_hint">Paste your key</span></div>'
+      +'<div style="display:flex;gap:8px">'
       +'<input type="password" id="byokKey" style="flex:1;min-width:0" data-i18n-ph="byok_placeholder" placeholder="Paste API key...">'
-      +'<button class="btn" id="byokTest"><span data-i18n="byok_test">Test</span></button>'
+      +'<button class="btn primary" id="byokTest"><span data-i18n="byok_test">Test</span></button>'
+      +'</div></div>'
+      +'<div style="display:flex;gap:8px">'
+      +'<div style="flex:1"><div class="hint" style="font-size:12px;margin-bottom:4px"><span data-i18n="byok_model">Model</span></div>'
+      +'<select id="byokModel" style="width:100%"><option value="" data-i18n="byok_model_select">Select model...</option><option value="__custom__" data-i18n="byok_model_custom">Nhập tay...</option></select></div>'
+      +'<div style="flex:1"><div class="hint" style="font-size:12px;margin-bottom:4px"><span data-i18n="byok_rlen">Response length</span></div>'
+      +'<select id="byokRLen" style="width:100%"><option value="512">SHORT</option><option value="2048">BALANCED</option><option value="4096">LONG</option><option value="8192">VERY LONG</option></select></div>'
       +'</div>'
-      +'<div style="display:flex;gap:8px;align-items:center">'
-      +'<button class="btn ghost" id="byokDelete"><span data-i18n="byok_delete">Delete</span></button>'
+      // tốc T5-router: Model nhỏ cho việc dễ (tra từ). Text input, để trống = dùng model chính.
+      +'<div><div class="hint" style="font-size:12px;margin-bottom:4px"><span data-i18n="byok_small_model">Model nhỏ</span></div>'
+      +'<input type="text" id="byokSmallModel" style="width:100%" data-i18n-ph="byok_small_model_ph" placeholder="Tên model nhỏ (để trống = dùng model chính)" autocomplete="off" autocapitalize="off" spellcheck="false"></div>'
+      +'<div id="byokModelCustomWrap" style="display:none">'
+      +'<input id="byokModelCustom" style="width:100%" data-i18n-ph="byok_model_custom_ph" placeholder="Type model name...">'
+      +'</div>'
+      +'<div style="display:flex;gap:8px;align-items:center;justify-content:space-between">'
       +'<span class="hint" id="byokStatus" style="font-size:12px"></span>'
-      +'</div></div>';
+      +'<button class="btn danger-text" id="byokDelete" style="color:var(--pp-danger);background:none;border:none"><span data-i18n="byok_delete">Delete</span></button>'
+      +'</div>'
+      +'</div></div>'
+      +'</div>';
     // Init language dropdown (dynamically added)
     if(window.__ppLangDrop && window.__ppLangDrop.init){
       try{ window.__ppLangDrop.init(); }catch(e){}
     }
     var tt=$("themeToggle2");
-    if(tt) tt.addEventListener("click", function(){
-      var d=document.documentElement;
-      var dark=d.getAttribute("data-theme")!=="dark";
-      d.setAttribute("data-theme", dark?"dark":"light");
-      try{ localStorage.setItem("elab_theme", dark?"dark":"light"); }catch(e){}
+    // Dùng chung controller với nút theme ở header (đồng bộ body.dark + icon).
+    if(tt) tt.addEventListener("click", function(){ window.__elabTheme.toggle(); });
+    // Card interactions (redesign 2026-10-13): click card = action.
+    var lc=$("langCard"), lm=$("langDropSettings");
+    if(lc && lm) lc.addEventListener("click", function(e){
+      if(e.target.closest(".pp-langdrop-item")) return;
+      lm.style.display = lm.style.display === "none" ? "" : "none";
     });
-    // BYOK — AI key management (Phase 1). Dynamic import tránh circular.
-    (function(){
-      var keyInput=$("byokKey"), testBtn=$("byokTest"), delBtn=$("byokDelete"), statusEl=$("byokStatus");
-      if(!keyInput || !testBtn) return;
-      function T(k){ return (window.__elabT ? window.__elabT(k) : k); }
-      function setStatus(msg, ok){
-        if(statusEl){ statusEl.textContent=msg; statusEl.style.color=ok?"var(--pp-accent)":"var(--pp-danger)"; }
+    var tc=$("themeCard"), td=$("themeDesc");
+    function updThemeDesc(){
+      if(!td) return;
+      try{
+        var v = localStorage.getItem("pp_theme");
+        var lang = (localStorage.getItem("elab_uiLang")||"en").replace(/"/g,"");
+        var T = {
+          vi: {dark:"Tối", light:"Sáng", sys:"Theo hệ thống"},
+          en: {dark:"Dark", light:"Light", sys:"System"},
+          zh: {dark:"深色", light:"浅色", sys:"跟随系统"},
+          ko: {dark:"다크", light:"라이트", sys:"시스템 설정"}
+        }[lang] || {dark:"Dark", light:"Light", sys:"System"};
+        td.textContent = v === "dark" ? T.dark : v === "light" ? T.light : T.sys;
+      }catch(e){ td.textContent = "System"; }
+    }
+    if(tc) tc.addEventListener("click", function(){ window.__elabTheme.toggle(); setTimeout(updThemeDesc, 50); });
+    updThemeDesc();
+    // Áp dụng ngôn ngữ hiện tại cho nội dung settings vừa render (fix init bug 2026-10-13).
+    // loadSettingsInline() set HTML với text mặc định, cần localize ngay.
+    try{
+      var curLang = (localStorage.getItem("elab_uiLang")||"en").replace(/"/g,"");
+      if(window.__elabApplyShellLang) window.__elabApplyShellLang(curLang);
+      // Cập nhật label ngôn ngữ trên card theo lang hiện tại
+      var langCur = document.querySelector("#langCard .pp-langdrop-cur");
+      if(langCur){
+        var LANGS = {vi:"VI", en:"EN", zh:"中文", ko:"한국어"};
+        langCur.textContent = LANGS[curLang] || "VI";
       }
-      import('./js/core/aiClient.js').then(function(m){
-        m.getUserKey().then(function(k){
-          if(k) setStatus(T("byok_via_direct"), true);
-        }).catch(function(){});
+    }catch(e){}
+    // BYOK — dùng shared module (Gốc G1, 2026-10-12). Không còn code trùng lặp.
+    (function(){
+      import('./js/shared/byok.js').then(function(m){
+        var T = function(k){ return (window.__elabT ? window.__elabT(k) : k); };
+        m.initByok({ prefix: '', app: 'english', t: T });
       }).catch(function(){});
-      testBtn.addEventListener("click", function(){
-        var k=keyInput.value.trim();
-        if(!k){ setStatus(T("byok_test_fail")+"empty", false); return; }
-        testBtn.disabled=true; setStatus("...", true);
-        import('./js/core/aiClient.js').then(function(m){
-          return m.testUserKey(k).then(function(r){
-            if(r.ok){
-              return m.saveUserKey(k).then(function(){
-                keyInput.value="";
-                setStatus(T("byok_test_ok"), true);
-              });
-            }
-            setStatus(T("byok_test_fail")+r.error, false);
-          });
-        }).catch(function(e){
-          setStatus(T("byok_test_fail")+(e.message||"error"), false);
-        }).then(function(){ testBtn.disabled=false; });
-      });
-      if(delBtn) delBtn.addEventListener("click", function(){
-        import('./js/core/aiClient.js').then(function(m){
-          return m.deleteUserKey().then(function(){
-            keyInput.value="";
-            setStatus(T("byok_deleted"), true);
-          });
-        }).catch(function(){});
-      });
     })();
   }
-  // Inline books loader (Phase 3.4)
-  function loadBooksInline(){
-    var box=$("bookList");
-    if(!box) return;
-    var token=null;
-    try{ token=localStorage.getItem("elab_authToken")||localStorage.getItem("elab_token"); }catch(e){}
-    if(!token){
-      box.innerHTML='<div class="hint">Please log in to see your books.</div>';
-      return;
-    }
-    box.innerHTML='<div class="hint">Loading...</div>';
-    fetch("/api/books",{headers:{"Authorization":"Bearer "+token}}).then(function(r){return r.json();}).then(function(data){
-      var arr=data.books||[];
-      if(!arr.length){
-        box.innerHTML='<div class="hint">No books yet.</div>';
-        return;
-      }
-      box.innerHTML=arr.map(function(b){
-        return '<div class="card" style="margin-bottom:8px"><div style="font-weight:600">'+(b.title||"Untitled")+'</div></div>';
-      }).join("");
-    }).catch(function(){
-      box.innerHTML='<div class="hint">Load failed</div>';
-    });
-  }
+  // Menu tiles
   // Menu tiles
   document.querySelectorAll(".menutile, .pp-app-row[data-go]").forEach(function(b){
     b.addEventListener("click", function(){
@@ -440,61 +486,60 @@
   // Header buttons
   var ab=$("accountBtn"); if(ab) ab.addEventListener("click", function(){ switchTab("profile"); });
   var sb=$("settingsBtn"); if(sb) sb.addEventListener("click", function(){ switchTab("settings"); });
-  // Theme
+  // Theme: một chỗ duy nhất (window.__elabTheme, định nghĩa trong <head>).
+  // Các nút theme ở header, settings, trang login đều gọi toggle() này.
   var tb=$("themeBtn");
-  if(tb) tb.addEventListener("click", function(){
-    var d=document.documentElement;
-    var dark=d.getAttribute("data-theme")!=="dark";
-    d.setAttribute("data-theme", dark?"dark":"light");
-    try{ localStorage.setItem("elab_theme", dark?"dark":"light"); }catch(e){}
-  });
-  try{
-    var th=localStorage.getItem("elab_theme");
-    // FIT 8b-8: chưa có lựa chọn tay -> theo theme hệ thống
-    if(!th && window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches) th="dark";
-    if(th){
-      document.documentElement.setAttribute("data-theme", th);
-      // CSS dark dùng body.dark — phải set class ngay để không nháy
-      if(th==="dark") document.documentElement.classList.add("pp-dark");
-    }
-  }catch(e){}
-  // Đồng bộ body.dark khi body sẵn sàng
-  document.addEventListener("DOMContentLoaded", function(){
-    try{
-      var dark = document.documentElement.classList.contains("pp-dark") ||
-                 document.documentElement.getAttribute("data-theme")==="dark";
-      document.body.classList.toggle("dark", dark);
-    }catch(e){}
-  });
+  if(tb) tb.addEventListener("click", function(){ window.__elabTheme.toggle(); });
   // Language
   var I18N={
-    en:{app_title:"Read & Learn",home_scan:"Scan text",home_scan_d:"Snap a photo or paste English text",home_read:"Read",home_read_d:"Interactive reading, dictionary, pronunciation",home_audio:"Audio",home_audio_d:"Your created audio library",home_books:"Books",home_books_d:"Upload PDF/EPUB books to learn",home_progress:"Progress",home_progress_d:"Learning stats, vocabulary",scan_title:"Snap a page",scan_hint:"Take a photo of English text, or paste text below.",take_photo:"Take photo",gallery:"Gallery",paste_hint:"Paste English text here...",create_reading:"Create reading",explore:"Explore",menu_read:"Read",menu_audio:"Audio",menu_books:"Books",menu_progress:"My progress",audio_title:"Audio library",books_title:"Books",progress_title:"My progress",profile_title:"Profile",settings_title:"Settings",tab_scan:"Scan",tab_read:"Read",tab_audio:"Audio",tab_books:"Books",tab_progress:"Progress",no_reading:"No reading yet",no_reading_hint:"Go to the Scan tab to snap a photo or paste text, then your article will appear here.",byok_title:"AI key",byok_hint:"Paste your free AI key — AI calls go directly from your browser.",byok_placeholder:"Paste API key...",byok_test:"Test",byok_delete:"Delete",byok_saved:"Key saved",byok_test_ok:"Key works!",byok_test_fail:"Key failed: ",byok_deleted:"Key deleted",byok_via_direct:"Using your key",byok_via_server:"Using server"},
-    vi:{app_title:"Đọc & Học",home_scan:"Quét văn bản",home_scan_d:"Chụp ảnh hoặc dán text tiếng Anh",home_read:"Đọc bài",home_read_d:"Đọc tương tác, tra từ, nghe phát âm",home_audio:"Nghe audio",home_audio_d:"Thư viện audio đã tạo",home_books:"Sách",home_books_d:"Tải sách PDF/EPUB để học",home_progress:"Tiến độ",home_progress_d:"Thống kê học tập, từ vựng",scan_title:"Chụp một trang",scan_hint:"Chụp ảnh văn bản tiếng Anh, hoặc dán text bên dưới.",take_photo:"Chụp ảnh",gallery:"Thư viện",paste_hint:"Dán văn bản tiếng Anh vào đây...",create_reading:"Tạo bài đọc",explore:"Khám phá",menu_read:"Đọc",menu_audio:"Nghe",menu_books:"Sách",menu_progress:"Tiến độ",audio_title:"Thư viện audio",books_title:"Sách",progress_title:"Tiến độ của tôi",profile_title:"Hồ sơ",settings_title:"Cài đặt",tab_scan:"Quét",tab_read:"Đọc",tab_audio:"Nghe",tab_books:"Sách",tab_progress:"Tiến độ",no_reading:"Chưa có bài đọc",no_reading_hint:"Vào tab Quét để chụp ảnh hoặc dán text, bài viết sẽ hiện ở đây.",byok_title:"Khóa AI",byok_hint:"Dán khóa AI miễn phí của bạn — AI gọi trực tiếp từ trình duyệt.",byok_placeholder:"Dán khóa API...",byok_test:"Kiểm tra",byok_delete:"Xoá",byok_saved:"Đã lưu khóa",byok_test_ok:"Khóa hoạt động!",byok_test_fail:"Khóa lỗi: ",byok_deleted:"Đã xoá khóa",byok_via_direct:"Đang dùng khóa của bạn",byok_via_server:"Đang dùng server"},
-    zh:{app_title:"阅读与学习",home_scan:"扫描文本",home_scan_d:"拍照或粘贴英文文本",home_read:"阅读",home_read_d:"互动阅读、查词、听发音",home_audio:"音频",home_audio_d:"已创建的音频库",home_books:"书籍",home_books_d:"上传PDF/EPUB书籍学习",home_progress:"进度",home_progress_d:"学习统计、词汇",scan_title:"拍摄页面",scan_hint:"拍摄英文文本照片，或在下方粘贴文本。",take_photo:"拍照",gallery:"图库",paste_hint:"在此粘贴英文文本...",create_reading:"创建阅读",explore:"探索",menu_read:"阅读",menu_audio:"音频",menu_books:"书籍",menu_progress:"我的进度",audio_title:"音频库",books_title:"书籍",progress_title:"我的进度",profile_title:"个人资料",settings_title:"设置",tab_scan:"扫描",tab_read:"阅读",tab_audio:"音频",tab_books:"书籍",tab_progress:"进度",no_reading:"暂无阅读",no_reading_hint:"前往扫描选项卡拍照或粘贴文本，文章将显示在这里。",byok_title:"AI密钥",byok_hint:"粘贴您的免费AI密钥——AI直接从浏览器调用。",byok_placeholder:"粘贴API密钥...",byok_test:"测试",byok_delete:"删除",byok_saved:"已保存密钥",byok_test_ok:"密钥有效!",byok_test_fail:"密钥失败: ",byok_deleted:"已删除密钥",byok_via_direct:"正在使用您的密钥",byok_via_server:"正在使用服务器"},
-    ko:{app_title:"읽기 & 학습",home_scan:"텍스트 스캔",home_scan_d:"사진 찍기 또는 영어 텍스트 붙여넣기",home_read:"읽기",home_read_d:"인터랙티브 읽기, 사전, 발음 듣기",home_audio:"오디오",home_audio_d:"생성된 오디오 라이브러리",home_books:"도서",home_books_d:"PDF/EPUB 도서 업로드하여 학습",home_progress:"진도",home_progress_d:"학습 통계, 어휘",scan_title:"페이지 촬영",scan_hint:"영어 텍스트 사진을 찍거나 아래에 텍스트를 붙여넣으세요.",take_photo:"사진 찍기",gallery:"갤러리",paste_hint:"여기에 영어 텍스트 붙여넣기...",create_reading:"읽기 만들기",explore:"탐색",menu_read:"읽기",menu_audio:"오디오",menu_books:"도서",menu_progress:"내 진도",audio_title:"오디오 라이브러리",books_title:"도서",progress_title:"내 진도",profile_title:"프로필",settings_title:"설정",tab_scan:"스캔",tab_read:"읽기",tab_audio:"오디오",tab_books:"도서",tab_progress:"진도",no_reading:"읽을거리가 없습니다",no_reading_hint:"스캔 탭으로 이동하여 사진을 찍거나 텍스트를 붙여넣으면 글이 여기에 표시됩니다.",byok_title:"AI 키",byok_hint:"무료 AI 키를 붙여넣으세요 — AI가 브라우저에서 직접 호출됩니다.",byok_placeholder:"API 키 붙여넣기...",byok_test:"테스트",byok_delete:"삭제",byok_saved:"키 저장됨",byok_test_ok:"키가 작동합니다!",byok_test_fail:"키 실패: ",byok_deleted:"키 삭제됨",byok_via_direct:"내 키 사용 중",byok_via_server:"서버 사용 중"}
+    en:{app_title:"Read & Learn",home_scan:"Scan text",home_scan_d:"Snap a photo or paste English text",home_read:"Read",home_read_d:"Interactive reading, dictionary, pronunciation",home_audio:"Audio",home_audio_d:"Your created audio library",home_books:"Books",home_books_d:"Upload PDF/EPUB books to learn",home_progress:"Progress",home_progress_d:"Learning stats, vocabulary",scan_title:"Snap a page",scan_hint:"Take a photo of English text, or paste text below.",take_photo:"Take photo",gallery:"Gallery",paste_hint:"Paste English text here...",create_reading:"Create reading",explore:"Explore",menu_read:"Read",menu_audio:"Audio",menu_books:"Books",menu_progress:"My progress",audio_title:"Audio library",books_title:"Books",progress_title:"My progress",profile_title:"Profile",settings_title:"Settings",settings_lang:"Language",settings_theme:"Theme",tab_scan:"Scan",tab_read:"Read",tab_audio:"Audio",tab_books:"Books",tab_progress:"Progress",no_reading:"No reading yet",no_reading_hint:"Go to the Scan tab to snap a photo or paste text, then your article will appear here.",byok_title:"AI key",byok_hint:"Paste your free AI key.",byok_placeholder:"Paste API key...",byok_endpoint:"API endpoint",byok_endpoint_ph:"https://api.../v1",byok_test:"Test",byok_delete:"Delete",byok_model:"Model",byok_rlen:"Response length",byok_model_custom:"Enter manually...",byok_custom:"Custom settings for this app",byok_shared_hint:"Shared with Talk and Stocks",byok_custom_hint:"Using custom settings for English Lab, other apps unaffected",byok_model_custom_ph:"Type model name...",byok_model_select:"Select model...",aiExplain:"AI Explain",byok_saved:"Key saved",byok_test_ok:"Key works!",byok_test_fail:"Key failed: ",byok_deleted:"Key deleted",byok_via_direct:"Using your key",byok_via_server:"Using server",update_available:"New version available",update_btn:"Update",update_later:"Later",home_library:"Library",home_library_d:"Curated lessons by topic",home_admin:"Admin",home_admin_d:"User management",library_title:"Library",vocabReviewTitle:"Review vocabulary",vocabStartBtn:"Start review",back:"Back"},
+    vi:{app_title:"Đọc & Học",home_scan:"Quét văn bản",home_scan_d:"Chụp ảnh hoặc dán text tiếng Anh",home_read:"Đọc bài",home_read_d:"Đọc tương tác, tra từ, nghe phát âm",home_audio:"Nghe audio",home_audio_d:"Thư viện audio đã tạo",home_books:"Sách",home_books_d:"Tải sách PDF/EPUB để học",home_progress:"Tiến độ",home_progress_d:"Thống kê học tập, từ vựng",scan_title:"Chụp một trang",scan_hint:"Chụp ảnh văn bản tiếng Anh, hoặc dán text bên dưới.",take_photo:"Chụp ảnh",gallery:"Thư viện",paste_hint:"Dán văn bản tiếng Anh vào đây...",create_reading:"Tạo bài đọc",explore:"Khám phá",menu_read:"Đọc",menu_audio:"Nghe",menu_books:"Sách",menu_progress:"Tiến độ",audio_title:"Thư viện audio",books_title:"Sách",progress_title:"Tiến độ của tôi",profile_title:"Hồ sơ",settings_title:"Cài đặt",settings_lang:"Ngôn ngữ",settings_theme:"Giao diện",tab_scan:"Quét",tab_read:"Đọc",tab_audio:"Nghe",tab_books:"Sách",tab_progress:"Tiến độ",no_reading:"Chưa có bài đọc",no_reading_hint:"Vào tab Quét để chụp ảnh hoặc dán text, bài viết sẽ hiện ở đây.",byok_title:"Khóa AI",byok_hint:"Dán khóa AI miễn phí của bạn.",byok_placeholder:"Dán khóa API...",byok_endpoint:"Điểm cuối API",byok_endpoint_ph:"https://api.../v1",byok_test:"Kiểm tra",byok_delete:"Xoá",byok_model:"Model",byok_model_select:"Chọn model...",aiExplain:"AI giải thích",byok_saved:"Đã lưu khóa",byok_test_ok:"Khóa hoạt động!",byok_test_fail:"Khóa lỗi: ",byok_deleted:"Đã xoá khóa",byok_via_direct:"Đang dùng khóa của bạn",byok_via_server:"Đang dùng server",update_available:"Có bản mới",update_btn:"Cập nhật",update_later:"Để sau",home_library:"Thư viện",home_library_d:"Bài học curated theo chủ đề",home_admin:"Quản trị",home_admin_d:"Quản lý người dùng",library_title:"Thư viện",vocabReviewTitle:"Ôn từ vựng",vocabStartBtn:"Bắt đầu ôn",back:"Quay lại",byok_rlen:"Độ dài trả lời",byok_model_custom:"Nhập tay...",byok_model_custom_ph:"Gõ tên model...",byok_custom:"Cài đặt riêng cho app này",byok_shared_hint:"Đang dùng chung với Talk và Stocks",byok_custom_hint:"Đang dùng riêng cho English Lab, không ảnh hưởng app khác"},
+    zh:{app_title:"阅读与学习",home_scan:"扫描文本",home_scan_d:"拍照或粘贴英文文本",home_read:"阅读",home_read_d:"互动阅读、查词、听发音",home_audio:"音频",home_audio_d:"已创建的音频库",home_books:"书籍",home_books_d:"上传PDF/EPUB书籍学习",home_progress:"进度",home_progress_d:"学习统计、词汇",scan_title:"拍摄页面",scan_hint:"拍摄英文文本照片，或在下方粘贴文本。",take_photo:"拍照",gallery:"图库",paste_hint:"在此粘贴英文文本...",create_reading:"创建阅读",explore:"探索",menu_read:"阅读",menu_audio:"音频",menu_books:"书籍",menu_progress:"我的进度",audio_title:"音频库",books_title:"书籍",progress_title:"我的进度",profile_title:"个人资料",settings_title:"设置",settings_lang:"语言",settings_theme:"主题",tab_scan:"扫描",tab_read:"阅读",tab_audio:"音频",tab_books:"书籍",tab_progress:"进度",no_reading:"暂无阅读",no_reading_hint:"前往扫描选项卡拍照或粘贴文本，文章将显示在这里。",byok_title:"AI密钥",byok_hint:"粘贴您的免费AI密钥。",byok_placeholder:"粘贴API密钥...",byok_endpoint:"API端点",byok_endpoint_ph:"https://api.../v1",byok_test:"测试",byok_delete:"删除",byok_model:"模型",byok_rlen:"回答长度",byok_model_custom:"手动输入...",byok_custom:"此应用的自定义设置",byok_shared_hint:"与 Talk 和 Stocks 共享",byok_custom_hint:"English Lab 使用自定义设置，不影响其他应用",byok_model_custom_ph:"输入模型名称...",byok_model_select:"选择模型...",aiExplain:"AI 解释",byok_saved:"已保存密钥",byok_test_ok:"密钥有效!",byok_test_fail:"密钥失败: ",byok_deleted:"已删除密钥",byok_via_direct:"正在使用您的密钥",byok_via_server:"正在使用服务器",update_available:"有新版本",update_btn:"更新",update_later:"稍后",home_library:"图书馆",home_library_d:"按主题精选课程",home_admin:"管理",home_admin_d:"用户管理",library_title:"图书馆",vocabReviewTitle:"复习词汇",vocabStartBtn:"开始复习",back:"返回"},
+    ko:{app_title:"읽기 & 학습",home_scan:"텍스트 스캔",home_scan_d:"사진 찍기 또는 영어 텍스트 붙여넣기",home_read:"읽기",home_read_d:"인터랙티브 읽기, 사전, 발음 듣기",home_audio:"오디오",home_audio_d:"생성된 오디오 라이브러리",home_books:"도서",home_books_d:"PDF/EPUB 도서 업로드하여 학습",home_progress:"진도",home_progress_d:"학습 통계, 어휘",scan_title:"페이지 촬영",scan_hint:"영어 텍스트 사진을 찍거나 아래에 텍스트를 붙여넣으세요.",take_photo:"사진 찍기",gallery:"갤러리",paste_hint:"여기에 영어 텍스트 붙여넣기...",create_reading:"읽기 만들기",explore:"탐색",menu_read:"읽기",menu_audio:"오디오",menu_books:"도서",menu_progress:"내 진도",audio_title:"오디오 라이브러리",books_title:"도서",progress_title:"내 진도",profile_title:"프로필",settings_title:"설정",settings_lang:"언어",settings_theme:"테마",tab_scan:"스캔",tab_read:"읽기",tab_audio:"오디오",tab_books:"도서",tab_progress:"진도",no_reading:"읽을거리가 없습니다",no_reading_hint:"스캔 탭으로 이동하여 사진을 찍거나 텍스트를 붙여넣으면 글이 여기에 표시됩니다.",byok_title:"AI 키",byok_hint:"무료 AI 키를 붙여넣으세요.",byok_placeholder:"API 키 붙여넣기...",byok_endpoint:"API 엔드포인트",byok_endpoint_ph:"https://api.../v1",byok_test:"테스트",byok_delete:"삭제",byok_model:"모델",byok_rlen:"답변 길이",byok_model_custom:"직접 입력...",byok_custom:"이 앱의 사용자 설정",byok_shared_hint:"Talk 및 Stocks와 공유",byok_custom_hint:"English Lab에 사용자 설정 사용 중, 다른 앱에 영향 없음",byok_model_custom_ph:"모델 이름 입력...",byok_model_select:"모델 선택...",aiExplain:"AI 설명",byok_saved:"키 저장됨",byok_test_ok:"키가 작동합니다!",byok_test_fail:"키 실패: ",byok_deleted:"키 삭제됨",byok_via_direct:"내 키 사용 중",byok_via_server:"서버 사용 중",update_available:"새 버전 있음",update_btn:"업데이트",update_later:"나중에",home_library:"라이브러리",home_library_d:"주제별 큐레이션 레슨",home_admin:"관리",home_admin_d:"사용자 관리",library_title:"라이브러리",vocabReviewTitle:"어휘 복습",vocabStartBtn:"복습 시작",back:"뒤로"}
   };
-  function applyLang(l){
-    var d=I18N[l]||I18N.en;
+  // Quét dict inline vào các phần tử tĩnh của shell. Tách riêng để module
+  // (js/core/i18n.js) gọi chung khi đổi ngôn ngữ — dict inline mới là bản đầy
+  // đủ cho shell, dict module chỉ có key cho nội dung động (Chốt 2026-10-11).
+  function applyShellLang(l){
+    // Gốc i18n (G2): ưu tiên shared module, fallback dict inline (đang migrate dần).
+    var useShared = window.__elabI18n && window.__elabI18n.t;
+    if(useShared){
+      try{ window.__elabI18n.setLang(l); }catch(e){}
+    }
+    var d = useShared ? null : (I18N[l]||I18N.en);
     document.querySelectorAll("[data-i18n]").forEach(function(el){
       var k=el.getAttribute("data-i18n");
-      if(d[k]) el.textContent=d[k];
+      var v = useShared ? window.__elabI18n.t(k) : d[k];
+      if(v && v !== k) el.textContent=v;
+      else if(!useShared && d[k]) el.textContent=d[k];
     });
     document.querySelectorAll("[data-i18n-ph]").forEach(function(el){
       var k=el.getAttribute("data-i18n-ph");
-      if(d[k]) el.placeholder=d[k];
+      var v = useShared ? window.__elabI18n.t(k) : d[k];
+      if(v && v !== k) el.placeholder=v;
+      else if(!useShared && d[k]) el.placeholder=d[k];
     });
-    var lb=$("langBtn"); if(lb) lb.textContent=l.toUpperCase();
     document.documentElement.lang=l;
+  }
+  window.__elabApplyShellLang = applyShellLang;
+  function applyLang(l){
+    applyShellLang(l);
+    var lb=$("langBtn"); if(lb) lb.textContent=l.toUpperCase();
   }
   var lb=$("langBtn");
   if(lb) lb.addEventListener("click", function(){
+    // Module (js/core/i18n.js) là chuẩn duy nhất khi đã load; fallback khi chưa.
+    if(window.__elabCycleLang){ window.__elabCycleLang(); return; }
     var langs=["en","vi","zh","ko"], cur="en";
-    try{ cur=localStorage.getItem("elab_uiLang")||"en"; }catch(e){}
+    // Bóc ngoặc kép cho bản cũ từng lưu JSON ("\"vi\"").
+    try{ cur=(localStorage.getItem("elab_uiLang")||"en").replace(/"/g,""); }catch(e){}
+    if(langs.indexOf(cur)<0) cur="en";
     var nxt=langs[(langs.indexOf(cur)+1)%langs.length];
     try{ localStorage.setItem("elab_uiLang", nxt); }catch(e){}
     applyLang(nxt);
   });
-  try{ applyLang(localStorage.getItem("elab_uiLang")||"en"); }catch(e){ applyLang("en"); }
+  // Bóc ngoặc kép cho bản cũ từng lưu JSON ("\"vi\"") để <html lang> không dính quote.
+  try{ applyLang(((localStorage.getItem("elab_uiLang")||"en")+"").replace(/"/g,"")||"en"); }catch(e){ applyLang("en"); }
   // Expose for lang-dropdown.js
   window.__elabSetLang = applyLang;
   // Expose translator for dynamic content (BYOK status etc.)
@@ -505,7 +550,9 @@
       return d[k]||k;
     }catch(e){ return k; }
   };
-  // Auto-reload on new build
+  // Kiểm tra bản mới 1 lần sau khi trang load xong (RULES 8).
+  // KHÔNG setInterval: tab mở lâu mà tự reload sẽ làm mất dữ liệu user đang
+  // nhập (Chốt A 2026-10-11). Khi đang dùng mà có bản mới, SW banner đảm nhiệm.
   function checkBuild(){
     try{
       fetch(location.pathname+"?cb="+Date.now(),{cache:"no-store"}).then(function(r){return r.text();}).then(function(t){
@@ -516,49 +563,49 @@
   }
   if(document.readyState==="complete"){ setTimeout(checkBuild,2000); }
   else{ window.addEventListener("load", function(){ setTimeout(checkBuild,2000); }); }
-  setInterval(checkBuild,30000);
-  // SW auto-update (Henrry 2026-10-11): tự update, không cần user bấm.
+  // SW update (Chốt A 2026-10-11): hiện banner, user bấm "Cập nhật" mới update.
+  // Không tự SKIP_WAITING, không tự reload (user đang nhập liệu sẽ mất dữ liệu).
   if("serviceWorker" in navigator){
     navigator.serviceWorker.register("sw.js").then(function(reg){
       reg.addEventListener("updatefound", function(){
         var newWorker = reg.installing;
         newWorker.addEventListener("statechange", function(){
           if(newWorker.state === "installed" && navigator.serviceWorker.controller){
-            newWorker.postMessage({type: "SKIP_WAITING"});
+            showUpdateBanner(newWorker);
           }
         });
       });
     }).catch(function(){});
-    navigator.serviceWorker.addEventListener("controllerchange", function(){
-      location.reload();
-    });
   }
-  // Banner "Có bản mới" - hiện inline, không popup/modal (chuẩn big tech)
+  // Banner "Có bản mới" - hiện inline, không popup/modal (chuẩn big tech, Chốt A 2026-10-11)
   function showUpdateBanner(newWorker){
     if(document.getElementById("sw-update-banner")) return;
+    var _t = window.__elabT || function(k){ return k; };
     var banner = document.createElement("div");
     banner.id = "sw-update-banner";
     banner.style.cssText = "position:fixed;top:0;left:0;right:0;z-index:9999;background:var(--pp-accent,#0d9d6c);color:#fff;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:var(--pp-text-sm);box-shadow:0 2px 8px rgba(0,0,0,.15);";
     var msg = document.createElement("span");
-    msg.textContent = "Có bản mới";
+    msg.textContent = _t("update_available");
     var btns = document.createElement("div");
     btns.style.cssText = "display:flex;gap:8px;flex-shrink:0;";
     var btnUpdate = document.createElement("button");
-    btnUpdate.textContent = "Cập nhật";
+    btnUpdate.textContent = _t("update_btn");
     btnUpdate.style.cssText = "background:#fff;color:var(--pp-accent,#0d9d6c);border:none;border-radius:8px;padding:6px 14px;font-weight:600;cursor:pointer;";
     btnUpdate.addEventListener("click", function(){
       if(newWorker) newWorker.postMessage({type: "SKIP_WAITING"});
       location.reload();
     });
     var btnLater = document.createElement("button");
-    btnLater.textContent = "Để sau";
+    btnLater.textContent = _t("update_later");
     btnLater.style.cssText = "background:transparent;color:#fff;border:1px solid rgba(255,255,255,.5);border-radius:8px;padding:6px 14px;cursor:pointer;";
-    btnLater.addEventListener("click", function(){ banner.remove(); });
+    btnLater.addEventListener("click", function(){ document.body.style.paddingTop = ""; banner.remove(); });
     btns.appendChild(btnUpdate);
     btns.appendChild(btnLater);
     banner.appendChild(msg);
     banner.appendChild(btns);
     document.body.prepend(banner);
+  // 8b 2026-10-12 BUG-3: banner fixed top che nút — đẩy body xuống
+  document.body.style.paddingTop = banner.offsetHeight + 'px';
   }
 })();
 </script>
