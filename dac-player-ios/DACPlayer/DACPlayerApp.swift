@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftData
 import GoogleSignIn
 
 @main
@@ -38,5 +39,6 @@ struct DACPlayerApp: App {
                     GIDSignIn.sharedInstance.handle(url)
                 }
         }
+        .modelContainer(for: [CachedFolder.self])
     }
 }
