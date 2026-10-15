@@ -887,6 +887,29 @@ export async function hStockPublish(request, env){
 }
 
 
+/* ---------- internal: Modal bao loi -> Telegram ---------- */
+export async function hModalAlert(request, env){
+  const got = request.headers.get("X-Publish-Secret") || "";
+  if(!env.STOCK_PUBLISH_SECRET || got !== env.STOCK_PUBLISH_SECRET) return jerr("Forbidden", 403);
+  let body;
+  try{ body = await request.json(); }catch(e){ return jerr("Bad JSON", 400); }
+  const token = env.TELEGRAM_BOT_TOKEN || "";
+  const chatId = env.TELEGRAM_CHAT_ID || "";
+  if(!token || !chatId) return jerr("Telegram not configured", 500);
+  const when = body.time || new Date().toISOString();
+  const text = "🚨 " + (body.fn || "modal-fn") + " thất bại (Modal)\n🕘 " + when + "\nChi tiết: " + (body.detail || "?");
+  try{
+    const r = await fetch("https://api.telegram.org/bot" + token + "/sendMessage", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: chatId, text }),
+    });
+    if(!r.ok) return jerr("Telegram send failed", 502);
+  }catch(e){ return jerr("Telegram error", 502); }
+  return sJson({ok:true});
+}
+
+
 /* ---------- internal: du lieu cho script bao cao Telegram ---------- */
 export async function hStockReportData(request, env){
   const got = request.headers.get("X-Publish-Secret") || "";
