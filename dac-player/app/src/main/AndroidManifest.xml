@@ -62,6 +62,10 @@
         <activity
             android:name=".FolderActivity"
             android:exported="false" />
+        <!-- v3.0: Màn hình quản lý bộ nhớ offline. Không exported. -->
+        <activity
+            android:name=".StorageActivity"
+            android:exported="false" />
         <!-- 4.7: Quản lý phiên đăng nhập. Không exported. -->
         <activity
             android:name=".SessionsActivity"
