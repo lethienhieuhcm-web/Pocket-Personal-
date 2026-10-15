@@ -9,7 +9,7 @@ function jerr(msg, code){ return new Response(JSON.stringify({error: msg}), {sta
 function jok(d){ return new Response(JSON.stringify(d), {headers:{"Content-Type":"application/json"}}); }
 
 // Get OAuth config from env
-function getOAuthConfig(env){
+export function getOAuthConfig(env){
   return {
     client_id: env.GOOGLE_CLIENT_ID || "",
     client_secret: env.GOOGLE_CLIENT_SECRET || "",

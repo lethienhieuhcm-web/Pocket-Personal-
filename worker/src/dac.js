@@ -19,6 +19,7 @@ import { jerr, sJson } from './utils.js';
 import { drizzle } from "drizzle-orm/d1";
 import { eq } from "drizzle-orm";
 import { driveTokens } from "./schema.js";
+import { getOAuthConfig } from "./drive.js";
 
 /**
  * Lấy Drive token: ưu tiên header X-Drive-Token (client gửi),
@@ -31,13 +32,32 @@ async function getDriveToken(request, env, email){
   if(!email) return null;
   try{
     const db = drizzle(env.DB);
-    const rows = await db.select({accessToken: driveTokens.accessToken, expiresAt: driveTokens.expiresAt})
+    const rows = await db.select()
       .from(driveTokens).where(eq(driveTokens.email, email.toLowerCase())).limit(1);
-    if(rows.length && rows[0].accessToken){
-      // Kiểm tra hết hạn (cho phép lệch 60s)
-      if(rows[0].expiresAt && rows[0].expiresAt < Date.now()-60000) return null;
-      return rows[0].accessToken;
-    }
+    const row = rows[0];
+    if(!row || !row.accessToken) return null;
+    // Còn hạn thì dùng luôn
+    if(row.expiresAt && Date.now() < row.expiresAt - 60000) return row.accessToken;
+    // Hết hạn: tự refresh bằng refresh_token (chuẩn OAuth2 như Google/Spotify)
+    if(!row.refreshToken) return null;
+    const cfg = getOAuthConfig(env);
+    if(!cfg.client_secret) return null;
+    const r = await fetch("https://oauth2.googleapis.com/token", {
+      method: "POST",
+      headers: {"Content-Type":"application/x-www-form-urlencoded"},
+      body: new URLSearchParams({
+        refresh_token: row.refreshToken,
+        client_id: cfg.client_id,
+        client_secret: cfg.client_secret,
+        grant_type: "refresh_token",
+      }).toString(),
+    });
+    if(!r.ok) return null;
+    const t = await r.json();
+    await db.update(driveTokens)
+      .set({ accessToken: t.access_token, expiresAt: Date.now()+t.expires_in*1000 })
+      .where(eq(driveTokens.email, email.toLowerCase()));
+    return t.access_token;
   }catch(e){}
   return null;
 }
