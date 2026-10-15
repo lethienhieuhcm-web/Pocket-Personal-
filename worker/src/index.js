@@ -26,6 +26,8 @@ function addSecurityHeaders(h){
   h.set("X-Frame-Options", "SAMEORIGIN");
   h.set("X-Content-Type-Options", "nosniff");
   h.set("Referrer-Policy", "strict-origin-when-cross-origin");
+  // CSP: chỉ cho phép tài nguyên từ chính origin + inline script/style (app dùng inline)
+  h.set("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; media-src 'self' https:;");
   return h;
 }
 /* ============================================================
