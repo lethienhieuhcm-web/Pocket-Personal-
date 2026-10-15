@@ -308,28 +308,6 @@ async function smartSync(force){
 
 // Nút đồng bộ thủ công (trong header, nhỏ)
 document.getElementById('btnSync').onclick = ()=> smartSync(true);
-  const btn = document.getElementById('btnSync');
-  const st = document.getElementById('syncStatus');
-  btn.disabled = true;
-  btn.textContent = '⏳ Đang quét...';
-  st.style.display = 'block';
-  st.textContent = 'Đang quét Drive, có thể mất vài phút với thư viện lớn...';
-  try{
-    const r = await api('/api/dac/sync', {method:'POST'});
-    if(!r){ btn.disabled=false; btn.textContent='🔄 Đồng bộ'; return; }
-    const j = await r.json();
-    st.textContent = 'Xong! Đã quét ' + (j.synced||0) + '/' + (j.total||0) + ' file.';
-    libraryCache = null;
-    if(currentTab === 'songs') loadLibrary();
-    else if(currentTab === 'folders') loadFolder('root');
-    else if(currentTab === 'albums') loadAlbums();
-    else if(currentTab === 'artists') loadArtists();
-  }catch(e){
-    st.textContent = 'Lỗi đồng bộ. Thử lại sau.';
-  }
-  btn.disabled = false;
-  btn.textContent = '🔄 Đồng bộ';
-};
 
 (async ()=>{
   // Dọn ?drive=ok sau OAuth callback
