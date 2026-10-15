@@ -8,7 +8,7 @@ import {handleAnalytics, handleInsights, handleBankGet, handleBankPost, handleRe
 import {handleRegister, handleSendCode, handleVerifyCode, handleLogin, handleLogout, handleMe, handleGoogleLogin, handleGoogleCallback, handleGoogleIdToken, handleListSessions, handleRevokeSession, handleVerifyEmail, handleResendVerification, handleForgotPassword, handleResetPassword, handleResetPasswordPage } from './auth.js';
 import {handleGetPlan, handleGetUsage, handleSetPlan} from './billing.js';
 import {handleDriveAuthUrl, handleDriveCallback, handleDriveStatus, handleDriveDisconnect, handleDriveMusic, handleDriveStream, handleDriveUpload} from './drive.js';
-import {handleDacMusic, handleDacStream, handleDacResolve, handleDacCopy, handleDacFolders, handleDacSync, handleDacSearch, handleDacPlaylistList, handleDacPlaylistCreate, handleDacPlaylistDelete, handleDacPlaylistGet, handleDacPlaylistSetItems} from './dac.js';
+import {handleDacMusic, handleDacStream, handleDacResolve, handleDacCopy, handleDacFolders, handleDacSync, handleDacSearch, handleDacDriveStatus, handleDacPlaylistList, handleDacPlaylistCreate, handleDacPlaylistDelete, handleDacPlaylistGet, handleDacPlaylistSetItems} from './dac.js';
 import {handleSpotifyAuthUrl, handleSpotifyCallback, handleSpotifyStatus, handleSpotifySearch} from './spotify.js';
 import {handleBrowse, handleBrowseWs} from './browser.js';
 import { drizzle } from "drizzle-orm/d1";
@@ -95,6 +95,7 @@ const ROUTES = [
   ['POST',   '/api/dac/sync',        handleDacSync,            'user'],
   ['GET',    '/api/dac/stream/*',    handleDacStream,            'user'],
   ['GET',    '/api/dac/search',      handleDacSearch,            'user'],
+  ['GET',    '/api/dac/drive-status', handleDacDriveStatus,       'user'],
   // --- 4.9: playlist D1 (đồng bộ 2 máy) ---
   ['GET',    '/api/dac/playlists',   handleDacPlaylistList,        'user'],
   ['POST',   '/api/dac/playlists',   handleDacPlaylistCreate,      'user'],
