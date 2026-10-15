@@ -17,11 +17,25 @@ struct Track: Identifiable, Codable, Hashable {
     let mimeType: String
     /// 4.8: artist parse từ tên file; rỗng nếu không khớp quy ước.
     var artist: String = ""
+    /// Redesign 80/20: album từ /api/dac/library
+    var album: String = ""
 
     /// Tên hiển thị: "Nghệ sĩ - Tên bài" khi có artist.
     var displayTitle: String {
         artist.isEmpty ? title : "\(artist) - \(title)"
     }
+}
+
+private struct LibraryFile: Codable {
+    let id: String
+    let title: String
+    let artist: String
+    let album: String
+    let size: Int64
+    let mimeType: String
+}
+private struct LibraryResponse: Codable {
+    let files: [LibraryFile]
 }
 
 private struct MusicCache: Codable {
@@ -207,6 +221,26 @@ class MusicApiClient: ObservableObject {
                 throw MusicError.message("API lỗi: HTTP \(code)")
             }
         }
+    }
+
+    /// Redesign 80/20: lấy từ /api/dac/library (có artist/title/album)
+    @discardableResult
+    func listLibrary(forceRefresh: Bool = false) async throws -> [Track] {
+        if !forceRefresh, let cached = try? loadCache(), !cached.isEmpty {
+            tracks = cached
+            return cached
+        }
+        let data = try await get("/api/dac/library?limit=200")
+        let resp = try JSONDecoder().decode(LibraryResponse.self, from: data)
+        let list = resp.files.map { f -> Track in
+            var t = Track(id: f.id, title: f.title, size: f.size, mimeType: f.mimeType)
+            t.artist = f.artist
+            t.album = f.album
+            return t
+        }
+        saveCache(list)
+        tracks = list
+        return list
     }
 
     /// Lấy danh sách nhạc từ Drive qua Worker. Cache 24h, forceRefresh để bỏ qua.

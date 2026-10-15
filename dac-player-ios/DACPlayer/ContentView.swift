@@ -59,6 +59,8 @@ struct LibraryView: View {
     @State private var isLoading = false
     @State private var showPlayer = false
     @State private var showImport = false
+    /// Redesign 80/20: 0=Bài hát, 1=Album, 2=Nghệ sĩ
+    @State private var libraryTab = 0
 
     private var visibleTracks: [Track] {
         searchText.isEmpty ? api.tracks : api.searchOffline(searchText)
@@ -90,6 +92,14 @@ struct LibraryView: View {
                 } else if isLoading && api.tracks.isEmpty {
                     ProgressView("Đang tải danh sách nhạc…")
                 } else {
+                    Picker("", selection: $libraryTab) {
+                        Text("Bài hát").tag(0)
+                        Text("Album").tag(1)
+                        Text("Nghệ sĩ").tag(2)
+                    }
+                    .pickerStyle(.segmented)
+                    .padding(.horizontal)
+                    if libraryTab == 0 {
                     List(visibleTracks) { track in
                         Button {
                             Task {
@@ -113,6 +123,21 @@ struct LibraryView: View {
                     .searchable(text: $searchText, prompt: "Tìm theo tên bài")
                     .refreshable {
                         await reload(force: true)
+                    }
+                    } else if libraryTab == 1 {
+                        AlbumListView(tracks: api.tracks, onSelect: { track, all in
+                            Task {
+                                await engine.playWithQueue(track, from: all, via: api)
+                                showPlayer = true
+                            }
+                        })
+                    } else {
+                        ArtistListView(tracks: api.tracks, onSelect: { track, all in
+                            Task {
+                                await engine.playWithQueue(track, from: all, via: api)
+                                showPlayer = true
+                            }
+                        })
                     }
                 }
             }
@@ -148,7 +173,7 @@ struct LibraryView: View {
         isLoading = true
         defer { isLoading = false }
         do {
-            try await api.listMusic(forceRefresh: force)
+            try await api.listLibrary(forceRefresh: force)
         } catch MusicError.driveTokenInvalid {
             // Drive token sai/hết hạn → về trạng thái "chưa kết nối",
             // user kết nối lại thay vì bị báo nhầm "hết phiên đăng nhập".
@@ -164,6 +189,109 @@ struct LibraryView: View {
         let mb = Double(bytes) / 1_048_576
         if mb >= 1 { return String(format: "%.1f MB", mb) }
         return String(format: "%d KB", max(bytes / 1024, 1))
+    }
+}
+
+
+/// Redesign 80/20: list Album nhóm từ tracks
+struct AlbumListView: View {
+    let tracks: [Track]
+    let onSelect: (Track, [Track]) -> Void
+    @State private var selectedAlbum: String? = nil
+
+    private var grouped: [(name: String, tracks: [Track])] {
+        let g = Dictionary(grouping: tracks) { $0.album.isEmpty ? "(Chưa rõ album)" : $0.album }
+        return g.map { (name: $0.key, tracks: $0.value) }.sorted { $0.name < $1.name }
+    }
+
+    var body: some View {
+        if let album = selectedAlbum,
+           let group = grouped.first(where: { $0.name == album }) {
+            List(group.tracks) { track in
+                Button {
+                    onSelect(track, group.tracks)
+                } label: {
+                    HStack(spacing: 12) {
+                        TrackArtworkView(track: track)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(track.displayTitle).lineLimit(1)
+                            Text(track.album).font(.footnote).foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            }
+            .navigationTitle(album)
+            .navigationBarTitleDisplayMode(.inline)
+        } else {
+            List(grouped, id: \.name) { group in
+                Button {
+                    selectedAlbum = group.name
+                } label: {
+                    HStack(spacing: 12) {
+                        Text("💿").font(.title2)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(group.name).lineLimit(1)
+                            Text("\(group.tracks.count) bài")
+                                .font(.footnote).foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// Redesign 80/20: list Nghệ sĩ nhóm từ tracks
+struct ArtistListView: View {
+    let tracks: [Track]
+    let onSelect: (Track, [Track]) -> Void
+    @State private var selectedArtist: String? = nil
+
+    private var grouped: [(name: String, tracks: [Track])] {
+        let g = Dictionary(grouping: tracks) { $0.artist.isEmpty ? "(Chưa rõ nghệ sĩ)" : $0.artist }
+        return g.map { (name: $0.key, tracks: $0.value) }.sorted { $0.name < $1.name }
+    }
+
+    var body: some View {
+        if let artist = selectedArtist,
+           let group = grouped.first(where: { $0.name == artist }) {
+            List(group.tracks) { track in
+                Button {
+                    onSelect(track, group.tracks)
+                } label: {
+                    HStack(spacing: 12) {
+                        TrackArtworkView(track: track)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(track.displayTitle).lineLimit(1)
+                            Text(track.artist).font(.footnote).foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            }
+            .navigationTitle(artist)
+            .navigationBarTitleDisplayMode(.inline)
+        } else {
+            List(grouped, id: \.name) { group in
+                Button {
+                    selectedArtist = group.name
+                } label: {
+                    HStack(spacing: 12) {
+                        Text("👤").font(.title2)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(group.name).lineLimit(1)
+                            Text("\(group.tracks.count) bài")
+                                .font(.footnote).foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+        }
     }
 }
 
