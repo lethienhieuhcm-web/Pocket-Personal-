@@ -1,4 +1,7 @@
 // worker/src/vocab.js — vocabulary review (spaced repetition).
+import { drizzle } from "drizzle-orm/d1";
+import { eq, and, lte, asc, sql } from "drizzle-orm";
+import { vocabReviews } from "./schema.js";
 function jerr(msg, code){ return new Response(JSON.stringify({error: msg}), {status: code||400, headers:{"Content-Type":"application/json"}}); }
 function jok(d){ return new Response(JSON.stringify(d), {headers:{"Content-Type":"application/json"}}); }
 
@@ -14,10 +17,14 @@ export async function handleVocabAdd(request, env){
   if(!word) return jerr("Missing word", 400);
   const now = Date.now();
   try{
-    await env.DB.prepare(`INSERT INTO vocab_reviews (email, word, meaning, next_review, interval_days, reviews, correct, updated_at)
-      VALUES (?, ?, ?, ?, 1, 0, 0, ?)
-      ON CONFLICT(email, word) DO UPDATE SET meaning=excluded.meaning, updated_at=excluded.updated_at`)
-      .bind(s.email, word, meaning, now, now).run();
+    const db = drizzle(env.DB);
+    await db.insert(vocabReviews).values({
+      email: s.email, word, meaning, nextReview: now,
+      intervalDays: 1, reviews: 0, correct: 0, updatedAt: now,
+    }).onConflictDoUpdate({
+      target: [vocabReviews.email, vocabReviews.word],
+      set: { meaning, updatedAt: now },
+    });
   }catch(e){ return jerr("DB error", 500); }
   return jok({ok: true});
 }
@@ -29,10 +36,14 @@ export async function handleVocabDue(request, env){
   if(!s) return jerr("Not logged in", 401);
   const now = Date.now();
   try{
-    const rows = await env.DB.prepare(
-      "SELECT word, meaning, interval_days, reviews, correct FROM vocab_reviews WHERE email=? AND next_review<=? ORDER BY next_review ASC LIMIT 20"
-    ).bind(s.email, now).all();
-    return jok({words: rows.results || []});
+    const db = drizzle(env.DB);
+    const rows = await db.select({
+      word: vocabReviews.word, meaning: vocabReviews.meaning,
+      interval_days: vocabReviews.intervalDays, reviews: vocabReviews.reviews, correct: vocabReviews.correct,
+    }).from(vocabReviews)
+      .where(and(eq(vocabReviews.email, s.email), lte(vocabReviews.nextReview, now)))
+      .orderBy(asc(vocabReviews.nextReview)).limit(20);
+    return jok({words: rows});
   }catch(e){ return jerr("DB error", 500); }
 }
 
@@ -47,16 +58,24 @@ export async function handleVocabReview(request, env){
   const remembered = !!b.remembered;
   if(!word) return jerr("Missing word", 400);
   try{
-    const row = await env.DB.prepare(
-      "SELECT interval_days, reviews, correct FROM vocab_reviews WHERE email=? AND word=?"
-    ).bind(s.email, word).first();
+    const db = drizzle(env.DB);
+    const rows = await db.select({
+      interval_days: vocabReviews.intervalDays, reviews: vocabReviews.reviews, correct: vocabReviews.correct,
+    }).from(vocabReviews)
+      .where(and(eq(vocabReviews.email, s.email), eq(vocabReviews.word, word))).limit(1);
+    const row = rows[0];
     if(!row) return jerr("Word not found", 404);
     // Spaced repetition: double interval if remembered, reset to 1 if not
     const newInterval = remembered ? Math.min((row.interval_days || 1) * 2, 60) : 1;
     const nextReview = Date.now() + newInterval * 86400000;
-    await env.DB.prepare(
-      "UPDATE vocab_reviews SET interval_days=?, next_review=?, reviews=reviews+1, correct=correct+?, updated_at=? WHERE email=? AND word=?"
-    ).bind(newInterval, nextReview, remembered ? 1 : 0, Date.now(), s.email, word).run();
+    await db.update(vocabReviews)
+      .set({
+        intervalDays: newInterval, nextReview,
+        reviews: sql`${vocabReviews.reviews} + 1`,
+        correct: sql`${vocabReviews.correct} + ${remembered ? 1 : 0}`,
+        updatedAt: Date.now(),
+      })
+      .where(and(eq(vocabReviews.email, s.email), eq(vocabReviews.word, word)));
     return jok({ok: true, next_interval: newInterval});
   }catch(e){ return jerr("DB error", 500); }
 }

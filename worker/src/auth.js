@@ -1,5 +1,5 @@
 import { jerr, randToken, sJson } from './utils.js';
-import { dbGetUser, dbPutUser, dbGetSession, dbPutSession, dbDeleteSession, dbCountUsers } from './db.js';
+import { dbGetUser, dbPutUser, dbDeleteUser, dbGetSession, dbPutSession, dbDeleteSession, dbCountUsers, dbGetUserByGoogleSub } from './db.js';
 import { drizzle } from "drizzle-orm/d1";
 import { eq, and, gt, ne, asc, desc, lt, sql } from "drizzle-orm";
 import { sessions, rateLimits } from "./schema.js";
@@ -764,12 +764,20 @@ export async function handleGoogleIdToken(request, env){
   if(!idToken) return jerr("Missing idToken", 400);
 
   // 1. Parse JWT (header.payload.signature)
+  // base64url trong JWT không có padding ("=") — phải bù đủ bội số 4
+  // trước khi atob, nếu không token hợp lệ vẫn bị từ chối.
   const parts = idToken.split(".");
   if(parts.length !== 3) return jerr("invalid_token", 401);
   let header, payload;
+  const b64urlToBytes = (s) => {
+    let b = s.replace(/-/g, "+").replace(/_/g, "/");
+    while(b.length % 4) b += "=";
+    return Uint8Array.from(atob(b), c => c.charCodeAt(0));
+  };
   try{
-    header = JSON.parse(atob(parts[0].replace(/-/g, "+").replace(/_/g, "/")));
-    payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
+    const td = new TextDecoder();
+    header = JSON.parse(td.decode(b64urlToBytes(parts[0])));
+    payload = JSON.parse(td.decode(b64urlToBytes(parts[1])));
   }catch(e){ return jerr("invalid_token", 401); }
 
   // 2. Fetch Google JWKS, tìm key theo kid
@@ -790,7 +798,7 @@ export async function handleGoogleIdToken(request, env){
       false, ["verify"]
     );
     const data = new TextEncoder().encode(parts[0] + "." + parts[1]);
-    const sig = Uint8Array.from(atob(parts[2].replace(/-/g, "+").replace(/_/g, "/")), c => c.charCodeAt(0));
+    const sig = b64urlToBytes(parts[2]);
     const valid = await crypto.subtle.verify("RSASSA-PKCS1-v1_5", key, sig, data);
     if(!valid) return jerr("invalid_token", 401);
   }catch(e){ return jerr("invalid_token", 401); }
@@ -798,9 +806,12 @@ export async function handleGoogleIdToken(request, env){
   // 4. Verify claims (theo checklist Google)
   const now = Math.floor(Date.now() / 1000);
   const aud = String(payload.aud || "");
-  // aud phải là Web client ID của mình (config trong Worker secret GOOGLE_WEB_CLIENT_ID)
-  const expectedAud = env.GOOGLE_WEB_CLIENT_ID || "";
-  if(!expectedAud || aud !== expectedAud) return jerr("invalid_token", 401);
+  // aud phải là một trong các client ID của mình:
+  // Android dùng Web client ID (GOOGLE_WEB_CLIENT_ID),
+  // iOS dùng iOS client ID (GOOGLE_IOS_CLIENT_ID) — thêm 2026-10-14.
+  const allowedAuds = [env.GOOGLE_WEB_CLIENT_ID, env.GOOGLE_IOS_CLIENT_ID]
+    .filter(v => typeof v === "string" && v.length > 0);
+  if(allowedAuds.length === 0 || !allowedAuds.includes(aud)) return jerr("invalid_token", 401);
   const iss = String(payload.iss || "");
   if(iss !== "https://accounts.google.com" && iss !== "accounts.google.com"){
     return jerr("invalid_token", 401);
@@ -814,21 +825,31 @@ export async function handleGoogleIdToken(request, env){
   if(!email || !sub) return jerr("invalid_token", 401);
 
   // 5. Tìm hoặc tạo user
-  // - google_sub đã có → login
+  // - google_sub đã có (lookup độc lập theo sub, vì sub ổn định hơn email) → login
   // - email đã tồn tại + email_verified → link (thêm google_sub, giữ password)
   // - mới → tạo user (verified=true, auth_provider='google')
-  let u = await getUser(env, email);
+  let u = await dbGetUserByGoogleSub(env, sub);
   if(u){
-    // Link nếu chưa có google_sub
-    if(!u.google_sub){
-      u.google_sub = sub;
-      u.auth_provider = u.auth_provider || "password"; // giữ provider cũ, thêm google
+    // Đã từng đăng nhập Google. Google có thể đổi email của user (sub giữ nguyên)
+    // → migrate sang key email mới, xoá row cũ để không còn 2 account.
+    const storedEmail = String(u.email || "").toLowerCase();
+    if(storedEmail && storedEmail !== email){
+      u.email = email;
       await dbPutUser(env, u);
-    } else if(u.google_sub !== sub){
-      // google_sub khác → token không khớp user (chặn confused deputy)
-      return jerr("invalid_token", 401);
+      await dbDeleteUser(env, storedEmail);
     }
   } else {
+    u = await getUser(env, email);
+  }
+  if(u && !u.google_sub){
+    // Link nếu chưa có google_sub
+    u.google_sub = sub;
+    u.auth_provider = u.auth_provider || "password"; // giữ provider cũ, thêm google
+    await dbPutUser(env, u);
+  } else if(u && u.google_sub && u.google_sub !== sub){
+    // google_sub khác → token không khớp user (chặn confused deputy)
+    return jerr("invalid_token", 401);
+  } else if(!u){
     // User mới từ Google — email đã verify bởi Google nên verified=true
     const salt = btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(16))));
     u = {

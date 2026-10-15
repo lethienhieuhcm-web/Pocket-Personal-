@@ -10,8 +10,16 @@ export function checkRate(ip) {
   return rec.count <= 300;
 }
 
-export function jerr(msg, status) {
-  return new Response(JSON.stringify({ error: msg }), { status, headers: { "Content-Type": "application/json" } });
+export function jerr(msg, status, extra) {
+  return new Response(JSON.stringify(Object.assign({ error: msg }, extra || {})), {
+    status,
+    headers: {
+      "Content-Type": "application/json",
+      "X-Content-Type-Options": "nosniff",
+      "X-Frame-Options": "SAMEORIGIN",
+      "Referrer-Policy": "strict-origin-when-cross-origin",
+    }
+  });
 }
 
 export function fetchTimeout(url, ms, opts={}){
@@ -30,6 +38,14 @@ export function randToken(n=32){
 }
 
 export function sJson(data, status){
-  return new Response(JSON.stringify(data), {status: status||200, headers:{"Content-Type":"application/json"}});
+  return new Response(JSON.stringify(data), {
+    status: status||200,
+    headers: {
+      "Content-Type": "application/json",
+      "X-Content-Type-Options": "nosniff",
+      "X-Frame-Options": "SAMEORIGIN",
+      "Referrer-Policy": "strict-origin-when-cross-origin",
+    }
+  });
 }
 

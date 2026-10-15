@@ -1,6 +1,21 @@
 // worker/src/billing.js — subscription plans, usage tracking, limits.
-import { getUser, getSession, requireAdmin, getActivePlan, canUseFeature, PLAN_DURATIONS, PLAN_IDS } from './auth.js';
+import { getUser, getSession, requireAdmin, getActivePlan, canUseFeature, PLAN_DURATIONS, PLAN_IDS, PLANS } from './auth.js';
 import { dbPutUser, dbGetSession } from './db.js';
+import { drizzle } from "drizzle-orm/d1";
+import { eq, and, sql } from "drizzle-orm";
+import { usageDaily, subscriptions } from "./schema.js";
+
+// Map snake_case field names (from callers) to {column, jsKey} for Drizzle
+const USAGE_FIELDS = {
+  dict_lookups: { col: usageDaily.dictLookups, key: "dictLookups" },
+  tts_chars: { col: usageDaily.ttsChars, key: "ttsChars" },
+  english_scans: { col: usageDaily.englishScans, key: "englishScans" },
+  english_uploads: { col: usageDaily.englishUploads, key: "englishUploads" },
+  backtest_count: { col: usageDaily.backtestCount, key: "backtestCount" },
+  ai_calls: { col: usageDaily.aiCalls, key: "aiCalls" },
+  agent_calls: { col: usageDaily.agentCalls, key: "agentCalls" },
+  browse_pages: { col: usageDaily.browsePages, key: "browsePages" },
+};
 
 function jerr(msg, code){ return new Response(JSON.stringify({error: msg}), {status: code||400, headers:{"Content-Type":"application/json"}}); }
 function jok(d){ return new Response(JSON.stringify(d), {headers:{"Content-Type":"application/json"}}); }
@@ -13,18 +28,33 @@ function todayStr(){
 // Get or create today's usage row for a user
 export async function getUsage(env, email){
   const today = todayStr();
-  const row = await env.DB.prepare("SELECT * FROM usage_daily WHERE email=? AND date=?").bind(email, today).first();
-  if(row) return row;
-  await env.DB.prepare("INSERT INTO usage_daily (email, date) VALUES (?, ?)").bind(email, today).run();
-  return {email, date: today, dict_lookups: 0, tts_chars: 0, ai_calls: 0, agent_calls: 0};
+  const db = drizzle(env.DB);
+  const rows = await db.select().from(usageDaily)
+    .where(and(eq(usageDaily.email, email), eq(usageDaily.date, today))).limit(1);
+  if(rows[0]) {
+    // Map camelCase back to snake_case for callers
+    const r = rows[0];
+    return {email: r.email, date: r.date, dict_lookups: r.dictLookups, tts_chars: r.ttsChars,
+      english_scans: r.englishScans, english_uploads: r.englishUploads, backtest_count: r.backtestCount,
+      ai_calls: r.aiCalls, agent_calls: r.agentCalls, browse_pages: r.browsePages || 0};
+  }
+  await db.insert(usageDaily).values({ email, date: today });
+  // Trả đủ key như khi đọc row có sẵn (trước đây thiếu 3 key cuối).
+  return {email, date: today, dict_lookups: 0, tts_chars: 0, english_scans: 0,
+    english_uploads: 0, backtest_count: 0, ai_calls: 0, agent_calls: 0, browse_pages: 0};
 }
 
 export async function incrUsage(env, email, field, amount){
   const today = todayStr();
   amount = amount || 1;
-  await env.DB.prepare(`INSERT INTO usage_daily (email, date, ${field}) VALUES (?, ?, ?)
-    ON CONFLICT(email, date) DO UPDATE SET ${field} = ${field} + ?`)
-    .bind(email, today, amount, amount).run();
+  const f = USAGE_FIELDS[field];
+  if(!f) throw new Error("Invalid usage field: "+field);
+  const db = drizzle(env.DB);
+  await db.insert(usageDaily).values({ email, date: today, [f.key]: amount })
+    .onConflictDoUpdate({
+      target: [usageDaily.email, usageDaily.date],
+      set: { [f.key]: sql`${f.col} + ${amount}` },
+    });
 }
 
 // Middleware: check if user can use a feature. Returns {ok} or Response (error).
@@ -64,7 +94,9 @@ export async function handleGetUsage(request, env){
   const u = await getUser(env, s.email);
   if(!u) return jerr("User not found", 401);
   const usage = await getUsage(env, u.email);
-  return jok({date: usage.date, dict_lookups: usage.dict_lookups, tts_chars: usage.tts_chars});
+  const p = getActivePlan(u);
+  const browse_limit = p.plan === "admin" ? null : ((PLANS[p.plan] || PLANS.free).limits.browse_pages ?? null);
+  return jok({date: usage.date, dict_lookups: usage.dict_lookups, tts_chars: usage.tts_chars, browse_pages: usage.browse_pages || 0, browse_limit});
 }
 
 // POST /api/admin/set-plan {email, plan, note}
@@ -97,8 +129,11 @@ export async function handleSetPlan(request, env){
 
   // Log to subscriptions table
   if(plan !== "free"){
-    await env.DB.prepare("INSERT INTO subscriptions (email, plan, started_at, expires_at, activated_by, note) VALUES (?,?,?,?,?,?)")
-      .bind(email, plan, now, expires, a.user.email, d.note||"").run();
+    const db = drizzle(env.DB);
+    await db.insert(subscriptions).values({
+      email, plan, startedAt: now, expiresAt: expires,
+      activatedBy: a.user.email, note: d.note||"",
+    });
   }
   return jok({ok: true, plan, expires_at: expires});
 }

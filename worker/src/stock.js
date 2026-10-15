@@ -1,5 +1,8 @@
 import { jerr, sJson } from './utils.js';
 import { getSession } from './auth.js';
+import { drizzle } from "drizzle-orm/d1";
+import { eq, and, asc, sql } from "drizzle-orm";
+import { watchlist, portfolioTxns, alerts, targets, pins } from "./schema.js";
 
 /* ================= STOCK (chung khoan VN, R2-backed) ================= */
 /* Market snapshots: stock/market/*.json — VM day len qua POST /api/internal/stock-publish
@@ -179,7 +182,9 @@ export async function getQuoteData(env, sym){
   if(!sym) return null;
   const d = await sGet(env, "market/quotes.json");
   const q = d && d.by_symbol ? d.by_symbol[sym] : null;
-  return q ? Object.assign({symbol:sym}, q) : null;
+  if(!q) return null;
+  // Include data timestamp so AI can state which trading session the data is from
+  return Object.assign({symbol:sym, data_updated:d.updated||null}, q);
 }
 
 export async function getFundamentalsData(env, sym){
@@ -314,9 +319,31 @@ export async function hStockScreener2(request, env){
   if(q && q.by_symbol) for(const k of Object.keys(q.by_symbol)) closes[k]=q.by_symbol[k].close;
   const ex = (u.searchParams.get("exchange")||"").toUpperCase();
   if(ex) rows = rows.filter(r=>(r.exchange||"").toUpperCase()===ex);
+  // Quality filter BEFORE scoring (2026-10-09 20:41): filter penny stocks early to reduce CPU.
+  // Scoring all 1149 rows then filtering caused 503 (CPU timeout).
+  // r.close is in thousands VND, so >=10 means >=10,000 VND.
+  const noQualityFilter = u.searchParams.get("all") === "1";
+  if(!noQualityFilter){
+    rows = rows.filter(r => (r.close||0) >= 10);
+  }
+  // Thorough fix (2026-10-09 20:43): only score top 200 by liquidity.
+  // Frontend shows max 30, scoring 1000+ rows exceeds Worker CPU limit → 503.
+  rows = [...rows].sort((a,b)=>((b.value_vnd||0)-(a.value_vnd||0))).slice(0,200);
   rows = sScoreRows(rows.map(r=>Object.assign({},r)), funds, closes);
   const minS = parseFloat(u.searchParams.get("min_score"));
   if(!isNaN(minS)) rows = rows.filter(r=>r.score!=null && r.score>=minS);
+  // Filter no-PE after scoring (pe is calculated in sScoreRows)
+  if(!noQualityFilter){
+    rows = rows.filter(r => r.pe != null);
+  }
+  // Attach industry/roe/debt for frontend filters (cheap: only ~200 rows)
+  for(const r of rows){
+    const f = funds[r.symbol];
+    if(!f) continue;
+    if(f.industry) r.industry = f.industry;
+    if(f.roe != null) r.roe = f.roe;
+    if(f.debt_to_equity != null) r.debt_to_equity = f.debt_to_equity;
+  }
   rows.sort((a,b)=>(b.score??-1)-(a.score??-1));
   return sJson({updated:sc?sc.updated:null, count:rows.length, rows:rows.slice(0,500)});
 }
@@ -346,11 +373,11 @@ export async function hStockEvents(request, env){
 
 export async function hStockBacktest(request, env){
   const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
-  try{
-    const {getActivePlan, getUser} = await import('./auth.js');
-    const usr = await getUser(env, s.email);
-    if(getActivePlan(usr).plan === 'free') return jerr("Premium feature: backtest. Upgrade to continue.", 402);
-  }catch(e){ if(e.status===402) throw e; }
+  // Backtest là tính năng stocks_full, 10 lượt/ngày (gói nhadautu).
+  // Trước đây chỉ chặn gói free nên gói dilam (stocks_basic) lọt, và không đếm lượt.
+  const {checkFeature, incrUsage} = await import('./billing.js');
+  const chk = await checkFeature(request, env, 'stocks_backtest');
+  if(chk.err) return chk.err;
   const u = new URL(request.url);
   const sym = (u.searchParams.get("symbol")||"").toUpperCase();
   if(!sym) return jerr("Symbol required", 400);
@@ -361,6 +388,7 @@ export async function hStockBacktest(request, env){
   const rows = d.rows.slice(-500);
   const closes = rows.map(r=>r.c), times = rows.map(r=>r.t);
   if(closes.length < slow+5) return jerr("Not enough data", 400);
+  try{ await incrUsage(env, s.email, 'backtest_count', 1); }catch(e){}
   return sJson(Object.assign({symbol:sym, fast, slow}, sBacktest(closes, times, fast, slow)));
 }
 
@@ -387,21 +415,25 @@ export async function hStockCompare(request, env){
 export async function uGet(env, email, name, fallback){
   if(!env.DB) return fallback; // fallback to R2 if D1 not bound
   try{
+    const db = drizzle(env.DB);
     if(name === "watchlist"){
-      const r = await env.DB.prepare("SELECT symbol FROM watchlist WHERE email = ? ORDER BY added_at").bind(email).all();
-      return r.results.map(x=>x.symbol);
+      const rows = await db.select({ symbol: watchlist.symbol }).from(watchlist)
+        .where(eq(watchlist.email, email)).orderBy(asc(watchlist.addedAt));
+      return rows.map(x=>x.symbol);
     }
     if(name === "portfolio"){
-      const r = await env.DB.prepare("SELECT * FROM portfolio_txns WHERE email = ? ORDER BY date, id").bind(email).all();
-      return {txns: r.results.map(x=>({id:x.id, symbol:x.symbol, side:x.side, price:x.price, qty:x.qty, fee:x.fee, note:x.note, date:x.date}))};
+      const rows = await db.select().from(portfolioTxns)
+        .where(eq(portfolioTxns.email, email)).orderBy(asc(portfolioTxns.date), asc(portfolioTxns.id));
+      return {txns: rows.map(x=>({id:x.id, symbol:x.symbol, side:x.side, price:x.price, qty:x.qty, fee:x.fee, note:x.note, date:x.date}))};
     }
     if(name === "alerts"){
-      const r = await env.DB.prepare("SELECT * FROM alerts WHERE email = ? AND active = 1 ORDER BY id").bind(email).all();
-      return r.results.map(x=>({id:x.id, symbol:x.symbol, direction:x.direction, price:x.price, active:x.active}));
+      const rows = await db.select().from(alerts)
+        .where(and(eq(alerts.email, email), eq(alerts.active, 1))).orderBy(asc(alerts.id));
+      return rows.map(x=>({id:x.id, symbol:x.symbol, direction:x.direction, price:x.price, active:x.active}));
     }
     if(name === "targets"){
-      const r = await env.DB.prepare("SELECT * FROM targets WHERE email = ?").bind(email).all();
-      return r.results.map(x=>({symbol:x.symbol, take_profit_pct:x.take_profit_pct, stop_loss_pct:x.stop_loss_pct, tp_done:!!x.tp_done, sl_done:!!x.sl_done}));
+      const rows = await db.select().from(targets).where(eq(targets.email, email));
+      return rows.map(x=>({symbol:x.symbol, take_profit_pct:x.takeProfitPct, stop_loss_pct:x.stopLossPct, tp_done:!!x.tpDone, sl_done:!!x.slDone}));
     }
     return fallback;
   }catch(e){ return fallback; }
@@ -415,46 +447,63 @@ export async function uPut(env, email, name, val){
 
 // D1-specific write functions
 export async function d1WatchAdd(env, email, symbol){
-  await env.DB.prepare("INSERT OR IGNORE INTO watchlist (email, symbol, added_at) VALUES (?, ?, ?)")
-    .bind(email, symbol.toUpperCase(), Date.now()).run();
+  const db = drizzle(env.DB);
+  await db.insert(watchlist).values({ email, symbol: symbol.toUpperCase(), addedAt: Date.now() })
+    .onConflictDoNothing({ target: [watchlist.email, watchlist.symbol] });
 }
 export async function d1WatchDel(env, email, symbol){
-  await env.DB.prepare("DELETE FROM watchlist WHERE email = ? AND symbol = ?")
-    .bind(email, symbol.toUpperCase()).run();
+  const db = drizzle(env.DB);
+  await db.delete(watchlist).where(and(eq(watchlist.email, email), eq(watchlist.symbol, symbol.toUpperCase())));
 }
 export async function d1TxnAdd(env, email, t){
-  const r = await env.DB.prepare("INSERT INTO portfolio_txns (email, symbol, side, price, qty, fee, note, date, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
-    .bind(email, t.symbol, t.side, t.price, t.qty, t.fee||0, t.note||null, t.date, Date.now()).run();
-  return r.meta.last_row_id;
+  const db = drizzle(env.DB);
+  const rows = await db.insert(portfolioTxns).values({
+    email, symbol: t.symbol, side: t.side, price: t.price, qty: t.qty,
+    fee: t.fee||0, note: t.note||null, date: t.date, createdAt: Date.now(),
+  }).returning({ id: portfolioTxns.id });
+  return rows[0]?.id;
 }
 export async function d1TxnDel(env, email, id){
-  await env.DB.prepare("DELETE FROM portfolio_txns WHERE email = ? AND id = ?").bind(email, id).run();
+  const db = drizzle(env.DB);
+  await db.delete(portfolioTxns).where(and(eq(portfolioTxns.email, email), eq(portfolioTxns.id, id)));
 }
 export async function d1TxnUpdateNote(env, email, id, note){
-  await env.DB.prepare("UPDATE portfolio_txns SET note = ? WHERE email = ? AND id = ?").bind(note, email, id).run();
+  const db = drizzle(env.DB);
+  await db.update(portfolioTxns).set({ note })
+    .where(and(eq(portfolioTxns.email, email), eq(portfolioTxns.id, id)));
 }
 export async function d1AlertAdd(env, email, symbol, direction, price){
-  const r = await env.DB.prepare("INSERT INTO alerts (email, symbol, direction, price, active, created_at) VALUES (?, ?, ?, ?, 1, ?)")
-    .bind(email, symbol.toUpperCase(), direction, price, Date.now()).run();
-  return r.meta.last_row_id;
+  const db = drizzle(env.DB);
+  const rows = await db.insert(alerts).values({
+    email, symbol: symbol.toUpperCase(), direction, price, active: 1, createdAt: Date.now(),
+  }).returning({ id: alerts.id });
+  return rows[0]?.id;
 }
 export async function d1AlertDel(env, email, id){
   // Get symbol before delete for index cleanup
-  const r = await env.DB.prepare("SELECT symbol FROM alerts WHERE email = ? AND id = ?").bind(email, id).first();
-  await env.DB.prepare("DELETE FROM alerts WHERE email = ? AND id = ?").bind(email, id).run();
-  return r ? r.symbol : null;
+  const db = drizzle(env.DB);
+  const rows = await db.select({ symbol: alerts.symbol }).from(alerts)
+    .where(and(eq(alerts.email, email), eq(alerts.id, id))).limit(1);
+  await db.delete(alerts).where(and(eq(alerts.email, email), eq(alerts.id, id)));
+  return rows[0] ? rows[0].symbol : null;
 }
 export async function d1TargetSet(env, email, symbol, tp_pct, sl_pct){
   // Preserve existing TP/SL when only one side is updated; keep done flags
-  await env.DB.prepare(`INSERT INTO targets (email, symbol, take_profit_pct, stop_loss_pct, tp_done, sl_done)
-    VALUES (?, ?, ?, ?, 0, 0)
-    ON CONFLICT(email, symbol) DO UPDATE SET
-      take_profit_pct = COALESCE(excluded.take_profit_pct, targets.take_profit_pct),
-      stop_loss_pct = COALESCE(excluded.stop_loss_pct, targets.stop_loss_pct)`)
-    .bind(email, symbol.toUpperCase(), tp_pct, sl_pct).run();
+  const db = drizzle(env.DB);
+  await db.insert(targets).values({
+    email, symbol: symbol.toUpperCase(),
+    takeProfitPct: tp_pct, stopLossPct: sl_pct, tpDone: 0, slDone: 0,
+  }).onConflictDoUpdate({
+    target: [targets.email, targets.symbol],
+    set: {
+      takeProfitPct: sql`COALESCE(${tp_pct}, ${targets.takeProfitPct})`,
+      stopLossPct: sql`COALESCE(${sl_pct}, ${targets.stopLossPct})`,
+    },
+  });
 }
 export async function d1TargetDel(env, email, symbol){
-  await env.DB.prepare("DELETE FROM targets WHERE email = ? AND symbol = ?").bind(email, symbol.toUpperCase()).run();
+  const db = drizzle(env.DB);
+  await db.delete(targets).where(and(eq(targets.email, email), eq(targets.symbol, symbol.toUpperCase())));
 }
 
 // Index: alerts by symbol for fast lookup (used by alert checker)
@@ -508,17 +557,19 @@ export async function hWatchlistAdd(request, env){
   const body = await request.json().catch(()=>({}));
   const sym = String(body.symbol||"").toUpperCase().trim();
   if(!/^[A-Z]{3,10}$/.test(sym)) return jerr("Invalid symbol", 400);
-  // Free limit: 5 symbols
+  // Đếm số mã hiện có để checkFeature so với hạn mức gói (kind "cap").
+  // Trước đây không truyền usage nên gói trả phí không bao giờ bị chặn (Chốt 2026-10-11).
+  // Check tay cũ ("Free limit: 5") là code chết: gói free không có app stocks nên
+  // đã bị chặn ở checkFeature trước khi tới đó.
+  let wlCount = 0;
   try{
-    const {checkFeature} = await import('./billing.js');
-    const chk = await checkFeature(request, env, 'watchlist_add');
-    if(chk.err) return chk.err;
-    const {getActivePlan} = await import('./auth.js');
-    if(getActivePlan(chk.user).plan === 'free'){
-      const cnt = await env.DB.prepare("SELECT COUNT(*) c FROM watchlist WHERE email=?").bind(s.email).first();
-      if(cnt.c >= 5) return jerr("Free limit: 5 symbols. Upgrade for unlimited.", 402);
-    }
-  }catch(e){ if(e.status===402) return e; }
+    const db = drizzle(env.DB);
+    const rows = await db.select({ c: sql`COUNT(*)` }).from(watchlist).where(eq(watchlist.email, s.email));
+    wlCount = Number(rows[0]?.c ?? 0);
+  }catch(e){}
+  const {checkFeature} = await import('./billing.js');
+  const chk = await checkFeature(request, env, 'watchlist_add', {usage: {watchlist_count: wlCount}});
+  if(chk.err) return chk.err;
   await d1WatchAdd(env, s.email, sym);
   return sJson({ok:true, watchlist: await uGet(env, s.email, "watchlist", [])});
 }
@@ -636,16 +687,19 @@ export async function hAlertsAdd(request, env){
   if(!/^[A-Z]{3,10}$/.test(sym)) return jerr("Invalid symbol", 400);
   if(dir!=="ABOVE" && dir!=="BELOW") return jerr("direction must be ABOVE/BELOW", 400);
   if(!(price>0)) return jerr("Price must be > 0", 400);
-  // Free limit: 3 alerts
+  // Đếm số cảnh báo hiện có để checkFeature so với hạn mức gói (kind "cap").
+  // Trước đây không truyền usage nên gói nhadautu (20 cảnh báo) không bao giờ bị
+  // chặn, còn gói dilam (chỉ có stocks_basic) lọt qua dù alerts yêu cầu stocks_full.
+  // Check tay cũ ("Free limit: 3") là code chết: gói free không có app stocks.
+  let alCount = 0;
   try{
-    const {getActivePlan} = await import('./auth.js');
-    const {getUser} = await import('./auth.js');
-    const u = await getUser(env, s.email);
-    if(getActivePlan(u).plan === 'free'){
-      const cnt = await env.DB.prepare("SELECT COUNT(*) c FROM alerts WHERE email=?").bind(s.email).first();
-      if(cnt.c >= 3) return jerr("Free limit: 3 alerts. Upgrade for unlimited.", 402);
-    }
-  }catch(e){ if(e.status===402) throw e; }
+    const db = drizzle(env.DB);
+    const rows = await db.select({ c: sql`COUNT(*)` }).from(alerts).where(eq(alerts.email, s.email));
+    alCount = Number(rows[0]?.c ?? 0);
+  }catch(e){}
+  const {checkFeature} = await import('./billing.js');
+  const chk = await checkFeature(request, env, 'stocks_alert', {usage: {alerts_count: alCount}});
+  if(chk.err) return chk.err;
   const id = await d1AlertAdd(env, s.email, sym, dir, price);
   // Update index (keep for backward compat, will be removed)
   await idxAlertsAdd(env, sym, {email: s.email, id, direction: dir, price});
@@ -668,9 +722,11 @@ export async function hAlertsBySymbol(request, env){
   if(auth !== env.STOCK_PUBLISH_SECRET) return jerr("Forbidden", 403);
   const sym = new URL(request.url).searchParams.get("symbol");
   if(!sym) return jerr("Missing symbol", 400);
-  const r = await env.DB.prepare("SELECT email, id, direction, price FROM alerts WHERE symbol = ? AND active = 1")
-    .bind(sym.toUpperCase()).all();
-  return sJson(r.results);
+  const db = drizzle(env.DB);
+  const rows = await db.select({
+    email: alerts.email, id: alerts.id, direction: alerts.direction, price: alerts.price,
+  }).from(alerts).where(and(eq(alerts.symbol, sym.toUpperCase()), eq(alerts.active, 1)));
+  return sJson(rows);
 }
 export async function hTargetsGet(request, env){
   const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
@@ -704,8 +760,9 @@ export async function hTargetsSet(request, env){
     const {getActivePlan, getUser} = await import('./auth.js');
     const u = await getUser(env, s.email);
     if(getActivePlan(u).plan === 'free'){
-      const cnt = await env.DB.prepare("SELECT COUNT(*) c FROM targets WHERE email=?").bind(s.email).first();
-      if(cnt.c >= 3) return jerr("Free limit: 3 targets. Upgrade for unlimited.", 402);
+      const db = drizzle(env.DB);
+      const rows = await db.select({ c: sql`COUNT(*)` }).from(targets).where(eq(targets.email, s.email));
+      if((rows[0]?.c ?? 0) >= 3) return jerr("Free limit: 3 targets. Upgrade for unlimited.", 402);
     }
   }catch(e){ if(e.status===402) throw e; }
   await d1TargetSet(env, s.email, sym, tp, sl);
@@ -727,15 +784,18 @@ export async function sha256hex(str){
 }
 
 export async function d1PinGet(env, email){
-  const r = await env.DB.prepare("SELECT pin_hash FROM pins WHERE email = ?").bind(email).first();
-  return r ? r.pin_hash : null;
+  const db = drizzle(env.DB);
+  const rows = await db.select({ pinHash: pins.pinHash }).from(pins).where(eq(pins.email, email)).limit(1);
+  return rows[0] ? rows[0].pinHash : null;
 }
 export async function d1PinSet(env, email, hash){
-  await env.DB.prepare("INSERT OR REPLACE INTO pins (email, pin_hash, created_at) VALUES (?, ?, ?)")
-    .bind(email, hash, Date.now()).run();
+  const db = drizzle(env.DB);
+  await db.insert(pins).values({ email, pinHash: hash, createdAt: Date.now() })
+    .onConflictDoUpdate({ target: pins.email, set: { pinHash: hash, createdAt: Date.now() } });
 }
 export async function d1PinDel(env, email){
-  await env.DB.prepare("DELETE FROM pins WHERE email = ?").bind(email).run();
+  const db = drizzle(env.DB);
+  await db.delete(pins).where(eq(pins.email, email));
 }
 
 export async function hPinStatus(request, env){
@@ -834,9 +894,10 @@ export async function hStockReportData(request, env){
   // List all emails with stock data from D1
   const userEmails = new Set();
   if(env.DB){
-    for(const tbl of ["watchlist", "portfolio_txns", "alerts", "targets"]){
-      const r = await env.DB.prepare(`SELECT DISTINCT email FROM ${tbl}`).all();
-      for(const x of r.results) userEmails.add(x.email);
+    const db = drizzle(env.DB);
+    for(const [tbl, col] of [[watchlist, watchlist.email], [portfolioTxns, portfolioTxns.email], [alerts, alerts.email], [targets, targets.email]]){
+      const rows = await db.selectDistinct({ email: col }).from(tbl);
+      for(const x of rows) userEmails.add(x.email);
     }
   }
   const users = [];
@@ -877,7 +938,8 @@ export async function hStockAlertDone(request, env){
   const email = String(b.email||"").toLowerCase();
   const id = parseInt(b.id, 10);
   if(!email || !id) return jerr("email and id required", 400);
-  await env.DB.prepare("UPDATE alerts SET active = 0 WHERE email = ? AND id = ?").bind(email, id).run();
+  const db = drizzle(env.DB);
+  await db.update(alerts).set({ active: 0 }).where(and(eq(alerts.email, email), eq(alerts.id, id)));
   return sJson({ok:true});
 }
 
@@ -927,36 +989,50 @@ export async function hMigrateR2ToD1(request, env){
     const pinData = await sGet(env, "users/"+email+"/pin.json").catch(()=>null);
     
     const now = Date.now();
+    const db = drizzle(env.DB);
     // Watchlist
     for(const w of watchlist){
       const sym = typeof w === 'string' ? w : (w.symbol || w);
       if(!sym) continue;
-      await env.DB.prepare("INSERT OR IGNORE INTO watchlist (email, symbol, added_at) VALUES (?, ?, ?)")
-        .bind(email, sym.toUpperCase(), now).run();
+      await db.insert(watchlist).values({ email, symbol: sym.toUpperCase(), addedAt: now })
+        .onConflictDoNothing({ target: [watchlist.email, watchlist.symbol] });
       stats.watchlist++;
     }
     // Portfolio txns
     for(const t of (portfolio.txns || [])){
-      await env.DB.prepare("INSERT INTO portfolio_txns (email, symbol, side, price, qty, fee, note, date, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
-        .bind(email, t.symbol, t.side, t.price, t.qty, t.fee||0, t.note||null, t.date, now).run();
+      await db.insert(portfolioTxns).values({
+        email, symbol: t.symbol, side: t.side, price: t.price, qty: t.qty,
+        fee: t.fee||0, note: t.note||null, date: t.date, createdAt: now,
+      });
       stats.txns++;
     }
     // Alerts
     for(const a of alerts){
-      await env.DB.prepare("INSERT INTO alerts (email, symbol, direction, price, active, created_at) VALUES (?, ?, ?, ?, ?, ?)")
-        .bind(email, a.symbol, a.direction, a.price, a.active?1:0, now).run();
+      await db.insert(alerts).values({
+        email, symbol: a.symbol, direction: a.direction, price: a.price,
+        active: a.active?1:0, createdAt: now,
+      });
       stats.alerts++;
     }
     // Targets
     for(const t of targets){
-      await env.DB.prepare("INSERT OR REPLACE INTO targets (email, symbol, take_profit_pct, stop_loss_pct, tp_done, sl_done) VALUES (?, ?, ?, ?, ?, ?)")
-        .bind(email, t.symbol, t.take_profit_pct||null, t.stop_loss_pct||null, t.tp_done?1:0, t.sl_done?1:0).run();
+      await db.insert(targets).values({
+        email, symbol: t.symbol,
+        takeProfitPct: t.take_profit_pct||null, stopLossPct: t.stop_loss_pct||null,
+        tpDone: t.tp_done?1:0, slDone: t.sl_done?1:0,
+      }).onConflictDoUpdate({
+        target: [targets.email, targets.symbol],
+        set: {
+          takeProfitPct: t.take_profit_pct||null, stopLossPct: t.stop_loss_pct||null,
+          tpDone: t.tp_done?1:0, slDone: t.sl_done?1:0,
+        },
+      });
       stats.targets++;
     }
     // Pin
     if(pinData && pinData.pin_hash){
-      await env.DB.prepare("INSERT OR REPLACE INTO pins (email, pin_hash, created_at) VALUES (?, ?, ?)")
-        .bind(email, pinData.pin_hash, now).run();
+      await db.insert(pins).values({ email, pinHash: pinData.pin_hash, createdAt: now })
+        .onConflictDoUpdate({ target: pins.email, set: { pinHash: pinData.pin_hash, createdAt: now } });
       stats.pins++;
     }
   }

@@ -1,5 +1,5 @@
 import { jerr, randToken } from './utils.js';
-import { getSession, getUser } from './auth.js';
+import { getSession, getUser, requireAdmin } from './auth.js';
 import { loadCorpus, saveCorpus } from './library.js';
 
 /* ---------- book upload + processing pipeline ---------- */
@@ -78,10 +78,8 @@ export async function handleBookGet(request, env){
 
 
 export async function handleAdminBooksPending(request, env){
-  const s = await getSession(request, env);
-  if(!s) return jerr("Not logged in", 401);
-  const u = await getUser(env, s.email);
-  if(!u || u.role !== "admin") return jerr("Admin only", 403);
+  const {err} = await requireAdmin(request, env);
+  if(err) return err;
   // List all processed books (not yet in shared/)
   const shared = await env.DATA.list({prefix: "shared/"});
   const sharedIds = new Set(shared.objects.map(o=>o.key.split("/").pop().replace(".json","")));
@@ -103,10 +101,8 @@ export async function handleAdminBooksPending(request, env){
 }
 
 export async function handleAdminBooksApprove(request, env){
-  const s = await getSession(request, env);
-  if(!s) return jerr("Not logged in", 401);
-  const u = await getUser(env, s.email);
-  if(!u || u.role !== "admin") return jerr("Admin only", 403);
+  const {err, user: admin} = await requireAdmin(request, env);
+  if(err) return err;
   let d; try{ d = await request.json(); }catch(e){ return jerr("Bad JSON", 400); }
   const {bookId, user} = d;
   if(!bookId || !user) return jerr("Missing bookId/user", 400);
@@ -116,7 +112,7 @@ export async function handleAdminBooksApprove(request, env){
   const data = await obj.arrayBuffer();
   await env.DATA.put(`shared/${bookId}.json`, data, {
     httpMetadata: {contentType: "application/json"},
-    customMetadata: {title: d.title||"Untitled", approvedBy: s.email, ts: String(Date.now())},
+    customMetadata: {title: d.title||"Untitled", approvedBy: admin.email, ts: String(Date.now())},
   });
   return new Response(JSON.stringify({ok:true}), {headers:{"Content-Type":"application/json"}});
 }

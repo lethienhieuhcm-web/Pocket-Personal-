@@ -1,5 +1,29 @@
 import { checkRate, jerr, fetchTimeout, stripHtml } from './utils.js';
 
+/* Admin: create Instant Voice Clone on ElevenLabs from uploaded audio.
+   POST /api/admin/clone-voice (raw audio bytes in body, name in X-Voice-Name header)
+   Uses env.ELEVENLABS_API_KEY server-side. Admin only. */
+export async function handleCloneVoice(request, env) {
+  const key = env.ELEVENLABS_API_KEY;
+  if (!key) return jerr("TTS not configured", 503);
+  const name = (request.headers.get("X-Voice-Name") || "Henrry Voice").slice(0, 50);
+  const audioBuf = await request.arrayBuffer();
+  if (!audioBuf || audioBuf.byteLength < 1000) return jerr("Missing audio data", 400);
+  // Forward to ElevenLabs /v1/voices/add
+  const elForm = new FormData();
+  elForm.append("name", name);
+  elForm.append("files", new Blob([audioBuf], { type: "audio/mpeg" }), "voice_sample.mp3");
+  elForm.append("description", "Henrry's voice clone for Pocket Personal");
+  const r = await fetch("https://api.elevenlabs.io/v1/voices/add", {
+    method: "POST",
+    headers: { "xi-api-key": key },
+    body: elForm
+  });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) return jerr("ElevenLabs error: " + (j.detail?.message || r.status), r.status);
+  return new Response(JSON.stringify({ voice_id: j.voice_id, name }), { headers: { "Content-Type": "application/json" } });
+}
+
 export async function handleTTS(request, env) {
   const ip = request.headers.get("cf-connecting-ip") || "x";
   if (!checkRate(ip)) return jerr("Rate limit exceeded (300/day)", 429);
@@ -7,21 +31,124 @@ export async function handleTTS(request, env) {
   const {checkFeature, incrUsage} = await import('./billing.js');
   const chk = await checkFeature(request, env, 'tts_chars');
   if (chk.err) return chk.err;
-  const key = env.ELEVENLABS_API_KEY;
-  if (!key) return jerr("TTS not configured", 503);
   let b;
   try { b = await request.json(); } catch (e) { return jerr("Invalid JSON", 400); }
-  const text = (b.text || "").slice(0, 5000), voice_id = b.voice_id || "", model_id = b.model_id || "eleven_multilingual_v2";
-  if (!text || !voice_id) return jerr("Missing text/voice_id", 400);
-  const r = await fetch("https://api.elevenlabs.io/v1/text-to-speech/" + voice_id, {
-    method: "POST",
-    headers: { "xi-api-key": key, "Content-Type": "application/json" },
-    body: JSON.stringify({ text, model_id })
-  });
-  if (!r.ok) return jerr("TTS provider error", r.status);
-  const audio = await r.arrayBuffer();
-  try { await incrUsage(env, chk.user.email, 'tts_chars', text.length); } catch (e) {}
-  return new Response(audio, { headers: { "Content-Type": "audio/mpeg", "Cache-Control": "no-store", "X-TTS-Chars": String(text.length) } });
+  const text = String(b.text || "").slice(0, 5000);
+  if (!text) return jerr("Missing text", 400);
+
+  // Routing theo ngôn ngữ (2026-10-11): VI -> VieNeu giọng anh (Modal),
+  // EN -> ElevenLabs giọng bản ngữ, Kokoro (Modal) dự phòng.
+  const VI_RE = /[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđĐ]/;
+  const langParam = String(b.voice || b.lang || "").toLowerCase();
+  const isVi = langParam === "vi" || (langParam !== "en" && VI_RE.test(text));
+
+  const elKey = env.ELEVENLABS_API_KEY;
+  const model_id = b.model_id || "eleven_multilingual_v2";
+  // Default voices per language (frontend sends ElevenLabs voice_id in `voice_id`)
+  const DEFAULT_VOICES = { en: "CwhRBWXzGAHq8TQ4Fs17", vi: "EXAVITQu4vr4xnSDxMaL" };
+
+  async function elevenlabs(voice_id, opts) {
+    if (!elKey || !voice_id) return null;
+    opts = opts || {};
+    // #5: emotion qua eleven_v3 + audio tag (verify API thật 2026-10-11:
+    // [happy]/[sad]/[angry]/[excited]/[calm]/[whispers] đều cho audio khác nhau).
+    // Tag lấy từ whitelist, không phải input user -> không lo injection.
+    const mid = opts.model || model_id;
+    const txt = opts.tag ? `[${opts.tag}] ${text}` : text;
+    const r = await fetch("https://api.elevenlabs.io/v1/text-to-speech/" + voice_id, {
+      method: "POST",
+      headers: { "xi-api-key": elKey, "Content-Type": "application/json" },
+      body: JSON.stringify({ text: txt, model_id: mid })
+    });
+    if (!r.ok) return null;
+    const audio = await r.arrayBuffer();
+    return new Response(audio, { headers: { "Content-Type": "audio/mpeg", "Cache-Control": "no-store", "X-TTS-Chars": String(text.length), "X-TTS-Provider": "elevenlabs" } });
+  }
+
+  async function modalVieNeu() {
+    const modalSecret = env.VOICE_API_SECRET;
+    if (!modalSecret) return null;
+    try {
+      const mr = await fetch("https://lethienhieuhcm-web--pocket-personal-voice-tts.modal.run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: text.slice(0, 500), secret: modalSecret })
+      });
+      if (!mr.ok) return null;
+      const mj = await mr.json();
+      if (!mj.audio_b64) return null;
+      const bin = Uint8Array.from(atob(mj.audio_b64), c => c.charCodeAt(0));
+      return new Response(bin, { headers: { "Content-Type": "audio/wav", "Cache-Control": "no-store", "X-TTS-Chars": String(text.length), "X-TTS-Provider": "modal" } });
+    } catch (e) { return null; }
+  }
+
+  async function modalKokoro(voice) {
+    const modalSecret = env.VOICE_API_SECRET;
+    if (!modalSecret) return null;
+    // #1: cho phép chọn preset Kokoro (whitelist ở Modal, sai -> am_michael)
+    const v = (typeof voice === "string" && /^[a-z]{2}_[a-z]+$/.test(voice)) ? voice : "am_michael";
+    try {
+      const mr = await fetch("https://lethienhieuhcm-web--pocket-personal-voice-tts-en.modal.run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: text.slice(0, 500), secret: modalSecret, voice: v })
+      });
+      if (!mr.ok) return null;
+      const mj = await mr.json();
+      if (!mj.audio_b64) return null;
+      const bin = Uint8Array.from(atob(mj.audio_b64), c => c.charCodeAt(0));
+      return new Response(bin, { headers: { "Content-Type": "audio/wav", "Cache-Control": "no-store", "X-TTS-Chars": String(text.length), "X-TTS-Provider": "modal-kokoro" } });
+    } catch (e) { return null; }
+  }
+
+  async function done(res) {
+    if (res) { try { await incrUsage(env, chk.user.email, 'tts_chars', text.length); } catch (e) {} }
+    return res;
+  }
+
+  // #1: voice_id có thể là "kokoro:<preset>" (Kokoro trực tiếp) hoặc ElevenLabs voice_id.
+  // Kokoro chỉ đọc tiếng Anh (lang_code='a') nên prefix này chỉ có ý nghĩa ở nhánh EN.
+  function parseVoiceId(vid){
+    if(!vid || typeof vid !== "string") return null;
+    if(vid.startsWith("kokoro:")){
+      const p = vid.slice(7);
+      if(/^[a-z]{2}_[a-z]+$/.test(p)) return { kokoro: p };
+      return null;
+    }
+    return { elevenlabs: vid };
+  }
+
+  // #5: emotion -> tag ElevenLabs v3 (chỉ tiếng Anh; Kokoro/VieNeu không hỗ trợ -> bỏ qua)
+  const EMO_TAGS = {
+    happy: "happy", sad: "sad", angry: "angry",
+    excited: "excited", calm: "calm", whisper: "whispers"
+  };
+  const emoTag = EMO_TAGS[String(b.emotion || "").toLowerCase()] || null;
+
+  if (isVi) {
+    // Tiếng Việt: VieNeu (giọng anh) trước, ElevenLabs dự phòng
+    const res = await done(await modalVieNeu() || await elevenlabs(b.voice_id || DEFAULT_VOICES.vi));
+    return res || jerr("TTS provider error", 503);
+  }
+  // Tiếng Anh: giọng chỉ định trước (Kokoro trực tiếp hoặc ElevenLabs),
+  // không chỉ định -> ElevenLabs (giọng bản ngữ) trước, Kokoro dự phòng.
+  // Có emotion -> eleven_v3 + tag; lỗi -> rớt về không-emotion rồi Kokoro.
+  const pv = parseVoiceId(b.voice_id);
+  let enRes = null;
+  if(pv && pv.kokoro){
+    enRes = await modalKokoro(pv.kokoro) || await elevenlabs(DEFAULT_VOICES.en);
+  } else {
+    const vid = (pv && pv.elevenlabs) || DEFAULT_VOICES.en;
+    if(emoTag){
+      enRes = await elevenlabs(vid, { model: "eleven_v3", tag: emoTag })
+           || await elevenlabs(vid)
+           || await modalKokoro("am_michael");
+    } else {
+      enRes = await elevenlabs(vid) || await modalKokoro("am_michael");
+    }
+  }
+  const res = await done(enRes);
+  return res || jerr("TTS provider error", 503);
 }
 
 export async function handleVoices(request, env) {

@@ -1,6 +1,9 @@
 // worker/src/spotify.js — Spotify OAuth + API proxy.
 import { getSession } from './auth.js';
 import { dbPutUser, dbGetSession } from './db.js';
+import { drizzle } from "drizzle-orm/d1";
+import { eq } from "drizzle-orm";
+import { spotifyTokens } from "./schema.js";
 
 function jerr(msg, code){ return new Response(JSON.stringify({error: msg}), {status: code||400, headers:{"Content-Type":"application/json"}}); }
 function jok(d){ return new Response(JSON.stringify(d), {headers:{"Content-Type":"application/json"}}); }
@@ -46,10 +49,21 @@ export async function handleSpotifyCallback(request, env){
   const t = await r.json();
   const sess = await dbGetSession(env, state);
   if(!sess) return new Response("Invalid session", {status:401});
-  await env.DB.prepare(`INSERT INTO spotify_tokens (email, access_token, refresh_token, expires_at, created_at)
-    VALUES (?,?,?,?,?) ON CONFLICT(email) DO UPDATE SET access_token=?, refresh_token=?, expires_at=?`)
-    .bind(sess.email, t.access_token, t.refresh_token||"", Date.now()+t.expires_in*1000, Date.now(),
-          t.access_token, t.refresh_token||"", Date.now()+t.expires_in*1000).run();
+  const db = drizzle(env.DB);
+  await db.insert(spotifyTokens).values({
+    email: sess.email,
+    accessToken: t.access_token,
+    refreshToken: t.refresh_token||"",
+    expiresAt: Date.now()+t.expires_in*1000,
+    createdAt: Date.now(),
+  }).onConflictDoUpdate({
+    target: spotifyTokens.email,
+    set: {
+      accessToken: t.access_token,
+      refreshToken: t.refresh_token||"",
+      expiresAt: Date.now()+t.expires_in*1000,
+    },
+  });
   return Response.redirect("https://lethanhdong.one/music/#spotify", 302);
 }
 
@@ -57,26 +71,30 @@ export async function handleSpotifyCallback(request, env){
 export async function handleSpotifyStatus(request, env){
   const s = await getSession(request, env);
   if(!s) return jerr("Not logged in", 401);
-  const row = await env.DB.prepare("SELECT email FROM spotify_tokens WHERE email=?").bind(s.email).first();
-  return jok({connected: !!row});
+  const db = drizzle(env.DB);
+  const rows = await db.select({ email: spotifyTokens.email }).from(spotifyTokens).where(eq(spotifyTokens.email, s.email)).limit(1);
+  return jok({connected: rows.length > 0});
 }
 
 // Get valid token (refresh if needed)
 async function getToken(env, email){
-  const row = await env.DB.prepare("SELECT * FROM spotify_tokens WHERE email=?").bind(email).first();
+  const db = drizzle(env.DB);
+  const rows = await db.select().from(spotifyTokens).where(eq(spotifyTokens.email, email)).limit(1);
+  const row = rows[0];
   if(!row) return null;
-  if(Date.now() < row.expires_at - 60000) return row.access_token;
+  if(Date.now() < row.expiresAt - 60000) return row.accessToken;
   const cfg = getCfg(env);
   const r = await fetch("https://accounts.spotify.com/api/token", {
     method: "POST",
     headers: {"Content-Type":"application/x-www-form-urlencoded",
               "Authorization":"Basic "+btoa(cfg.client_id+":"+cfg.client_secret)},
-    body: new URLSearchParams({grant_type:"refresh_token", refresh_token:row.refresh_token}).toString(),
+    body: new URLSearchParams({grant_type:"refresh_token", refresh_token:row.refreshToken}).toString(),
   });
   if(!r.ok) return null;
   const t = await r.json();
-  await env.DB.prepare("UPDATE spotify_tokens SET access_token=?, expires_at=? WHERE email=?")
-    .bind(t.access_token, Date.now()+t.expires_in*1000, email).run();
+  await db.update(spotifyTokens)
+    .set({ accessToken: t.access_token, expiresAt: Date.now()+t.expires_in*1000 })
+    .where(eq(spotifyTokens.email, email));
   return t.access_token;
 }
 

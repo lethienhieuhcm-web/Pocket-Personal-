@@ -5,7 +5,7 @@ import { drizzle } from "drizzle-orm/d1";
 import { eq, and, desc, sql } from "drizzle-orm";
 import { geminiQueue, agentChats, agentJobs } from "./schema.js";
 
-const GEMINI_MODEL = "gemini-2.0-flash";
+const GEMINI_MODEL = "gemini-3.5-flash";
 const GEMINI_API = "https://generativelanguage.googleapis.com/v1beta/models/";
 const MAX_LOOPS = 5;
 const TIMEOUT_MS = 65000;

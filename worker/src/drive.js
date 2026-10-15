@@ -1,6 +1,9 @@
 // worker/src/drive.js — Google Drive integration for user file storage.
 import { getSession, getUser } from './auth.js';
 import { dbPutUser, dbGetSession } from './db.js';
+import { drizzle } from "drizzle-orm/d1";
+import { eq } from "drizzle-orm";
+import { driveTokens } from "./schema.js";
 
 function jerr(msg, code){ return new Response(JSON.stringify({error: msg}), {status: code||400, headers:{"Content-Type":"application/json"}}); }
 function jok(d){ return new Response(JSON.stringify(d), {headers:{"Content-Type":"application/json"}}); }
@@ -24,7 +27,7 @@ export async function handleDriveAuthUrl(request, env){
     client_id: cfg.client_id,
     redirect_uri: cfg.redirect_uri,
     response_type: "code",
-    scope: "https://www.googleapis.com/auth/drive.file",
+    scope: "https://www.googleapis.com/auth/drive.readonly",
     access_type: "offline",
     prompt: "consent",
     state: s.token, // use session token as state
@@ -58,10 +61,21 @@ export async function handleDriveCallback(request, env){
   if(!sess) return new Response("Invalid session", {status:401});
 
   // Store tokens
-  await env.DB.prepare(`INSERT INTO drive_tokens (email, access_token, refresh_token, expires_at, created_at)
-    VALUES (?,?,?,?,?) ON CONFLICT(email) DO UPDATE SET access_token=?, refresh_token=?, expires_at=?`)
-    .bind(sess.email, tok.access_token, tok.refresh_token||"", Date.now()+tok.expires_in*1000, Date.now(),
-          tok.access_token, tok.refresh_token||"", Date.now()+tok.expires_in*1000).run();
+  const db = drizzle(env.DB);
+  await db.insert(driveTokens).values({
+    email: sess.email,
+    accessToken: tok.access_token,
+    refreshToken: tok.refresh_token||"",
+    expiresAt: Date.now()+tok.expires_in*1000,
+    createdAt: Date.now(),
+  }).onConflictDoUpdate({
+    target: driveTokens.email,
+    set: {
+      accessToken: tok.access_token,
+      refreshToken: tok.refresh_token||"",
+      expiresAt: Date.now()+tok.expires_in*1000,
+    },
+  });
 
   // Redirect to settings with success
   return Response.redirect("https://lethanhdong.one/english/#settings?drive=ok", 302);
@@ -71,8 +85,9 @@ export async function handleDriveCallback(request, env){
 export async function handleDriveStatus(request, env){
   const s = await getSession(request, env);
   if(!s) return jerr("Not logged in", 401);
-  const row = await env.DB.prepare("SELECT email FROM drive_tokens WHERE email=?").bind(s.email).first();
-  return jok({connected: !!row});
+  const db = drizzle(env.DB);
+  const rows = await db.select({ email: driveTokens.email }).from(driveTokens).where(eq(driveTokens.email, s.email)).limit(1);
+  return jok({connected: rows.length > 0});
 }
 
 // GET /api/drive/music — list audio files in user's Drive
@@ -106,31 +121,77 @@ export async function handleDriveStream(request, env){
 export async function handleDriveDisconnect(request, env){
   const s = await getSession(request, env);
   if(!s) return jerr("Not logged in", 401);
-  await env.DB.prepare("DELETE FROM drive_tokens WHERE email=?").bind(s.email).run();
+  const db = drizzle(env.DB);
+  await db.delete(driveTokens).where(eq(driveTokens.email, s.email));
   return jok({ok:true});
 }
 
 // Get valid access token (refresh if needed)
 export async function getDriveToken(env, email){
-  const row = await env.DB.prepare("SELECT * FROM drive_tokens WHERE email=?").bind(email).first();
+  const db = drizzle(env.DB);
+  const rows = await db.select().from(driveTokens).where(eq(driveTokens.email, email)).limit(1);
+  const row = rows[0];
   if(!row) return null;
-  if(Date.now() < row.expires_at - 60000) return row.access_token;
+  if(Date.now() < row.expiresAt - 60000) return row.accessToken;
   // Refresh
   const cfg = getOAuthConfig(env);
-  if(!row.refresh_token || !cfg.client_secret) return null;
+  if(!row.refreshToken || !cfg.client_secret) return null;
   const r = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
     headers: {"Content-Type":"application/x-www-form-urlencoded"},
     body: new URLSearchParams({
-      refresh_token: row.refresh_token, client_id: cfg.client_id,
+      refresh_token: row.refreshToken, client_id: cfg.client_id,
       client_secret: cfg.client_secret, grant_type: "refresh_token",
     }).toString(),
   });
   if(!r.ok) return null;
   const t = await r.json();
-  await env.DB.prepare("UPDATE drive_tokens SET access_token=?, expires_at=? WHERE email=?")
-    .bind(t.access_token, Date.now()+t.expires_in*1000, email).run();
+  await db.update(driveTokens)
+    .set({ accessToken: t.access_token, expiresAt: Date.now()+t.expires_in*1000 })
+    .where(eq(driveTokens.email, email));
   return t.access_token;
 }
 
-// POST /api/drive/upload — upload file to user's Drive
+// POST /api/drive/upload — upload file to user's Drive (dùng cho Voice "Lưu vào Drive").
+// Body JSON: {name, mimeType, data (base64)}.
+// Verify 2026-10-12: đúng format multipart/related của Google Drive API v3.
+export async function handleDriveUpload(request, env){
+  const s = await getSession(request, env);
+  if(!s) return jerr("Not logged in", 401);
+  let body;
+  try{ body = await request.json(); }catch(e){ return jerr("Bad JSON", 400); }
+  const name = String(body.name || "").slice(0, 120) || "voice.wav";
+  const mimeType = String(body.mimeType || "audio/wav").slice(0, 80);
+  const b64 = String(body.data || "");
+  // Giới hạn 25MB (Workers cho 100MB, audio thường <10MB)
+  if(!b64 || b64.length > 35_000_000) return jerr("Bad data", 400);
+  if(!/^audio\//.test(mimeType)) return jerr("Audio only", 400);
+  const token = await getDriveToken(env, s.email);
+  if(!token) return jerr("Drive not connected", 400);
+  let bytes;
+  try{
+    const bin = atob(b64);
+    bytes = new Uint8Array(bin.length);
+    for(let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  }catch(e){ return jerr("Bad data", 400); }
+  const boundary = "voice-" + Date.now().toString(36);
+  const meta = JSON.stringify({ name, mimeType });
+  const head = `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${meta}\r\n--${boundary}\r\nContent-Type: ${mimeType}\r\n\r\n`;
+  const tail = `\r\n--${boundary}--`;
+  const enc = new TextEncoder();
+  const payload = new Blob([enc.encode(head), bytes, enc.encode(tail)]);
+  const r = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,webViewLink", {
+    method: "POST",
+    headers: {
+      "Authorization": "Bearer " + token,
+      "Content-Type": `multipart/related; boundary=${boundary}`,
+    },
+    body: payload,
+  });
+  if(!r.ok){
+    const t = await r.text().catch(() => "");
+    return jerr("Drive upload failed: " + r.status, 500);
+  }
+  const j = await r.json();
+  return jok({ id: j.id, name: j.name, url: j.webViewLink || ("https://drive.google.com/file/d/" + j.id + "/view") });
+}
