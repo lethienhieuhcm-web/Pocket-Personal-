@@ -559,7 +559,7 @@ def main():
 
 
 def check_worker_repo_drift():
-    """So worker/src/*.js + worker/package.json local với GitHub main.
+    """So worker/src + static assets local với GitHub main.
 
     Dùng 1 API call duy nhất (git trees, recursive) rồi so git blob SHA —
     nhanh (~vài giây), không tải từng file. Best-effort tuyệt đối: chỉ in
@@ -579,34 +579,61 @@ def check_worker_repo_drift():
                   if t.get("type") == "blob"}
     except Exception:
         return  # mạng/API lỗi -> bỏ qua lặng lẽ, không chặn deploy
-    drifted, missing = [], []
-    for rel in sorted(_glob.glob("src/*.js", root_dir=SRC + "/worker")) + ["package.json"]:
-        lp = os.path.join(SRC, "worker", rel)
+    def _blob_sha(data: bytes) -> str:
+        return hashlib.sha1(b"blob %d\0" % len(data) + data).hexdigest()
+
+    def _check(rel, rpath):
+        # binary-safe: so raw bytes, không decode content
+        lp = os.path.join(SRC, rel)
         try:
             with open(lp, "rb") as f:
                 data = f.read()
         except OSError:
-            continue
-        # git blob SHA = sha1("blob <len>\0" + content)
-        local_sha = hashlib.sha1(
-            b"blob %d\0" % len(data) + data).hexdigest()
-        rpath = "worker/" + rel.replace(os.sep, "/")
+            return None
         if rpath not in remote:
+            return "missing"
+        if remote[rpath] != _blob_sha(data):
+            return "drifted"
+        return None
+
+    drifted, missing = [], []
+    # 1. worker source
+    for rel in sorted(_glob.glob("src/*.js", root_dir=SRC + "/worker")) + ["package.json"]:
+        st = _check(os.path.join("worker", rel), "worker/" + rel.replace(os.sep, "/"))
+        if st == "missing":
+            missing.append("worker/" + rel)
+        elif st == "drifted":
+            drifted.append("worker/" + rel)
+    # 2. static assets cf_deploy.py cần (2026-10-15: repo thiếu 27 file tĩnh
+    # làm CI deploy 404 dù CI xanh — drift check phải cover cả mảng này).
+    # Ngoại lệ: _headers và asset-manifest.json là build artifact (ghi lại mỗi
+    # deploy với build_id mới) — không phải source, skip để khỏi báo drift giả.
+    for rel in FILES:
+        if rel in ("_headers", "asset-manifest.json"):
+            continue
+        st = _check(rel, rel.replace(os.sep, "/"))
+        if st == "missing":
             missing.append(rel)
-        elif remote[rpath] != local_sha:
+        elif st == "drifted":
+            drifted.append(rel)
+    for rel in ["browser.html", "talk.html"]:
+        st = _check(rel, rel)
+        if st == "missing":
+            missing.append(rel + " (optional)")
+        elif st == "drifted":
             drifted.append(rel)
     if missing or drifted:
         print("=" * 60)
-        print("WARNING: worker source trên GitHub LỆCH khỏi bản vừa deploy!")
+        print("WARNING: file trên GitHub LỆCH khỏi bản vừa deploy!")
         for rel in missing:
-            print(f"  thiếu trên repo: worker/{rel}")
+            print(f"  thiếu trên repo: {rel}")
         for rel in drifted:
-            print(f"  khác bản local: worker/{rel}")
+            print(f"  khác bản local: {rel}")
         print("Hãy upload các file trên lên GitHub (Add file > Upload files)")
         print("để repo khớp production, không thì CI/deploy sau sẽ lệch.")
         print("=" * 60)
     else:
-        print("Repo drift check: worker/src khớp GitHub main.")
+        print("Repo drift check: khớp GitHub main (worker + static assets).")
 
 
 def verify_live_build(build_id, timeout=60):
