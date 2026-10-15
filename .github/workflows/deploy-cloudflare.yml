@@ -23,6 +23,19 @@ jobs:
         with:
           python-version: '3.11'
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install worker dependencies
+        # Fix 15/10/2026: worker/build.sh chay npx esbuild, can resolve
+        # drizzle-orm tu node_modules - thieu npm ci la build fail ngay
+        # (cung goc benh voi #5).
+        run: |
+          cd worker
+          npm ci
+
       - name: Deploy via cf_deploy.py
         env:
           CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
