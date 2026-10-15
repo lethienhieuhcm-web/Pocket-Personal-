@@ -149,6 +149,7 @@ tasks.named("preBuild") { dependsOn("copyLicenses") }
 dependencies {
     implementation(libs.core.ktx)
     implementation(libs.appcompat)
+    implementation(libs.material)
     implementation(libs.coroutines)
     implementation(libs.recyclerview)
     // 1.2: mã hoá token (EncryptedSharedPreferences).
