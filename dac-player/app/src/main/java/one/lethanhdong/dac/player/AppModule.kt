@@ -31,6 +31,11 @@ object AppModule {
     @Singleton
     fun provideOfflineTrackDao(db: MusicDatabase): OfflineTrackDao = db.offlineTrackDao()
 
+    /** v3.0: DAO cho folder cache. */
+    @Provides
+    @Singleton
+    fun provideFolderDao(db: MusicDatabase): FolderDao = db.folderDao()
+
     /**
      * 4.1: PlayerManager singleton — 1 ExoPlayer duy nhất cho cả app.
      * Nhạc tiếp tục phát khi chuyển giữa các màn hình (Main ↔ Folder),

@@ -53,30 +53,16 @@ class MusicApiClient(
     private val refreshMutex = Mutex()
 
     /**
-     * 4.6: Gọi API với Drive token, tự refresh + thử lại 1 lần khi Worker báo 401.
-     * OAuth chuẩn: AccountManager giữ refresh token trong system store;
-     * invalidate() rồi getToken() sẽ trả access token mới. Worker không lưu token.
-     * Hết 1 lần retry vẫn 401 → throw để UI hiện "kết nối lại Drive".
+     * v3.0: Server tự quản Drive token (D1 + auto-refresh).
+     * Client không cần lấy token từ AccountManager nữa.
+     * Giữ wrapper để không phải sửa 6 callers, chỉ bỏ logic token.
      */
     internal suspend fun <T> withDriveToken(
         activity: android.app.Activity? = null,
         block: suspend (driveToken: String) -> T,
     ): T {
-        val first = driveAuth.getToken(activity)
-        try {
-            return block(first)
-        } catch (e: DriveTokenInvalidException) {
-            return refreshMutex.withLock {
-                driveAuth.invalidateToken(first)
-                val fresh = driveAuth.getToken(activity)
-                try {
-                    block(fresh)
-                } catch (e2: DriveTokenInvalidException) {
-                    driveAuth.invalidateToken(fresh)
-                    throw e2
-                }
-            }
-        }
+        // Server lấy token từ D1 theo session email. Client gửi chuỗi rỗng.
+        return block("")
     }
 
     private fun authToken(): String? = auth.token()
@@ -111,7 +97,9 @@ class MusicApiClient(
             val token = authToken() ?: throw IllegalStateException("Chưa đăng nhập")
             val builder = Request.Builder().url(baseUrl + path)
                 .header("Authorization", "Bearer $token")
-            if (driveToken != null) {
+            // v3.0: không gửi X-Drive-Token nữa, server tự lấy từ D1.
+            // Giữ điều kiện để backward-compat nếu sau này cần.
+            if (driveToken != null && driveToken.isNotEmpty()) {
                 builder.header("X-Drive-Token", driveToken)
             }
             if (jsonBody != null) {
