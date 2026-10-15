@@ -99,12 +99,8 @@ input[type=text].dark{flex:1;padding:12px;border:1px solid var(--pp-line);border
 .lang-pill button.on{background:var(--pp-accent);color:#fff}
 #toast{position:fixed;bottom:150px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:10px 20px;border-radius:20px;display:none;z-index:1000;max-width:90%;font-size:var(--pp-text-sm)}
 </style>
-<script>/* FIT 8b-8: theme theo hệ thống, không nháy */
-try{
-  var s = localStorage.getItem('pp_theme');
-  var d = s ? s === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
-  if(d) document.documentElement.classList.add('pp-dark');
-}catch(e){}</script>
+<script>/* Gốc theme: snippet chuẩn, không sửa. Controller ở /english/js/shared/theme.js */
+try{var s=localStorage.getItem('pp_theme');if(!s){s=localStorage.getItem('elab_theme')||localStorage.getItem('hub_theme');if(s)localStorage.setItem('pp_theme',s)}var d=s?s==='dark':matchMedia('(prefers-color-scheme: dark)').matches;if(d)document.documentElement.classList.add('pp-dark')}catch(e){}</script>
 </head>
 <body>
 <header>
@@ -207,6 +203,7 @@ try{
   <button data-nav="drive"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.5"/></svg><span data-i18n="nav_drive">Drive</span></button>
   <button data-nav="playlists"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13"/><circle cx="4" cy="6" r="1.2"/><circle cx="4" cy="12" r="1.2"/><circle cx="4" cy="18" r="1.2"/></svg><span data-i18n="nav_library">Library</span></button>
   <button data-nav="spotify"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 10.5c2.5-.8 5.5-.5 8 .8M8.5 13.5c2-.6 4.2-.4 6 .6"/></svg><span data-i18n="nav_spotify">Spotify</span></button>
+  <a href="/dacplayer/" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:var(--pp-text-xs);font-weight:600;color:var(--pp-mut);text-decoration:none;padding:0"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/></svg><span>DAC</span></a>
 </nav>
 
 <div id="toast"></div>
@@ -236,7 +233,7 @@ tracks:n=>`${n} bài hát`,
 drive_connected:"Đã kết nối",drive_not_connected:"Chưa kết nối",drive_connect:"Kết nối",drive_disconnect:"Ngắt kết nối",
 drive_soon:"Sắp có",drive_music_sub:"Nhạc từ Google Drive của bạn",
 toast_no_link:"Không lấy được link kết nối",toast_conn_err:"Lỗi kết nối",
-spotify_not_configured:"Spotify chưa được cấu hình",open:"Mở ↗"},
+spotify_not_configured:"Spotify chưa được cấu hình",open:"Mở ↗",update_available:"Có bản mới",update_btn:"Cập nhật",update_later:"Để sau"},
 en:{greet_morning:"Good morning",greet_afternoon:"Good afternoon",greet_evening:"Good evening",
 greet_sub:"What do you want to hear?",search_ph:"Search songs, artists...",go:"Go",results:"Results",
 search_hint:"Search for music",cloud_drives:"Cloud Drives",music_files:"Music files",refresh:"Refresh",
@@ -272,7 +269,7 @@ tracks:n=>`${n}곡`,
 drive_connected:"연결됨",drive_not_connected:"연결 안 됨",drive_connect:"연결",drive_disconnect:"연결 해제",
 drive_soon:"출시 예정",drive_music_sub:"내 Google Drive의 음악",
 toast_no_link:"연결 링크를 가져올 수 없습니다",toast_conn_err:"연결 오류",
-spotify_not_configured:"Spotify가 아직 설정되지 않았습니다",open:"열기 ↗"}
+spotify_not_configured:"Spotify가 아직 설정되지 않았습니다",open:"열기 ↗",update_available:"새 버전 있음",update_btn:"업데이트",update_later:"나중에"}
 };
 let LANG = "vi";
 try{ const v = localStorage.getItem("elab_uiLang"); if(v) LANG = JSON.parse(v); }catch(e){}
@@ -280,14 +277,28 @@ if(!I18N[LANG]) LANG = "vi";
 let curTab = "search";
 function applyLang(l){
   LANG = l;
+  // Gốc i18n (G2): đồng bộ shared module
+  if(window.__elabI18n && window.__elabI18n.setLang){ try{ window.__elabI18n.setLang(l); }catch(e){} }
   try{ localStorage.setItem("elab_uiLang", JSON.stringify(l)); }catch(e){}
   document.documentElement.lang = l;
   const t = I18N[l];
-  document.querySelectorAll("[data-i18n]").forEach(el=>{ const v=t[el.dataset.i18n]; if(v!==undefined) el.textContent=v; });
-  document.querySelectorAll("[data-i18n-ph]").forEach(el=>{ const v=t[el.dataset.i18nPh]; if(v!==undefined) el.placeholder=v; });
+  const useShared = window.__elabI18n && window.__elabI18n.t;
+  const T = function(k){
+    if(useShared){
+      const v = window.__elabI18n.t(k);
+      if(v && v !== k) return v;
+    }
+    return t[k];
+  };
+  document.querySelectorAll("[data-i18n]").forEach(el=>{
+    const v=T(el.dataset.i18n); if(v!==undefined) el.textContent=v;
+  });
+  document.querySelectorAll("[data-i18n-ph]").forEach(el=>{
+    const v=T(el.dataset.i18nPh); if(v!==undefined) el.placeholder=v;
+  });
   ["vi","en","zh","ko"].forEach(x=>{ const b=document.getElementById("lang"+x[0].toUpperCase()+x[1]); if(b) b.classList.toggle("on", l===x); });
   const hh = new Date().getHours();
-  document.getElementById('greetTitle').textContent = hh<12?t.greet_morning:hh<18?t.greet_afternoon:t.greet_evening;
+  document.getElementById('greetTitle').textContent = hh<12?T('greet_morning'):hh<18?T('greet_afternoon'):T('greet_evening');
   if(curTab==='drive') renderDriveList();
   if(curTab==='playlists') renderPlaylists();
 }
@@ -359,12 +370,18 @@ async function search(q){
     box.innerHTML = queue.map((t,i)=>`
       <div class="track" data-i="${i}">
         <div class="rank" style="color:${RANK_COLORS[i%5]}">${i+1}</div>
-        <img src="${t.art}" loading="lazy" alt="">
+        <img src="${t.art||'/english/icons/icon-music-192.png'}" loading="lazy" alt="" data-fb="/english/icons/icon-music-192.png">
         <div class="t-info"><div class="t-title">${esc(t.title)}</div><div class="t-artist">${esc(t.artist)}</div></div>
         <button class="t-menu">⋮</button>
       </div>`).join('');
     box.querySelectorAll('.track').forEach(el=>el.onclick=()=>playAt(+el.dataset.i));
-  }catch(e){ box.innerHTML='<p class="hint" style="text-align:center;color:#ff4d6d">'+I18N[LANG].failed+'</p>'; }
+    // 8b 2026-10-12: artwork vỡ → fallback placeholder (không dùng onerror inline)
+    box.querySelectorAll('.track img[data-fb]').forEach(img=>{
+      img.addEventListener('error', ()=>{ img.src = img.dataset.fb; }, {once:true});
+    });
+    // 8b 2026-10-12 BUG-2: nút ⋮ không được bubble lên track (gây play nhầm)
+    box.querySelectorAll('.t-menu').forEach(btn=>btn.onclick=e=>{ e.stopPropagation(); });
+  }catch(e){ box.innerHTML='<p class="hint" style="text-align:center;color:var(--pp-danger)">'+I18N[LANG].failed+'</p>'; }
 }
 document.getElementById('searchBtn').onclick = ()=>{
   const q = document.getElementById('searchInput').value.trim(); if(q) search(q); };
@@ -443,7 +460,9 @@ async function loadDriveFiles(){
         <button class="t-menu">⋮</button>
       </div>`).join('');
     box.querySelectorAll('.track').forEach(el=>el.onclick=()=>playAt(+el.dataset.i));
-  }catch(e){ box.innerHTML='<p class="hint" style="text-align:center;color:#ff4d6d">'+I18N[LANG].failed+'</p>'; }
+    // 8b 2026-10-12 BUG-2: nút ⋮ không được bubble lên track
+    box.querySelectorAll('.t-menu').forEach(btn=>btn.onclick=e=>{ e.stopPropagation(); });
+  }catch(e){ box.innerHTML='<p class="hint" style="text-align:center;color:var(--pp-danger)">'+I18N[LANG].failed+'</p>'; }
 }
 document.getElementById('driveRefresh').onclick = (e)=>{ e.preventDefault(); loadDriveFiles(); };
 checkGDrive();
@@ -497,25 +516,28 @@ document.getElementById('spSearchBtn').onclick = async ()=>{
   }catch(e){}
 };
 applyLang(LANG);
+// Service worker update (Chốt A 2026-10-11): hiện banner, user bấm "Cập nhật" mới update.
+// Không tự SKIP_WAITING, không tự reload (user đang nhập liệu sẽ mất dữ liệu).
 if("serviceWorker" in navigator){
   navigator.serviceWorker.register("/music/sw.js",{scope:"/music/"}).then(function(reg){
     reg.addEventListener("updatefound", function(){
       var newWorker = reg.installing;
       newWorker.addEventListener("statechange", function(){
         if(newWorker.state === "installed" && navigator.serviceWorker.controller){
-          newWorker.postMessage({type: "SKIP_WAITING"});
+          showUpdateBanner(newWorker);
         }
       });
     });
   }).catch(()=>{});
-  navigator.serviceWorker.addEventListener("controllerchange", function(){
-    location.reload();
-  });
 }
 // Banner "Có bản mới" - hiện inline, không popup/modal (chuẩn big tech)
 function showUpdateBanner(newWorker){
   if(document.getElementById("sw-update-banner")) return;
-  const lang = (window.elab_uiLang || "vi").toLowerCase();
+  // Đọc ngôn ngữ từ localStorage (JSON hoặc chuỗi thường đều được).
+  // Không dùng window.elab_uiLang vì không nơi nào gán nó.
+  var _lang = "vi";
+  try{ _lang = (localStorage.getItem("elab_uiLang")||"vi").replace(/"/g,""); }catch(e){}
+  const lang = _lang.toLowerCase();
   const t = (typeof I18N !== "undefined" && I18N[lang]) ? I18N[lang] : (typeof I18N !== "undefined" ? I18N.vi : {});
   const banner = document.createElement("div");
   banner.id = "sw-update-banner";
@@ -534,19 +556,24 @@ function showUpdateBanner(newWorker){
   const btnLater = document.createElement("button");
   btnLater.textContent = t.update_later || "Để sau";
   btnLater.style.cssText = "background:transparent;color:#fff;border:1px solid rgba(255,255,255,.5);border-radius:8px;padding:6px 14px;cursor:pointer;";
-  btnLater.addEventListener("click", function(){ banner.remove(); });
+  btnLater.addEventListener("click", function(){ document.body.style.paddingTop = ""; banner.remove(); });
   btns.appendChild(btnUpdate);
   btns.appendChild(btnLater);
   banner.appendChild(msg);
   banner.appendChild(btns);
   document.body.prepend(banner);
+  // 8b 2026-10-12 BUG-3: banner fixed top che nút — đẩy body xuống
+  document.body.style.paddingTop = banner.offsetHeight + 'px';
 }
 </script>
 <script src="/english/js/lang-dropdown.js?v=__BUILD__"></script>
 <script>/* FIT 8b-8: nút chuyển theme */
 document.getElementById('themeBtn').onclick = ()=>{
+  if(window.__elabTheme){ window.__elabTheme.toggle(); return; }
   const dark = document.documentElement.classList.toggle('pp-dark');
   try{ localStorage.setItem('pp_theme', dark ? 'dark' : 'light'); }catch(e){}
 };</script>
+<script>import("/english/js/shared/theme.js").catch(function(){});</script>
+<script>import("/english/js/shared/i18n.js").then(m=>{try{m.setApp("music")}catch(e){}}).catch(function(){});</script>
 </body>
 </html>
