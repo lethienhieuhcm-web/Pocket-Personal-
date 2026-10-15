@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>DAC Player</title>
+<link rel="stylesheet" href="/design-system.css?v=__BUILD__">
+<style>
+/* dacweb P1 — dark mode mặc định, mobile-first */
+:root{color-scheme:dark}
+body{background:#0d1117;color:#e6edf3;margin:0;font-family:var(--pp-font);padding-bottom:80px}
+.dp-header{position:sticky;top:0;background:rgba(13,17,23,.95);backdrop-filter:blur(10px);padding:12px 16px;border-bottom:1px solid #21262d;z-index:10}
+.dp-header h1{margin:0;font-size:18px}
+.dp-search{width:100%;margin-top:8px;padding:10px 14px;border-radius:var(--pp-r-md);border:1px solid #30363d;background:#161b22;color:#e6edf3;font-size:15px}
+.dp-list{padding:8px 0}
+.dp-item{display:flex;align-items:center;padding:12px 16px;border-bottom:1px solid #161b22;cursor:pointer}
+.dp-item:active{background:#161b22}
+.dp-item .ic{font-size:22px;margin-right:12px;flex-shrink:0}
+.dp-item .nm{flex:1;min-width:0}
+.dp-item .nm .t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:15px}
+.dp-item .nm .s{font-size:12px;color:#8b949e;margin-top:2px}
+.dp-badge{font-size:11px;background:#0d9d6c22;color:#0d9d6c;border:1px solid #0d9d6c55;border-radius:6px;padding:2px 6px;margin-left:8px;flex-shrink:0;white-space:nowrap}
+/* mini player */
+#miniPlayer{position:fixed;bottom:0;left:0;right:0;background:#161b22;border-top:1px solid #30363d;display:none;z-index:20}
+#miniPlayer.show{display:block}
+#miniProgress{height:3px;background:#30363d}
+#miniProgress>div{height:100%;background:#0d9d6c;width:0%}
+.mp-row{display:flex;align-items:center;padding:10px 12px;min-height:64px}
+.mp-info{flex:1;min-width:0;cursor:pointer}
+.mp-info .t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:14px}
+.mp-btn{background:none;border:none;color:#e6edf3;font-size:28px;cursor:pointer;padding:8px;min-width:56px;min-height:56px}
+/* full player */
+#fullPlayer{position:fixed;inset:0;background:#0d1117;z-index:30;display:none;flex-direction:column;padding:16px;overflow-y:auto}
+#fullPlayer.show{display:flex}
+.fp-close{background:none;border:none;color:#8b949e;font-size:28px;align-self:flex-start;cursor:pointer;padding:8px}
+.fp-art{width:240px;height:240px;max-width:70vw;max-height:70vw;background:#161b22;border-radius:var(--pp-r-lg);margin:24px auto;display:flex;align-items:center;justify-content:center;font-size:80px}
+.fp-title{text-align:center;font-size:20px;font-weight:600;margin:8px 0 4px;padding:0 16px}
+.fp-badge{text-align:center;margin-bottom:16px}
+.fp-seek{padding:0 8px}
+.fp-seek input{width:100%;accent-color:#0d9d6c}
+.fp-time{display:flex;justify-content:space-between;font-size:12px;color:#8b949e;padding:4px 8px}
+.fp-ctrl{display:flex;justify-content:center;align-items:center;gap:24px;margin:20px 0}
+.fp-ctrl button{background:none;border:none;color:#e6edf3;cursor:pointer}
+.fp-ctrl .main{font-size:64px;min-width:80px;min-height:80px}
+.fp-ctrl .sub{font-size:36px;min-width:56px;min-height:56px;color:#8b949e}
+/* states */
+.dp-center{text-align:center;padding:60px 20px;color:#8b949e}
+.dp-btn{background:var(--pp-grad);color:#fff;border:none;border-radius:var(--pp-r-md);padding:14px 28px;font-size:16px;cursor:pointer;font-weight:600}
+.dp-err{background:#ef444422;border:1px solid #ef4444;color:#f87171;padding:12px 16px;border-radius:var(--pp-r-md);margin:12px 16px}
+.dp-loading{text-align:center;padding:20px;color:#8b949e}
+#driveToken{display:none}
+</style>
+</head>
+<body>
+
+<div class="dp-header">
+  <h1>🎵 DAC Player</h1>
+  <input class="dp-search" id="searchBox" type="search" placeholder="Tìm kiếm nhạc..." autocomplete="off">
+</div>
+
+<div id="driveConnect" class="dp-center" style="display:none">
+  <p>Kết nối Google Drive để duyệt thư viện nhạc của bạn.</p>
+  <button class="dp-btn" id="btnConnect">Kết nối Google Drive</button>
+</div>
+
+<div id="mainView">
+  <div id="breadcrumb" style="padding:8px 16px;font-size:13px;color:#8b949e"></div>
+  <div class="dp-list" id="trackList"></div>
+</div>
+
+<div id="errBox"></div>
+
+<!-- Mini player -->
+<div id="miniPlayer">
+  <div id="miniProgress"><div></div></div>
+  <div class="mp-row">
+    <div class="mp-info" id="mpInfo">
+      <div class="t" id="mpTitle">—</div>
+    </div>
+    <span class="dp-badge" id="mpBadge" style="display:none"></span>
+    <button class="mp-btn" id="mpPlayBtn">▶</button>
+  </div>
+</div>
+
+<!-- Full player -->
+<div id="fullPlayer">
+  <button class="fp-close" id="fpClose">⌄</button>
+  <div class="fp-art" id="fpArt">🎵</div>
+  <div class="fp-title" id="fpTitle">—</div>
+  <div class="fp-badge"><span class="dp-badge" id="fpBadge" style="display:none"></span></div>
+  <div class="fp-seek">
+    <input type="range" id="fpSeek" min="0" max="1000" value="0">
+    <div class="fp-time"><span id="fpCur">0:00</span><span id="fpDur">0:00</span></div>
+  </div>
+  <div class="fp-ctrl">
+    <button class="sub" id="fpPrev">⏮</button>
+    <button class="main" id="fpPlayBtn">▶</button>
+    <button class="sub" id="fpNext">⏭</button>
+  </div>
+</div>
+
+<audio id="audio" preload="auto"></audio>
+<audio id="audioPrefetch" preload="auto" style="display:none"></audio>
+
+<script>
+(function(){
+'use strict';
+// ===== Auth =====
+function getToken(){ try{ return localStorage.getItem('elab_authToken')||''; }catch(e){ return ''; } }
+const token = getToken();
+if(!token){ location.href='/login'; return; }
+
+function getDriveToken(){ try{ return sessionStorage.getItem('dac_drive_token')||''; }catch(e){ return ''; } }
+function setDriveToken(t){ try{ sessionStorage.setItem('dac_drive_token', t); }catch(e){} }
+
+async function api(path, opts){
+  const r = await fetch(path, Object.assign({headers:{'Authorization':'Bearer '+token}}, opts||{}));
+  if(r.status===401){ try{localStorage.removeItem('elab_authToken');}catch(e){} location.href='/login'; return null; }
+  return r;
+}
+
+// ===== State =====
+const audio = document.getElementById('audio');
+const audioPf = document.getElementById('audioPrefetch');
+let queue = [], qIndex = -1, currentTrack = null;
+let driveToken = getDriveToken();
+
+// ===== Drive connect =====
+const driveConnectEl = document.getElementById('driveConnect');
+const mainView = document.getElementById('mainView');
+if(!driveToken){
+  driveConnectEl.style.display='block'; mainView.style.display='none';
+  document.getElementById('btnConnect').onclick = async ()=>{
+    const r = await api('/api/drive/auth-url');
+    if(r){ const j = await r.json(); if(j.url) location.href = j.url; }
+  };
+  // Kiểm tra OAuth callback (?drive_token=...)
+  const params = new URLSearchParams(location.search);
+  const cbToken = params.get('drive_token');
+  if(cbToken){ setDriveToken(cbToken); driveToken = cbToken;
+    history.replaceState(null,'',location.pathname);
+    driveConnectEl.style.display='none'; mainView.style.display='block';
+    loadFolder('root');
+  }
+} else {
+  loadFolder('root');
+}
+
+// ===== IndexedDB cache =====
+let db = null;
+function openDB(){
+  return new Promise((res)=>{
+    try{
+      const req = indexedDB.open('dacweb', 1);
+      req.onupgradeneeded = (e)=>{ e.target.result.createObjectStore('folders', {keyPath:'id'}); };
+      req.onsuccess = (e)=>{ db = e.target.result; res(); };
+      req.onerror = ()=>res();
+    }catch(e){ res(); }
+  });
+}
+function cacheFolder(id, data){
+  if(!db) return;
+  try{ db.transaction('folders','readwrite').objectStore('folders').put({id:id, data:data, ts:Date.now()}); }catch(e){}
+}
+function getCachedFolder(id){
+  return new Promise((res)=>{
+    if(!db) return res(null);
+    try{
+      const req = db.transaction('folders','readonly').objectStore('folders').get(id);
+      req.onsuccess = ()=>res(req.result ? req.result.data : null);
+      req.onerror = ()=>res(null);
+    }catch(e){ res(null); }
+  });
+}
+
+// ===== Folder browsing (stale-while-revalidate) =====
+let searchTimer = null;
+document.getElementById('searchBox').addEventListener('input', (e)=>{
+  clearTimeout(searchTimer);
+  const q = e.target.value.trim();
+  searchTimer = setTimeout(()=>{ if(q.length>=2) doSearch(q); else loadFolder('root'); }, 300);
+});
+
+async function loadFolder(parentId){
+  const list = document.getElementById('trackList');
+  // 1. Hiện cache ngay (stale)
+  const cached = await getCachedFolder(parentId);
+  if(cached) renderFolder(cached, parentId);
+  else list.innerHTML = '<div class="dp-loading">Đang tải...</div>';
+  // 2. Fetch mới nền (revalidate)
+  try{
+    const headers = {'Authorization':'Bearer '+token};
+    if(driveToken) headers['X-Drive-Token'] = driveToken;
+    const r = await fetch('/api/dac/folders?parentId='+encodeURIComponent(parentId), {headers:headers});
+    if(r.status===401){ location.href='/login'; return; }
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const j = await r.json();
+    cacheFolder(parentId, j);
+    renderFolder(j, parentId);
+  }catch(e){
+    if(!cached) list.innerHTML = '<div class="dp-err">Không tải được. Kiểm tra mạng.</div>';
+  }
+}
+
+function renderFolder(j, parentId){
+  const list = document.getElementById('trackList');
+  const bc = document.getElementById('breadcrumb');
+  // Breadcrumb từ D1 (không gọi API)
+  if(j.breadcrumb && j.breadcrumb.length){
+    bc.innerHTML = j.breadcrumb.map((b,i)=>
+      '<span style="cursor:pointer;color:'+(i===j.breadcrumb.length-1?'#e6edf3':'#0d9d6c')+'" data-fid="'+b.id+'">'+esc(b.name)+'</span>'
+    ).join(' <span style="color:#30363d">/</span> ');
+    bc.querySelectorAll('[data-fid]').forEach(el=>{
+      el.onclick = ()=>loadFolder(el.getAttribute('data-fid'));
+    });
+  } else bc.innerHTML = '';
+  let html = '';
+  (j.folders||[]).forEach(f=>{
+    html += '<div class="dp-item" data-type="folder" data-id="'+esc(f.id)+'"><span class="ic">📁</span><div class="nm"><div class="t">'+esc(f.name)+'</div></div><span style="color:#8b949e">›</span></div>';
+  });
+  queue = [];
+  (j.tracks||[]).forEach((t,i)=>{
+    queue.push(t);
+    html += '<div class="dp-item" data-type="track" data-idx="'+i+'"><span class="ic">🎵</span><div class="nm"><div class="t">'+esc(t.name)+'</div><div class="s">'+fmtSize(t.size)+'</div></div>'+badgeHtml(t)+'</div>';
+  });
+  if(!html) html = '<div class="dp-center">Thư mục trống</div>';
+  list.innerHTML = html;
+  list.querySelectorAll('[data-type="folder"]').forEach(el=>{ el.onclick=()=>loadFolder(el.getAttribute('data-id')); });
+  list.querySelectorAll('[data-type="track"]').forEach(el=>{ el.onclick=()=>playTrack(parseInt(el.getAttribute('data-idx'))); });
+}
+
+async function doSearch(q){
+  const list = document.getElementById('trackList');
+  list.innerHTML = '<div class="dp-loading">Đang tìm...</div>';
+  document.getElementById('breadcrumb').innerHTML = '';
+  try{
+    const r = await api('/api/dac/search?q='+encodeURIComponent(q));
+    if(!r) return;
+    const j = await r.json();
+    queue = [];
+    let html = '';
+    (j.results||j.tracks||[]).forEach((t,i)=>{
+      queue.push(t);
+      html += '<div class="dp-item" data-idx="'+i+'"><span class="ic">🎵</span><div class="nm"><div class="t">'+esc(t.name)+'</div></div>'+badgeHtml(t)+'</div>';
+    });
+    list.innerHTML = html || '<div class="dp-center">Không tìm thấy</div>';
+    list.querySelectorAll('[data-idx]').forEach(el=>{ el.onclick=()=>playTrack(parseInt(el.getAttribute('data-idx'))); });
+  }catch(e){ list.innerHTML = '<div class="dp-err">Tìm kiếm thất bại.</div>'; }
+}
+
+// ===== Badge =====
+function badgeHtml(t){
+  const name = (t.name||'').toLowerCase();
+  let fmt = 'AUDIO';
+  if(name.endsWith('.flac')) fmt='FLAC';
+  else if(name.endsWith('.wav')) fmt='WAV';
+  else if(name.endsWith('.mp3')) fmt='MP3';
+  else if(name.endsWith('.m4a')) fmt='M4A';
+  else if(name.endsWith('.aiff')) fmt='AIFF';
+  else if(name.endsWith('.dsf')||name.endsWith('.dff')) fmt='DSD';
+  return '<span class="dp-badge">'+fmt+'</span>';
+}
+function fmtSize(b){ if(!b) return ''; const mb=b/1048576; return mb>=1? mb.toFixed(1)+' MB' : Math.round(b/1024)+' KB'; }
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// ===== Playback =====
+async function playTrack(idx){
+  if(idx<0||idx>=queue.length) return;
+  qIndex = idx;
+  currentTrack = queue[idx];
+  showLoading(true);
+  try{
+    const headers = {'Authorization':'Bearer '+token};
+    if(driveToken) headers['X-Drive-Token'] = driveToken;
+    const r = await fetch('/api/dac/stream/'+encodeURIComponent(currentTrack.id), {headers:headers});
+    if(!r.ok) throw new Error('Stream failed: '+r.status);
+    const j = await r.json();
+    if(!j.url) throw new Error('No URL');
+    audio.src = j.url;
+    await audio.play();
+    updatePlayerUI();
+    setupMediaSession();
+    prefetchNext();
+  }catch(e){
+    showErr('Không phát được file này.');
+  }
+  showLoading(false);
+}
+
+function showLoading(on){
+  document.getElementById('mpPlayBtn').textContent = on ? '⏳' : (audio.paused?'▶':'⏸');
+  document.getElementById('fpPlayBtn').textContent = on ? '⏳' : (audio.paused?'▶':'⏸');
+}
+function showErr(msg){
+  const eb = document.getElementById('errBox');
+  eb.innerHTML = '<div class="dp-err">'+esc(msg)+'</div>';
+  setTimeout(()=>{ eb.innerHTML=''; }, 4000);
+}
+
+function updatePlayerUI(){
+  if(!currentTrack) return;
+  const badge = badgeHtml(currentTrack).replace('<span class="dp-badge">','').replace('</span>','');
+  document.getElementById('mpTitle').textContent = currentTrack.name;
+  const mpB = document.getElementById('mpBadge');
+  mpB.textContent = badge; mpB.style.display='';
+  document.getElementById('fpTitle').textContent = currentTrack.name;
+  const fpB = document.getElementById('fpBadge');
+  fpB.textContent = badge; fpB.style.display='';
+  document.getElementById('miniPlayer').classList.add('show');
+  document.title = currentTrack.name + ' — DAC Player';
+  showLoading(false);
+}
+
+// Prefetch bài tiếp theo ở 50%
+let prefetched = -1;
+function prefetchNext(){
+  const ni = qIndex+1;
+  if(ni>=queue.length || ni===prefetched) return;
+  prefetched = ni;
+  const nt = queue[ni];
+  const headers = {'Authorization':'Bearer '+token};
+  if(driveToken) headers['X-Drive-Token'] = driveToken;
+  fetch('/api/dac/stream/'+encodeURIComponent(nt.id), {headers:headers})
+    .then(r=>r.json()).then(j=>{ if(j.url) audioPf.src = j.url; }).catch(()=>{});
+}
+audio.addEventListener('timeupdate', ()=>{
+  if(!audio.duration) return;
+  const pct = (audio.currentTime/audio.duration)*100;
+  document.querySelector('#miniProgress>div').style.width = pct+'%';
+  document.getElementById('fpSeek').value = Math.round(pct*10);
+  document.getElementById('fpCur').textContent = fmtTime(audio.currentTime);
+  // Prefetch ở 50%
+  if(pct>50) prefetchNext();
+  if('mediaSession' in navigator){
+    try{ navigator.mediaSession.setPositionState({duration:audio.duration, playbackRate:audio.playbackRate, position:audio.currentTime}); }catch(e){}
+  }
+});
+audio.addEventListener('loadedmetadata', ()=>{
+  document.getElementById('fpDur').textContent = fmtTime(audio.duration);
+});
+audio.addEventListener('play', ()=>showLoading(false));
+audio.addEventListener('pause', ()=>showLoading(false));
+audio.addEventListener('ended', ()=>{ if(qIndex+1<queue.length) playTrack(qIndex+1); });
+audio.addEventListener('error', ()=>showErr('Lỗi phát nhạc.'));
+
+function fmtTime(s){ if(!s||isNaN(s)) return '0:00'; const m=Math.floor(s/60), ss=Math.floor(s%60); return m+':'+(ss<10?'0':'')+ss; }
+
+// Controls
+function togglePlay(){ if(!currentTrack) return; if(audio.paused) audio.play(); else audio.pause(); }
+document.getElementById('mpPlayBtn').onclick = togglePlay;
+document.getElementById('fpPlayBtn').onclick = togglePlay;
+document.getElementById('mpInfo').onclick = ()=>document.getElementById('fullPlayer').classList.add('show');
+document.getElementById('fpClose').onclick = ()=>document.getElementById('fullPlayer').classList.remove('show');
+document.getElementById('fpPrev').onclick = ()=>{ if(qIndex>0) playTrack(qIndex-1); else { audio.currentTime=0; } };
+document.getElementById('fpNext').onclick = ()=>{ if(qIndex+1<queue.length) playTrack(qIndex+1); };
+document.getElementById('fpSeek').addEventListener('change', (e)=>{
+  if(audio.duration) audio.currentTime = (e.target.value/1000)*audio.duration;
+});
+
+// ===== Media Session =====
+function setupMediaSession(){
+  if(!('mediaSession' in navigator) || !currentTrack) return;
+  try{
+    navigator.mediaSession.metadata = new MediaMetadata({ title: currentTrack.name, artist: 'DAC Player', album: '' });
+    navigator.mediaSession.setActionHandler('play', ()=>audio.play());
+    navigator.mediaSession.setActionHandler('pause', ()=>audio.pause());
+    navigator.mediaSession.setActionHandler('previoustrack', ()=>{ if(qIndex>0) playTrack(qIndex-1); });
+    navigator.mediaSession.setActionHandler('nexttrack', ()=>{ if(qIndex+1<queue.length) playTrack(qIndex+1); });
+    navigator.mediaSession.setActionHandler('seekto', (d)=>{ if(d.seekTime!=null && audio.duration) audio.currentTime = d.seekTime; });
+  }catch(e){}
+}
+
+// ===== Init =====
+openDB();
+})();
+</script>
+</body>
+</html>

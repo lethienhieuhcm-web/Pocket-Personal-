@@ -325,6 +325,10 @@ export default {
     if (url.pathname === "/dac" || url.pathname === "/dac.html") {
       return serveAsset(env, "/english/dac.html"+url.search);
    }
+    // dacweb v2.1: Web Player cho dac-app
+    if (url.pathname === "/dacplayer" || url.pathname === "/dacplayer/") {
+      return serveAsset(env, "/english/dacplayer.html"+url.search);
+   }
     if (url.pathname === "/dac-player-debug.apk") {
       // 2.5: APK vượt 25 MiB giới hạn Workers Assets → serve từ R2 DATA.
       const obj = await env.DATA.get("dac-player-debug.apk");

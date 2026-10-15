@@ -67,6 +67,7 @@ FILES = [
     "hub-manifest.json", "hub-sw.js",
     "privacy.html", "terms.html", "policy.html", "admin.html",
     "dac.html",
+    "dacplayer.html",
     # 2.5: dac-player-debug.apk vượt 25 MiB giới hạn Workers Assets →
     # serve từ R2 DATA (route /dac-player-debug.apk trong worker).
     ".well-known/assetlinks.json",
