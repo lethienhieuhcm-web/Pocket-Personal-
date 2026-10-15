@@ -4,6 +4,11 @@ Modal cron jobs for Pocket Personal (k1 Section 2).
 3 scheduled functions:
 1. book_processor  - every 5 min: process PDF uploads from R2 (English Lab Books)
 2. publish_snapshot - every 30 min: publish stock snapshots via vnstock.
+   Payload DUNG contract Worker ({"indices": [...]} -> market/indices.json,
+   {"quotes": {SYM: {...}}} -> market/quotes.json) - 2026-10-15: phat hien
+   ban cu gui {"type","data"} nen Worker written:0 (khong ghi gi ca).
+   Indices lay qua index(symbol).ohlcv nhu script VM (market.indices()
+   khong con o vnstock v3).
    Failure policy (ong lon style): track per-step success; if NOTHING was
    published (total failure) -> send Telegram alert via Worker
    /api/internal/modal-alert, then raise so the dashboard shows Failed.
@@ -241,38 +246,83 @@ def publish_snapshot():
         except Exception as e:
             print(f"  fail alert error: {e}", flush=True)
 
+    def clean_num(v):
+        """So sach: None/NaN/inf -> None (tranh loi serialize nhu script VM)."""
+        if v is None:
+            return None
+        try:
+            f = float(v)
+        except (TypeError, ValueError):
+            return None
+        return None if math.isnan(f) or math.isinf(f) else f
+
+    def clean_rec(r):
+        return {k: (None if isinstance(v, float) and (math.isnan(v) or math.isinf(v)) else v)
+                for k, v in r.items()}
+
     print(f"[{date.today().isoformat()}] publish_snapshot starting...")
     market = Market()
     ok_indices = False
     ok_quotes = False
 
-    # Indices
-    indices = vn_call(lambda: market.indices(), "indices")
-    if indices is not None:
-        try:
-            result = publish({"type": "indices", "data": indices.to_dict("records") if hasattr(indices, "to_dict") else []})
-            print(f"  indices: {result}")
+    # Indices: pattern nhu script VM (dung ohlcv tung index, lay 2 bar cuoi
+    # de tinh change/pct_change). market.indices() khong con ton tai o vnstock v3.
+    try:
+        end = date.today().isoformat()
+        start = (date.today() - timedelta(days=10)).isoformat()
+        idx_rows = []
+        for sym in ["VNINDEX", "VN30", "HNXIndex", "UPCOMIndex"]:
+            recs = vn_call(
+                lambda s=sym: [clean_rec(r) for r in
+                               market.index(symbol=s).ohlcv(start=start, end=end).to_dict("records")],
+                f"indices-{sym}", retries=2)
+            item = {"symbol": sym}
+            if recs:
+                last = recs[-1]
+                item["close"] = clean_num(last.get("close"))
+                item["volume"] = clean_num(last.get("volume"))
+                t = last.get("time")
+                item["time"] = t[:10] if isinstance(t, str) else str(t)
+                if len(recs) >= 2:
+                    prev, cur = clean_num(recs[-2].get("close")), item["close"]
+                    if prev and cur:
+                        item["change"] = round(cur - prev, 2)
+                        item["pct_change"] = round((cur - prev) / prev * 100, 2)
+            idx_rows.append(item)
+            time.sleep(2)  # respect rate limit
+        if idx_rows:
+            # Contract Worker: {"indices": [...]} -> market/indices.json {rows: [...]}
+            result = publish({"indices": idx_rows})
+            print(f"  indices: {len(idx_rows)} -> {result}")
             ok_indices = True
-        except Exception as e:
-            print(f"  indices publish error: {e}")
+    except Exception as e:
+        print(f"  indices publish error: {e}")
 
-    # Top liquid symbols for quotes
+    # Quotes: map field that cua vnstock sang dung contract frontend
+    # {close, change, pct_change, volume, value_vnd, exchange} theo ma CK.
     symbols = ["VCB", "BID", "CTG", "TCB", "MBB", "VPB", "HPG", "VHM", "VIC", "VNM",
                "MSN", "FPT", "MWG", "SSI", "VND", "HCM", "STB", "ACB", "SHB", "POW"]
-    quotes = []
+    by_symbol = {}
     for sym in symbols:
-        q = vn_call(lambda s=sym: market.quote(s), f"quote-{sym}", retries=2)
-        if q is not None:
-            try:
-                quotes.append(q.to_dict("records")[0] if hasattr(q, "to_dict") else {})
-            except Exception:
-                pass
+        recs = vn_call(lambda s=sym: market.quote(s).to_dict("records"),
+                       f"quote-{sym}", retries=2)
+        if recs:
+            r = recs[0]
+            by_symbol[sym] = {
+                "close": clean_num(r.get("close_price")),
+                "change": clean_num(r.get("price_change")),
+                "pct_change": clean_num(r.get("percent_change")),
+                "volume": clean_num(r.get("volume_accumulated")),
+                "value_vnd": clean_num(r.get("total_value")),
+                "exchange": r.get("exchange"),
+            }
         time.sleep(4)  # respect rate limit (15 calls/min shared)
 
-    if quotes:
+    if by_symbol:
         try:
-            result = publish({"type": "quotes", "data": quotes})
-            print(f"  quotes: {len(quotes)} symbols -> {result}")
+            # Contract Worker: {"quotes": {SYM: {...}}} -> market/quotes.json {by_symbol: {...}}
+            result = publish({"quotes": by_symbol})
+            print(f"  quotes: {len(by_symbol)} symbols -> {result}")
             ok_quotes = True
         except Exception as e:
             print(f"  quotes publish error: {e}")
