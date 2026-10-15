@@ -6,13 +6,8 @@
 </script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<script>/* FIT 8b-8: theme theo hệ thống, không nháy — localStorage > prefers-color-scheme */
-try{
-  var s = localStorage.getItem('pp_theme') || localStorage.getItem('hub_theme');
-  var d = s ? s === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
-  if(d) document.documentElement.classList.add('pp-dark');
-  if(s && !localStorage.getItem('pp_theme')) localStorage.setItem('pp_theme', s); // migrate key cũ
-}catch(e){}</script>
+<script>/* Gốc theme: snippet chuẩn, không sửa. Controller ở /english/js/shared/theme.js */
+try{var s=localStorage.getItem('pp_theme');if(!s){s=localStorage.getItem('elab_theme')||localStorage.getItem('hub_theme');if(s)localStorage.setItem('pp_theme',s)}var d=s?s==='dark':matchMedia('(prefers-color-scheme: dark)').matches;if(d)document.documentElement.classList.add('pp-dark')}catch(e){}</script>
 <title>Pocket Personal</title>
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#0d9d6c">
@@ -23,18 +18,6 @@ try{
 .pp-hub .subtitle{color:var(--pp-mut);margin-bottom:24px;font-size:var(--pp-text-sm)}
 #installBtn{margin-bottom:20px;width:100%;justify-content:center}
 .pp-apps{display:flex;flex-direction:column;gap:10px;width:100%}
-.pp-app-row{display:flex;align-items:center;gap:14px;background:var(--pp-card);border:1px solid var(--pp-line);
-  border-radius:var(--pp-r-lg);padding:13px 14px;text-decoration:none;color:var(--pp-ink);
-  transition:transform .15s,box-shadow .15s}
-.pp-app-row:hover{box-shadow:var(--pp-shadow)}
-.pp-app-row:active{transform:scale(.98)}
-img.pp-app-ic{object-fit:cover;padding:0}
-.pp-app-ic{width:46px;height:46px;border-radius:14px;display:flex;align-items:center;justify-content:center;
-  color:#fff;font-weight:800;font-size:var(--pp-text-xl);flex-shrink:0}
-.pp-app-tx{flex:1;min-width:0}
-.pp-app-name{font-weight:700;font-size:var(--pp-text-base)}
-.pp-app-desc{color:var(--pp-mut);font-size:var(--pp-text-xs);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pp-app-go{color:var(--pp-mut);font-size:var(--pp-text-xl);font-weight:700;flex-shrink:0}
 .pp-top-btns{position:fixed;top:16px;right:16px;display:flex;gap:8px;align-items:center}
 .lang-pill{display:inline-flex;border:1px solid var(--pp-line);border-radius:20px;overflow:hidden;background:var(--pp-card)}
 .lang-pill button{border:none;background:transparent;padding:8px 10px;font-size:var(--pp-text-xs);font-weight:700;color:var(--pp-mut);cursor:pointer}
@@ -99,13 +82,23 @@ img.pp-app-ic{object-fit:cover;padding:0}
       <div class="pp-app-tx"><div class="pp-app-name">Voice</div><div class="pp-app-desc" data-i18n="d_voice">Text to speech Việt/Anh</div></div>
       <div class="pp-app-go">›</div>
     </a>
+    <a class="pp-app-row" href="/browser/" data-app="browser">
+      <img class="pp-app-ic" src="/english/icons/icon-browser-192.png" alt="">
+      <div class="pp-app-tx"><div class="pp-app-name">Browser</div><div class="pp-app-desc" data-i18n="d_browser">Duyệt web qua proxy</div></div>
+      <div class="pp-app-go">›</div>
+    </a>
+    <a class="pp-app-row" href="/talk/" data-app="talk">
+      <img class="pp-app-ic" src="/english/icons/icon-talk-192.png" alt="">
+      <div class="pp-app-tx"><div class="pp-app-name">Talk</div><div class="pp-app-desc" data-i18n="d_talk">Trò chuyện với AI</div></div>
+      <div class="pp-app-go">›</div>
+    </a>
     <a class="pp-app-row" href="/admin/" data-app="admin" style="display:none">
-      <svg class="pp-app-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="background:var(--pp-accent)"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      <img class="pp-app-ic" src="/english/icons/icon-admin-192.png" alt="">
       <div class="pp-app-tx"><div class="pp-app-name" data-i18n="admin">Admin</div><div class="pp-app-desc" data-i18n="d_admin">Quản trị hệ thống</div></div>
       <div class="pp-app-go">›</div>
     </a>
     <a class="pp-app-row" href="/upgrade" data-app="upgrade">
-      <svg class="pp-app-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg>
+      <img class="pp-app-ic" src="/english/icons/icon-upgrade-192.png" alt="">
       <div class="pp-app-tx"><div class="pp-app-name" data-i18n="upgrade">Upgrade</div><div class="pp-app-desc" data-i18n="d_upgrade">Xem các gói & thanh toán</div></div>
       <div class="pp-app-go">›</div>
     </a>
@@ -114,33 +107,40 @@ img.pp-app-ic{object-fit:cover;padding:0}
 </div>
 <script>
 const themeBtn = document.getElementById('themeBtn');
-// Head script đã set pp-dark ở html; đồng bộ sang body
+// Gốc theme (G3): dùng shared module. Head script đã set pp-dark; đồng bộ sang body.
+import('/english/js/shared/theme.js').catch(function(){});
 document.body.classList.toggle('pp-dark', document.documentElement.classList.contains('pp-dark'));
 themeBtn.onclick = ()=>{
-  const dark = document.documentElement.classList.toggle('pp-dark');
-  document.body.classList.toggle('pp-dark', dark);
-  try{ localStorage.setItem('pp_theme', dark?'dark':'light'); }catch(e){}
+  if(window.__elabTheme) window.__elabTheme.toggle();
+  else {
+    const dark = document.documentElement.classList.toggle('pp-dark');
+    document.body.classList.toggle('pp-dark', dark);
+    try{ localStorage.setItem('pp_theme', dark?'dark':'light'); }catch(e){}
+  }
+  document.body.classList.toggle('pp-dark', document.documentElement.classList.contains('pp-dark'));
 };
-// Service worker auto-update (Henrry 2026-10-11): tự update, không cần user bấm.
+// Service worker update (Chốt A 2026-10-11): hiện banner, user bấm "Cập nhật" mới update.
+// Không tự SKIP_WAITING, không tự reload (user đang nhập liệu sẽ mất dữ liệu).
 if('serviceWorker' in navigator){
   navigator.serviceWorker.register('/sw.js',{scope:'/'}).then(function(reg){
     reg.addEventListener('updatefound', function(){
       var newWorker = reg.installing;
       newWorker.addEventListener('statechange', function(){
         if(newWorker.state === 'installed' && navigator.serviceWorker.controller){
-          newWorker.postMessage({type: 'SKIP_WAITING'});
+          showUpdateBanner(newWorker);
         }
       });
     });
   }).catch(()=>{});
-  navigator.serviceWorker.addEventListener('controllerchange', function(){
-    location.reload();
-  });
 }
 // Banner "Có bản mới" - hiện inline, không popup/modal (chuẩn big tech)
 function showUpdateBanner(newWorker){
   if(document.getElementById('sw-update-banner')) return;
-  var lang = (window.elab_uiLang || 'vi').toLowerCase();
+  // Đọc ngôn ngữ từ localStorage (JSON hoặc chuỗi thường đều được).
+  // Không dùng window.elab_uiLang vì không nơi nào gán nó.
+  var lang = 'vi';
+  try{ lang = (localStorage.getItem('elab_uiLang')||'vi').replace(/"/g,''); }catch(e){}
+  lang = lang.toLowerCase();
   var t = (typeof I18N !== 'undefined' && I18N[lang]) ? I18N[lang] : (typeof I18N !== 'undefined' ? I18N.vi : {});
   var banner = document.createElement('div');
   banner.id = 'sw-update-banner';
@@ -159,12 +159,14 @@ function showUpdateBanner(newWorker){
   var btnLater = document.createElement('button');
   btnLater.textContent = t.update_later || 'Để sau';
   btnLater.style.cssText = 'background:transparent;color:#fff;border:1px solid rgba(255,255,255,.5);border-radius:8px;padding:6px 14px;cursor:pointer;';
-  btnLater.addEventListener('click', function(){ banner.remove(); });
+  btnLater.addEventListener('click', function(){ document.body.style.paddingTop = ''; banner.remove(); });
   btns.appendChild(btnUpdate);
   btns.appendChild(btnLater);
   banner.appendChild(msg);
   banner.appendChild(btns);
   document.body.prepend(banner);
+  // 8b 2026-10-12 BUG-3: banner fixed top che nút Logout — đẩy body xuống
+  document.body.style.paddingTop = banner.offsetHeight + 'px';
 }
 // Install prompt
 let deferredPrompt=null;
@@ -241,25 +243,33 @@ document.getElementById('devicesBtn').onclick = async ()=>{
 const I18N = {
 vi:{subtitle:"Chọn một ứng dụng để tiếp tục",install:"Cài app ra màn hình chính",
 d_english:"Học tiếng Anh: đọc, từ điển, sổ câu",d_stocks:"Chứng khoán VN: giá, portfolio, cảnh báo",
-d_chess:"Chơi cờ với AI",d_music:"Nghe nhạc, playlist",d_voice:"Text to speech Việt/Anh",upgrade:"Nâng cấp",d_upgrade:"Xem các gói & thanh toán",admin:"Quản trị",d_admin:"Quản trị hệ thống",
+d_chess:"Chơi cờ với AI",d_music:"Nghe nhạc, playlist",d_voice:"Text to speech Việt/Anh",d_browser:"Duyệt web qua proxy",d_talk:"Trò chuyện với AI",upgrade:"Nâng cấp",d_upgrade:"Xem các gói & thanh toán",admin:"Quản trị",d_admin:"Quản trị hệ thống",update_available:"Có bản mới",update_btn:"Cập nhật",update_later:"Để sau",
 },
 en:{subtitle:"Choose an app to continue",install:"Install app to home screen",
 d_english:"Learn English: reading, dictionary, sentence bank",d_stocks:"VN stocks: prices, portfolio, alerts",
-d_chess:"Play chess vs AI",d_music:"Music, playlists",d_voice:"Vietnamese/English text to speech",upgrade:"Upgrade",d_upgrade:"See plans & payment",admin:"Admin",d_admin:"System administration",
+d_chess:"Play chess vs AI",d_music:"Music, playlists",d_voice:"Vietnamese/English text to speech",d_browser:"Browse the web via proxy",d_talk:"Chat with AI",upgrade:"Upgrade",d_upgrade:"See plans & payment",admin:"Admin",d_admin:"System administration",update_available:"New version available",update_btn:"Update",update_later:"Later",
 },
 zh:{subtitle:"选择一个应用继续",install:"安装应用到主屏幕",
 d_english:"学英语：阅读、词典、句子库",d_stocks:"越南股票：行情、组合、提醒",
-d_chess:"与 AI 下象棋",d_music:"音乐、播放列表",d_voice:"越南语/英语文字转语音",upgrade:"升级",d_upgrade:"查看套餐与付款",admin:"管理",d_admin:"系统管理",
+d_chess:"与 AI 下象棋",d_music:"音乐、播放列表",d_voice:"越南语/英语文字转语音",d_browser:"通过代理浏览网页",d_talk:"与 AI 聊天",upgrade:"升级",d_upgrade:"查看套餐与付款",admin:"管理",d_admin:"系统管理",update_available:"有新版本",update_btn:"更新",update_later:"稍后",
 },
 ko:{subtitle:"계속할 앱을 선택하세요",install:"홈 화면에 앱 설치",
 d_english:"영어 학습: 읽기, 사전, 문장 은행",d_stocks:"베트남 주식: 시세, 포트폴리오, 알림",
-d_chess:"AI와 체스",d_music:"음악, 플레이리스트",d_voice:"베트남어/영어 텍스트 음성 변환",upgrade:"업그레이드",d_upgrade:"요금제 및 결제 보기",admin:"관리",d_admin:"시스템 관리",
+d_chess:"AI와 체스",d_music:"음악, 플레이리스트",d_voice:"베트남어/영어 텍스트 음성 변환",d_browser:"프록시로 웹 탐색",d_talk:"AI와 대화",upgrade:"업그레이드",d_upgrade:"요금제 및 결제 보기",admin:"관리",d_admin:"시스템 관리",update_available:"새 버전 있음",update_btn:"업데이트",update_later:"나중에",
 }};
 function applyHubLang(l){
   try{ localStorage.setItem("elab_uiLang", JSON.stringify(l)); }catch(e){}
   document.documentElement.lang = l;
   document.querySelectorAll("[data-i18n]").forEach(el=>{
-    const v = I18N[l][el.dataset.i18n]; if(v) el.textContent = v;
+    const k = el.dataset.i18n;
+    let v;
+    if(window.__elabI18n && window.__elabI18n.t){
+      try{ window.__elabI18n.setLang(l); }catch(e){}
+      v = window.__elabI18n.t(k);
+      if(v && v !== k) el.textContent = v;
+    } else {
+      v = I18N[l][k]; if(v) el.textContent = v;
+    }
   });
 }
 // Expose for lang-dropdown.js
@@ -272,12 +282,12 @@ window.__elabSetLang = applyHubLang;
 // Hide apps not included in user's plan
 (function(){
   const PLAN_APPS = {
-    free: ["english","chess","music"],
-    hocsinh: ["english","chess","music"],
-    sinhvien: ["english","chess","music","voice"],
-    dilam: ["english","chess","music","voice","stocks"],
-    nhadautu: ["english","chess","music","voice","stocks"],
-    admin: ["english","chess","music","voice","stocks","admin"]
+    free: ["english","chess","music","browser","talk"],
+    hocsinh: ["english","chess","music","browser","talk"],
+    sinhvien: ["english","chess","music","voice","browser","talk"],
+    dilam: ["english","chess","music","voice","stocks","browser","talk"],
+    nhadautu: ["english","chess","music","voice","stocks","browser","talk"],
+    admin: ["english","chess","music","voice","stocks","browser","talk","admin"]
   };
   function applyPlan(plan){
     const apps = PLAN_APPS[plan] || PLAN_APPS.free;
@@ -334,5 +344,6 @@ document.getElementById('logoutBtn').addEventListener('click', ()=>{
   location.href='/';
 });
 </script>
+<script>import("/english/js/shared/i18n.js").then(m=>{try{m.setApp("hub")}catch(e){}}).catch(function(){});</script>
 </body>
 </html>

@@ -28,13 +28,13 @@ body{
 }
 .theme-btn svg{width:20px;height:20px}
 .login-card{max-width:400px;width:100%;padding:24px}
-h1{font-size:30px;text-align:center;margin-bottom:32px;font-weight:700;letter-spacing:-.5px}
+h1{font-size:var(--pp-text-3xl);text-align:center;margin-bottom:32px;font-weight:700;letter-spacing:-.5px}
 .input-row{display:flex;gap:8px;margin-bottom:16px}
 .input-row input{flex:1}
-label{display:block;font-size:14px;margin-bottom:6px;font-weight:500}
+label{display:block;font-size:var(--pp-text-sm);margin-bottom:6px;font-weight:500}
 input{
   width:100%;height:52px;border:1px solid var(--pp-line);border-radius:var(--pp-r-md);
-  padding:0 14px;font-size:16px;
+  padding:0 14px;font-size:var(--pp-text-base);
   background:var(--pp-card);color:var(--pp-ink);
 }
 input:focus{outline:none;border-color:var(--pp-accent);box-shadow:0 0 0 3px rgba(13,157,108,.15)}
@@ -48,32 +48,39 @@ input:focus{outline:none;border-color:var(--pp-accent);box-shadow:0 0 0 3px rgba
 .arrow-btn:active{transform:scale(.96)}
 .arrow-btn:disabled{opacity:.5;cursor:not-allowed}
 .arrow-btn svg{width:22px;height:22px}
-.error{color:var(--pp-danger);font-size:14px;margin-bottom:16px;display:none}
-.switch{margin-top:20px;text-align:center;font-size:14px;color:var(--pp-mut)}
+.error{color:var(--pp-danger);font-size:var(--pp-text-sm);margin-bottom:16px;display:none}
+.switch{margin-top:20px;text-align:center;font-size:var(--pp-text-sm);color:var(--pp-mut)}
 .switch a{color:var(--pp-accent);cursor:pointer;text-decoration:none}
 #passWrap{display:none}
 .user-email{
   display:flex;align-items:center;gap:8px;
   background:var(--pp-card);border:1px solid var(--pp-line);border-radius:var(--pp-r-md);
-  padding:12px 14px;margin-bottom:16px;font-size:15px;
+  padding:12px 14px;margin-bottom:16px;font-size:var(--pp-text-sm);
 }
 .user-email svg{width:18px;height:18px;color:var(--pp-mut)}
-.user-email .edit{margin-left:auto;color:var(--pp-accent);cursor:pointer;font-size:13px}
+.user-email .edit{margin-left:auto;color:var(--pp-accent);cursor:pointer;font-size:var(--pp-text-xs)}
 .divider{display:flex;align-items:center;gap:12px;margin:20px 0}
 .divider div{flex:1;height:1px;background:var(--pp-line)}
-.divider span{color:var(--pp-mut);font-size:13px}
+.divider span{color:var(--pp-mut);font-size:var(--pp-text-xs)}
 .lang-pill{display:inline-flex;border:1px solid var(--pp-line);border-radius:20px;overflow:hidden;background:var(--pp-card)}
-.lang-pill button{border:none;background:transparent;padding:6px 10px;font-size:11px;font-weight:700;color:var(--pp-mut);cursor:pointer}
+.lang-pill button{border:none;background:transparent;padding:6px 10px;font-size:var(--pp-text-xs);font-weight:700;color:var(--pp-mut);cursor:pointer}
 .lang-pill button.on{background:var(--pp-accent);color:#fff}
 /* Nút Google: giữ brand Google (nền trắng theo guideline) */
 .google-btn{
   width:100%;padding:14px;border:1px solid var(--pp-line);border-radius:var(--pp-r-md);
-  background:#fff;color:#1a1a1a;font-size:15px;font-weight:600;cursor:pointer;
+  background:#fff;color:#1a1a1a;font-size:var(--pp-text-sm);font-weight:600;cursor:pointer;
   display:flex;align-items:center;justify-content:center;gap:10px;
   box-shadow:var(--pp-shadow);font-family:var(--pp-font);
 }
 .google-btn:active{transform:scale(.98)}
 </style>
+<script>/* FIT 8b-8: theme theo hệ thống, không nháy — localStorage > prefers-color-scheme */
+try{
+  var s = localStorage.getItem('pp_theme') || localStorage.getItem('hub_theme');
+  var d = s ? s === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+  if(d) document.documentElement.classList.add('pp-dark');
+  if(s && !localStorage.getItem('pp_theme')) localStorage.setItem('pp_theme', s);
+}catch(e){}</script>
 </head>
 <body>
 <div class="pp-langdrop" id="langDrop" style="position:fixed;top:16px;left:16px;z-index:10">
@@ -145,7 +152,7 @@ input:focus{outline:none;border-color:var(--pp-accent);box-shadow:0 0 0 3px rgba
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
         </button>
       </div>
-      <p style="font-size:13px;color:var(--mut);margin-bottom:16px" data-i18n="send_hint">Chúng tôi sẽ gửi mã xác minh đến Gmail của bạn.</p>
+      <p style="font-size:var(--pp-text-xs);color:var(--mut);margin-bottom:16px" data-i18n="send_hint">Chúng tôi sẽ gửi mã xác minh đến Gmail của bạn.</p>
     </div>
     <div id="regStep2" style="display:none">
       <label data-i18n="code_label">Mã xác minh</label>
@@ -155,7 +162,7 @@ input:focus{outline:none;border-color:var(--pp-accent);box-shadow:0 0 0 3px rgba
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
         </button>
       </div>
-      <p style="font-size:13px;color:var(--mut);margin-bottom:16px" data-i18n="check_inbox">Kiểm tra hộp thư Gmail. <a onclick="sendCode()" style="color:var(--accent);cursor:pointer">Gửi lại</a></p>
+      <p style="font-size:var(--pp-text-xs);color:var(--mut);margin-bottom:16px" data-i18n="check_inbox">Kiểm tra hộp thư Gmail. <a onclick="sendCode()" style="color:var(--accent);cursor:pointer">Gửi lại</a></p>
     </div>
     <div id="regStep3" style="display:none">
       <label data-i18n="password_label">Mật khẩu</label>
@@ -243,17 +250,19 @@ function applyLang(l){
 window.__elabSetLang = applyLang;
 
 const themeBtn = document.getElementById('themeBtn');
-const savedTheme = localStorage.getItem('hub_theme') || 'light';
-if(savedTheme === 'dark'){
-  document.body.classList.add('dark');
+// Head script đã set pp-dark ở html; đồng bộ sang body
+const initDark = document.documentElement.classList.contains('pp-dark');
+if(initDark) document.body.classList.add('dark');
+if(initDark){
   themeBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>';
 }
 themeBtn.onclick = ()=>{
   const dark = document.body.classList.toggle('dark');
+  document.documentElement.classList.toggle('pp-dark', dark);
   themeBtn.innerHTML = dark
     ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>'
     : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
-  localStorage.setItem('hub_theme', dark ? 'dark' : 'light');
+  try{ localStorage.setItem('pp_theme', dark ? 'dark' : 'light'); }catch(e){}
 };
 
 let isReg = false, pendingEmail = '';

@@ -36,10 +36,15 @@ export async function serverLogin(email, password){
   const fp = {screen: screen.width+"x"+screen.height, tz: Intl.DateTimeFormat().resolvedOptions().timeZone||"", lang: navigator.language||""};
   const j = await apiCall("/api/auth/login", {method:"POST", body: JSON.stringify({email, password, fp})});
   state.authToken = j.token; state.authUser = {email: j.email, role: j.role, ageGroup: j.ageGroup||"adult"};
-  store.set("authToken", state.authToken); store.set("authUser", state.authUser);
+  // Token lưu dạng chuỗi thường (RULES.md 8). KHÔNG dùng store.set vì nó JSON.stringify
+  // -> token thành "\"abc\"" gây 401 oan ở mọi chỗ đọc raw (Chốt 2026-10-11).
+  try{ localStorage.setItem("elab_authToken", state.authToken); }catch(e){}
+  store.set("authUser", state.authUser);
   state.uiMode = state.authUser.ageGroup;
   const _at = document.getElementById("menuAdminTile");
   if(_at) _at.style.display = state.authUser.role==="admin" ? "" : "none";
+  const _hab = document.getElementById("homeAdminBtn");
+  if(_hab) _hab.style.display = state.authUser.role==="admin" ? "" : "none";
   applyUIMode(H);
   const salt = enc.encode("bank-"+j.email.toLowerCase());
   state.userKey = await deriveKey(password, salt);
@@ -50,7 +55,9 @@ export async function serverLogin(email, password){
 export async function serverLogout(){
   try{ await apiCall("/api/auth/logout", {method:"POST"}); }catch(e){}
   state.authToken = null; state.authUser = null; state.userKey = null; state.bank = [];
-  store.set("authToken", null); store.set("authUser", null);
+  // Logout phải XOÁ token, không ghi "null" (store.set stringify null thành chuỗi "null" vẫn truthy).
+  try{ localStorage.removeItem("elab_authToken"); }catch(e){}
+  store.set("authUser", null);
   
   state.readData = []; state.curScanId = null; state.selSentIdx = -1; hook("hideSentBar");
   $("readSents").innerHTML = ""; $("readArticle").innerHTML = "";
@@ -87,18 +94,31 @@ export async function saveServerBank(){
   }catch(e){}
 }
 export function updateAuthUI(){
+  // Restore auth state from storage on page load (fix: state.authUser was null after refresh)
+  // state.authToken đã được state.js đọc + migrate ở lúc import (chuỗi thường, đã unwrap).
+  // Chỉ cần khôi phục authUser; không đọc lại token qua store.get vì nó JSON.parse
+  // sẽ trả null với token chuỗi thường.
+  if(!state.authUser){
+    const savedUser = store.get("authUser", null);
+    if(savedUser && state.authToken){
+      state.authUser = savedUser;
+    }
+  }
   const btn = $("userBtn");
-  if(state.authUser){
-    
-    const ic = !state.userKey ? "i-lock" : (state.authUser.role === "admin" ? "i-crown" : "i-user");
-    btn.innerHTML = `<svg class="ic"><use href="#${ic}"/></svg>`;
-    btn.title = state.authUser.email + " (" + state.authUser.role + (state.userKey ? "" : ", locked") + ")";
-  }else{
-    btn.innerHTML = `<svg class="ic"><use href="#i-key"/></svg>`; btn.title = "Login";
+  if(btn){
+    if(state.authUser){
+      const ic = !state.userKey ? "i-lock" : (state.authUser.role === "admin" ? "i-crown" : "i-user");
+      btn.innerHTML = `<svg class="ic"><use href="#${ic}"/></svg>`;
+      btn.title = state.authUser.email + " (" + state.authUser.role + (state.userKey ? "" : ", locked") + ")";
+    }else{
+      btn.innerHTML = `<svg class="ic"><use href="#i-key"/></svg>`; btn.title = "Login";
+    }
   }
   
   const at = $("tabBtnAdmin");
   if(at) at.style.display = state.authUser && state.authUser.role === "admin" ? "" : "none";
+  const hab = $("homeAdminBtn");
+  if(hab) hab.style.display = state.authUser && state.authUser.role === "admin" ? "" : "none";
 }
 export function openAuth(){ renderAuthMain(); $("authBox").style.display = "flex"; }
 export function closeAuth(){ $("authBox").style.display = "none"; }
@@ -318,12 +338,9 @@ export async function renderAdmin(){
 export function bindAuth(hooks={}){
   // Theme toggle on auth page
   document.addEventListener('click', e=>{
-    if(e.target.closest('#authThemeBtn')){
-      const cur = store.get("elab_theme","light");
-      const nxt = cur === 'dark' ? 'light' : 'dark';
-      store.set("elab_theme", nxt);
-      import('../core/i18n.js').then(m=>m.applyTheme());
-    }
+    // Dùng chung controller theme toàn app (window.__elabTheme trong <head>).
+    // Bản cũ đọc/ghi qua store (JSON) lệch với chuỗi thường của shell.
+    if(e.target.closest('#authThemeBtn') && window.__elabTheme) window.__elabTheme.toggle();
   });
   setAuthHooks(hooks);
   // Inline onclick="closeAuth()" inside renderAuthMain templates needs a global.
