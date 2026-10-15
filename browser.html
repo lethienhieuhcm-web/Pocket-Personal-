@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<script>/* Auto cache-buster: reload if this HTML is stale (build ID mismatch) */
+(function(){var B="__BUILD__";function c(){try{fetch(location.pathname,{method:"HEAD",cache:"no-store"}).then(function(r){var l=r.headers.get("x-build-id");if(l&&l!==B){location.reload();}}).catch(function(){})}catch(e){}}if(document.readyState==="complete"){setTimeout(c,2000);}else{window.addEventListener("load",function(){setTimeout(c,2000);});}})();
+</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Browser — Pocket Personal</title>
+<link rel="manifest" href="/browser/manifest.json">
+<meta name="theme-color" content="#0d9d6c">
+<link rel="stylesheet" href="/design-system.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--pp-bg);color:var(--pp-ink);display:flex;flex-direction:column;height:100vh;height:100dvh;overflow:hidden}
+.topbar{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--pp-line);background:var(--pp-card);flex-shrink:0}
+.topbar .back{color:var(--pp-mut);text-decoration:none;font-size:var(--pp-text-sm);white-space:nowrap}
+.app-ic{width:30px;height:30px;border-radius:9px;object-fit:cover;flex-shrink:0}
+.topbar h1{font-size:var(--pp-text-base);font-weight:700;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.addrbar{display:flex;gap:6px;padding:8px 12px;background:var(--pp-card);border-bottom:1px solid var(--pp-line);flex-shrink:0}
+.navbtn{width:38px;height:38px;flex-shrink:0;border:1px solid var(--pp-line);border-radius:10px;background:var(--pp-card);color:var(--pp-ink);cursor:pointer;display:flex;align-items:center;justify-content:center}
+.navbtn:disabled{opacity:.35}
+.navbtn svg{width:18px;height:18px}
+#addrInput{flex:1;min-width:0;padding:10px 12px;border:1px solid var(--pp-line);border-radius:10px;background:var(--pp-bg);color:var(--pp-ink);font-size:var(--pp-text-sm);font-family:inherit}
+#goBtn{padding:0 16px;flex-shrink:0;border:none;border-radius:10px;background:var(--pp-grad);color:#fff;font-size:var(--pp-text-sm);font-weight:700;cursor:pointer}
+.statusbar{display:flex;align-items:center;gap:6px;padding:6px 12px;font-size:var(--pp-text-xs);color:var(--pp-mut);background:var(--pp-card);border-bottom:1px solid var(--pp-line);flex-shrink:0;min-height:28px}
+.statusbar .dot{width:8px;height:8px;border-radius:50%;background:var(--pp-accent);flex-shrink:0}
+.statusbar .host{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.statusbar .quota{flex-shrink:0}
+#viewWrap{flex:1;position:relative;min-height:0;background:var(--pp-bg)}
+#view{position:absolute;inset:0;width:100%;height:100%;border:none;background:#fff}
+#loading{position:absolute;inset:0;display:none;align-items:center;justify-content:center;flex-direction:column;gap:12px;background:var(--pp-bg);z-index:5}
+#loading .spin{width:36px;height:36px;border:3px solid var(--pp-line);border-top-color:var(--pp-accent);border-radius:50%;animation:spin 0.8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#loading p{font-size:var(--pp-text-sm);color:var(--pp-mut)}
+#empty{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:24px;text-align:center;color:var(--pp-mut)}
+#empty svg{width:64px;height:64px;opacity:.4}
+#empty p{font-size:var(--pp-text-sm);max-width:320px}
+#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:10px 20px;border-radius:20px;display:none;z-index:1000;max-width:90%;font-size:var(--pp-text-sm)}
+</style>
+<script>/* Gốc theme: snippet chuẩn, không sửa. Controller ở /english/js/shared/theme.js */
+try{var s=localStorage.getItem('pp_theme');if(!s){s=localStorage.getItem('elab_theme')||localStorage.getItem('hub_theme');if(s)localStorage.setItem('pp_theme',s)}var d=s?s==='dark':matchMedia('(prefers-color-scheme: dark)').matches;if(d)document.documentElement.classList.add('pp-dark')}catch(e){}</script>
+</head>
+<body>
+<div class="topbar">
+  <a class="back" href="/hub">← Pocket Personal</a>
+  <img class="app-ic" src="/english/icons/icon-browser-192.png" alt="">
+  <h1 data-i18n="title">Trình duyệt</h1>
+  <div class="pp-langdrop" id="langDrop">
+    <button class="pp-langdrop-btn" aria-label="Language">
+      <svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+      <span class="pp-langdrop-cur">VI</span>
+      <svg class="chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+    </button>
+    <div class="pp-langdrop-menu" role="listbox">
+      <button class="pp-langdrop-item" data-lang="vi"><span class="code">VI</span><span class="name">Tiếng Việt</span></button>
+      <button class="pp-langdrop-item" data-lang="en"><span class="code">EN</span><span class="name">English</span></button>
+      <button class="pp-langdrop-item" data-lang="zh"><span class="code">中文</span><span class="name">中文</span></button>
+      <button class="pp-langdrop-item" data-lang="ko"><span class="code">한국어</span><span class="name">한국어</span></button>
+    </div>
+  </div>
+  <button class="pp-themebtn" id="themeBtn" aria-label="Theme">
+    <svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+  </button>
+</div>
+<div class="addrbar">
+  <button class="navbtn" id="backBtn" data-i18n-aria="back" aria-label="Quay lại">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+  </button>
+  <button class="navbtn" id="fwdBtn" data-i18n-aria="forward" aria-label="Tiếp tục">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+  </button>
+  <button class="navbtn" id="reloadBtn" data-i18n-aria="reload" aria-label="Tải lại">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.5 15a9 9 0 1 1-2-9.4L23 10"/></svg>
+  </button>
+  <input id="addrInput" type="url" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" data-i18n-ph="addr_placeholder" placeholder="Nhập địa chỉ web…">
+  <button id="goBtn" data-i18n="go">Mở</button>
+</div>
+<div class="statusbar">
+  <span class="dot" id="proxyDot"></span>
+  <span data-i18n="proxy_on">Đang qua proxy</span>
+  <span class="host" id="hostLine"></span>
+  <span class="quota" id="quotaLine"></span>
+</div>
+<div id="viewWrap">
+  <div id="empty">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+    <p data-i18n="empty_hint">Nhập địa chỉ web ở trên để mở qua proxy. Website sẽ thấy địa chỉ mạng khác, không phải của thiết bị này.</p>
+  </div>
+  <iframe id="view" title="browser" sandbox="allow-scripts allow-same-origin allow-forms" style="display:none"></iframe>
+  <div id="loading"><div class="spin"></div><p data-i18n="loading">Đang tải…</p></div>
+</div>
+<div id="toast"></div>
+<script>
+/* Theme toggle (đồng bộ với script trong head) */
+document.body.classList.toggle('pp-dark', document.documentElement.classList.contains('pp-dark'));
+document.getElementById('themeBtn').onclick = function(){
+  if(window.__elabTheme){ window.__elabTheme.toggle(); return; }
+  var dark = document.documentElement.classList.toggle('pp-dark');
+  document.body.classList.toggle('pp-dark', dark);
+  try{ localStorage.setItem('pp_theme', dark?'dark':'light'); }catch(e){}
+};
+
+/* I18N — 4 ngôn ngữ (bắt buộc theo 8b) */
+var I18N = {
+vi:{title:"Trình duyệt",go:"Mở",back:"Quay lại",forward:"Tiếp tục",reload:"Tải lại",
+addr_placeholder:"Nhập địa chỉ web…",proxy_on:"Đang qua proxy",loading:"Đang tải…",
+empty_hint:"Nhập địa chỉ web ở trên để mở qua proxy. Website sẽ thấy địa chỉ mạng khác, không phải của thiết bị này.",
+quota_left:"Còn {n}/{m} lượt",quota_unlimited:"Không giới hạn",err_login:"Bạn cần đăng nhập lại",err_badurl:"Địa chỉ không hợp lệ",
+err_blocked:"Địa chỉ này không được phép",err_quota:"Hết lượt hôm nay, nâng cấp để dùng thêm",
+update_available:"Có bản mới",update_btn:"Cập nhật",update_later:"Để sau"},
+en:{title:"Browser",go:"Go",back:"Back",forward:"Forward",reload:"Reload",
+addr_placeholder:"Enter web address…",proxy_on:"Via proxy",loading:"Loading…",
+empty_hint:"Enter a web address above to open it via proxy. Websites will see a different network address, not this device's.",
+quota_left:"{n}/{m} left",quota_unlimited:"Unlimited",err_login:"Please log in again",err_badurl:"Invalid address",
+err_blocked:"This address is not allowed",err_quota:"Daily limit reached, upgrade for more",
+update_available:"New version available",update_btn:"Update",update_later:"Later"},
+zh:{title:"浏览器",go:"前往",back:"返回",forward:"前进",reload:"重新加载",
+addr_placeholder:"输入网址…",proxy_on:"通过代理",loading:"加载中…",
+empty_hint:"在上方输入网址，通过代理打开。网站将看到不同的网络地址，而不是此设备的地址。",
+quota_left:"剩余 {n}/{m} 次",quota_unlimited:"无限制",err_login:"请重新登录",err_badurl:"地址无效",
+err_blocked:"不允许此地址",err_quota:"今日额度已用完，升级可继续使用",
+update_available:"有新版本",update_btn:"更新",update_later:"稍后"},
+ko:{title:"브라우저",go:"이동",back:"뒤로",forward:"앞으로",reload:"새로고침",
+addr_placeholder:"웹 주소 입력…",proxy_on:"프록시 경유 중",loading:"로딩 중…",
+empty_hint:"위 주소를 입력하면 프록시로 열립니다. 웹사이트에는 이 기기의 주소가 아닌 다른 네트워크 주소가 표시됩니다.",
+quota_left:"{n}/{m}회 남음",quota_unlimited:"무제한",err_login:"다시 로그인해 주세요",err_badurl:"주소가 올바르지 않습니다",
+err_blocked:"허용되지 않은 주소입니다",err_quota:"오늘 한도 초과, 업그레이드하면 계속 사용",
+update_available:"새 버전 있음",update_btn:"업데이트",update_later:"나중에"}
+};
+var curLang = 'vi';
+function t(k){
+  // Gốc i18n (G2): ưu tiên shared module, fallback dict inline.
+  if(window.__elabI18n && window.__elabI18n.t){
+    try{ window.__elabI18n.setLang(curLang); }catch(e){}
+    var v = window.__elabI18n.t(k);
+    if(v && v !== k) return v;
+  }
+  return (I18N[curLang] && I18N[curLang][k]) || I18N.vi[k] || k;
+}
+function applyLang(l){
+  if(!I18N[l]) l = 'vi';
+  curLang = l;
+  if(window.__elabI18n && window.__elabI18n.setLang){ try{ window.__elabI18n.setLang(l); }catch(e){} }
+  try{ localStorage.setItem("elab_uiLang", JSON.stringify(l)); }catch(e){}
+  document.documentElement.lang = l;
+  document.querySelectorAll("[data-i18n]").forEach(function(el){
+    var k = el.dataset.i18n, v;
+    if(window.__elabI18n && window.__elabI18n.t){
+      v = window.__elabI18n.t(k);
+      if(v && v !== k) el.textContent = v;
+    } else {
+      v = I18N[l][k]; if(v) el.textContent = v;
+    }
+  });
+  document.querySelectorAll("[data-i18n-ph]").forEach(function(el){
+    var k = el.dataset.i18nPh, v;
+    if(window.__elabI18n && window.__elabI18n.t){
+      v = window.__elabI18n.t(k);
+      if(v && v !== k) el.placeholder = v;
+    } else {
+      v = I18N[l][k]; if(v) el.placeholder = v;
+    }
+  });
+  document.querySelectorAll("[data-i18n-aria]").forEach(function(el){
+    var k = el.dataset.i18nAria, v;
+    if(window.__elabI18n && window.__elabI18n.t){
+      v = window.__elabI18n.t(k);
+      if(v && v !== k) el.setAttribute('aria-label', v);
+    } else {
+      v = I18N[l][k]; if(v) el.setAttribute('aria-label', v);
+    }
+  });
+  refreshQuota();
+}
+window.__elabSetLang = applyLang;
+(function(){ try{ var v = localStorage.getItem("elab_uiLang"); applyLang(v?JSON.parse(v):"vi"); }catch(e){ applyLang("vi"); } })();
+
+/* Toast (inline, không popup) */
+var toastTimer = null;
+function toast(msg){
+  var el = document.getElementById('toast');
+  el.textContent = msg; el.style.display = 'block';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function(){ el.style.display = 'none'; }, 2600);
+}
+
+/* Auth */
+function getToken(){
+  try{ return localStorage.getItem('elab_authToken') || ''; }catch(e){ return ''; }
+}
+function b64url(s){
+  var bytes = new TextEncoder().encode(s), bin = '';
+  for(var i=0;i<bytes.length;i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+function unb64url(s){
+  s = s.replace(/-/g,'+').replace(/_/g,'/');
+  while(s.length % 4) s += '=';
+  var bin = atob(s), bytes = new Uint8Array(bin.length);
+  for(var i=0;i<bin.length;i++) bytes[i] = bin.charCodeAt(i);
+  return new TextDecoder().decode(bytes);
+}
+
+/* Browse */
+var view = document.getElementById('view');
+var emptyBox = document.getElementById('empty');
+var addrInput = document.getElementById('addrInput');
+var hostLine = document.getElementById('hostLine');
+var loadingBox = document.getElementById('loading');
+function showLoading(){ loadingBox.style.display = 'flex'; }
+function hideLoading(){ loadingBox.style.display = 'none'; }
+
+function normalizeUrl(raw){
+  raw = (raw||'').trim();
+  if(!raw) return null;
+  if(!/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(raw)) raw = 'https://' + raw;
+  try{
+    var u = new URL(raw);
+    if(u.protocol !== 'http:' && u.protocol !== 'https:') return null;
+    return u.href;
+  }catch(e){ return null; }
+}
+function openUrl(raw){
+  var href = normalizeUrl(raw);
+  if(!href){ toast(t('err_badurl')); return; }
+  var tok = getToken();
+  if(!tok){ toast(t('err_login')); location.href = '/login'; return; }
+  emptyBox.style.display = 'none';
+  view.style.display = '';
+  showLoading();
+  // Không cập nhật thanh địa chỉ ngay (optimistic) — chỉ đồng bộ khi trang
+  // thực sự tải xong trong syncFromIframe. Như vậy thanh địa chỉ luôn trung
+  // thực với nội dung đang hiển thị (kiểu Safari), tránh lệch khi navigation
+  // fail/không commit.
+  view.src = '/api/browse?url=' + b64url(href) + '&t=' + encodeURIComponent(tok);
+}
+document.getElementById('goBtn').onclick = function(){ openUrl(addrInput.value); };
+addrInput.addEventListener('keydown', function(e){ if(e.key === 'Enter') openUrl(addrInput.value); });
+document.getElementById('backBtn').onclick = function(){ try{ view.contentWindow.history.back(); }catch(e){} };
+document.getElementById('fwdBtn').onclick = function(){ try{ view.contentWindow.history.forward(); }catch(e){} };
+document.getElementById('reloadBtn').onclick = function(){ showLoading(); try{ view.contentWindow.location.reload(); }catch(e){ hideLoading(); } };
+
+/* Đồng bộ thanh địa chỉ theo trang trong iframe (same-origin nên đọc được) */
+function syncFromIframe(){
+  hideLoading();
+  try{
+    var href = view.contentWindow.location.href;
+    var m = href.match(/[?&]url=([^&]+)/);
+    if(m){
+      try{
+        var real = unb64url(decodeURIComponent(m[1]));
+        addrInput.value = real;
+        hostLine.textContent = new URL(real).hostname;
+      }catch(e){}
+    }
+    refreshQuota();
+  }catch(e){}
+}
+function onIframePageShow(){ syncFromIframe(); }
+view.addEventListener('load', function(){
+  syncFromIframe();
+  // bfcache restore (back/forward) không fire 'load' mà fire 'pageshow'
+  try{
+    var cw = view.contentWindow;
+    cw.removeEventListener('pageshow', onIframePageShow);
+    cw.addEventListener('pageshow', onIframePageShow);
+  }catch(e){}
+});
+
+/* Quota hôm nay */
+function refreshQuota(){
+  var tok = getToken();
+  if(!tok) return;
+  fetch('/api/user/usage', {headers:{'Authorization':'Bearer '+tok}})
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(j){
+      if(j && typeof j.browse_pages === 'number'){
+        var line;
+        if(j.browse_limit === null || j.browse_limit === undefined){
+          line = t('quota_unlimited');
+        }else{
+          var left = Math.max(0, j.browse_limit - j.browse_pages);
+          line = t('quota_left').replace('{n}', left).replace('{m}', j.browse_limit);
+        }
+        document.getElementById('quotaLine').textContent = line;
+      }
+    }).catch(function(){});
+}
+
+/* Kiểm tra đăng nhập */
+(function(){
+  var tok = getToken();
+  if(!tok){ location.href = '/login'; return; }
+  fetch('/api/auth/me', {headers:{'Authorization':'Bearer '+tok}})
+    .then(function(r){
+      if(r.status === 401){ try{localStorage.removeItem('elab_authToken');}catch(e){} location.href = '/login'; }
+      else refreshQuota();
+    }).catch(function(){});
+})();
+
+/* Service worker (8b.4: không skipWaiting trong install, chờ user bấm Cập nhật) */
+var swRefreshing = false;
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('/browser/sw.js', {scope:'/browser/'}).then(function(reg){
+    reg.addEventListener('updatefound', function(){
+      var nw = reg.installing;
+      nw.addEventListener('statechange', function(){
+        if(nw.state === 'installed' && navigator.serviceWorker.controller){
+          showUpdateBanner(nw);
+        }
+      });
+    });
+  }).catch(function(){});
+  // Reload khi SW mới đã kiểm soát trang (đúng chuẩn, không race)
+  navigator.serviceWorker.addEventListener('controllerchange', function(){
+    if(swRefreshing) return;
+    swRefreshing = true;
+    location.reload();
+  });
+}
+function showUpdateBanner(nw){
+  if(document.getElementById('sw-update-banner')) return;
+  var banner = document.createElement('div');
+  banner.id = 'sw-update-banner';
+  banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;background:var(--pp-accent,#0d9d6c);color:#fff;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:var(--pp-text-sm);box-shadow:0 2px 8px rgba(0,0,0,.15);';
+  var msg = document.createElement('span');
+  msg.textContent = t('update_available');
+  var btns = document.createElement('div');
+  btns.style.cssText = 'display:flex;gap:8px;flex-shrink:0;';
+  var b1 = document.createElement('button');
+  b1.textContent = t('update_btn');
+  b1.style.cssText = 'background:#fff;color:var(--pp-accent,#0d9d6c);border:none;border-radius:8px;padding:6px 14px;font-weight:600;cursor:pointer;';
+  b1.addEventListener('click', function(){ if(nw) nw.postMessage({type:'SKIP_WAITING'}); });
+  var b2 = document.createElement('button');
+  b2.textContent = t('update_later');
+  b2.style.cssText = 'background:transparent;color:#fff;border:1px solid rgba(255,255,255,.5);border-radius:8px;padding:6px 14px;cursor:pointer;';
+  b2.addEventListener('click', function(){ banner.remove(); });
+  btns.appendChild(b1); btns.appendChild(b2);
+  banner.appendChild(msg); banner.appendChild(btns);
+  document.body.prepend(banner);
+  // 8b 2026-10-12 BUG-3: banner fixed top che nút — đẩy body xuống
+  document.body.style.paddingTop = banner.offsetHeight + 'px';
+}
+</script>
+<script src="/english/js/lang-dropdown.js"></script>
+<script>import("/english/js/shared/theme.js").catch(function(){});</script>
+<script>import("/english/js/shared/i18n.js").then(m=>{try{m.setApp("browser")}catch(e){}}).catch(function(){});</script>
+</body>
+</html>

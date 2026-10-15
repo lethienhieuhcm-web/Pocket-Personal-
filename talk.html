@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<script>/* Auto cache-buster: reload if this HTML is stale (build ID mismatch) */
+(function(){var B="__BUILD__";function c(){try{fetch(location.pathname,{method:"HEAD",cache:"no-store"}).then(function(r){var l=r.headers.get("x-build-id");if(l&&l!==B){location.reload();}}).catch(function(){})}catch(e){}}if(document.readyState==="complete"){setTimeout(c,2000);}else{window.addEventListener("load",function(){setTimeout(c,2000);});}})();
+</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Talk — Pocket Personal</title>
+<link rel="manifest" href="/talk/manifest.json">
+<meta name="theme-color" content="#4f7cff">
+<link rel="stylesheet" href="/design-system.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--pp-bg);color:var(--pp-ink);height:100vh;height:100dvh;overflow:hidden}
+.app{display:flex;height:100%}
+/* Sidebar */
+.sidebar{width:280px;flex-shrink:0;background:var(--pp-card);border-right:1px solid var(--pp-line);display:flex;flex-direction:column;z-index:20}
+.sb-head{padding:10px;border-bottom:1px solid var(--pp-line);display:flex;gap:8px}
+.newbtn{flex:1;padding:10px;border:none;border-radius:10px;background:var(--pp-grad);color:#fff;font-size:var(--pp-text-sm);font-weight:700;cursor:pointer}
+.sb-list{flex:1;overflow-y:auto;padding:8px}
+.sb-item{display:flex;align-items:center;gap:6px;padding:10px 12px;border-radius:10px;cursor:pointer;font-size:var(--pp-text-sm);color:var(--pp-ink)}
+.sb-item:hover{background:var(--pp-bg)}
+.sb-item.active{background:var(--pp-bg);font-weight:600}
+.sb-item .t{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sb-item .del{border:none;background:none;color:var(--pp-mut);cursor:pointer;font-size:16px;line-height:1;padding:4px;flex-shrink:0}
+.sb-item .del:hover{color:var(--pp-danger)}
+.sb-foot{padding:10px;border-top:1px solid var(--pp-line);font-size:var(--pp-text-sm)}
+.sb-foot a{color:var(--pp-mut);text-decoration:none}
+/* Main */
+.main{flex:1;min-width:0;display:flex;flex-direction:column}
+.topbar{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--pp-line);background:var(--pp-card);flex-shrink:0}
+.topbar h1{font-size:var(--pp-text-base);font-weight:700;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.iconbtn{width:36px;height:36px;flex-shrink:0;border:1px solid var(--pp-line);border-radius:10px;background:var(--pp-card);color:var(--pp-ink);cursor:pointer;display:flex;align-items:center;justify-content:center}
+.iconbtn svg{width:18px;height:18px}
+#menuBtn{display:none}
+/* Messages */
+.msgs{flex:1;overflow-y:auto;padding:16px 12px;display:flex;flex-direction:column;gap:12px;max-width:820px;width:100%;margin:0 auto}
+.msg{max-width:85%;padding:10px 14px;border-radius:16px;font-size:var(--pp-text-base);line-height:1.55;white-space:pre-wrap;word-break:break-word}
+.msg.user{align-self:flex-end;background:var(--pp-grad);color:#fff;border-bottom-right-radius:6px}
+.msg.model{align-self:flex-start;background:var(--pp-card);border:1px solid var(--pp-line);border-bottom-left-radius:6px}
+.msg.model.err{border-color:var(--pp-danger);color:var(--pp-danger)}
+.msg .cursor{display:inline-block;width:8px;height:16px;background:var(--pp-accent);vertical-align:-2px;animation:blink 1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+.empty{margin:auto;text-align:center;color:var(--pp-mut);padding:24px;max-width:340px}
+.empty h2{font-size:var(--pp-text-base);color:var(--pp-ink);margin-bottom:8px}
+.empty p{font-size:var(--pp-text-sm);line-height:1.6}
+/* Setup card */
+.setup{margin:auto;width:100%;max-width:420px;padding:24px;background:var(--pp-card);border:1px solid var(--pp-line);border-radius:16px;position:relative}
+.setup-x{position:absolute;top:6px;right:10px;border:none;background:none;font-size:22px;line-height:1;color:var(--pp-mut);cursor:pointer;padding:6px}
+.setup-x:hover{color:var(--pp-ink)}
+.keyhint{font-size:var(--pp-text-xs);color:var(--pp-mut);margin-top:4px}
+.setup h2{font-size:var(--pp-text-base);margin-bottom:6px}
+.setup p{font-size:var(--pp-text-sm);color:var(--pp-mut);margin-bottom:14px;line-height:1.6}
+.setup label{display:block;font-size:var(--pp-text-sm);font-weight:600;margin:10px 0 4px}
+.setup input{width:100%;padding:10px 12px;border:1px solid var(--pp-line);border-radius:10px;background:var(--pp-bg);color:var(--pp-ink);font-size:var(--pp-text-sm);font-family:inherit}
+.setup select{width:100%;padding:10px 12px;border:1px solid var(--pp-line);border-radius:10px;background:var(--pp-bg);color:var(--pp-ink);font-size:var(--pp-text-sm);font-family:inherit}
+.setup .row{display:flex;gap:8px;margin-top:14px}
+.btn{flex:1;padding:11px;border:none;border-radius:10px;background:var(--pp-grad);color:#fff;font-size:var(--pp-text-sm);font-weight:700;cursor:pointer}
+.btn.ghost{background:var(--pp-bg);color:var(--pp-ink);border:1px solid var(--pp-line)}
+/* Composer */
+.composer{padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:var(--pp-card);border-top:1px solid var(--pp-line);flex-shrink:0}
+.composer .wrap{max-width:820px;margin:0 auto;display:flex;gap:8px;align-items:flex-end}
+#input{flex:1;min-width:0;resize:none;max-height:140px;padding:11px 14px;border:1px solid var(--pp-line);border-radius:14px;background:var(--pp-bg);color:var(--pp-ink);font-size:var(--pp-text-base);font-family:inherit;line-height:1.5}
+#input:focus{outline:none;border-color:var(--pp-accent)}
+.sendbtn{width:46px;height:46px;flex-shrink:0;border:none;border-radius:14px;background:var(--pp-grad);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.sendbtn:disabled{opacity:.4;cursor:default}
+.sendbtn svg{width:20px;height:20px}
+#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:10px 20px;border-radius:20px;display:none;z-index:1000;max-width:90%;font-size:var(--pp-text-sm)}
+@media (max-width:767px){
+  #menuBtn{display:flex}
+  .sidebar{position:fixed;top:0;bottom:0;left:0;transform:translateX(-105%);transition:transform .25s ease;box-shadow:0 0 24px rgba(0,0,0,.18)}
+  .sidebar.open{transform:none}
+  .msg{max-width:92%}
+}
+</style>
+<script>/* Gốc theme: snippet chuẩn, không sửa. Controller ở /english/js/shared/theme.js */
+try{var s=localStorage.getItem('pp_theme');if(!s){s=localStorage.getItem('elab_theme')||localStorage.getItem('hub_theme');if(s)localStorage.setItem('pp_theme',s)}var d=s?s==='dark':matchMedia('(prefers-color-scheme: dark)').matches;if(d)document.documentElement.classList.add('pp-dark')}catch(e){}</script>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar" id="sidebar">
+    <div class="sb-head">
+      <button class="newbtn" id="newChatBtn" data-i18n="new_chat">Đoạn chat mới</button>
+    </div>
+    <div class="sb-list" id="chatList"></div>
+    <div class="sb-foot"><a href="/hub">← Pocket Personal</a></div>
+  </aside>
+  <div class="main">
+    <div class="topbar">
+      <button class="iconbtn" id="menuBtn" aria-label="Menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
+      <h1 data-i18n="title">Trò chuyện</h1>
+      <div class="pp-langdrop" id="langDrop">
+        <button class="pp-langdrop-btn" aria-label="Language">
+          <svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+          <span class="pp-langdrop-cur">VI</span>
+          <svg class="chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="pp-langdrop-menu" role="listbox">
+          <button class="pp-langdrop-item" data-lang="vi"><span class="code">VI</span><span class="name">Tiếng Việt</span></button>
+          <button class="pp-langdrop-item" data-lang="en"><span class="code">EN</span><span class="name">English</span></button>
+          <button class="pp-langdrop-item" data-lang="zh"><span class="code">中文</span><span class="name">中文</span></button>
+          <button class="pp-langdrop-item" data-lang="ko"><span class="code">한국어</span><span class="name">한국어</span></button>
+        </div>
+      </div>
+      <button class="iconbtn" id="setupBtn" data-i18n-aria="setup_title" aria-label="Thiết lập AI"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+      <button class="iconbtn" id="themeBtn" aria-label="Theme"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>
+    </div>
+    <div class="msgs" id="msgs"></div>
+    <div class="composer">
+      <div class="wrap">
+        <textarea id="input" rows="1" data-i18n-ph="placeholder" placeholder="Nhắn tin cho AI…"></textarea>
+        <button class="sendbtn" id="sendBtn" data-i18n-aria="send" aria-label="Gửi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="toast"></div>
+<script>
+/* Talk P1 — khung chat (sidebar + composer + streaming qua uniai).
+   8b: một việc một lúc; không popup/modal; không emoji UI; 4 ngôn ngữ. */
+
+/* Theme toggle (đồng bộ với script trong head) */
+document.body.classList.toggle('pp-dark', document.documentElement.classList.contains('pp-dark'));
+document.getElementById('themeBtn').addEventListener('click', function(){
+  if(window.__elabTheme){ window.__elabTheme.toggle(); return; }
+  var dark = document.documentElement.classList.toggle('pp-dark');
+  document.body.classList.toggle('pp-dark', dark);
+  try{ localStorage.setItem('pp_theme', dark?'dark':'light'); }catch(e){}
+});
+
+/* I18N — 4 ngôn ngữ (bắt buộc theo 8b) */
+var I18N = {
+vi:{title:"Trò chuyện",new_chat:"Đoạn chat mới",placeholder:"Nhắn tin cho AI…",send:"Gửi",
+empty_title:"Xin chào",empty_hint:"Chọn đoạn chat ở thanh bên, hoặc bắt đầu trò chuyện mới ngay bên dưới.",
+setup_title:"Thiết lập AI",setup_hint:"Nhập địa chỉ máy chủ AI, API key và tên model. Key chỉ lưu trên thiết bị này, không gửi về máy chủ.",
+setup_base:"Địa chỉ máy chủ",setup_key:"API key",setup_model:"Tên model",
+setup_base_ph:"https://api.example.com/v1",setup_key_ph:"Dán API key…",setup_model_ph:"Chọn model...",
+setup_save:"Lưu",setup_test:"Kiểm tra",setup_ok:"Đã lưu. Bắt đầu trò chuyện nào.",
+setup_close:"Đóng",setup_key_keep:"Để trống ô key để giữ key cũ.",setup_rlen:"Độ dài trả lời",setup_custom:"Cài đặt riêng cho Talk",setup_model_custom:"Nhập tay...",setup_model_custom_ph:"Gõ tên model...",setup_shared_hint:"Đang dùng chung với English Lab và Stocks",setup_custom_hint:"Đang dùng riêng cho Talk, không ảnh hưởng app khác",
+setup_badurl:"Địa chỉ máy chủ không hợp lệ",setup_empty:"Hãy nhập đủ 3 ô.",
+setup_testing:"Đang kiểm tra…",setup_test_ok:"Kết nối tốt. Tìm thấy {n} model.",
+
+setup_test_fail:"Không kết nối được. Kiểm tra lại địa chỉ và key.",
+err_noconfig:"Chưa thiết lập AI — hãy nhập thông tin ở khung bên trên.",
+err_empty:"Hãy nhập tin nhắn trước.",err_send:"Không gửi được. Thử lại sau.",
+err_key:"API key không đúng.",err_timeout:"Máy chủ AI phản hồi quá lâu.",
+err_rate:"Bạn nhắn quá nhanh. Chờ một chút rồi thử lại.",
+err_notfound:"Không tìm thấy model, hoặc địa chỉ máy chủ sai. Kiểm tra lại tên model.",
+err_badreq:"Máy chủ AI từ chối yêu cầu. Kiểm tra lại key và tên model.",
+err_network:"Không kết nối được tới máy chủ AI. Kiểm tra mạng và địa chỉ máy chủ.",
+err_status:"Lỗi {s} từ máy chủ AI.",
+del_chat:"Xoá đoạn chat",
+update_available:"Có bản mới",update_btn:"Cập nhật",update_later:"Để sau"},
+en:{title:"Talk",new_chat:"New chat",placeholder:"Message AI…",send:"Send",
+empty_title:"Hello",empty_hint:"Pick a chat from the sidebar, or start a new conversation below.",
+setup_title:"Set up AI",setup_hint:"Enter the AI server address, API key and model name. The key stays on this device only.",
+setup_base:"Server address",setup_key:"API key",setup_model:"Model name",
+setup_base_ph:"https://api.example.com/v1",setup_key_ph:"Paste API key…",setup_model_ph:"Choose a model...",
+setup_save:"Save",setup_test:"Test",setup_ok:"Saved. Start chatting.",
+setup_close:"Close",setup_key_keep:"Leave the key field blank to keep the current key.",setup_rlen:"Response length",setup_custom:"Custom settings for Talk",setup_model_custom:"Enter manually...",setup_model_custom_ph:"Type model name...",setup_shared_hint:"Shared with English Lab and Stocks",setup_custom_hint:"Using custom settings for Talk, other apps unaffected",
+setup_badurl:"Invalid server address",setup_empty:"Please fill in all 3 fields.",
+setup_testing:"Testing…",setup_test_ok:"Connected. Found {n} models.",
+
+setup_test_fail:"Cannot connect. Check the address and key.",
+err_noconfig:"AI is not set up — fill in the form above.",
+err_empty:"Type a message first.",err_send:"Couldn't send. Try again later.",
+err_key:"API key is incorrect.",err_timeout:"The AI server took too long.",
+err_rate:"You're sending too fast. Wait a moment and retry.",
+err_notfound:"Model not found, or wrong server address. Check the model name.",
+err_badreq:"The AI server rejected the request. Check your key and model name.",
+err_network:"Can't reach the AI server. Check your network and server address.",
+err_status:"Error {s} from the AI server.",
+del_chat:"Delete chat",
+update_available:"New version available",update_btn:"Update",update_later:"Later"},
+zh:{title:"聊天",new_chat:"新对话",placeholder:"给 AI 发消息…",send:"发送",
+empty_title:"你好",empty_hint:"从侧边栏选择对话，或直接在下方开始新的对话。",
+setup_title:"设置 AI",setup_hint:"输入 AI 服务器地址、API 密钥和模型名称。密钥仅保存在本设备上。",
+setup_base:"服务器地址",setup_key:"API 密钥",setup_model:"模型名称",
+setup_base_ph:"https://api.example.com/v1",setup_key_ph:"粘贴 API 密钥…",setup_model_ph:"选择模型...",
+setup_save:"保存",setup_test:"测试",setup_ok:"已保存，开始聊天吧。",
+setup_close:"关闭",setup_key_keep:"密钥栏留空则保留原密钥。",setup_rlen:"回答长度",setup_custom:"Talk 的自定义设置",setup_model_custom:"手动输入...",setup_model_custom_ph:"输入模型名称...",setup_shared_hint:"与 English Lab 和 Stocks 共享",setup_custom_hint:"Talk 使用自定义设置，不影响其他应用",
+setup_badurl:"服务器地址无效",setup_empty:"请填写全部 3 项。",
+setup_testing:"测试中…",setup_test_ok:"连接成功，找到 {n} 个模型。",
+
+setup_test_fail:"无法连接，请检查地址和密钥。",
+err_noconfig:"尚未设置 AI — 请填写上面的表单。",
+err_empty:"请先输入消息。",err_send:"发送失败，请稍后重试。",
+err_key:"API 密钥不正确。",err_timeout:"AI 服务器响应超时。",
+err_rate:"发送太快了，稍后再试。",
+err_notfound:"找不到模型，或服务器地址错误。请检查模型名称。",
+err_badreq:"AI 服务器拒绝了请求。请检查密钥和模型名称。",
+err_network:"无法连接到 AI 服务器。请检查网络和服务器地址。",
+err_status:"AI 服务器错误 {s}。",
+del_chat:"删除对话",
+update_available:"有新版本",update_btn:"更新",update_later:"稍后"},
+ko:{title:"대화",new_chat:"새 대화",placeholder:"AI에게 메시지…",send:"보내기",
+empty_title:"안녕하세요",empty_hint:"사이드바에서 대화를 선택하거나 아래에서 새 대화를 시작하세요.",
+setup_title:"AI 설정",setup_hint:"AI 서버 주소, API 키, 모델 이름을 입력하세요. 키는 이 기기에만 저장됩니다.",
+setup_base:"서버 주소",setup_key:"API 키",setup_model:"모델 이름",
+setup_base_ph:"https://api.example.com/v1",setup_key_ph:"API 키 붙여넣기…",setup_model_ph:"모델 선택...",
+setup_save:"저장",setup_test:"테스트",setup_ok:"저장됨. 대화를 시작하세요.",
+setup_close:"닫기",setup_key_keep:"키 입력란을 비워 두면 기존 키가 유지됩니다.",setup_rlen:"답변 길이",setup_custom:"Talk 사용자 설정",setup_model_custom:"직접 입력...",setup_model_custom_ph:"모델 이름 입력...",setup_shared_hint:"English Lab 및 Stocks와 공유",setup_custom_hint:"Talk에 사용자 설정 사용 중, 다른 앱에 영향 없음",
+setup_badurl:"서버 주소가 올바르지 않습니다",setup_empty:"3개 항목을 모두 입력하세요.",
+setup_testing:"테스트 중…",setup_test_ok:"연결 성공. {n}개 모델 발견.",
+
+setup_test_fail:"연결할 수 없습니다. 주소와 키를 확인하세요.",
+err_noconfig:"AI가 설정되지 않았습니다 — 위 양식을 작성하세요.",
+err_empty:"메시지를 먼저 입력하세요.",err_send:"전송 실패. 나중에 다시 시도하세요.",
+err_key:"API 키가 올바르지 않습니다.",err_timeout:"AI 서버 응답 시간 초과.",
+err_rate:"너무 빨리 보내고 있습니다. 잠시 후 다시 시도하세요.",
+err_notfound:"모델을 찾을 수 없거나 서버 주소가 잘못되었습니다. 모델 이름을 확인하세요.",
+err_badreq:"AI 서버가 요청을 거부했습니다. 키와 모델 이름을 확인하세요.",
+err_network:"AI 서버에 연결할 수 없습니다. 네트워크와 서버 주소를 확인하세요.",
+err_status:"AI 서버 오류 {s}.",
+del_chat:"대화 삭제",
+update_available:"새 버전 있음",update_btn:"업데이트",update_later:"나중에"}
+};
+var curLang = 'vi';
+function t(k){
+  // Gốc i18n (G2): ưu tiên shared module, fallback dict inline.
+  if(window.__elabI18n && window.__elabI18n.t){
+    try{ window.__elabI18n.setLang(curLang); }catch(e){}
+    var v = window.__elabI18n.t(k);
+    if(v && v !== k) return v;
+  }
+  return (I18N[curLang] && I18N[curLang][k]) || I18N.vi[k] || k;
+}
+function applyLang(l){
+  if(!I18N[l]) l = 'vi';
+  curLang = l;
+  // Đồng bộ shared module
+  if(window.__elabI18n && window.__elabI18n.setLang){ try{ window.__elabI18n.setLang(l); }catch(e){} }
+  try{ localStorage.setItem("elab_uiLang", JSON.stringify(l)); }catch(e){}
+  document.documentElement.lang = l;
+  document.querySelectorAll("[data-i18n]").forEach(function(el){
+    var k = el.dataset.i18n, v;
+    if(window.__elabI18n && window.__elabI18n.t){
+      v = window.__elabI18n.t(k);
+      if(v && v !== k) el.textContent = v;
+    } else {
+      v = I18N[l][k]; if(v) el.textContent = v;
+    }
+  });
+  document.querySelectorAll("[data-i18n-ph]").forEach(function(el){
+    var k = el.dataset.i18nPh, v;
+    if(window.__elabI18n && window.__elabI18n.t){
+      v = window.__elabI18n.t(k);
+      if(v && v !== k) el.placeholder = v;
+    } else {
+      v = I18N[l][k]; if(v) el.placeholder = v;
+    }
+  });
+  document.querySelectorAll("[data-i18n-aria]").forEach(function(el){
+    var k = el.dataset.i18nAria, v;
+    if(window.__elabI18n && window.__elabI18n.t){
+      v = window.__elabI18n.t(k);
+      if(v && v !== k) el.setAttribute('aria-label', v);
+    } else {
+      v = I18N[l][k]; if(v) el.setAttribute('aria-label', v);
+    }
+  });
+  renderList();
+  renderMain();
+}
+window.__elabSetLang = applyLang;
+
+/* Toast (inline, không popup) */
+var toastTimer = null;
+function toast(msg){
+  var el = document.getElementById('toast');
+  el.textContent = msg; el.style.display = 'block';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function(){ el.style.display = 'none'; }, 2600);
+}
+
+/* Auth */
+function getToken(){
+  try{ return localStorage.getItem('elab_authToken') || ''; }catch(e){ return ''; }
+}
+
+/* Lưu trữ đoạn chat (localStorage, text thuần) */
+var LS_CHATS = 'talk-chats-v1';
+function loadChats(){
+  try{ var a = JSON.parse(localStorage.getItem(LS_CHATS)); return Array.isArray(a) ? a : []; }
+  catch(e){ return []; }
+}
+function persistChats(){
+  try{ localStorage.setItem(LS_CHATS, JSON.stringify(chats.slice(0, 30))); }catch(e){}
+}
+var chats = loadChats();
+var currentId = chats.length ? chats[0].id : null;
+var sending = false;
+var setupOpen = false; /* mở khung thiết lập bằng nút gear (bug 2026-10-12: không có đường quay lại) */
+var aiMod = null; /* module aiClient.js (uniai), nạp lười */
+
+function uid(){ return 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+function currentChat(){
+  for(var i = 0; i < chats.length; i++) if(chats[i].id === currentId) return chats[i];
+  return null;
+}
+function newChat(){
+  var c = { id: uid(), title: '', messages: [], updatedAt: Date.now() };
+  chats.unshift(c);
+  currentId = c.id;
+  persistChats(); renderList(); renderMain();
+  closeSidebar();
+  return c;
+}
+function deleteChat(id, ev){
+  if(ev) ev.stopPropagation();
+  chats = chats.filter(function(c){ return c.id !== id; });
+  if(currentId === id) currentId = chats.length ? chats[0].id : null;
+  persistChats(); renderList(); renderMain();
+}
+
+function renderList(){
+  var box = document.getElementById('chatList');
+  box.innerHTML = '';
+  chats.forEach(function(c){
+    var d = document.createElement('div');
+    d.className = 'sb-item' + (c.id === currentId ? ' active' : '');
+    var s = document.createElement('span');
+    s.className = 't';
+    s.textContent = c.title || t('new_chat');
+    var x = document.createElement('button');
+    x.className = 'del';
+    x.setAttribute('aria-label', t('del_chat'));
+    x.textContent = '×';
+    x.addEventListener('click', function(ev){ deleteChat(c.id, ev); });
+    d.appendChild(s); d.appendChild(x);
+    d.addEventListener('click', function(){ currentId = c.id; persistChats(); renderList(); renderMain(); closeSidebar(); });
+    box.appendChild(d);
+  });
+}
+
+function renderMain(){
+  var box = document.getElementById('msgs');
+  box.innerHTML = '';
+  var c = currentChat();
+  if(!c || !c.messages.length){
+    var e = document.createElement('div');
+    e.className = 'empty';
+    var h = document.createElement('h2'); h.textContent = t('empty_title');
+    var p = document.createElement('p'); p.textContent = t('empty_hint');
+    e.appendChild(h); e.appendChild(p);
+    box.appendChild(e);
+  }else{
+    c.messages.forEach(function(m){
+      box.appendChild(msgEl(m.role, m.text, false));
+    });
+  }
+  /* Khung thiết lập AI tối thiểu (P1) — P2 sẽ mở rộng quản lý provider */
+  var setup = document.createElement('div');
+  setup.className = 'setup';
+  setup.id = 'setupCard';
+  setup.style.display = 'none';
+  var h2 = document.createElement('h2'); h2.dataset.i18n = 'setup_title'; h2.textContent = t('setup_title');
+  var hp = document.createElement('p'); hp.dataset.i18n = 'setup_hint'; hp.textContent = t('setup_hint');
+  setup.appendChild(h2); setup.appendChild(hp);
+  var xBtn = document.createElement('button');
+  xBtn.id = 'setupClose'; xBtn.className = 'setup-x';
+  xBtn.setAttribute('aria-label', t('setup_close'));
+  xBtn.dataset.i18nAria = 'setup_close';
+  xBtn.textContent = '×';
+  xBtn.addEventListener('click', function(){ setupOpen = false; refreshSetupCard(); });
+  setup.appendChild(xBtn);
+  [['setup_base', 'setup_base_ph', 'setupBase', false],
+   ['setup_key', 'setup_key_ph', 'setupKey', true]].forEach(function(f){
+    var lb = document.createElement('label'); lb.textContent = t(f[0]);
+    var inp = document.createElement('input');
+    inp.id = f[2]; inp.placeholder = t(f[1]);
+    if(f[3]) inp.type = 'password';
+    inp.autocomplete = 'off'; inp.spellcheck = false;
+    setup.appendChild(lb); setup.appendChild(inp);
+    if(f[2] === 'setupKey'){
+      var kh = document.createElement('div');
+      kh.id = 'setupKeyHint'; kh.className = 'keyhint';
+      kh.dataset.i18n = 'setup_key_keep'; kh.textContent = t('setup_key_keep');
+      setup.appendChild(kh);
+    }
+  });
+  /* 8b: Toggle cài đặt riêng cho Talk (mặc định dùng chung). */
+  var cWrap = document.createElement('label');
+  cWrap.style.cssText = 'display:flex;gap:6px;align-items:center;cursor:pointer;margin:8px 0;';
+  var cBox = document.createElement('input');
+  cBox.type = 'checkbox'; cBox.id = 'setupCustom'; cBox.style.width = 'auto';
+  var cLb = document.createElement('span');
+  cLb.dataset.i18n = 'setup_custom'; cLb.textContent = t('setup_custom');
+  cWrap.appendChild(cBox); cWrap.appendChild(cLb);
+  setup.appendChild(cWrap);
+  var cHint = document.createElement('div');
+  cHint.id = 'setupShareHint'; cHint.className = 'keyhint';
+  cHint.dataset.i18n = 'setup_shared_hint'; cHint.textContent = t('setup_shared_hint');
+  setup.appendChild(cHint);
+  /* Y chang file đính kèm: model là <select>, nạp bằng nút Kiểm tra (= LOAD). */
+  var mlb = document.createElement('label');
+  mlb.dataset.i18n = 'setup_model'; mlb.textContent = t('setup_model');
+  var msel = document.createElement('select'); msel.id = 'setupModel';
+  var mph = document.createElement('option'); mph.value = '';
+  mph.dataset.i18n = 'setup_model_ph'; mph.textContent = t('setup_model_ph');
+  msel.appendChild(mph);
+  /* 8b: Luôn có option nhập tay (kể cả khi chưa bấm Kiểm tra). */
+  var mcu = document.createElement('option'); mcu.value = '__custom__';
+  mcu.dataset.i18n = 'setup_model_custom'; mcu.textContent = t('setup_model_custom');
+  msel.appendChild(mcu);
+  setup.appendChild(mlb); setup.appendChild(msel);
+  /* Ô nhập tay khi chọn "__custom__" */
+  var mcuWrap = document.createElement('div');
+  mcuWrap.id = 'setupModelCustomWrap'; mcuWrap.style.display = 'none'; mcuWrap.style.marginTop = '4px';
+  var mcuInp = document.createElement('input');
+  mcuInp.id = 'setupModelCustom'; mcuInp.placeholder = t('setup_model_custom_ph') || 'Type model name...';
+  mcuInp.dataset.i18nPh = 'setup_model_custom_ph';
+  mcuInp.autocomplete = 'off'; mcuInp.spellcheck = false; mcuInp.style.width = '100%';
+  mcuWrap.appendChild(mcuInp);
+  setup.appendChild(mcuWrap);
+  msel.addEventListener('change', function(){
+    var isC = msel.value === '__custom__';
+    mcuWrap.style.display = isC ? '' : 'none';
+    if(isC) mcuInp.focus();
+  });
+  /* Y chang file đính kèm: chọn độ dài trả lời (SHORT/BALANCED/LONG/VERY LONG). */
+  var rlenLb = document.createElement('label');
+  rlenLb.dataset.i18n = 'setup_rlen'; rlenLb.textContent = t('setup_rlen');
+  var rlen = document.createElement('select'); rlen.id = 'setupRLen';
+  [['512','SHORT'],['2048','BALANCED'],['4096','LONG'],['8192','VERY LONG']].forEach(function(o){
+    var op = document.createElement('option'); op.value = o[0]; op.textContent = o[1];
+    rlen.appendChild(op);
+  });
+  try{ rlen.value = localStorage.getItem('talk_response_length') || '2048'; }catch(e){ rlen.value = '2048'; }
+  rlen.addEventListener('change', function(){
+    try{ localStorage.setItem('talk_response_length', rlen.value); }catch(e){}
+  });
+  setup.appendChild(rlenLb); setup.appendChild(rlen);
+  var row = document.createElement('div'); row.className = 'row';
+  var bTest = document.createElement('button'); bTest.className = 'btn ghost';
+  bTest.dataset.i18n = 'setup_test'; bTest.textContent = t('setup_test');
+  bTest.addEventListener('click', testSetup);
+  var bSave = document.createElement('button'); bSave.className = 'btn';
+  bSave.dataset.i18n = 'setup_save'; bSave.textContent = t('setup_save');
+  bSave.addEventListener('click', saveSetup);
+  row.appendChild(bTest); row.appendChild(bSave);
+  setup.appendChild(row);
+  box.appendChild(setup);
+  refreshSetupCard();
+}
+
+function msgEl(role, text, streaming){
+  var d = document.createElement('div');
+  d.className = 'msg ' + (role === 'user' ? 'user' : 'model');
+  var body = document.createElement('span');
+  body.textContent = text || '';
+  d.appendChild(body);
+  if(streaming){
+    var cur = document.createElement('span');
+    cur.className = 'cursor';
+    d.appendChild(cur);
+  }
+  d._body = body;
+  return d;
+}
+function scrollBottom(){
+  var box = document.getElementById('msgs');
+  box.scrollTop = box.scrollHeight;
+}
+
+/* Sidebar mobile */
+function closeSidebar(){ document.getElementById('sidebar').classList.remove('open'); }
+document.getElementById('menuBtn').addEventListener('click', function(){
+  document.getElementById('sidebar').classList.toggle('open');
+});
+document.getElementById('newChatBtn').addEventListener('click', newChat);
+
+/* Nút gear: mở/đóng khung thiết lập provider (bug 2026-10-12) */
+document.getElementById('setupBtn').addEventListener('click', function(){
+  getAiConfig().then(function(cfg){
+    setupOpen = cfg ? !setupOpen : true; /* chưa cấu hình thì luôn mở */
+    refreshSetupCard();
+    setTimeout(function(){
+      var c2 = document.getElementById('setupCard');
+      if(c2 && c2.style.display !== 'none') c2.scrollIntoView({block:'center'});
+    }, 60);
+  });
+});
+
+/* Composer */
+var input = document.getElementById('input');
+var sendBtn = document.getElementById('sendBtn');
+function autoresize(){
+  input.style.height = 'auto';
+  input.style.height = Math.min(input.scrollHeight, 140) + 'px';
+}
+input.addEventListener('input', autoresize);
+input.addEventListener('keydown', function(e){
+  if(e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); send(); }
+});
+sendBtn.addEventListener('click', send);
+function setSendingUI(on){
+  sendBtn.disabled = on;
+  input.disabled = on;
+}
+
+async function getAi(){
+  if(!aiMod) aiMod = await import('/english/js/core/aiClient.js');
+  return aiMod;
+}
+async function getAiConfig(){
+  try{
+    var m = await getAi();
+    // 8b: dùng endpoint/model hiệu dụng của app 'talk' (riêng hoặc dùng chung).
+    var base = await m.getEffectiveEndpoint('talk'), key = await m.getUserKey(), model = await m.getEffectiveModel('talk');
+    if(base && key && model) return { base: base, key: key, model: model };
+  }catch(e){}
+  return null;
+}
+function refreshSetupCard(){
+  var card = document.getElementById('setupCard');
+  if(!card) return;
+  getAiConfig().then(function(cfg){
+    var show = !cfg || setupOpen;
+    card.style.display = show ? '' : 'none';
+    var cb = document.getElementById('setupClose');
+    if(cb) cb.style.display = cfg ? '' : 'none'; /* chưa cấu hình thì không được đóng */
+    var kh = document.getElementById('setupKeyHint');
+    if(kh) kh.style.display = cfg ? '' : 'none'; /* chỉ hiện "giữ key cũ" khi đã có key */
+    if(show){
+      getAi().then(function(m){
+        // 8b: Toggle cài đặt riêng cho Talk.
+        var APP='talk';
+        var cBox=document.getElementById('setupCustom');
+        var cHint=document.getElementById('setupShareHint');
+        function updateHint(useCustom){
+          if(cHint) cHint.textContent = useCustom ? t('setup_custom_hint') : t('setup_shared_hint');
+        }
+        function loadFields(useCustom){
+          var epP = useCustom ? m.getAppEndpoint(APP).catch(function(){return null;}) : m.getBaseUrl().catch(function(){return null;});
+          var moP = useCustom ? m.getAppModel(APP).catch(function(){return null;}) : m.getUserModel().catch(function(){return null;});
+          epP.then(function(v){ document.getElementById('setupBase').value = v || ''; });
+          moP.then(function(v){
+            var sel = document.getElementById('setupModel');
+            if(sel && v){
+              var has = false;
+              for(var i = 0; i < sel.options.length; i++) if(sel.options[i].value === v){ has = true; break; }
+              if(!has){ var o = document.createElement('option'); o.value = v; o.textContent = v; sel.appendChild(o); }
+              sel.value = v;
+            } else if(sel) sel.value = '';
+          });
+          updateHint(useCustom);
+        }
+        if(cBox){
+          m.isAppCustom(APP).then(function(v){
+            var useCustom=!!v;
+            cBox.checked=useCustom;
+            loadFields(useCustom);
+          }).catch(function(){ loadFields(false); });
+          cBox.onchange=function(){
+            var useCustom=cBox.checked;
+            if(useCustom){
+              m.getBaseUrl().catch(function(){return null;}).then(function(sharedEp){
+                m.getAppEndpoint(APP).catch(function(){return null;}).then(function(curEp){
+                  if(sharedEp && !curEp) m.saveAppEndpoint(APP, sharedEp).catch(function(){});
+                });
+              });
+              m.getUserModel().catch(function(){return null;}).then(function(sharedMo){
+                m.getAppModel(APP).catch(function(){return null;}).then(function(curMo){
+                  if(sharedMo && !curMo) m.saveAppModel(APP, sharedMo).catch(function(){});
+                });
+              });
+            } else {
+              m.deleteAppEndpoint(APP).catch(function(){});
+              m.deleteAppModel(APP).catch(function(){});
+            }
+            loadFields(useCustom);
+          };
+        } else {
+          loadFields(false);
+        }
+      });
+    }
+  });
+}
+async function saveSetup(){
+  var base = document.getElementById('setupBase').value.trim();
+  var key = document.getElementById('setupKey').value.trim();
+  var modelSel = document.getElementById('setupModel');
+  var model = modelSel.value.trim();
+  // 8b: Nếu chọn "__custom__" thì lấy từ ô nhập tay.
+  if(model === '__custom__'){
+    var cInp = document.getElementById('setupModelCustom');
+    model = cInp ? cInp.value.trim() : '';
+  }
+  var m = await getAi();
+  var oldKey = null;
+  try{ oldKey = await m.getUserKey(); }catch(e){}
+  /* để trống ô key mà đã có key cũ → giữ key cũ (không bắt nhập lại) */
+  if(!base || !model || (!key && !oldKey)){ toast(t('setup_empty')); return; }
+  // 8b: Lưu endpoint/model theo chế độ (riêng cho Talk hoặc dùng chung). Key luôn chung.
+  var useCustom = false;
+  try{
+    var cBox = document.getElementById('setupCustom');
+    useCustom = cBox ? cBox.checked : false;
+  }catch(e){}
+  try{
+    if(useCustom){
+      await m.saveAppEndpoint('talk', base);
+      await m.saveAppModel('talk', model);
+    } else {
+      await m.saveBaseUrl(base);
+      await m.saveUserModel(model);
+    }
+    if(key) await m.saveUserKey(key);
+    document.getElementById('setupKey').value = '';
+    setupOpen = false;
+    toast(t('setup_ok'));
+    refreshSetupCard();
+  }catch(e){
+    toast(t(e && e.message === 'invalid-url' ? 'setup_badurl' : 'err_send'));
+  }
+}
+async function testSetup(){
+  var base = document.getElementById('setupBase').value.trim();
+  var key = document.getElementById('setupKey').value.trim();
+  var m = await getAi();
+  /* Y chang file: key nằm phía server nên LOAD không cần nhập lại.
+     Bản web: ô trống → dùng key đã lưu trong máy. */
+  if(!key){ try{ key = await m.getUserKey() || ''; }catch(e){} }
+  if(!base || !key){ toast(t('setup_empty')); return; }
+  toast(t('setup_testing'));
+  try{
+    /* Y chang loadModels() của file: GET /proxy/models → điền <select>. */
+    var ids = await m.proxyModels({ baseUrl: base, key });
+    var sel = document.getElementById('setupModel');
+    if(sel){
+      while(sel.options.length > 1) sel.remove(1);
+      ids.forEach(function(id){
+        var o = document.createElement('option'); o.value = id; o.textContent = id; sel.appendChild(o);
+      });
+      var saved = '';
+      try{ saved = await m.getUserModel() || ''; }catch(e){}
+      var next = (saved && ids.indexOf(saved) >= 0) ? saved : (ids[0] || '');
+      sel.value = next;
+      if(next) try{ await m.saveUserModel(next); }catch(e){}
+    }
+    toast(t('setup_test_ok').replace('{n}', ids.length));
+  }catch(e){
+    toast(friendlyErr(e));
+  }
+}
+
+function friendlyErr(e){
+  if(!e) return t('err_send');
+  if(e.code === 'invalid_key') return t('err_key');
+  if(e.code === 'timeout') return t('err_timeout');
+  if(e.status === 429 || e.code === 'rate-limited') return t('err_rate');
+  if(e.status === 404) return t('err_notfound');
+  if(e.status === 400) return t('err_badreq');
+  if(e instanceof TypeError || /failed to fetch|networkerror|load failed/i.test(String((e && e.message) || '')))
+    return t('err_network');
+  if(e.status) return t('err_status').replace('{s}', e.status) + (e.detail ? ' ' + e.detail : '');
+  return t('err_send');
+}
+
+async function send(){
+  var text = input.value.trim();
+  if(!text){ toast(t('err_empty')); return; }
+  if(sending) return;
+  var cfg = await getAiConfig();
+  if(!cfg){ toast(t('err_noconfig')); refreshSetupCard(); scrollBottom(); return; }
+  sending = true; setSendingUI(true);
+  var chat = currentChat() || newChat();
+  chat.messages.push({ role: 'user', text: text });
+  if(chat.messages.length === 1) chat.title = text.slice(0, 42);
+  input.value = ''; autoresize();
+  var box = document.getElementById('msgs');
+  var emptyEl = box.querySelector('.empty');
+  if(emptyEl) emptyEl.remove();
+  box.appendChild(msgEl('user', text, false));
+  /* tốc T2: streaming — hiện con trỏ nhấp nháy, chữ chảy dần thay vì chờ full response. */
+  var ab = msgEl('model', '…', true);
+  box.appendChild(ab);
+  scrollBottom();
+  persistChats(); renderList();
+  try{
+    var m = await getAi();
+    var hist = chat.messages.slice(-20);
+    var maxToks = 2048;
+    try{ maxToks = parseInt(localStorage.getItem('talk_response_length') || '2048', 10) || 2048; }catch(e){}
+    var tokStarted = false;
+    var answer = await m.proxyChat({ baseUrl: cfg.base, key: cfg.key, model: cfg.model, messages: hist, maxTokens: maxToks,
+      onToken: function(chunk){
+        if(!tokStarted){ tokStarted = true; ab._body.textContent = ''; }
+        ab._body.textContent += chunk;
+        scrollBottom();
+      } });
+    ab._body.textContent = answer;
+    var cur = ab.querySelector('.cursor'); if(cur) cur.remove();
+    chat.messages.push({ role: 'model', text: answer });
+  }catch(e){
+    ab.classList.add('err');
+    ab._body.textContent = friendlyErr(e);
+  }
+  chat.updatedAt = Date.now();
+  persistChats(); renderList();
+  sending = false; setSendingUI(false);
+  input.focus();
+}
+
+/* Kiểm tra đăng nhập */
+(function(){
+  var tok = getToken();
+  if(!tok){ location.href = '/login'; return; }
+  fetch('/api/auth/me', {headers:{'Authorization':'Bearer '+tok}})
+    .then(function(r){
+      if(r.status === 401){ try{localStorage.removeItem('elab_authToken');}catch(e){} location.href = '/login'; }
+    }).catch(function(){});
+})();
+
+/* Áp ngôn ngữ đã lưu (chạy sau khi state đã khởi tạo — 8b: đúng thứ tự init).
+   applyLang() tự gọi renderList() + renderMain(). */
+(function(){ try{ var v = localStorage.getItem("elab_uiLang"); applyLang(v?JSON.parse(v):"vi"); }catch(e){ applyLang("vi"); } })();
+autoresize();
+
+/* Service worker (8b.4: không skipWaiting trong install, chờ user bấm Cập nhật) */
+var swRefreshing = false;
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('/talk/sw.js', {scope:'/talk/'}).then(function(reg){
+    reg.addEventListener('updatefound', function(){
+      var nw = reg.installing;
+      nw.addEventListener('statechange', function(){
+        if(nw.state === 'installed' && navigator.serviceWorker.controller){
+          showUpdateBanner(nw);
+        }
+      });
+    });
+  }).catch(function(){});
+  navigator.serviceWorker.addEventListener('controllerchange', function(){
+    if(swRefreshing) return;
+    swRefreshing = true;
+    location.reload();
+  });
+}
+function showUpdateBanner(nw){
+  if(document.getElementById('sw-update-banner')) return;
+  var banner = document.createElement('div');
+  banner.id = 'sw-update-banner';
+  banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;background:var(--pp-accent,#4f7cff);color:#fff;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:var(--pp-text-sm);box-shadow:0 2px 8px rgba(0,0,0,.15);';
+  var msg = document.createElement('span');
+  msg.textContent = t('update_available');
+  var btns = document.createElement('div');
+  btns.style.cssText = 'display:flex;gap:8px;flex-shrink:0;';
+  var b1 = document.createElement('button');
+  b1.textContent = t('update_btn');
+  b1.style.cssText = 'background:#fff;color:var(--pp-accent,#4f7cff);border:none;border-radius:8px;padding:6px 14px;font-weight:600;cursor:pointer;';
+  b1.addEventListener('click', function(){ if(nw) nw.postMessage({type:'SKIP_WAITING'}); });
+  var b2 = document.createElement('button');
+  b2.textContent = t('update_later');
+  b2.style.cssText = 'background:transparent;color:#fff;border:1px solid rgba(255,255,255,.5);border-radius:8px;padding:6px 14px;cursor:pointer;';
+  b2.addEventListener('click', function(){ banner.remove(); });
+  btns.appendChild(b1); btns.appendChild(b2);
+  banner.appendChild(msg); banner.appendChild(btns);
+  document.body.prepend(banner);
+  document.body.style.paddingTop = banner.offsetHeight + 'px';
+}
+</script>
+<script src="/english/js/lang-dropdown.js"></script>
+<script>import("/english/js/shared/theme.js").catch(function(){});</script>
+<script>import("/english/js/shared/i18n.js").then(m=>{try{m.setApp("talk")}catch(e){}}).catch(function(){});</script>
+</body>
+</html>
