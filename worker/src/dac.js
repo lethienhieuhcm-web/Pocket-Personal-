@@ -21,66 +21,25 @@ import { eq } from "drizzle-orm";
 import { driveTokens } from "./schema.js";
 
 /**
- * Lấy Drive token hợp lệ (v3.0):
- * 1. Ưu tiên header X-Drive-Token (backward-compat app cũ).
- * 2. Đọc từ D1 driveTokens (1 nơi duy nhất).
- * 3. Tự refresh nếu sắp hết hạn (trong suốt với user).
- * Trả về null nếu không có hoặc refresh thất bại.
+ * Lấy Drive token: ưu tiên header X-Drive-Token (client gửi),
+ * fallback đọc từ D1 driveTokens (user đã kết nối qua /music/).
+ * Trả về null nếu không có.
  */
 async function getDriveToken(request, env, email){
   const h = request.headers.get('X-Drive-Token');
-  if(h) return h; // app cũ vẫn gửi header
+  if(h) return h;
   if(!email) return null;
   try{
     const db = drizzle(env.DB);
-    const rows = await db.select({
-        accessToken: driveTokens.accessToken,
-        refreshToken: driveTokens.refreshToken,
-        expiresAt: driveTokens.expiresAt,
-      })
+    const rows = await db.select({accessToken: driveTokens.accessToken, expiresAt: driveTokens.expiresAt})
       .from(driveTokens).where(eq(driveTokens.email, email.toLowerCase())).limit(1);
-    if(!rows.length || !rows[0].accessToken) return null;
-    const tok = rows[0];
-    // Còn hạn >60s → dùng luôn
-    if(tok.expiresAt && tok.expiresAt > Date.now()+60000) return tok.accessToken;
-    // Hết hạn → refresh
-    if(!tok.refreshToken) return null;
-    const cfg = {
-      client_id: env.GOOGLE_CLIENT_ID || "",
-      client_secret: env.GOOGLE_CLIENT_SECRET || "",
-    };
-    if(!cfg.client_id || !cfg.client_secret) return tok.accessToken; // thử dùng token cũ
-    const r = await fetch("https://oauth2.googleapis.com/token", {
-      method: "POST",
-      headers: {"Content-Type":"application/x-www-form-urlencoded"},
-      body: new URLSearchParams({
-        refresh_token: tok.refreshToken,
-        client_id: cfg.client_id,
-        client_secret: cfg.client_secret,
-        grant_type: "refresh_token",
-      }).toString(),
-    });
-    if(!r.ok) return null; // refresh thất bại (bị revoke) → user kết nối lại
-    const j = await r.json();
-    if(!j.access_token) return null;
-    // Lưu token mới
-    const newExp = Date.now() + (j.expires_in||3600)*1000;
-    await db.update(driveTokens)
-      .set({accessToken: j.access_token, expiresAt: newExp})
-      .where(eq(driveTokens.email, email.toLowerCase()));
-    return j.access_token;
-  }catch(e){ return null; }
-}
-
-/**
- * GET /api/dac/drive-status → {connected: bool}
- * Client kiểm tra đã kết nối Drive chưa (không cần biết token ở đâu).
- */
-export async function handleDacDriveStatus(request, env){
-  const s = await getSession(request, env);
-  if(!s) return jerr('Not logged in', 401);
-  const tok = await getDriveToken(request, env, s.email);
-  return sJson({connected: !!tok});
+    if(rows.length && rows[0].accessToken){
+      // Kiểm tra hết hạn (cho phép lệch 60s)
+      if(rows[0].expiresAt && rows[0].expiresAt < Date.now()-60000) return null;
+      return rows[0].accessToken;
+    }
+  }catch(e){}
+  return null;
 }
 
 // Chỉ nhận file audio
