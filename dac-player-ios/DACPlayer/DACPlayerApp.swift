@@ -24,6 +24,9 @@ struct DACPlayerApp: App {
         _api = StateObject(wrappedValue: client)
         _copyManager = StateObject(wrappedValue: DriveCopyManager(auth: a, driveToken: tokenClosure))
         _art = StateObject(wrappedValue: CoverArtManager(api: client))
+        // v3.0: đăng ký background sync
+        DriveSyncScheduler.register(api: client)
+        DriveSyncScheduler.scheduleNext()
     }
 
     var body: some Scene {
