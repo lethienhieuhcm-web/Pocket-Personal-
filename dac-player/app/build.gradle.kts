@@ -45,7 +45,7 @@ android {
             }
         }
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -71,7 +71,7 @@ android {
         // cho ra app-deploy-unsigned.apk), không cài được.
         create("deploy") {
             isDebuggable = true
-            isMinifyEnabled = false
+            isMinifyEnabled = true
             matchingFallbacks += listOf("debug")
             signingConfig = signingConfigs.getByName("debug")
         }
