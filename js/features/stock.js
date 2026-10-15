@@ -2,7 +2,8 @@
 import { $, esc, toast } from '../core/dom.js';
 import { state } from '../core/state.js';
 import { apiCall } from '../core/api.js';
-import { getUserKey, callDirect, saveUserKey, deleteUserKey, testUserKey, getUserModel, saveUserModel } from '../core/aiClient.js';
+import { getUserKey, saveUserKey, deleteUserKey, getUserModel, saveUserModel, getBaseUrl, saveBaseUrl, getResponseLength, saveResponseLength, getAppEndpoint, saveAppEndpoint, deleteAppEndpoint, getAppModel, saveAppModel, deleteAppModel, getEffectiveEndpoint, getEffectiveModel, isAppCustom, proxyModels, proxyChat } from '../core/aiClient.js';
+import { initByok } from '../shared/byok.js';
 
 /* ---------- i18n (VI/EN/中文/한국어) ---------- */
 const I18N = {
@@ -37,8 +38,11 @@ preset_value:"Giá trị",preset_momentum:"Tăng mạnh",preset_quality:"Chất 
 preset_basic:"Cơ bản",preset_full:"Full",
 indtab_price:"Giá",indtab_label:"Chỉ báo:",
 byok_saved:"Đã lưu khóa",byok_test_ok:"Khóa hoạt động!",byok_test_fail:"Khóa lỗi: ",byok_deleted:"Đã xoá khóa",
+byok_model_select:"Chọn model...",byok_rlen:"Độ dài trả lời",byok_model_custom:"Nhập tay...",byok_model_custom_ph:"Gõ tên model...",byok_custom:"Cài đặt riêng cho app này",byok_shared_hint:"Đang dùng chung với Talk và English Lab",byok_custom_hint:"Đang dùng riêng cho Stocks, không ảnh hưởng app khác",
+suggest_q1:"Giá VCB hôm nay?",suggest_q2:"So sánh VCB và BID",suggest_q3:"VCB có đắt không?",suggest_q4:"Tin mới về VCB?",
 byok_err_invalid_key:"Key không đúng",byok_err_forbidden:"Key bị từ chối",byok_err_no_model:"Không tìm thấy model",
-byok_err_network:"Lỗi mạng",byok_err_empty:"Chưa nhập key",
+byok_err_network:"Lỗi mạng",byok_err_network_blocked:"Không kết nối được Google API. Kiểm tra firewall/antivirus, thử mạng khác, hoặc tắt VPN.",byok_err_empty:"Chưa nhập key",
+byok_err_unreachable:"Không lấy được danh sách model. Hãy nhập tên model thủ công ở ô bên dưới.",
 agent_too_long:"Tin nhắn quá dài (tối đa 1000 ký tự)",agent_waiting:"Đang xử lý"},
 en:{
 login_required:"Log in to view stocks.",no_data_updating:"Data is being updated. Please wait.",
@@ -71,8 +75,11 @@ preset_value:"Value",preset_momentum:"Top gainers",preset_quality:"Quality",
 preset_basic:"Basic",preset_full:"Full",
 indtab_price:"Price",indtab_label:"Indicators:",
 byok_saved:"Key saved",byok_test_ok:"Key works!",byok_test_fail:"Key failed: ",byok_deleted:"Key deleted",
+byok_model_select:"Select model...",byok_rlen:"Response length",byok_model_custom:"Enter manually...",byok_model_custom_ph:"Type model name...",byok_custom:"Custom settings for this app",byok_shared_hint:"Shared with Talk and English Lab",byok_custom_hint:"Using custom settings for Stocks, other apps unaffected",
+suggest_q1:"VCB price today?",suggest_q2:"Compare VCB and BID",suggest_q3:"Is VCB expensive?",suggest_q4:"Latest VCB news?",
 byok_err_invalid_key:"Invalid key",byok_err_forbidden:"Key rejected",byok_err_no_model:"No model found",
-byok_err_network:"Network error",byok_err_empty:"No key entered",
+byok_err_network:"Network error",byok_err_network_blocked:"Cannot reach Google API. Check firewall/antivirus, try another network, or disable VPN.",byok_err_empty:"No key entered",
+byok_err_unreachable:"Could not fetch model list. Please enter the model name manually below.",
 agent_too_long:"Message too long (max 1000 chars)",agent_waiting:"Processing"},
 zh:{
 login_required:"登录后查看股票。",no_data_updating:"数据正在更新，请稍候。",
@@ -105,8 +112,11 @@ preset_value:"价值",preset_momentum:"涨幅榜",preset_quality:"优质",
 preset_basic:"基础",preset_full:"全部",
 indtab_price:"价格",indtab_label:"指标：",
 byok_saved:"已保存密钥",byok_test_ok:"密钥有效!",byok_test_fail:"密钥失败: ",byok_deleted:"已删除密钥",
+byok_model_select:"选择模型...",byok_rlen:"回答长度",byok_model_custom:"手动输入...",byok_model_custom_ph:"输入模型名称...",byok_custom:"此应用的自定义设置",byok_shared_hint:"与 Talk 和 English Lab 共享",byok_custom_hint:"Stocks 使用自定义设置，不影响其他应用",
+suggest_q1:"VCB今日价格？",suggest_q2:"比较VCB和BID",suggest_q3:"VCB贵吗？",suggest_q4:"VCB最新消息？",
 byok_err_invalid_key:"密钥无效",byok_err_forbidden:"密钥被拒绝",byok_err_no_model:"未找到模型",
-byok_err_network:"网络错误",byok_err_empty:"未输入密钥",
+byok_err_network:"网络错误",byok_err_network_blocked:"无法连接Google API。请检查防火墙/杀毒软件，尝试其他网络，或关闭VPN。",byok_err_empty:"未输入密钥",
+byok_err_unreachable:"无法获取模型列表。请在下方手动输入模型名称。",
 agent_too_long:"消息太长（最多1000个字符）",agent_waiting:"处理中"},
 ko:{
 login_required:"로그인 후 주식을 확인하세요。",no_data_updating:"데이터를 업데이트 중입니다. 잠시만 기다려 주세요.",
@@ -139,8 +149,11 @@ preset_value:"가치",preset_momentum:"상승률",preset_quality:"우량",
 preset_basic:"기본",preset_full:"전체",
 indtab_price:"가격",indtab_label:"지표:",
 byok_saved:"키 저장됨",byok_test_ok:"키가 작동합니다!",byok_test_fail:"키 실패: ",byok_deleted:"키 삭제됨",
+byok_model_select:"모델 선택...",byok_rlen:"답변 길이",byok_model_custom:"직접 입력...",byok_model_custom_ph:"모델 이름 입력...",byok_custom:"이 앱의 사용자 설정",byok_shared_hint:"Talk 및 English Lab과 공유",byok_custom_hint:"Stocks에 사용자 설정 사용 중, 다른 앱에 영향 없음",
+suggest_q1:"오늘 VCB 가격?",suggest_q2:"VCB와 BID 비교",suggest_q3:"VCB가 비싼가요?",suggest_q4:"VCB 최신 뉴스?",
 byok_err_invalid_key:"키가 유효하지 않음",byok_err_forbidden:"키 거부됨",byok_err_no_model:"모델을 찾을 수 없음",
-byok_err_network:"네트워크 오류",byok_err_empty:"키를 입력하지 않음",
+byok_err_network:"네트워크 오류",byok_err_network_blocked:"Google API에 연결할 수 없습니다. 방화벽/백신을 확인하고, 다른 네트워크를 시도하거나 VPN을 끄세요.",byok_err_empty:"키를 입력하지 않음",
+byok_err_unreachable:"모델 목록을 가져올 수 없습니다. 아래에 모델 이름을 수동으로 입력하세요.",
 agent_too_long:"메시지가 너무 깁니다 (최대 1000자)",agent_waiting:"처리 중"}
 };
 let LANG = "vi";
@@ -362,7 +375,7 @@ export async function openSymbol(sym){
     // reset fad tabs to overview
     document.querySelectorAll("[data-ft]").forEach(x=>x.classList.toggle("active", x.dataset.ft==="ov"));
     ["fadOv","fadNews","fadFund","fadBt"].forEach((id,i)=>{ $(id).style.display = i===0?"":"none"; });
-    getEx(sym).then(ex=>{ $("stkDetailEx").textContent = "("+(ex==="HOSE"?"HSX":ex)+")"; });
+    getEx(sym).then(ex=>{ $("stkDetailEx").textContent = "("+ex+")"; });
     await loadSymHead(sym);
     await loadChart(sym, curIv);
     $("stkDetail").scrollIntoView({block:"start"});
@@ -975,16 +988,20 @@ async function renderAlerts(){
 }
 
 async function addAlert(){
+  const btn = $("alAddBtn") || document.querySelector('[onclick="addAlert"]');
   const sym = $("alSym").value.trim().toUpperCase();
   const dir = $("alDir").value;
   const price = parseFloat($("alPrice").value);
   if(!sym || !(price>0)){ toast(t("alert_fill")); return; }
+  // 8b 2026-10-12 BUG-8: disable nút khi đang gửi — tránh double-click race
+  if(btn) btn.disabled = true;
   try{
     await sApi("/alerts", {method:"POST", body:JSON.stringify({symbol:sym, direction:dir, price})});
     $("alSym").value=""; $("alPrice").value="";
     toast(t("alert_added"));
-    renderAlerts();
+    await renderAlerts();
   }catch(e){ toast(t("error")+": "+e.message); }
+  finally{ if(btn) btn.disabled = false; }
 }
 
 async function renderTargets(){
@@ -1021,34 +1038,209 @@ export function setStockLang(l){
 }
 
 /* ---------- AI agent chat (BYOK Phase 1.5) ---------- */
-// Thử gọi trực tiếp bằng key của user trước, lỗi thì fallback về server.
-async function chatWithFallback(message, onToken){
+// Y chang file đính kèm: qua relay bằng key của user trước (không gọi provider
+// trực tiếp — non-streaming), lỗi thì fallback về server.
+// 8b 2026-10-12: hỗ trợ hội thoại nhiều turn — history là [{role:'user'|'model', text}].
+async function chatWithFallback(message, history, onToken){
   const key = await getUserKey();
   if(key){
     try{
       // 8b: Context injection kiểu Perplexity — nhét dữ liệu thật vào prompt.
-      // App đã có giá realtime, không cần tools, AI direct vẫn thông minh.
+      // Mức 3 + 3 hướng: giá + định giá + xu hướng + tin + tín hiệu kỹ thuật.
+      // Hướng A: detect intent → điều chỉnh prompt. Hướng C: so sánh nhiều mã.
       let context = "";
       const symbols = detectSymbols(message);
-      for(const sym of symbols.slice(0, 3)){ // tối đa 3 mã để prompt không quá dài
-        try{
-          const q = await sApi("/quote?symbol=" + encodeURIComponent(sym));
-          if(q && q.close != null){
-            context += `\n- ${sym}: giá ${q.close}, thay đổi ${q.change ?? "—"} (${q.pct_change != null ? q.pct_change.toFixed(2) + "%" : "—"}), khối lượng ${q.volume ?? "—"}`;
-          }
-        }catch(e){ /* bỏ qua mã lỗi, không chặn chat */ }
+      const intent = detectIntent(message, symbols);
+      const enrichments = await Promise.all(
+        symbols.slice(0, 3).map(sym => enrichSymbol(sym))
+      );
+      // Hướng C: nếu so sánh 2+ mã → build bảng so sánh
+      const valid = enrichments.filter(Boolean);
+      if(intent === "compare" && valid.length >= 2){
+        context = buildCompareTable(symbols.slice(0, 3), enrichments);
+      }else{
+        for(const e of valid){
+          if(e.text) context += e.text;
+        }
       }
-      const prompt = "Bạn là trợ lý chứng khoán Việt Nam. Trả lời ngắn gọn, chính xác bằng tiếng Việt. " +
-        "Đây không phải lời khuyên đầu tư." +
-        (context ? "\n\nDữ liệu thị trường hiện tại:" + context : "") +
-        "\n\nCâu hỏi: " + message;
-      const reply = await callDirect(prompt, onToken);
-      return { reply, via: "direct" };
+      const prompt = buildPrompt(intent, context, message);
+      // Build messages[]: lịch sử cũ + tin mới (đã enrich context).
+      const messages = (history || []).concat([{ role: "user", text: prompt }]);
+      // 8b 2026-10-12: dùng base_url + key + model do user cấu hình (không hardcode Gemini).
+      // Fallback chain: User Endpoint → Server.
+      // 8b 2026-10-12: dùng endpoint/model hiệu dụng của app 'stocks' (riêng hoặc dùng chung).
+      const base = await getEffectiveEndpoint('stocks').catch(()=>null);
+      const model = await getEffectiveModel('stocks').catch(()=>null);
+      try {
+        // 8b: y chang file — độ dài trả lời do user chọn (dùng chung với Talk/English Lab).
+        const rlen = await getResponseLength().catch(()=>2048);
+        // tốc T2: có onToken thì stream chữ chảy dần qua relay, không thì buffered như cũ.
+        const reply = await proxyChat({ baseUrl: base, key, model, messages, maxTokens: rlen,
+          onToken: (typeof onToken === "function" ? onToken : undefined) });
+        return { reply, via: "proxy" };
+      } catch (proxyErr) {
+        // 8b 2026-10-13: giữ lỗi proxy để báo đúng khi server fallback cũng lỗi.
+        // (Trước đây nuốt lỗi → user thấy "Gemini API error" dù đang dùng endpoint khác.)
+        return { reply: null, via: "server", proxyErr, proxyBase: base, proxyModel: model };
+      }
     }catch(e){
-      // Direct failed → fallback to server below
+      // Key không có hoặc lỗi khác → fallback to server below
     }
   }
   return { reply: null, via: "server" };
+}
+
+// Hướng A: Detect ý định từ câu hỏi (kiểu ChatGPT hiểu context).
+// Trả về: valuation | explain | advice | compare | price
+function detectIntent(message, symbols){
+  const m = message.toLowerCase();
+  if(symbols.length >= 2 && /so s[aá]nh|vs\.?|v\.s\.?|kh[aá]c nhau/.test(m)) return "compare";
+  if(/đắt|rẻ|định giá|pe\b|p\/e|p\/b/.test(m)) return "valuation";
+  if(/tại sao|vì sao|sao (tăng|giảm|đỏ|xanh)|lý do|nguyên nhân/.test(m)) return "explain";
+  if(/nên mua|nên bán|có nên|khuyên|khuyến nghị/.test(m)) return "advice";
+  return "price";
+}
+
+// Build prompt theo intent — mỗi intent có hướng dẫn riêng cho AI.
+function buildPrompt(intent, context, message){
+  let role = "Bạn là trợ lý chứng khoán Việt Nam. Trả lời ngắn gọn, chính xác bằng tiếng Việt. ";
+  if(intent === "valuation"){
+    role += "Tập trung phân tích định giá: P/E, P/B có cao hay thấp, so với mặt bằng chung. ";
+  }else if(intent === "explain"){
+    role += "Giải thích biến động giá dựa trên dữ liệu: xu hướng, tin tức, tín hiệu kỹ thuật. ";
+  }else if(intent === "advice"){
+    role += "Đây KHÔNG phải lời khuyên đầu tư. Chỉ trình bày dữ liệu khách quan: định giá, xu hướng, tín hiệu kỹ thuật để user tự quyết định. ";
+  }else if(intent === "compare"){
+    role += "So sánh các mã theo bảng dữ liệu: chỉ rõ mã nào định giá rẻ hơn, xu hướng tốt hơn. Trình bày dạng bảng gọn. ";
+  }else{
+    role += "Đây không phải lời khuyên đầu tư. ";
+  }
+  return role + (context ? "\n\nDữ liệu thị trường hiện tại:" + context : "") +
+    "\n\nCâu hỏi: " + message;
+}
+
+// Hướng C: Build bảng so sánh từ enrichments (mỗi mã 1 dòng, các chỉ sốalign).
+function buildCompareTable(symbols, enrichments){
+  // Parse lại từng enrichment để lấy số liệu thô — dùng raw data từ enrichRaw
+  let tbl = "\nBảng so sánh:";
+  const rows = [];
+  for(let i = 0; i < symbols.length; i++){
+    const raw = enrichments[i] && enrichments[i].raw;
+    if(!raw || raw.close == null) continue;
+    rows.push({
+      sym: symbols[i],
+      close: raw.close,
+      pct: raw.pct_change,
+      pe: raw.pe, pb: raw.pb,
+      trend: raw.trend, rsi: raw.rsiSignal,
+    });
+  }
+  for(const r of rows){
+    tbl += `\n- ${r.sym}: giá ${r.close} (${r.pct != null ? (r.pct > 0 ? "+" : "") + r.pct.toFixed(2) + "%" : "—"})` +
+      `, P/E ${r.pe ?? "—"}, P/B ${r.pb ?? "—"}` +
+      (r.trend ? `, ${r.trend}` : "") + (r.rsi ? `, ${r.rsi}` : "");
+  }
+  return tbl;
+}
+
+// 8b Mức 3: Lấy đầy đủ dữ liệu cho 1 mã — quote + fundamentals + ohlcv + news.
+// Chạy song song, lỗi từng phần không chặn phần khác, không bao giờ throw.
+// Hướng B: thêm tín hiệu kỹ thuật (RSI, Bollinger, MA) từ indicators thật.
+// Trả về {text, raw} — raw để build bảng so sánh (Hướng C).
+async function enrichSymbol(sym){
+  const enc = encodeURIComponent(sym);
+  // 4 API độc lập → Promise.all, mỗi cái tự catch để không gãy cả cụm
+  const [q, f, o, n] = await Promise.all([
+    sApi("/quote?symbol=" + enc).catch(()=>null),
+    sApi("/fundamentals?symbol=" + enc).catch(()=>null),
+    sApi("/ohlcv?symbol=" + enc + "&count=60").catch(()=>null),
+    sApi("/news?symbol=" + enc).catch(()=>null),
+  ]);
+  if(!q || q.close == null) return null; // không có giá thì bỏ qua mã này
+  const raw = { close: q.close, pct_change: q.pct_change, pe: null, pb: null, trend: null, rsiSignal: null };
+  let ctx = `\n- ${sym}: giá ${q.close}, thay đổi ${q.change ?? "—"} (${q.pct_change != null ? q.pct_change.toFixed(2) + "%" : "—"}), khối lượng ${q.volume ?? "—"}`;
+  if(q.high != null || q.low != null){
+    ctx += `, cao ${q.high ?? "—"}/thấp ${q.low ?? "—"}`;
+  }
+  // Định giá từ fundamentals thật
+  if(f && (f.pe != null || f.pb != null)){
+    const parts = [];
+    if(f.pe != null){ parts.push(`P/E ${f.pe}`); raw.pe = f.pe; }
+    if(f.pb != null){ parts.push(`P/B ${f.pb}`); raw.pb = f.pb; }
+    if(f.roe != null) parts.push(`ROE ${f.roe}%`);
+    if(parts.length) ctx += `\n  Định giá: ${parts.join(", ")}`;
+  }
+  // Xu hướng từ OHLCV thật (đếm phiên tăng/giảm liên tiếp)
+  const trend = calcTrend(o);
+  if(trend){ ctx += `\n  Xu hướng: ${trend}`; raw.trend = trend; }
+  // Hướng B: Tín hiệu kỹ thuật từ indicators thật (RSI, Bollinger, MA)
+  const signals = calcTechSignals(o, q.close);
+  if(signals.length){
+    ctx += `\n  Kỹ thuật: ${signals.join(", ")}`;
+    raw.rsiSignal = signals.find(s => s.includes("RSI")) || null;
+  }
+  // Tin mới nhất (chỉ lấy 1 tin, không bịa)
+  if(n && n.items && n.items.length && n.items[0].title){
+    ctx += `\n  Tin mới: "${n.items[0].title}"`;
+  }
+  return { text: ctx, raw };
+}
+
+// Hướng B: Tính tín hiệu kỹ thuật từ indicators + OHLCV thật.
+// Không bịa: chỉ dùng số có thật, thiếu thì bỏ qua.
+function calcTechSignals(ohlcv, close){
+  const signals = [];
+  try{
+    const rows = ohlcv && ohlcv.rows;
+    const inds = ohlcv && ohlcv.indicators;
+    if(!rows || !rows.length) return signals;
+    // RSI từ indicators
+    if(inds && inds.length){
+      const last = inds[inds.length - 1];
+      if(last.rsi != null){
+        const r = Number(last.rsi);
+        if(r >= 70) signals.push(`RSI ${r.toFixed(0)} (quá mua)`);
+        else if(r <= 30) signals.push(`RSI ${r.toFixed(0)} (quá bán)`);
+        else signals.push(`RSI ${r.toFixed(0)}`);
+      }
+      // Bollinger Bands
+      if(last.bb_up != null && last.bb_lo != null && close != null){
+        if(close > last.bb_up) signals.push("vượt dải Bollinger trên");
+        else if(close < last.bb_lo) signals.push("thủng dải Bollinger dưới");
+      }
+    }
+    // MA50 tính từ closes thật (SMA đơn giản)
+    if(rows.length >= 50){
+      const closes = rows.slice(-50).map(r => r.close).filter(c => c != null);
+      if(closes.length >= 50 && close != null){
+        const ma50 = closes.reduce((a, b) => a + b, 0) / closes.length;
+        signals.push(close > ma50 ? "trên MA50" : "dưới MA50");
+      }
+    }
+  }catch(e){ /* bỏ qua, không chặn */ }
+  return signals;
+}
+
+// Tính xu hướng từ OHLCV: đếm số phiên tăng/giảm liên tiếp gần nhất.
+// rows: [{time, close, ...}], mới nhất ở cuối. Trả về null nếu không đủ dữ liệu.
+function calcTrend(ohlcv){
+  try{
+    const rows = ohlcv && ohlcv.rows;
+    if(!rows || rows.length < 2) return null;
+    let up = 0, down = 0;
+    for(let i = rows.length - 1; i > 0; i--){
+      const c = rows[i].close, p = rows[i-1].close;
+      if(c == null || p == null) break;
+      if(c > p){ if(down > 0) break; up++; }
+      else if(c < p){ if(up > 0) break; down++; }
+      else break; // đi ngang thì dừng đếm
+    }
+    if(up >= 2) return `tăng ${up} phiên liên tiếp`;
+    if(down >= 2) return `giảm ${down} phiên liên tiếp`;
+    if(up === 1) return "tăng phiên gần nhất";
+    if(down === 1) return "giảm phiên gần nhất";
+    return null;
+  }catch(e){ return null; }
 }
 
 // Tách mã chứng khoán từ câu hỏi (mã VN thường 3 ký tự hoa: HPG, VCB, VIC...)
@@ -1063,80 +1255,10 @@ let agentBound = false;
 let lastAgentSend = 0;
 const AGENT_THROTTLE_MS = 2000;
 
-/* ---------- BYOK UI for Stocks (shared IndexedDB with English Lab) ---------- */
-let stkByokBound = false;
+/* ---------- BYOK UI for Stocks — dùng shared module (Gốc G1, 2026-10-12) ---------- */
 function initStkByok(){
-  if(stkByokBound) return;
-  stkByokBound = true;
-  const keyInput = $("stkByokKey");
-  const testBtn = $("stkByokTest");
-  const delBtn = $("stkByokDel");
-  const statusEl = $("stkByokStatus");
-  const modelSel = $("stkByokModel");
-  if(!keyInput || !testBtn || !delBtn) return;
-
-  function setStatus(msg, ok){
-    if(statusEl){ statusEl.textContent = msg; statusEl.style.color = ok ? "var(--pp-accent)" : "var(--pp-danger)"; }
-  }
-  // Load existing key (shared with English Lab via same-origin IndexedDB)
-  getUserKey().then(k => { if(k) keyInput.value = k; }).catch(()=>{});
-  // Load saved model selection
-  getUserModel().then(m => { if(m && modelSel) modelSel.value = m; }).catch(()=>{});
-  // Auto-save on input
-  keyInput.addEventListener("input", () => {
-    const v = keyInput.value.trim();
-    if(v) saveUserKey(v).then(()=>setStatus(t("byok_saved")||"Saved", true)).catch(()=>{});
-  });
-  // Model selection change
-  if(modelSel){
-    modelSel.addEventListener("change", () => {
-      const v = modelSel.value;
-      if(v) saveUserModel(v).catch(()=>{});
-    });
-  }
-  testBtn.addEventListener("click", async () => {
-    const k = keyInput.value.trim();
-    const errMsg = (code) => t("byok_err_"+code) || code;
-    if(!k){ setStatus((t("byok_test_fail")||"Key failed: ")+errMsg("empty"), false); return; }
-    setStatus("...", true);
-    try{
-      const r = await testUserKey(k);
-      if(r.ok && r.models && r.models.length && modelSel){
-        // Populate model dropdown with working models
-        const current = modelSel.value;
-        modelSel.innerHTML = '';
-        const placeholder = document.createElement('option');
-        placeholder.value = '';
-        placeholder.textContent = t("byok_model_select") || "Select model...";
-        modelSel.appendChild(placeholder);
-        for(const m of r.models){
-          const opt = document.createElement('option');
-          opt.value = m;
-          opt.textContent = m;
-          modelSel.appendChild(opt);
-        }
-        // Restore selection or select first
-        const saved = await getUserModel().catch(()=>null);
-        if(saved && r.models.includes(saved)){
-          modelSel.value = saved;
-        } else if(r.models.length){
-          modelSel.value = r.models[0];
-          await saveUserModel(r.models[0]).catch(()=>{});
-        } else if(current){
-          modelSel.value = current;
-        }
-      }
-      setStatus(r.ok ? (t("byok_test_ok")||"Key works!") : (t("byok_test_fail")||"Key failed: ")+errMsg(r.error||"error"), r.ok);
-    }catch(e){
-      setStatus((t("byok_test_fail")||"Key failed: ")+errMsg(e.message||"error"), false);
-    }
-  });
-  delBtn.addEventListener("click", async () => {
-    await deleteUserKey();
-    keyInput.value = "";
-    if(modelSel) modelSel.innerHTML = '<option value="">' + (t("byok_model_select")||"Select model...") + '</option>';
-    setStatus(t("byok_deleted")||"Key deleted", true);
-  });
+  // Gốc: gọi module dùng chung, không còn code trùng lặp
+  initByok({ prefix: 'stk', app: 'stocks', t: t });
 }
 
 function initAgentChat(){
@@ -1147,6 +1269,8 @@ function initAgentChat(){
   const btn = $("agentSendBtn");
   const msgs = $("agentMsgs");
   if(!input || !btn || !msgs) return;
+  // 8b 2026-10-12 (Phase 1.5): lịch sử hội thoại cho multi-turn (giữ 10 turn gần nhất).
+  const agentHistory = [];
 
   function addMsg(text, isUser){
     const div = document.createElement("div");
@@ -1156,6 +1280,37 @@ function initAgentChat(){
     div.textContent = text;
     msgs.appendChild(div);
     msgs.scrollTop = msgs.scrollHeight;
+    // Ẩn gợi ý sau khi có tin nhắn đầu tiên
+    const sug = $("agentSuggest");
+    if(sug) sug.style.display = "none";
+  }
+
+  // Phase 1: Gợi ý câu hỏi mẫu kiểu Perplexity — chip ngang, bấm để gửi ngay.
+  function renderSuggest(){
+    const sug = $("agentSuggest");
+    if(!sug) return;
+    // Chỉ hiện khi chưa có tin nhắn nào
+    if(msgs.children.length > 0){ sug.style.display = "none"; return; }
+    sug.style.display = "flex";
+    sug.innerHTML = "";
+    ["suggest_q1","suggest_q2","suggest_q3","suggest_q4"].forEach(k => {
+      const txt = t(k);
+      if(!txt || txt === k) return; // bỏ qua key thiếu
+      const chip = document.createElement("button");
+      chip.type = "button";
+      chip.textContent = txt;
+      chip.style.cssText = "flex:0 0 auto;padding:8px 14px;border-radius:20px;border:1px solid var(--pp-border);background:var(--pp-bg2);color:var(--pp-text);font-size:13px;cursor:pointer;white-space:nowrap";
+      chip.onclick = () => {
+        input.value = txt;
+        send();
+      };
+      sug.appendChild(chip);
+    });
+    // Re-render khi đổi ngôn ngữ
+    if(!sug.dataset.i18nBound){
+      sug.dataset.i18nBound = "1";
+      document.addEventListener("langchange", renderSuggest);
+    }
   }
 
   async function send(){
@@ -1181,18 +1336,39 @@ function initAgentChat(){
       }
     }, 2000);
     try{
-      // BYOK Phase 1.5: thử direct trước, lỗi thì fallback server.
-      const fb = await chatWithFallback(text, (tok)=>{
-        if(loading && loading.isConnected){
-          // Streaming: thay "..." bằng token đầu tiên
-          if(loading.textContent.startsWith(waitingText)) loading.textContent = "";
-          loading.textContent += tok;
+      // tốc T2: stream chữ chảy dần vào chính bubble "Processing..." (thay vì chờ full).
+      // Chưa có chữ nào (buffered/fallback) → giữ nguyên hành vi cũ.
+      let streamed = false;
+      const fb = await chatWithFallback(text, agentHistory, function(chunk){
+        if(!streamed){
+          streamed = true;
+          clearInterval(elapsedTimer);
+          loading.textContent = "";
         }
+        loading.textContent += chunk;
+        msgs.scrollTop = msgs.scrollHeight;
       });
-      if(fb.via === "direct" && fb.reply){
+      if((fb.via === "proxy" || fb.via === "modal") && fb.reply){
+        if(streamed){
+          // Đã chảy chữ trong bubble — chốt text cuối (đúng cả khi stream đứt giữa chừng).
+          loading.textContent = fb.reply;
+        }else{
+          clearInterval(elapsedTimer);
+          loading.remove();
+          addMsg(fb.reply, false);
+        }
+        // Lưu turn vào history (giữ tối đa 10 turn = 20 messages).
+        agentHistory.push({ role: "user", text: text }, { role: "model", text: fb.reply });
+        while(agentHistory.length > 20) agentHistory.splice(0, 2);
+      } else if (fb.proxyErr) {
+        // 8b 2026-10-13: user đã cấu hình endpoint riêng mà nó lỗi → báo lỗi đó,
+        // không fallback sang server (tránh "Gemini API error" gây nhầm lẫn).
         clearInterval(elapsedTimer);
         loading.remove();
-        addMsg(fb.reply, false);
+        const pe = fb.proxyErr;
+        const pmsg = (pe.detail || pe.message || "").toString().slice(0, 200);
+        const pname = fb.proxyModel || fb.proxyBase || "endpoint riêng";
+        addMsg((t("ai_custom_err") || "Lỗi endpoint riêng") + " (" + pname + "): " + pmsg, false);
       } else {
       // Async job pattern: POST returns immediately with requestId,
       // then poll status every 2s (Canva/Midjourney style).
@@ -1256,5 +1432,6 @@ function initAgentChat(){
   input.addEventListener("keydown", e=>{
     if(e.key==="Enter" && !e.shiftKey){ e.preventDefault(); send(); }
   });
+  renderSuggest();
 }
 // force rehash 20261009
