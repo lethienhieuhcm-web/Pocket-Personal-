@@ -10,6 +10,8 @@ on:
 jobs:
   build:
     runs-on: macos-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
 
@@ -40,3 +42,13 @@ jobs:
         with:
           name: DACPlayer-unsigned-ipa
           path: dac-player-ios/DACPlayer-unsigned.ipa
+
+      - name: Publish to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: dac-ipa-${{ github.run_number }}
+          name: DAC Player IPA #${{ github.run_number }}
+          files: dac-player-ios/DACPlayer-unsigned.ipa
+          prerelease: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
