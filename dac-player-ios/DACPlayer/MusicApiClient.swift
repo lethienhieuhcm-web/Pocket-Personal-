@@ -36,6 +36,7 @@ private struct LibraryFile: Codable {
 }
 private struct LibraryResponse: Codable {
     let files: [LibraryFile]
+    let lastSync: Int64?
 }
 
 private struct MusicCache: Codable {
@@ -248,7 +249,7 @@ class MusicApiClient: ObservableObject {
     /// Đồng bộ thông minh: gọi POST /api/dac/sync rồi refresh library
     func syncLibrary() async {
         do {
-            _ = try await post("/api/dac/sync", body: Data())
+            _ = try await post("/api/dac/sync")
             _ = try await listLibrary(forceRefresh: true)
         } catch {
             // lỗi thì im lặng giữ cache
