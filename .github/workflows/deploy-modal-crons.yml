@@ -1,0 +1,45 @@
+name: Deploy Modal Crons (pocket-personal-crons)
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "modal_crons/app.py"
+      - ".github/workflows/deploy-modal-crons.yml"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Modal CLI
+        run: pip install modal
+
+      - name: Authenticate Modal
+        env:
+          MODAL_TOKEN_ID: ${{ secrets.MODAL_TOKEN_ID }}
+          MODAL_TOKEN_SECRET: ${{ secrets.MODAL_TOKEN_SECRET }}
+        run: |
+          mkdir -p ~/.config/modal
+          cat > ~/.modal.toml << EOF
+          [default]
+          token_id = "$MODAL_TOKEN_ID"
+          token_secret = "$MODAL_TOKEN_SECRET"
+          active = true
+          EOF
+          chmod 600 ~/.modal.toml
+
+      - name: Deploy pocket-personal-crons
+        run: |
+          cd modal_crons && modal deploy app.py
+
+      - name: Note
+        run: |
+          echo "Deployed schedules: book_processor (5m), publish_snapshot (30m Mon-Fri), d1_backup (daily)"
+          echo "Verify on Modal dashboard: app pocket-personal-crons -> Schedules"
