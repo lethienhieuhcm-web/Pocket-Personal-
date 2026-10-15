@@ -4,6 +4,12 @@
 # root .github/workflows/ với working-directory: dac-player.
 name: Build DAC APK
 
+# Đỡ tốn CI minutes khi push dồn (2026-10-14): run mới trên cùng branch
+# huỷ run cũ đang chạy. Chuẩn mọi workflow GitHub Actions.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
   push:
     branches: [main]
@@ -100,6 +106,17 @@ jobs:
           name: dac-player-apk-deploy
           path: dac-player/app/build/outputs/apk/deploy/*.apk
           retention-days: 30
+
+      - name: Publish to GitHub Release
+        # Release public → tải được không cần token (cho VM upload lên R2)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: dac-apk-${{ github.run_number }}
+          name: DAC Player APK #${{ github.run_number }}
+          files: dac-player/app/build/outputs/apk/deploy/*.apk
+          prerelease: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # Job emulator — test 1.2 (EncryptedSharedPreferences) + instrumented test trên máy ảo.
   # Chạy sau job build (needs) để không tốn 8 phút emulator khi build đã lỗi.
