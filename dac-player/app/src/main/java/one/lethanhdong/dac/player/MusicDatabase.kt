@@ -14,14 +14,13 @@ import androidx.room.RoomDatabase
  * data người dùng nhập — xoá và build lại schema an toàn.
  */
 @Database(
-    entities = [TrackEntity::class, OfflineTrackEntity::class, FolderEntity::class],
-    version = 3,
+    entities = [TrackEntity::class, OfflineTrackEntity::class],
+    version = 2,
     exportSchema = false,
 )
 abstract class MusicDatabase : RoomDatabase() {
     abstract fun trackDao(): TrackDao
     abstract fun offlineTrackDao(): OfflineTrackDao
-    abstract fun folderDao(): FolderDao
 
     companion object {
         private const val DB_NAME = "dac_music.db"
