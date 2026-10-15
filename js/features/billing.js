@@ -6,7 +6,7 @@ import { t } from '../core/i18n.js';
 export async function getPlan(){
   try{
     const j = await apiCall('/api/user/plan');
-    return {plan: j.plan || 'free', expires_at: j.expires || null, days_left: j.days_left || 0};
+    return {plan: j.plan || 'free', expires_at: j.expires_at || null, days_left: j.days_left || 0};
   }catch(e){
     return {plan: 'free'};
   }

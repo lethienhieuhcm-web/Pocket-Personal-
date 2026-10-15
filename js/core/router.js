@@ -2,7 +2,7 @@
 // Single switchTab function, no dual system, no complex logic.
 import { $ } from './dom.js';
 
-const TABS = ["scan","read","audio","books","progress","settings","profile"];
+const TABS = ["scan","read","audio","books","progress","library","settings","profile","admin"];
 
 export function switchTab(name){
   if(!TABS.includes(name)) name = "scan";

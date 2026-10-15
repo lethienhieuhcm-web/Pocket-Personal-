@@ -3,7 +3,6 @@ import { $, store, toast } from '../core/dom.js';
 import { state } from '../core/state.js';
 import { loadVoices, updateQuota } from './tts.js';
 export { updateQuota };
-import { setLang, applyTheme, LANGS } from '../core/i18n.js';
 
 export function needVoice(){
   if(state.ttsProvider === "browser") return true;
@@ -75,7 +74,7 @@ export function bindSettings(){
   setInterval(()=>{ if($("tabSettings") && $("tabSettings").classList.contains("active")) refreshDriveStatus(); }, 3000);
   $("reloadVoices").onclick = loadVoices;
   $("modelSel").onchange = ()=>store.set("model", $("modelSel").value);
-  const _lb = $("langBtn"); if(_lb) _lb.onclick = ()=>{ const i = LANGS.indexOf(state.uiLang); setLang(LANGS[(i+1)%LANGS.length]); };
-  const _tb = $("themeBtn"); if(_tb) _tb.onclick = ()=>{ store.set("elab_theme", document.body.classList.contains("dark")?"light":"dark"); applyTheme(); };
+  // Nút lang/theme ở shell (index.html) đã có handler duy nhất; không ghi đè ở đây
+  // (bản cũ ghi đè onclick khiến một click chạy hai logic khác nhau).
 }
 

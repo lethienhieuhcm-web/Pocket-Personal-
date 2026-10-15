@@ -3,9 +3,13 @@
    so each deploy gets a fresh cache and old caches are wiped.
    Strategy: network-first for HTML (UI always fresh), cache-first for static assets. */
 const CACHE = "readlearn-__BUILD__";
-const ASSETS = ["./manifest.json", "./design-system.css",
+const ASSETS = ["./manifest.json",
   "./icons/icon-english-192.png", "./icons/icon-english-512.png",
   "./icons/icon-english-maskable-512.png"];
+// NOTE (Chốt A 2026-10-11): design-system.css KHÔNG precache ở đây.
+// File CSS deploy dưới tên hash (design-system.<hash>.css), tên gốc trả 404
+// làm cache.addAll() reject -> SW mới không bao giờ install được.
+// CSS hash là immutable, browser cache qua HTTP là đủ.
 self.addEventListener("install", e => {
   // Do NOT call skipWaiting() here - let the new SW wait until user confirms update
   // (big tech pattern: user controls when to update)

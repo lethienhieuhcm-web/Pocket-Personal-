@@ -17,14 +17,20 @@
 (function(){
   var LANGS = {vi:"VI", en:"EN", zh:"中文", ko:"한국어"};
   function getLang(){
+    // Một key duy nhất "elab_uiLang", chuỗi thường (RULES.md 8).
+    // Migrate bản cũ từng ghi JSON-quoted ("\"vi\"").
     try{
-      var l = localStorage.getItem("elab_uiLang");
-      if(l) return JSON.parse(l);
+      var raw = localStorage.getItem("elab_uiLang");
+      var l = (raw || "").replace(/"/g, "");
+      if(l === "vi" || l === "en" || l === "zh" || l === "ko"){
+        if(raw !== l) try{ localStorage.setItem("elab_uiLang", l); }catch(e){}
+        return l;
+      }
     }catch(e){}
-    return "vi";
+    return "en";
   }
   function setLang(l){
-    try{ localStorage.setItem("elab_uiLang", JSON.stringify(l)); }catch(e){}
+    try{ localStorage.setItem("elab_uiLang", l); }catch(e){}
     // Update all dropdowns on page
     document.querySelectorAll(".pp-langdrop").forEach(function(drop){
       var cur = drop.querySelector(".pp-langdrop-cur");
@@ -32,6 +38,10 @@
       drop.querySelectorAll(".pp-langdrop-item").forEach(function(item){
         item.classList.toggle("active", item.getAttribute("data-lang")===l);
       });
+    });
+    // Update settings card labels (redesign 2026-10-13): card nằm ngoài .pp-langdrop
+    document.querySelectorAll("#langCard .pp-langdrop-cur").forEach(function(cur){
+      cur.textContent = LANGS[l] || "VI";
     });
     // Trigger page's i18n update if available
     if(window.__elabSetLang) { try{ window.__elabSetLang(l); }catch(e){} }
