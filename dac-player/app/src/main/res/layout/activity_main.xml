@@ -27,6 +27,32 @@
         android:gravity="center"
         android:layout_marginBottom="12dp" />
 
+    <!-- Redesign 80/20: tabs Bài hát / Album / Nghệ sĩ -->
+    <com.google.android.material.tabs.TabLayout
+        android:id="@+id/libraryTabs"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp"
+        app:tabMode="fixed"
+        app:tabGravity="fill">
+
+        <com.google.android.material.tabs.TabItem
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Bài hát" />
+
+        <com.google.android.material.tabs.TabItem
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Album" />
+
+        <com.google.android.material.tabs.TabItem
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Nghệ sĩ" />
+
+    </com.google.android.material.tabs.TabLayout>
+
     <!-- Danh sách nhạc từ R2 (MainActivity chỉ chạy khi đã đăng nhập) -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/trackList"

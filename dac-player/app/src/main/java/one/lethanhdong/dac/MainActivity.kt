@@ -11,6 +11,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.util.UnstableApi
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.google.android.material.tabs.TabLayout
 import androidx.recyclerview.widget.RecyclerView
 import com.decent.usbaudio.UsbAudioPermissionHelper
 import dagger.hilt.android.AndroidEntryPoint
@@ -71,6 +72,11 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var statusText: TextView
     private lateinit var trackList: RecyclerView
+    private lateinit var libraryTabs: TabLayout
+    /** Redesign 80/20: toàn bộ tracks để nhóm theo album/nghệ sĩ */
+    private var allTracks: List<MusicApiClient.Track> = emptyList()
+    /** 0=Bài hát, 1=Album, 2=Nghệ sĩ */
+    private var currentTab = 0
 
     private val pickAudio = registerForActivityResult(
         ActivityResultContracts.GetContent()
@@ -122,6 +128,17 @@ class MainActivity : AppCompatActivity() {
         )
         trackList.layoutManager = LinearLayoutManager(this)
         trackList.adapter = trackAdapter
+
+        // Redesign 80/20: tabs Bài hát / Album / Nghệ sĩ
+        libraryTabs = findViewById(R.id.libraryTabs)
+        libraryTabs.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
+            override fun onTabSelected(tab: TabLayout.Tab?) {
+                currentTab = tab?.position ?: 0
+                renderCurrentTab()
+            }
+            override fun onTabUnselected(tab: TabLayout.Tab?) {}
+            override fun onTabReselected(tab: TabLayout.Tab?) {}
+        })
 
         findViewById<Button>(R.id.pickButton).setOnClickListener {
             pickAudio.launch("audio/*")
@@ -217,10 +234,10 @@ class MainActivity : AppCompatActivity() {
     private fun loadTracks(forceRefresh: Boolean = false) {
         lifecycleScope.launch {
             try {
-                val tracks = apiClient.listMusic(forceRefresh, this@MainActivity)
-                trackAdapter.submitList(tracks)
+                val tracks = apiClient.listLibrary(forceRefresh, this@MainActivity)
+                allTracks = tracks
+                renderCurrentTab()
                 refreshDownloadedState(tracks.map { it.id })
-                trackAdapter.notifyDataSetChanged()
                 if (tracks.isEmpty()) {
                     statusText.text = "Chưa có file nhạc trên Google Drive"
                 }
@@ -228,6 +245,40 @@ class MainActivity : AppCompatActivity() {
                 statusText.text = e.message
             } catch (e: Exception) {
                 statusText.text = "Không tải được danh sách: ${e.message}"
+            }
+        }
+    }
+
+    /** Redesign 80/20: render theo tab đang chọn */
+    private fun renderCurrentTab() {
+        when (currentTab) {
+            0 -> {
+                // Bài hát: flat list
+                trackAdapter.submitList(allTracks)
+                trackAdapter.notifyDataSetChanged()
+            }
+            1 -> {
+                // Album: nhóm và hiển thị tên album
+                val albums = allTracks.groupBy {
+                    it.album.ifEmpty { "(Chưa rõ album)" }
+                }.toSortedMap()
+                // Hiển thị dạng header: hiện tại dùng flat list với tên album
+                trackAdapter.submitList(allTracks.sortedBy {
+                    it.album.ifEmpty { "(Chưa rõ album)" }
+                })
+                trackAdapter.notifyDataSetChanged()
+                statusText.text = "${albums.size} album • ${allTracks.size} bài"
+            }
+            2 -> {
+                // Nghệ sĩ: nhóm theo artist
+                val artists = allTracks.groupBy {
+                    it.artist.ifEmpty { "(Chưa rõ nghệ sĩ)" }
+                }.toSortedMap()
+                trackAdapter.submitList(allTracks.sortedBy {
+                    it.artist.ifEmpty { "(Chưa rõ nghệ sĩ)" }
+                })
+                trackAdapter.notifyDataSetChanged()
+                statusText.text = "${artists.size} nghệ sĩ • ${allTracks.size} bài"
             }
         }
     }
