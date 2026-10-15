@@ -245,6 +245,7 @@ class MusicApiClient: ObservableObject {
         tracks = list
         lastSync = resp.lastSync ?? 0
         return list
+    }
 
     /// Đồng bộ thông minh: gọi POST /api/dac/sync rồi refresh library
     func syncLibrary() async {
