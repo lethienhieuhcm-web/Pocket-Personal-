@@ -23,16 +23,6 @@ export async function handleDriveAuthUrl(request, env){
   if(!s) return jerr("Not logged in", 401);
   const cfg = getOAuthConfig(env);
   if(!cfg.client_id) return jerr("Drive not configured", 500);
-  // return_to: nơi redirect sau OAuth (vd /dacplayer/). Chỉ cho phép path nội bộ.
-  const url = new URL(request.url);
-  let returnTo = url.searchParams.get('return_to') || '';
-  if(returnTo && !/^\/[a-zA-Z0-9\-_/]*$/.test(returnTo)) returnTo = '';
-  // state = sessionToken | base64url(return_to)
-  let state = s.token;
-  if(returnTo){
-    const b64 = btoa(returnTo).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
-    state = s.token + '|' + b64;
-  }
   const params = new URLSearchParams({
     client_id: cfg.client_id,
     redirect_uri: cfg.redirect_uri,
@@ -40,7 +30,7 @@ export async function handleDriveAuthUrl(request, env){
     scope: "https://www.googleapis.com/auth/drive.readonly",
     access_type: "offline",
     prompt: "consent",
-    state: state,
+    state: s.token, // use session token as state
   });
   return jok({url: "https://accounts.google.com/o/oauth2/v2/auth?"+params.toString()});
 }
@@ -67,20 +57,7 @@ export async function handleDriveCallback(request, env){
   const tok = await tokRes.json();
 
   // Get user email from session
-  // state có thể là "sessionToken|base64url(return_to)"
-  let sessionToken = state;
-  let returnTo = '';
-  const pipeIdx = state.indexOf('|');
-  if(pipeIdx > 0){
-    sessionToken = state.slice(0, pipeIdx);
-    try{
-      const b64 = state.slice(pipeIdx+1).replace(/-/g,'+').replace(/_/g,'/');
-      returnTo = atob(b64);
-      // Chỉ cho phép path nội bộ (chống open redirect)
-      if(!/^\/[a-zA-Z0-9\-_/]*$/.test(returnTo)) returnTo = '';
-    }catch(e){ returnTo = ''; }
-  }
-  const sess = await dbGetSession(env, sessionToken);
+  const sess = await dbGetSession(env, state);
   if(!sess) return new Response("Invalid session", {status:401});
 
   // Store tokens
@@ -100,11 +77,8 @@ export async function handleDriveCallback(request, env){
     },
   });
 
-  // Redirect về nơi bắt đầu OAuth (mặc định settings)
-  const redirectTarget = returnTo
-    ? "https://lethanhdong.one" + returnTo + "?drive=ok"
-    : "https://lethanhdong.one/english/#settings?drive=ok";
-  return Response.redirect(redirectTarget, 302);
+  // Redirect to settings with success
+  return Response.redirect("https://lethanhdong.one/english/#settings?drive=ok", 302);
 }
 
 // GET /api/drive/status — check if connected
