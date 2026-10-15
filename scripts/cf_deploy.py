@@ -16,26 +16,43 @@ import urllib.error
 import glob as _glob
 from datetime import datetime, timezone
 
-# 8b (2026-10-11): Support both Hatch local and GitHub Actions.
-# In Actions, CF_API_TOKEN env var is used. Locally, falls back to Hatch surrogate.
+# Single source for VM + GitHub Actions (unified 2026-10-15).
+# Credential helper: prefer bundled copy, fall back to system paths, tolerate
+# absence (on CI, CF_API_TOKEN is used and the helper is never needed).
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+if _SCRIPT_DIR not in sys.path:
+    sys.path.insert(0, _SCRIPT_DIR)
+for _p in ("/opt/muse/skills/custom-connector-setup/bin",
+           "/opt/hatch/skills/skill-creator/bin"):
+    if os.path.isdir(_p) and _p not in sys.path:
+        sys.path.append(_p)
 try:
-    sys.path.insert(0, "/opt/hatch/skills/skill-creator/bin")
     from dynamic_credentials import add_surrogate_to_request, read_json_response
     _HAS_HATCH = True
 except ImportError:
     _HAS_HATCH = False
     def read_json_response(resp):
-        import json
         return json.loads(resp.read().decode())
 
 API = "https://api.cloudflare.com/client/v4"
 ACCOUNT = "25b2327e932d26e5487c2ba8ad058932"
 WORKER = "fancy-wood-2b3c"
-# In GitHub Actions, script is at repo/scripts/cf_deploy.py, SRC is repo root.
-# Locally, falls back to the Hatch workspace path.
-SRC = os.environ.get("CF_DEPLOY_SRC") or os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ""
-).rstrip("/") or "/home/hatch/workspace/english-lab"
+def _detect_src():
+    """Find the english-lab checkout: CF_DEPLOY_SRC (CI) -> scripts/.. (repo)
+    -> /home/hatch/workspace/english-lab (VM)."""
+    cands = []
+    env = os.environ.get("CF_DEPLOY_SRC")
+    if env:
+        cands.append(env)
+    cands.append(os.path.dirname(_SCRIPT_DIR))  # repo root when run as scripts/cf_deploy.py
+    cands.append("/home/hatch/workspace/english-lab")
+    for c in cands:
+        if c and os.path.isdir(os.path.join(c, "worker")):
+            return c
+    return "/home/hatch/workspace/english-lab"
+
+
+SRC = _detect_src()
 # URL prefix for English Lab (moved from / to /english/ for Hub)
 URL_PREFIX = "/english"
 FILES = [
@@ -45,8 +62,13 @@ FILES = [
     "voice-manifest.json", "voice-sw.js",
     "chess-manifest.json", "chess-sw.js",
     "music-manifest.json", "music-sw.js",
+    "browser-manifest.json", "browser-sw.js",
+    "talk-manifest.json", "talk-sw.js",
     "hub-manifest.json", "hub-sw.js",
     "privacy.html", "terms.html", "policy.html", "admin.html",
+    "dac.html",
+    # 2.5: dac-player-debug.apk vượt 25 MiB giới hạn Workers Assets →
+    # serve từ R2 DATA (route /dac-player-debug.apk trong worker).
     ".well-known/assetlinks.json",
 ]
 # Per-app PWA icons
@@ -57,7 +79,7 @@ ALLOWED = ["api.cloudflare.com"]
 
 
 def _auth_request(req):
-    """Add Cloudflare auth: CF_API_TOKEN env var (GitHub Actions) or Hatch surrogate (local)."""
+    """Cloudflare auth: CF_API_TOKEN env (GitHub Actions) or Hatch surrogate (VM)."""
     token = os.environ.get("CF_API_TOKEN")
     if token:
         req.add_header("Authorization", f"Bearer {token}")
@@ -144,6 +166,11 @@ def build_asset_hash_map(src_dir: str, files: list) -> dict:
             new_hashed = hashed_filename(f, new_h)
             if new_hashed != hash_map[f]:
                 hash_map[f] = new_hashed
+                # 8b fix 2026-10-11: cập nhật file_contents để iteration sau
+                # xây dựng trên data đã xử lý, không phải data gốc.
+                # Bug cũ: không update → mỗi iteration đều bắt đầu từ gốc,
+                # hash sai lan truyền qua các file phụ thuộc (cascade failure).
+                file_contents[f] = new_data
                 changed = True
         if not changed:
             break
@@ -385,6 +412,26 @@ def main():
         manifest["/voice/index.html"] = {"hash": vh, "size": len(vdata)}
         contents[vh] = ("voice.html", vdata)
         print(f"voice: standalone utility at /voice/")
+    # Proxy browser (Pocket Personal) at /browser/
+    browser_html = os.path.join(SRC, "browser.html")
+    if os.path.exists(browser_html):
+        bdata = open(browser_html, "rb").read()
+        bdata = apply_hashed_assets_to_html(bdata, asset_hash_map, build_id)
+        bh = hashlib.sha256(bdata).hexdigest()[:32]
+        manifest["/browser/"] = {"hash": bh, "size": len(bdata)}
+        manifest["/browser/index.html"] = {"hash": bh, "size": len(bdata)}
+        contents[bh] = ("browser.html", bdata)
+        print(f"browser: standalone app at /browser/")
+    # AI chat Talk (Pocket Personal) at /talk/ — P1 2026-10-12
+    talk_html = os.path.join(SRC, "talk.html")
+    if os.path.exists(talk_html):
+        tdata = open(talk_html, "rb").read()
+        tdata = apply_hashed_assets_to_html(tdata, asset_hash_map, build_id)
+        th = hashlib.sha256(tdata).hexdigest()[:32]
+        manifest["/talk/"] = {"hash": th, "size": len(tdata)}
+        manifest["/talk/index.html"] = {"hash": th, "size": len(tdata)}
+        contents[th] = ("talk.html", tdata)
+        print(f"talk: AI chat app at /talk/")
     print(f"manifest: {len(manifest)} files (build {build_id})")
 
     # 2. Create upload session
@@ -435,12 +482,13 @@ def main():
     # MUST rebuild the bundle first — deploying a stale worker.js silently
     # ships old backend code (hit 2026-10-11: fixes sat in src/ for ~10h
     # while "DEPLOY OK" kept uploading the 14:46 bundle).
-    # 8b (2026-10-11): Pass build_id to build.sh for single release ID
-    # across manifest + worker. Previously build.sh generated its own
-    # timestamp, causing ID mismatch and verify failures.
+    # 8b: pass BUILD_ID so the bundle's X-Build-Id matches this deploy's
+    # build_id (build.sh used its own timestamp -> verify_live_build never
+    # matched -> false "DEPLOY FAILED" on every deploy).
+    _build_env = dict(os.environ, BUILD_ID=build_id)
     _build = subprocess.run(
         ["bash", os.path.join(SRC, "worker", "build.sh"), build_id],
-        capture_output=True, text=True, timeout=180)
+        capture_output=True, text=True, timeout=180, env=_build_env)
     if _build.returncode != 0:
         print("WORKER BUILD FAILED:\n" + (_build.stderr or _build.stdout)[-2000:])
         sys.exit(1)
@@ -456,6 +504,7 @@ def main():
             {"type": "assets", "name": "ASSETS"},
             {"type": "r2_bucket", "name": "DATA", "bucket_name": "english-lab-data"},
             {"type": "r2_bucket", "name": "AUTHDB", "bucket_name": "english-lab-auth"},
+            {"type": "r2_bucket", "name": "DACMUSIC", "bucket_name": "dac-music"},
             {"type": "d1", "name": "DB", "id": "e856db4d-1ee1-42fd-9c1d-1807ca31afb5"},
         ],
     }
@@ -474,7 +523,9 @@ def main():
         f"{API}/accounts/{ACCOUNT}/workers/scripts/{WORKER}",
         data=body, method="PUT")
     req.add_header("Content-Type", f"multipart/form-data; boundary={b2}")
-    _auth_request(req)
+    add_surrogate_to_request(
+        req, "custom.cloudflare", entry_name="access_token", allowed_hosts=ALLOWED
+    )
     with urllib.request.urlopen(req, timeout=60) as resp:
         dep = read_json_response(resp)
     # 8b: log chi tiết response để debug silent failure (2026-10-11)
@@ -492,29 +543,96 @@ def main():
             print(f"Cache purge failed (non-fatal): {e}")
         # 8b + big tech (K8s/Vercel): verify live worker version matches.
         # Never trust "API success" — poll until X-Build-Id matches or fail.
-        # 8b (2026-10-11): Worker verify fail -> WARNING, not fatal.
-        # Cloudflare script API often returns success but worker doesn't actually
-        # update (silent failure). Assets (R2) are the user-visible deploy;
-        # if those succeeded, the deploy is successful for frontend changes.
-        # Backend worker updates are verified separately when needed.
         if not verify_live_build(build_id):
-            print("WARNING: live worker did not update to build " + build_id)
-            print("Assets deployed successfully; worker API may have silently failed.")
-            print("This is non-fatal for frontend-only changes.")
+            print("DEPLOY FAILED: live worker did not update to build " + build_id)
+            sys.exit(1)
         print("LIVE VERIFIED: build " + build_id + " serving")
+        # Rung 2 fix #5 (15/10/2026, thay branch protection — xem AGENTS.md):
+        # branch protection chỉ chặn code ĐÃ push; họ lỗi #5 là drift chiều
+        # VM->GitHub (sửa local, deploy, quên upload) mà rule không thấy được.
+        # Check đúng chỗ: ngay sau deploy, khi local chính là production.
+        try:
+            check_worker_repo_drift()
+        except Exception as e:
+            print(f"Repo drift check skipped (non-fatal): {e}")
     else:
         print("DEPLOY FAILED:", json.dumps(dep)[:800])
         sys.exit(1)
 
 
+def check_worker_repo_drift():
+    """So worker/src/*.js + worker/package.json local với GitHub main.
+
+    Dùng 1 API call duy nhất (git trees, recursive) rồi so git blob SHA —
+    nhanh (~vài giây), không tải từng file. Best-effort tuyệt đối: chỉ in
+    cảnh báo, KHÔNG BAO GIỜ fail deploy. Lỗi mạng -> bỏ qua lặng lẽ.
+    """
+    import urllib.request
+    tree_url = ("https://api.github.com/repos/lethienhieuhcm-web/"
+                "Pocket-Personal-/git/trees/main?recursive=1")
+    try:
+        req = urllib.request.Request(tree_url)
+        req.add_header("User-Agent",
+                       "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 "
+                       "(KHTML, like Gecko) Chrome/120 Mobile Safari/537.36")
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            tree = json.loads(resp.read().decode())
+        remote = {t["path"]: t["sha"] for t in tree.get("tree", [])
+                  if t.get("type") == "blob"}
+    except Exception:
+        return  # mạng/API lỗi -> bỏ qua lặng lẽ, không chặn deploy
+    drifted, missing = [], []
+    for rel in sorted(_glob.glob("src/*.js", root_dir=SRC + "/worker")) + ["package.json"]:
+        lp = os.path.join(SRC, "worker", rel)
+        try:
+            with open(lp, "rb") as f:
+                data = f.read()
+        except OSError:
+            continue
+        # git blob SHA = sha1("blob <len>\0" + content)
+        local_sha = hashlib.sha1(
+            b"blob %d\0" % len(data) + data).hexdigest()
+        rpath = "worker/" + rel.replace(os.sep, "/")
+        if rpath not in remote:
+            missing.append(rel)
+        elif remote[rpath] != local_sha:
+            drifted.append(rel)
+    if missing or drifted:
+        print("=" * 60)
+        print("WARNING: worker source trên GitHub LỆCH khỏi bản vừa deploy!")
+        for rel in missing:
+            print(f"  thiếu trên repo: worker/{rel}")
+        for rel in drifted:
+            print(f"  khác bản local: worker/{rel}")
+        print("Hãy upload các file trên lên GitHub (Add file > Upload files)")
+        print("để repo khớp production, không thì CI/deploy sau sẽ lệch.")
+        print("=" * 60)
+    else:
+        print("Repo drift check: worker/src khớp GitHub main.")
+
+
 def verify_live_build(build_id, timeout=60):
-    """Poll live site until X-Build-Id matches build_id. Returns True/False."""
+    """Poll live site until X-Build-Id matches build_id. Returns True/False.
+
+    8b (2026-10-12): MUST use /policy, not /english/policy.html.
+    /english/policy.html 307-redirects to /english/policy which is served
+    straight from the asset bucket WITHOUT X-Build-Id, so the old URL
+    never matched -> false "DEPLOY FAILED" on every deploy.
+    /policy goes through the worker (serveAsset) which always stamps
+    X-Build-Id on HTML responses.
+    """
     import time
-    url = "https://lethanhdong.one/english/policy.html"
+    import urllib.request
+    url = "https://lethanhdong.one/policy"
     deadline = time.time() + timeout
     while time.time() < deadline:
         try:
             req = urllib.request.Request(url, method="HEAD")
+            # Cloudflare blocks Python-urllib's default UA with 403
+            # (same trap as publish_snapshot) -> use a browser-like UA
+            req.add_header("User-Agent",
+                "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 "
+                "(KHTML, like Gecko) Chrome/120 Mobile Safari/537.36")
             with urllib.request.urlopen(req, timeout=10) as resp:
                 live_id = resp.headers.get("X-Build-Id", "")
                 if live_id == build_id:
@@ -533,7 +651,9 @@ def purge_cache():
     data = json.dumps({"purge_everything": True}).encode()
     req = urllib.request.Request(url, data=data, method="POST")
     req.add_header("Content-Type", "application/json")
-    _auth_request(req)
+    add_surrogate_to_request(
+        req, "custom.cloudflare", entry_name="access_token", allowed_hosts=ALLOWED
+    )
     with urllib.request.urlopen(req, timeout=30) as resp:
         result = read_json_response(resp)
     if result.get("success"):
