@@ -828,6 +828,40 @@ export async function handleDacSearch(request, env) {
   }
 }
 
+// GET /api/dac/library — flat list tất cả nhạc (cho tab Bài hát)
+export async function handleDacLibrary(request, env) {
+  const s = await getSession(request, env);
+  if (!s) return jerr('Not logged in', 401);
+  const url = new URL(request.url);
+  const limit = Math.min(200, Math.max(1, parseInt(url.searchParams.get('limit') || '100', 10) || 100));
+  const offset = Math.max(0, parseInt(url.searchParams.get('offset') || '0', 10) || 0);
+  const email = s.email.toLowerCase();
+
+  await ensureDacSearchSchema(env);
+
+  const totalRow = await env.DB.prepare(
+    'SELECT COUNT(*) as c FROM dac_index WHERE email=? AND is_folder=0'
+  ).bind(email).first();
+  const total = totalRow ? totalRow.c : 0;
+
+  const rows = await env.DB.prepare(
+    `SELECT file_id, name, artist, title, album, mime_type, size
+     FROM dac_index WHERE email=? AND is_folder=0
+     ORDER BY name LIMIT ? OFFSET ?`
+  ).bind(email, limit, offset).all();
+
+  const files = (rows.results || []).map(r => ({
+    id: r.file_id,
+    name: r.name,
+    artist: r.artist || '',
+    title: r.title || (r.name || '').replace(/\.[^.]+$/, ''),
+    album: r.album || '',
+    size: r.size || 0,
+    mimeType: r.mime_type || mimeFor(r.name || ''),
+  }));
+  return sJson({ files, total, limit, offset });
+}
+
 /**
  * Parse "Nghệ sĩ - Tên bài.ext" → {artist, title}.
  * Không khớp quy ước → artist='', title=tên file không đuôi.

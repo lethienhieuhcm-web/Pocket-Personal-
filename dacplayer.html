@@ -13,6 +13,10 @@ body{background:#0d1117;color:#e6edf3;margin:0;font-family:var(--pp-font);paddin
 .dp-header h1{margin:0;font-size:18px}
 .dp-search{width:100%;margin-top:8px;padding:10px 14px;border-radius:var(--pp-r-md);border:1px solid #30363d;background:#161b22;color:#e6edf3;font-size:15px}
 .dp-list{padding:8px 0}
+.dp-tabs{display:flex;gap:4px;padding:8px 16px;border-bottom:1px solid #21262d;position:sticky;top:105px;background:rgba(13,17,23,.95);backdrop-filter:blur(10px);z-index:9}
+.dp-tab{padding:8px 16px;border:none;background:none;color:#8b949e;font-size:14px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}
+.dp-tab.active{color:#e6edf3;border-bottom-color:#0d9d6c;font-weight:600}
+.dp-tab:active{color:#e6edf3}
 .dp-item{display:flex;align-items:center;padding:12px 16px;border-bottom:1px solid #161b22;cursor:pointer}
 .dp-item:active{background:#161b22}
 .dp-item .ic{font-size:22px;margin-right:12px;flex-shrink:0}
@@ -64,7 +68,13 @@ body{background:#0d1117;color:#e6edf3;margin:0;font-family:var(--pp-font);paddin
 </div>
 
 <div id="mainView">
-  <div id="breadcrumb" style="padding:8px 16px;font-size:13px;color:#8b949e"></div>
+  <div class="dp-tabs" id="tabs">
+    <button class="dp-tab active" data-tab="songs">Bài hát</button>
+    <button class="dp-tab" data-tab="albums">Album</button>
+    <button class="dp-tab" data-tab="artists">Nghệ sĩ</button>
+    <button class="dp-tab" data-tab="folders">Thư mục</button>
+  </div>
+  <div id="breadcrumb" style="padding:8px 16px;font-size:13px;color:#8b949e;display:none"></div>
   <div class="dp-list" id="trackList"></div>
 </div>
 
@@ -145,6 +155,114 @@ async function checkDriveStatus(){
   return j.connected === true;
 }
 
+// ===== Tabs: Bài hát / Album / Nghệ sĩ / Thư mục =====
+let currentTab = 'songs';
+let libraryCache = null;
+
+document.querySelectorAll('.dp-tab').forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll('.dp-tab').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentTab = btn.dataset.tab;
+    const bc = document.getElementById('breadcrumb');
+    if(currentTab === 'songs') loadLibrary();
+    else if(currentTab === 'folders'){ bc.style.display='block'; loadFolder('root'); }
+    else if(currentTab === 'albums') loadAlbums();
+    else if(currentTab === 'artists') loadArtists();
+  };
+});
+
+// Tab Bài hát: flat list từ /api/dac/library
+async function loadLibrary(){
+  document.getElementById('breadcrumb').style.display='none';
+  const list = document.getElementById('trackList');
+  if(libraryCache){ renderTracks(libraryCache); return; }
+  list.innerHTML = '<div class="dp-loading">Đang tải thư viện...</div>';
+  try{
+    const r = await api('/api/dac/library?limit=200');
+    if(!r) return;
+    const j = await r.json();
+    libraryCache = j.files || [];
+    if(!libraryCache.length){
+      list.innerHTML = '<div class="dp-center">Chưa có nhạc.<br>Chạy đồng bộ Drive để quét thư viện.</div>';
+      return;
+    }
+    renderTracks(libraryCache);
+  }catch(e){
+    list.innerHTML = '<div class="dp-err">Không tải được thư viện.</div>';
+  }
+}
+
+function renderTracks(files){
+  const list = document.getElementById('trackList');
+  queue = [];
+  let html = '';
+  files.forEach((t,i)=>{
+    queue.push(t);
+    const title = t.title || t.name;
+    const sub = [t.artist, t.album].filter(Boolean).join(' • ') || fmtSize(t.size);
+    html += '<div class="dp-item" data-idx="'+i+'"><span class="ic">🎵</span><div class="nm"><div class="t">'+esc(title)+'</div><div class="s">'+esc(sub)+'</div></div>'+badgeHtml(t)+'</div>';
+  });
+  list.innerHTML = html || '<div class="dp-center">Trống</div>';
+  list.querySelectorAll('[data-idx]').forEach(el=>{
+    el.onclick=()=>playTrack(parseInt(el.getAttribute('data-idx')));
+  });
+}
+
+// Tab Album: nhóm theo album
+function loadAlbums(){
+  document.getElementById('breadcrumb').style.display='none';
+  const list = document.getElementById('trackList');
+  if(!libraryCache){ loadLibrary().then(loadAlbums); return; }
+  const groups = {};
+  libraryCache.forEach(t=>{
+    const a = t.album || '(Chưa rõ album)';
+    (groups[a] = groups[a] || []).push(t);
+  });
+  const names = Object.keys(groups).sort();
+  if(!names.length){ list.innerHTML = '<div class="dp-center">Chưa có album.</div>'; return; }
+  let html = '';
+  names.forEach((n,i)=>{
+    html += '<div class="dp-item" data-album="'+i+'"><span class="ic">💿</span><div class="nm"><div class="t">'+esc(n)+'</div><div class="s">'+groups[n].length+' bài</div></div><span style="color:#8b949e">›</span></div>';
+  });
+  list.innerHTML = html;
+  window._albumGroups = groups;
+  window._albumNames = names;
+  list.querySelectorAll('[data-album]').forEach(el=>{
+    el.onclick=()=>{
+      const n = window._albumNames[parseInt(el.getAttribute('data-album'))];
+      renderTracks(window._albumGroups[n]);
+    };
+  });
+}
+
+// Tab Nghệ sĩ: nhóm theo artist
+function loadArtists(){
+  document.getElementById('breadcrumb').style.display='none';
+  const list = document.getElementById('trackList');
+  if(!libraryCache){ loadLibrary().then(loadArtists); return; }
+  const groups = {};
+  libraryCache.forEach(t=>{
+    const a = t.artist || '(Chưa rõ nghệ sĩ)';
+    (groups[a] = groups[a] || []).push(t);
+  });
+  const names = Object.keys(groups).sort();
+  if(!names.length){ list.innerHTML = '<div class="dp-center">Chưa có nghệ sĩ.</div>'; return; }
+  let html = '';
+  names.forEach((n,i)=>{
+    html += '<div class="dp-item" data-artist="'+i+'"><span class="ic">👤</span><div class="nm"><div class="t">'+esc(n)+'</div><div class="s">'+groups[n].length+' bài</div></div><span style="color:#8b949e">›</span></div>';
+  });
+  list.innerHTML = html;
+  window._artistGroups = groups;
+  window._artistNames = names;
+  list.querySelectorAll('[data-artist]').forEach(el=>{
+    el.onclick=()=>{
+      const n = window._artistNames[parseInt(el.getAttribute('data-artist'))];
+      renderTracks(window._artistGroups[n]);
+    };
+  });
+}
+
 (async ()=>{
   // Dọn ?drive=ok sau OAuth callback
   const params = new URLSearchParams(location.search);
@@ -152,7 +270,7 @@ async function checkDriveStatus(){
     history.replaceState(null, '', location.pathname);
   }
   const connected = await checkDriveStatus();
-  if(connected){ showMain(); loadFolder('root'); }
+  if(connected){ showMain(); loadLibrary(); }
   else { showConnect(); }
 })();
 
