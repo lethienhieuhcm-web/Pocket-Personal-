@@ -17,7 +17,8 @@ struct DACPlayerApp: App {
         _auth = StateObject(wrappedValue: a)
         _driveAuth = StateObject(wrappedValue: d)
         _engine = StateObject(wrappedValue: AudioEngine())
-        let tokenClosure: () -> String? = { [weak d] in d?.token() }
+        // v3.0: server tự quản Drive token (D1 + auto-refresh), client không cần gửi nữa.
+        let tokenClosure: () -> String? = { nil }
         let client = MusicApiClient(auth: a, driveToken: tokenClosure)
         _api = StateObject(wrappedValue: client)
         _copyManager = StateObject(wrappedValue: DriveCopyManager(auth: a, driveToken: tokenClosure))
