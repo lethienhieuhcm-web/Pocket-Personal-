@@ -44,10 +44,16 @@
 
 ---
 
-## Lỗi 3 — (chờ test Android/iOS)
+## Lỗi 3 — Android/iOS: thiếu guard chống sync lồng nhau (2026-10-15)
 
-**Dự kiến kiểm tra:**
-- Android `onResume`: không có guard chống gọi sync nhiều lần liên tiếp; `syncLibrary` catch im lặng, không báo lỗi cho user; không có indicator "Đang cập nhật".
-- iOS `smartSync`: set `isSyncing = true` nhưng không check ở đầu hàm (gọi 2 lần thì chạy 2 lần); nếu `syncLibrary()` throw thì `isSyncing` kẹt `true` mãi.
+**Phát hiện:** Review code sau lỗi 1 (theo luật "tự sửa lỗi không cần hỏi").
 
-**Trạng thái:** ⏳ Chưa code — chờ anh Chốt.
+**Nguyên nhân gốc:**
+- Android `MainActivity.onResume`: không có flag guard — `onResume` gọi nhanh liên tiếp có thể chạy nhiều sync song song.
+- iOS `ContentView.smartSync`: set `isSyncing = true` nhưng không check ở đầu hàm; nếu `syncLibrary()` throw thì `isSyncing` kẹt `true` vĩnh viễn.
+
+**Cách sửa:**
+- Android: thêm `isSyncing` flag + `try/finally` reset.
+- iOS: thêm `guard !isSyncing else { return }` + `defer { isSyncing = false }`.
+
+**Trạng thái:** ✅ Đã sửa code. Chờ CI build.

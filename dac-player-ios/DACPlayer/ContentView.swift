@@ -71,12 +71,13 @@ struct LibraryView: View {
 
     /// Đồng bộ thông minh: tự sync ngầm nếu cache cũ hơn 15 phút
     private func smartSync(force: Bool) async {
+        guard !isSyncing else { return }
         let lastSync = api.lastSync
         let stale = Date().timeIntervalSince1970 * 1000 - Double(lastSync) > 15 * 60 * 1000
         guard force || stale else { return }
         isSyncing = true
+        defer { isSyncing = false }
         await api.syncLibrary()
-        isSyncing = false
         if api.lastSync > 0 {
             let mins = Int((Date().timeIntervalSince1970 * 1000 - Double(api.lastSync)) / 60000)
             lastSyncText = mins < 1 ? "vừa xong" : "\(mins) phút trước"

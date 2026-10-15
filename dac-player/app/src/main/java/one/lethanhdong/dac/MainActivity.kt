@@ -376,13 +376,23 @@ class MainActivity : AppCompatActivity() {
         setIntent(intent)
     }
 
+    private var isSyncing = false
+
     override fun onResume() {
         super.onResume()
-        // Đồng bộ thông minh: chỉ sync nếu cache cũ hơn 15 phút
-        if (::apiClient.isInitialized && apiClient.isDriveConnected()) {
+        // Đồng bộ thông minh: chỉ sync nếu cache cũ hơn 15 phút, chống gọi lồng nhau
+        if (::apiClient.isInitialized && apiClient.isDriveConnected() && !isSyncing) {
             val stale = System.currentTimeMillis() - apiClient.lastSync > 15 * 60 * 1000
             if (stale) {
-                lifecycleScope.launch { apiClient.syncLibrary(this@MainActivity); loadTracks() }
+                isSyncing = true
+                lifecycleScope.launch {
+                    try {
+                        apiClient.syncLibrary(this@MainActivity)
+                    } finally {
+                        isSyncing = false
+                    }
+                    loadTracks()
+                }
             } else {
                 loadTracks()
             }
