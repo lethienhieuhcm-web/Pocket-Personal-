@@ -52,7 +52,7 @@ class MusicApiClient(
         val mimeType: String = "",
     )
     @kotlinx.serialization.Serializable
-    private data class LibraryResponse(val files: List<LibraryFile> = emptyList())
+    private data class LibraryResponse(val files: List<LibraryFile> = emptyList(), val lastSync: Long = 0)
 
     companion object {
         // Cache 24h — user bấm "Làm mới" để force refresh
@@ -166,15 +166,32 @@ class MusicApiClient(
     /**
      * Redesign 80/20: lấy từ /api/dac/library (có artist/title/album).
      */
+    var lastSync: Long = 0
+        private set
+
+    /// Đồng bộ thông minh: gọi POST /api/dac/sync rồi refresh library
+    suspend fun syncLibrary(activity: android.app.Activity? = null) {
+        try {
+            withDriveToken(activity) { driveToken ->
+                post("/api/dac/sync", "", driveToken)
+            }
+            listLibrary(forceRefresh = true, activity = activity)
+        } catch (e: Exception) {
+            // lỗi thì im lặng giữ cache
+        }
+    }
+
     suspend fun listLibrary(
         forceRefresh: Boolean = false,
         activity: android.app.Activity? = null,
     ): List<Track> {
-        val tracks = withDriveToken(activity) { driveToken ->
+        val resp = withDriveToken(activity) { driveToken ->
             val body = get("/api/dac/library?limit=200", driveToken)
-            ApiHttp.json.decodeFromString<LibraryResponse>(body).files.map {
-                Track(it.id, it.title.ifEmpty { it.id }, it.size, it.mimeType, it.artist, it.album)
-            }
+            ApiHttp.json.decodeFromString<LibraryResponse>(body)
+        }
+        lastSync = resp.lastSync
+        val tracks = resp.files.map {
+            Track(it.id, it.title.ifEmpty { it.id }, it.size, it.mimeType, it.artist, it.album)
         }
         return tracks
     }

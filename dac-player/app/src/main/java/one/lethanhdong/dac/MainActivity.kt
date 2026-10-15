@@ -378,9 +378,14 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        // 2.1: về từ ImportActivity → refresh library (có thể đã copy file mới)
+        // Đồng bộ thông minh: chỉ sync nếu cache cũ hơn 15 phút
         if (::apiClient.isInitialized && apiClient.isDriveConnected()) {
-            loadTracks(forceRefresh = true)
+            val stale = System.currentTimeMillis() - apiClient.lastSync > 15 * 60 * 1000
+            if (stale) {
+                lifecycleScope.launch { apiClient.syncLibrary(this@MainActivity); loadTracks() }
+            } else {
+                loadTracks()
+            }
         }
     }
 
