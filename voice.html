@@ -17,24 +17,31 @@ body.dark{background:#171310;color:#ece4d2}
 body.dark .card{background:#1c1813;border-color:#3d352a}
 
 .card{background:var(--pp-card);border:1px solid var(--pp-line);border-radius:16px;padding:16px;margin-bottom:12px}
-.hint{color:var(--pp-mut);font-size:13px}
+.hint{color:var(--pp-mut);font-size:var(--pp-text-xs)}
 .row{display:flex;gap:8px;align-items:center}
-.btn{padding:12px 16px;border:1px solid var(--pp-line);border-radius:12px;background:var(--pp-card);color:var(--pp-ink);font-size:15px;font-weight:600;cursor:pointer}
+.btn{padding:12px 16px;border:1px solid var(--pp-line);border-radius:12px;background:var(--pp-card);color:var(--pp-ink);font-size:var(--pp-text-sm);font-weight:600;cursor:pointer}
 .btn.primary{background:var(--pp-grad);color:#fff;border:none}
 .btn:disabled{opacity:.5}
 .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
-.topbar a{color:var(--pp-mut);text-decoration:none;font-size:14px}
-textarea{width:100%;min-height:140px;padding:12px;border:1px solid var(--pp-line);border-radius:12px;background:var(--pp-card);color:var(--pp-ink);font-size:16px;font-family:inherit;resize:vertical}
-select{padding:10px 12px;border:1px solid var(--pp-line);border-radius:12px;background:var(--pp-card);color:var(--pp-ink);font-size:14px}
+.topbar a{color:var(--pp-mut);text-decoration:none;font-size:var(--pp-text-sm)}
+textarea{width:100%;min-height:140px;padding:12px;border:1px solid var(--pp-line);border-radius:12px;background:var(--pp-card);color:var(--pp-ink);font-size:var(--pp-text-base);font-family:inherit;resize:vertical}
+select{padding:10px 12px;border:1px solid var(--pp-line);border-radius:12px;background:var(--pp-card);color:var(--pp-ink);font-size:var(--pp-text-sm)}
+input[type=text]{padding:10px 12px;border:1px solid var(--pp-line);border-radius:12px;background:var(--pp-card);color:var(--pp-ink);font-size:var(--pp-text-sm);font-family:inherit;min-width:0}
+.dict-row{display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--pp-line);font-size:var(--pp-text-sm)}
+.dict-row .w{font-weight:700}
+.dict-row .arr{color:var(--pp-mut)}
+.dict-row .del{margin-left:auto;border:none;background:transparent;color:var(--pp-mut);cursor:pointer;font-size:var(--pp-text-sm);padding:4px 8px}
 input[type=range]{flex:1;accent-color:var(--pp-accent)}
 audio{width:100%;margin-top:8px}
 #toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:10px 20px;border-radius:20px;display:none;z-index:1000;max-width:90%}
-.badge{display:inline-block;padding:2px 10px;border-radius:20px;font-size:12px;font-weight:700;background:var(--pp-card);border:1px solid var(--pp-line);color:var(--pp-mut)}
+.badge{display:inline-block;padding:2px 10px;border-radius:20px;font-size:var(--pp-text-xs);font-weight:700;background:var(--pp-card);border:1px solid var(--pp-line);color:var(--pp-mut)}
 .lang-pill{display:inline-flex;border:1px solid var(--pp-line);border-radius:20px;overflow:hidden}
-.lang-pill button{border:none;background:transparent;padding:6px 12px;font-size:12px;font-weight:700;color:var(--pp-mut);cursor:pointer}
+.lang-pill button{border:none;background:transparent;padding:6px 12px;font-size:var(--pp-text-xs);font-weight:700;color:var(--pp-mut);cursor:pointer}
 .lang-pill button.on{background:var(--pp-accent);color:#fff}
 .app-ic{width:34px;height:34px;border-radius:10px;object-fit:cover}
 </style>
+<script>/* Gốc theme: snippet chuẩn, không sửa. Controller ở /english/js/shared/theme.js */
+try{var s=localStorage.getItem('pp_theme');if(!s){s=localStorage.getItem('elab_theme')||localStorage.getItem('hub_theme');if(s)localStorage.setItem('pp_theme',s)}var d=s?s==='dark':matchMedia('(prefers-color-scheme: dark)').matches;if(d)document.documentElement.classList.add('pp-dark')}catch(e){}</script>
 </head>
 <body>
 <div class="topbar">
@@ -53,6 +60,9 @@ audio{width:100%;margin-top:8px}
         <button class="pp-langdrop-item" data-lang="ko"><span class="code">한국어</span><span class="name">한국어</span></button>
       </div>
     </div>
+    <button class="pp-themebtn" id="themeBtn" aria-label="Theme">
+      <svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+    </button>
     </span>
 </div>
 
@@ -60,7 +70,7 @@ audio{width:100%;margin-top:8px}
   <div class="row" style="justify-content:space-between;margin-bottom:10px">
     <span class="row" style="gap:10px">
       <img class="app-ic" src="/english/icons/icon-voice-192.png" alt="Voice">
-      <h3 style="font-size:18px" data-i18n="title">Voice</h3>
+      <h3 style="font-size:var(--pp-text-lg)" data-i18n="title">Voice</h3>
     </span>
     <span class="hint" id="quotaLine"></span>
   </div>
@@ -74,12 +84,55 @@ audio{width:100%;margin-top:8px}
     <span class="hint"><span data-i18n="speed">Tốc độ</span> <b id="speedVal">1.0</b>x</span>
     <input type="range" id="speed" min="0.5" max="1.5" step="0.1" value="1" style="min-width:100px">
   </div>
+  <!-- #5 Biến thể cảm xúc: chỉ áp dụng cho tiếng Anh qua ElevenLabs (2026-10-11) -->
+  <div class="row" style="margin-top:8px;flex-wrap:wrap;gap:8px">
+    <label class="hint"><span data-i18n="emotion">Cảm xúc</span>
+      <select id="emoSel">
+        <option value="" data-i18n="emo_none">Tự nhiên</option>
+        <option value="happy" data-i18n="emo_happy">Vui</option>
+        <option value="sad" data-i18n="emo_sad">Buồn</option>
+        <option value="angry" data-i18n="emo_angry">Giận</option>
+        <option value="excited" data-i18n="emo_excited">Hào hứng</option>
+        <option value="calm" data-i18n="emo_calm">Bình tĩnh</option>
+        <option value="whisper" data-i18n="emo_whisper">Thì thầm</option>
+      </select>
+    </label>
+    <span class="hint" data-i18n="emo_hint">Chỉ áp dụng cho tiếng Anh</span>
+  </div>
+  <!-- #1 Giọng khác nhau từng đoạn: chế độ hội thoại 2 giọng (2026-10-11) -->
+  <div class="row" style="margin-top:8px;flex-wrap:wrap;gap:8px">
+    <label class="row" style="gap:6px;font-size:var(--pp-text-sm)">
+      <input type="checkbox" id="dialogMode"> <span data-i18n="dialog">Hội thoại 2 giọng</span>
+    </label>
+  </div>
+  <div class="row" id="dialogVoices" style="margin-top:8px;flex-wrap:wrap;gap:8px;display:none">
+    <label class="hint"><span data-i18n="voice_a">Giọng A</span> <select id="voiceA"></select></label>
+    <label class="hint"><span data-i18n="voice_b">Giọng B</span> <select id="voiceB"></select></label>
+  </div>
+  <div class="hint" id="dialogHint" style="margin-top:4px;display:none" data-i18n="dialog_hint">Các đoạn văn luân phiên giọng A / B (chỉ áp dụng cho tiếng Anh)</div>
   <button class="btn primary" id="speakBtn" style="width:100%;margin-top:12px" data-i18n="listen">Nghe</button>
+  <button class="btn" id="stopBtn" style="width:100%;margin-top:12px;display:none" data-i18n="stop">Dừng</button>
   <div class="hint" id="status" style="margin-top:8px"></div>
   <audio id="player" controls style="display:none"></audio>
-  <div class="row" style="margin-top:8px">
+  <div class="row" style="margin-top:8px;flex-wrap:wrap;gap:8px">
     <a id="dlBtn" class="btn" style="display:none;text-decoration:none" download="voice.wav" data-i18n="download">Tải WAV</a>
+    <a id="srtBtn" class="btn" style="display:none;text-decoration:none" download="voice.srt" data-i18n="download_srt">Tải SRT</a>
+    <button id="driveBtn" class="btn" style="display:none" data-i18n="saveDrive">Lưu vào Drive</button>
   </div>
+</div>
+
+<div class="card">
+  <div class="row" style="justify-content:space-between;margin-bottom:6px">
+    <b style="font-size:var(--pp-text-sm)" data-i18n="dict_title">Từ điển riêng</b>
+    <span class="hint" data-i18n="dict_hint">Sửa cách đọc của từ khó</span>
+  </div>
+  <div id="dictList"></div>
+  <div class="row" style="margin-top:8px;flex-wrap:wrap">
+    <input type="text" id="dictWord" data-i18n-ph="dict_word_ph" placeholder="Từ gốc…" style="flex:1">
+    <input type="text" id="dictRep" data-i18n-ph="dict_rep_ph" placeholder="Đọc thành…" style="flex:1">
+    <button class="btn" id="dictAdd" data-i18n="add">Thêm</button>
+  </div>
+  <div class="hint" id="normNote" style="margin-top:8px;display:none" data-i18n="norm_note">Đã chuẩn hoá văn bản gửi đi</div>
 </div>
 
 
@@ -101,41 +154,256 @@ v_auto:"Tự động",v_en:"Tiếng Anh",v_vi:"Tiếng Việt",speed:"Tốc đ�
 quota:d=>`Hôm nay: ${(d||0).toLocaleString()} ký tự`,
 needText:"Nhập văn bản trước",creating:"Đang tạo giọng nói…",
 quotaOut:"Hôm nay bạn đã dùng hết lượt đọc. Quay lại vào ngày mai.",engineDown:"Chưa tạo được giọng đọc, thử lại sau.",
-err:"Lỗi: "},
+err:"Lỗi: ",download_mp3:"Tải MP3",download_srt:"Tải SRT",
+dict_title:"Từ điển riêng",dict_hint:"Sửa cách đọc của từ khó",
+dict_word_ph:"Từ gốc…",dict_rep_ph:"Đọc thành…",add:"Thêm",del:"Xoá",
+dict_empty:"Chưa có từ nào",norm_note:"Đã chuẩn hoá văn bản gửi đi",
+stop:"Dừng",
+creating_sentence:(x,y)=>`Đang tạo câu ${x}/${y}…`,
+playing_sentence:(x,y)=>`Đang phát câu ${x}/${y}`,
+dialog:"Hội thoại 2 giọng",voice_a:"Giọng A",voice_b:"Giọng B",
+dialog_hint:"Các đoạn văn luân phiên giọng A / B (chỉ áp dụng cho tiếng Anh)",
+g_kokoro:"Kokoro · tiếng Anh",g_el:"ElevenLabs · tiếng Anh",
+emotion:"Cảm xúc",emo_none:"Tự nhiên",emo_happy:"Vui",emo_sad:"Buồn",emo_angry:"Giận",
+emo_excited:"Hào hứng",emo_calm:"Bình tĩnh",emo_whisper:"Thì thầm",
+emo_hint:"Chỉ áp dụng cho tiếng Anh",
+saveDrive:"Lưu vào Drive",driveUploading:"Đang tải lên Drive…",driveDone:"Đã lưu vào Drive ✓",
+driveFail:"Lỗi lưu Drive, thử lại sau",driveNeedConnect:"Đang mở Google để kết nối…"},
 en:{title:"Voice",placeholder:"Enter text to read… (max 5000 characters)",
 v_auto:"Auto",v_en:"English",v_vi:"Vietnamese",speed:"Speed",listen:"Listen",download:"Download WAV",
 quota:d=>`Today: ${(d||0).toLocaleString()} characters`,
 needText:"Enter some text first",creating:"Generating speech…",
 quotaOut:"You have used up today's reads. Come back tomorrow.",engineDown:"Could not generate speech, try again later.",
-err:"Error: "},
+err:"Error: ",download_mp3:"Download MP3",download_srt:"Download SRT",
+dict_title:"Custom dictionary",dict_hint:"Fix how tricky words are read",
+dict_word_ph:"Original word…",dict_rep_ph:"Read as…",add:"Add",del:"Delete",
+dict_empty:"No words yet",norm_note:"Text normalized before sending",
+stop:"Stop",
+creating_sentence:(x,y)=>`Generating sentence ${x}/${y}…`,
+playing_sentence:(x,y)=>`Playing sentence ${x}/${y}`,
+dialog:"Two-voice dialogue",voice_a:"Voice A",voice_b:"Voice B",
+dialog_hint:"Paragraphs alternate between voice A / B (English only)",
+g_kokoro:"Kokoro · English",g_el:"ElevenLabs · English",
+emotion:"Emotion",emo_none:"Natural",emo_happy:"Happy",emo_sad:"Sad",emo_angry:"Angry",
+emo_excited:"Excited",emo_calm:"Calm",emo_whisper:"Whisper",
+emo_hint:"English only",
+saveDrive:"Save to Drive",driveUploading:"Uploading to Drive…",driveDone:"Saved to Drive ✓",
+driveFail:"Drive save failed, try again",driveNeedConnect:"Opening Google to connect…"},
 zh:{title:"语音",placeholder:"输入要朗读的文字…（最多5000字符）",
 v_auto:"自动",v_en:"英语",v_vi:"越南语",speed:"语速",listen:"收听",download:"下载 WAV",
 quota:d=>`今天：${(d||0).toLocaleString()} 字符`,
 needText:"请先输入文字",creating:"正在生成语音…",
-quotaOut:"今日朗读次数已用完，请明天再来。",engineDown:"无法生成语音，请稍后再试。",err:"错误："},
+quotaOut:"今日朗读次数已用完，请明天再来。",engineDown:"无法生成语音，请稍后再试。",err:"错误：",download_mp3:"下载 MP3",download_srt:"下载 SRT",
+dict_title:"自定义词典",dict_hint:"修正难读词的发音",
+dict_word_ph:"原词…",dict_rep_ph:"读作…",add:"添加",del:"删除",
+dict_empty:"暂无词汇",norm_note:"发送前已规范化文本",
+stop:"停止",
+creating_sentence:(x,y)=>`正在生成第${x}/${y}句…`,
+playing_sentence:(x,y)=>`正在播放第${x}/${y}句`,
+dialog:"双人对话",voice_a:"声音 A",voice_b:"声音 B",
+dialog_hint:"段落轮流使用声音 A / B（仅英语）",
+g_kokoro:"Kokoro·英语",g_el:"ElevenLabs·英语",
+emotion:"情感",emo_none:"自然",emo_happy:"开心",emo_sad:"难过",emo_angry:"生气",
+emo_excited:"兴奋",emo_calm:"平静",emo_whisper:"耳语",
+emo_hint:"仅英语",
+saveDrive:"保存到云端硬盘",driveUploading:"正在上传到云端硬盘…",driveDone:"已保存到云端硬盘 ✓",
+driveFail:"保存失败，请重试",driveNeedConnect:"正在打开 Google 进行连接…"},
 ko:{title:"음성",placeholder:"읽을 텍스트 입력…（최대 5000자）",
 v_auto:"자동",v_en:"영어",v_vi:"베트남어",speed:"속도",listen:"듣기",download:"WAV 다운로드",
 quota:d=>`오늘：${(d||0).toLocaleString()} 자`,
 needText:"먼저 텍스트를 입력하세요",creating:"음성 생성 중…",
-quotaOut:"오늘 읽기 횟수를 다 사용했습니다. 내일 다시 오세요.",engineDown:"음성을 생성할 수 없습니다. 나중에 다시 시도하세요.",err:"오류: "}
+quotaOut:"오늘 읽기 횟수를 다 사용했습니다. 내일 다시 오세요.",engineDown:"음성을 생성할 수 없습니다. 나중에 다시 시도하세요.",err:"오류: ",download_mp3:"MP3 다운로드",download_srt:"SRT 다운로드",
+dict_title:"사용자 사전",dict_hint:"어려운 단어 발음 수정",
+dict_word_ph:"원래 단어…",dict_rep_ph:"읽기…",add:"추가",del:"삭제",
+dict_empty:"단어 없음",norm_note:"전송 전 텍스트 정규화됨",
+stop:"중지",
+creating_sentence:(x,y)=>`${x}/${y}번째 문장 생성 중…`,
+playing_sentence:(x,y)=>`${x}/${y}번째 문장 재생 중`,
+dialog:"2인 대화",voice_a:"음성 A",voice_b:"음성 B",
+dialog_hint:"단락이 음성 A / B로 번갈아 재생 (영어만)",
+g_kokoro:"Kokoro·영어",g_el:"ElevenLabs·영어",
+emotion:"감정",emo_none:"자연스러움",emo_happy:"기쁨",emo_sad:"슬픔",emo_angry:"화남",
+emo_excited:"신남",emo_calm:"차분함",emo_whisper:"속삭임",
+emo_hint:"영어만",
+saveDrive:"드라이브에 저장",driveUploading:"드라이브에 업로드 중…",driveDone:"드라이브에 저장됨 ✓",
+driveFail:"저장 실패, 다시 시도",driveNeedConnect:"Google 연결 중…"},
 };
 let LANG = "vi";
 try{ const v = localStorage.getItem("elab_uiLang"); if(v) LANG = JSON.parse(v); }catch(e){}
 function applyLang(l){
   LANG = l;
+  // Gốc i18n (G2): đồng bộ shared module
+  if(window.__elabI18n && window.__elabI18n.setLang){ try{ window.__elabI18n.setLang(l); }catch(e){} }
   try{ localStorage.setItem("elab_uiLang", JSON.stringify(l)); }catch(e){}
   document.documentElement.lang = l;
   const t = I18N[l];
+  const useShared = window.__elabI18n && window.__elabI18n.t;
+  const T = function(k){
+    if(useShared){
+      const v = window.__elabI18n.t(k);
+      if(v && v !== k) return v;
+    }
+    return t[k];
+  };
   document.querySelectorAll("[data-i18n]").forEach(el=>{
-    const v = t[el.dataset.i18n];
+    const v = T(el.dataset.i18n);
     if(v !== undefined){ if(/<[a-z][\s>]/i.test(v)) el.innerHTML = v; else el.textContent = v; }
   });
-  document.querySelectorAll("[data-i18n-ph]").forEach(el=>{ el.placeholder = t[el.dataset.i18nPh] || el.placeholder; });
-  ["vi","en","zh","ko"].forEach(x=>$("lang"+x[0].toUpperCase()+x[1]).classList.toggle("on", l===x));
+  document.querySelectorAll("[data-i18n-ph]").forEach(el=>{ el.placeholder = T(el.dataset.i18nPh) || el.placeholder; });
+  // pp-langdrop (lang-dropdown.js) tự toggle .active cho item — không cần pill buttons ở đây
+  renderDict();
+  if(voicesLoaded) buildVoiceOptions(); // dịch lại nhãn nhóm giọng khi đổi ngôn ngữ
   loadPlan();
 }
 // Expose for lang-dropdown.js
 window.__elabSetLang = applyLang;
+
+/* #2 Từ điển riêng + chuẩn hoá văn bản (2026-10-11).
+   Học ông lớn (Amazon Polly lexicon / Google SSML <sub>): từ điển của user được
+   áp dụng TRƯỚC khi gửi text cho engine, thay nguyên cụm từ. Chuẩn hoá số,
+   viết tắt, ký hiệu giúp các engine đọc đồng nhất. */
+const escapeRegExp = s => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+let DICT = [];
+try { DICT = JSON.parse(localStorage.getItem("voice_dict") || "[]"); if(!Array.isArray(DICT)) DICT = []; } catch(e){ DICT = []; }
+function saveDict(){ try{ localStorage.setItem("voice_dict", JSON.stringify(DICT)); }catch(e){} }
+
+function renderDict(){
+  const t = I18N[LANG];
+  const box = $("dictList");
+  box.textContent = "";
+  if(!DICT.length){
+    const d = document.createElement("div");
+    d.className = "hint"; d.textContent = t.dict_empty;
+    box.appendChild(d); return;
+  }
+  DICT.forEach((d, i) => {
+    const row = document.createElement("div");
+    row.className = "dict-row";
+    const w = document.createElement("span"); w.className = "w"; w.textContent = d.word;
+    const arr = document.createElement("span"); arr.className = "arr"; arr.textContent = "→";
+    const r = document.createElement("span"); r.textContent = d.rep;
+    const del = document.createElement("button"); del.className = "del";
+    del.textContent = t.del; del.setAttribute("aria-label", t.del);
+    del.addEventListener("click", () => { DICT.splice(i, 1); saveDict(); renderDict(); });
+    row.append(w, arr, r, del);
+    box.appendChild(row);
+  });
+}
+
+$("dictAdd").addEventListener("click", () => {
+  const w = $("dictWord").value.trim(), r = $("dictRep").value.trim();
+  if(!w || !r) return;
+  DICT.push({ word: w, rep: r });
+  saveDict(); renderDict();
+  $("dictWord").value = ""; $("dictRep").value = "";
+});
+
+/* Số -> chữ (EN) */
+function numEn(n){
+  const ones = ["zero","one","two","three","four","five","six","seven","eight","nine",
+    "ten","eleven","twelve","thirteen","fourteen","fifteen","sixteen","seventeen","eighteen","nineteen"];
+  const tens = ["","","twenty","thirty","forty","fifty","sixty","seventy","eighty","ninety"];
+  const u100 = x => x < 20 ? ones[x] : tens[x/10|0] + (x%10 ? "-" + ones[x%10] : "");
+  const u1000 = x => {
+    const h = x/100|0, r = x%100;
+    return (h ? ones[h] + " hundred" + (r ? " " : "") : "") + (r ? u100(r) : "");
+  };
+  if(n < 0) return "minus " + numEn(-n);
+  if(n === 0) return "zero";
+  if(n < 1000) return u1000(n);
+  const out = [];
+  for(const [v, name] of [[1e9,"billion"],[1e6,"million"],[1e3,"thousand"]]){
+    if(n >= v){ out.push(u1000(n/v|0) + " " + name); n %= v; }
+  }
+  if(n) out.push(u1000(n));
+  return out.join(" ");
+}
+
+/* Số -> chữ (VI, miền Nam: "lẻ" thay vì "linh") */
+function numVi(n){
+  const d = ["không","một","hai","ba","bốn","năm","sáu","bảy","tám","chín"];
+  if(n < 0) return "âm " + numVi(-n);
+  if(n === 0) return "không";
+  const u1000 = x => {
+    if(x < 10) return d[x];
+    if(x < 100){
+      const t = x/10|0, o = x%10;
+      let s = t === 1 ? "mười" : d[t] + " mươi";
+      if(o === 0) return s;
+      if(o === 1) return s + " mốt";
+      if(o === 4) return s + " tư";
+      if(o === 5) return s + " lăm";
+      return s + " " + d[o];
+    }
+    const h = x/100|0, r = x%100;
+    let s = d[h] + " trăm";
+    if(r === 0) return s;
+    if(r < 10) return s + " lẻ " + d[r];
+    return s + " " + u1000(r);
+  };
+  const out = [];
+  let rem = null; // phần dư < 100 sau "nghìn/triệu/tỷ" cần "không trăm"
+  for(const [v, name] of [[1e9,"tỷ"],[1e6,"triệu"],[1e3,"nghìn"]]){
+    if(n >= v){
+      out.push(u1000(n/v|0) + " " + name);
+      n %= v;
+      rem = (n > 0 && n < 100) ? n : null;
+    }
+  }
+  if(n || !out.length){
+    out.push(rem === null ? u1000(n)
+      : rem < 10 ? "không trăm lẻ " + d[rem]
+      : "không trăm " + u1000(rem));
+  }
+  return out.join(" ");
+}
+
+const VI_RE_N = /[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđĐ]/;
+function detectLangNorm(text, sel){
+  if(sel === "vi") return "vi";
+  if(sel === "en") return "en";
+  return VI_RE_N.test(text) ? "vi" : "en";
+}
+
+/* Chuẩn hoá văn bản trước khi gửi engine */
+function normalizeText(text, lang){
+  let t = " " + text + " ";
+  // 1. Từ điển riêng: toàn từ (hỗ trợ Unicode), không phân biệt hoa thường
+  for(const d of DICT){
+    const w = (d.word || "").trim();
+    if(!w) continue;
+    const re = new RegExp("(^|[^\\p{L}\\p{N}_])" + escapeRegExp(w) + "(?=[^\\p{L}\\p{N}_]|$)", "giu");
+    t = t.replace(re, (m, p1) => p1 + d.rep);
+  }
+  // 2. Viết tắt & ký hiệu phổ biến
+  const reps = lang === "vi" ? [
+    [/\bTP\./g, " thành phố "],
+    [/%/g, " phần trăm "],
+    [/&/g, " và "],
+    [/\+/g, " cộng "],
+  ] : [
+    [/\bMr\./g, " mister "], [/\bMrs\./g, " missus "], [/\bMs\./g, " miss "],
+    [/\bDr\./g, " doctor "], [/\bJr\./g, " junior "], [/\bSr\./g, " senior "],
+    [/\bvs\./g, " versus "], [/\betc\./g, " et cetera "],
+    [/%/g, " percent "], [/&/g, " and "], [/\+/g, " plus "],
+  ];
+  for(const [re, rep] of reps) t = t.replace(re, rep);
+  // 3. Số -> chữ (bỏ dấu phẩy phân cách nghìn trước)
+  t = t.replace(/(\d),(\d)/g, "$1$2");
+  // QA 2026-10-11 (bug A): tiếng Việt dùng dấu CHẤM phân cách nghìn ("1.500.000").
+  // Chấm + đúng 3 chữ số + sau đó không phải chữ số = phân cách nghìn -> bỏ chấm.
+  // "3.14" (2 chữ số) hay "Năm 2026." (không có 3 số sau) không bị ảnh hưởng.
+  if(lang === "vi") t = t.replace(/(\d)\.(?=\d{3}(?:\D|$))/g, "$1");
+  const numFn = lang === "vi" ? numVi : numEn;
+  const digits = ch => lang === "vi"
+    ? ["không","một","hai","ba","bốn","năm","sáu","bảy","tám","chín"][+ch]
+    : ["zero","one","two","three","four","five","six","seven","eight","nine"][+ch];
+  t = t.replace(/(\d+)\.(\d+)/g, (m, a, b) =>
+    " " + numFn(+a) + (lang === "vi" ? " phẩy " : " point ") + b.split("").map(digits).join(" ") + " ");
+  t = t.replace(/\b\d{1,12}\b/g, m => " " + numFn(+m) + " ");
+  return t.replace(/\s+/g, " ").trim();
+}
 
 async function loadPlan(){
   try{
@@ -147,42 +415,432 @@ async function loadPlan(){
   }catch(e){}
 }
 
-$("speed").addEventListener("input", e => { $("speedVal").textContent = (+e.target.value).toFixed(1); });
+$("speed").addEventListener("input", e => {
+  const v = +e.target.value;
+  $("speedVal").textContent = v.toFixed(1);
+  $("player").playbackRate = v; // tốc độ phát kiểu YouTube: xử lý ở client, mọi engine đều đúng
+});
+
+/* #3 Render từng câu (2026-10-11).
+   Học ông lớn (Speechify/ElevenLabs Reader): tách văn bản thành câu, synth từng
+   câu (tiến trình rõ ràng, lỗi câu nào bỏ qua câu đó), phát nối tiếp kiểu
+   streaming (câu 1 phát trong khi tải câu 2), cuối gộp thành 1 file WAV để tải. */
+function splitSentences(text){
+  const out = [];
+  for(const chunk of text.split(/\n+/)){
+    const t = chunk.trim();
+    if(!t) continue;
+    // QA vòng 7: bảo vệ dấu chấm TRONG số (1.500.000, 3.14) khỏi bị chém thành nhiều câu.
+    // Nếu không, "1.500.000" vỡ thành "1." / "500." / "000" trước khi chuẩn hoá số (fix vòng 1) kịp chạy.
+    const prot = t.replace(/(\d)\.(\d)/g, "$1$2");
+    const parts = prot.match(/[^.!?…]+[.!?…]+[""')\]]?|[^.!?…]+$/g) || [];
+    for(const p of parts){
+      const s = p.trim().replace(//g, ".");
+      if(s) out.push(s);
+    }
+  }
+  return out;
+}
+
+/* #4 Xuất SRT (2026-10-11).
+   Học ông lớn (YouTube/VLC): phụ đề theo chuẩn SRT "HH:MM:SS,mmm".
+   Timing KHÔNG bịa: đo từ audio thật đã decode (từng câu nối tiếp nhau khi phát),
+   nên mốc thời gian khớp chính xác file WAV gộp. Mức câu (không phải mức từ)
+   vì các engine không trả timestamp từng từ. */
+function fmtSrtTime(sec){
+  const totalMs = Math.round(sec * 1000);
+  const h = Math.floor(totalMs / 3600000);
+  const m = Math.floor(totalMs % 3600000 / 60000);
+  const s = Math.floor(totalMs % 60000 / 1000);
+  const ms = totalMs % 1000;
+  const p = (n, l = 2) => String(n).padStart(l, "0");
+  return `${p(h)}:${p(m)}:${p(s)},${p(ms, 3)}`;
+}
+
+/* QA 2026-10-11 (bug C): các engine có sample rate khác nhau
+   (Kokoro 24kHz, ElevenLabs 44.1kHz). Gộp trực tiếp theo số sample sẽ làm
+   câu bị sai tốc độ trong file WAV tải về. Học ông lớn (YouTube xử lý audio):
+   resample tất cả về 44100Hz trước khi gộp bằng OfflineAudioContext. */
+async function resampleTo44100(buf){
+  const TARGET = 44100;
+  if(buf.sampleRate === TARGET) return buf;
+  const off = new OfflineAudioContext(buf.numberOfChannels,
+    Math.max(1, Math.ceil(buf.duration * TARGET)), TARGET);
+  const src = off.createBufferSource();
+  src.buffer = buf;
+  src.connect(off.destination);
+  src.start();
+  return off.startRendering();
+}
+
+/* Gộp các audio blob (MP3/WAV) thành 1 WAV + SRT (timing từ audio thật) */
+async function mergeToWavWithSrt(blobs, texts){
+  const AC = window.AudioContext || window.webkitAudioContext;
+  const ac = new AC();
+  try{
+    const bufs = [];
+    for(const b of blobs)
+      bufs.push(await resampleTo44100(await ac.decodeAudioData(await b.arrayBuffer())));
+    const sr = bufs[0].sampleRate;
+    const ch = Math.max.apply(null, bufs.map(x => x.numberOfChannels));
+    let total = 0;
+    for(const b of bufs) total += b.length;
+    const out = ac.createBuffer(ch, total, sr);
+    let off = 0;
+    for(const b of bufs){
+      for(let c = 0; c < ch; c++)
+        out.getChannelData(c).set(b.getChannelData(Math.min(c, b.numberOfChannels - 1)), off);
+      off += b.length;
+    }
+    const lines = [];
+    let t = 0;
+    bufs.forEach((buf, i) => {
+      lines.push(`${i + 1}\n${fmtSrtTime(t)} --> ${fmtSrtTime(t + buf.duration)}\n${texts[i]}\n`);
+      t += buf.duration;
+    });
+    return { wav: encodeWav(out), srt: lines.join("\n") };
+  } finally { try{ ac.close(); }catch(e){} }
+}
+
+/* SRT cho trường hợp 1 câu (không cần gộp) */
+async function buildSrt(items){
+  const AC = window.AudioContext || window.webkitAudioContext;
+  const ac = new AC();
+  try{
+    const lines = [];
+    let t = 0;
+    for(let i = 0; i < items.length; i++){
+      const buf = await ac.decodeAudioData(await items[i].part.blob.arrayBuffer());
+      lines.push(`${i + 1}\n${fmtSrtTime(t)} --> ${fmtSrtTime(t + buf.duration)}\n${items[i].text}\n`);
+      t += buf.duration;
+    }
+    return lines.join("\n");
+  } finally { try{ ac.close(); }catch(e){} }
+}
+
+function encodeWav(buf){
+  const nCh = buf.numberOfChannels, sr = buf.sampleRate, n = buf.length;
+  const dataLen = n * nCh * 2;
+  const ab = new ArrayBuffer(44 + dataLen), v = new DataView(ab);
+  const wstr = (o, s) => { for(let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+  wstr(0, "RIFF"); v.setUint32(4, 36 + dataLen, true); wstr(8, "WAVE");
+  wstr(12, "fmt "); v.setUint32(16, 16, true); v.setUint16(20, 1, true);
+  v.setUint16(22, nCh, true); v.setUint32(24, sr, true);
+  v.setUint32(28, sr * nCh * 2, true); v.setUint16(32, nCh * 2, true); v.setUint16(34, 16, true);
+  wstr(36, "data"); v.setUint32(40, dataLen, true);
+  let o = 44;
+  for(let i = 0; i < n; i++)
+    for(let c = 0; c < nCh; c++){
+      const s = Math.max(-1, Math.min(1, buf.getChannelData(c)[i]));
+      v.setInt16(o, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+      o += 2;
+    }
+  return new Blob([ab], { type: "audio/wav" });
+}
+
+/* #1 Giọng khác nhau từng đoạn — chế độ hội thoại 2 giọng (2026-10-11).
+   Các đoạn văn (cách nhau bằng xuống dòng) luân phiên giọng A / B.
+   Theo yêu cầu: chỉ áp dụng cho tiếng Anh, dùng ElevenLabs + Kokoro. */
+const KOKORO_PRESETS = ["am_michael", "am_adam", "af_bella", "af_sky"];
+let voicesLoaded = false;
+let elVoices = [];
+let genSeq = 0; // QA vòng 9: đếm generation để async cũ không ghi đè UI mới
+let driveBlob = null, driveName = "voice.wav"; // blob audio để "Lưu vào Drive"
+
+function buildVoiceOptions(){
+  const t = I18N[LANG];
+  const keepA = $("voiceA").value, keepB = $("voiceB").value;
+  for(const sel of [$("voiceA"), $("voiceB")]){
+    sel.textContent = "";
+    const oAuto = document.createElement("option");
+    oAuto.value = "auto"; oAuto.textContent = t.v_auto;
+    sel.appendChild(oAuto);
+    const gK = document.createElement("optgroup"); gK.label = t.g_kokoro;
+    for(const p of KOKORO_PRESETS){
+      const o = document.createElement("option");
+      o.value = "kokoro:" + p; o.textContent = "Kokoro · " + p;
+      gK.appendChild(o);
+    }
+    sel.appendChild(gK);
+    const gE = document.createElement("optgroup"); gE.label = t.g_el;
+    for(const v of elVoices){
+      const o = document.createElement("option");
+      o.value = v.voice_id; o.textContent = v.name;
+      gE.appendChild(o);
+    }
+    sel.appendChild(gE);
+  }
+  $("voiceA").value = keepA || "kokoro:am_michael";
+  $("voiceB").value = keepB || "kokoro:af_bella";
+}
+
+async function loadDialogVoices(){
+  if(voicesLoaded) return;
+  try{
+    const r = await fetch("/api/voices", { headers: apiHeaders() });
+    if(r.ok){
+      const j = await r.json();
+      elVoices = (j.voices || []).filter(v => v.voice_id && v.name);
+    }
+  }catch(e){}
+  voicesLoaded = true;
+  buildVoiceOptions();
+}
+
+$("dialogMode").addEventListener("change", () => {
+  const on = $("dialogMode").checked;
+  $("dialogVoices").style.display = on ? "flex" : "none";
+  $("dialogHint").style.display = on ? "block" : "none";
+  if(on) loadDialogVoices();
+});
+
+// Tách văn bản thành [{text, para}] — mỗi câu nhớ đoạn văn chứa nó
+function splitSentencesWithPara(text){
+  const out = [];
+  const paras = text.split(/\n+/).map(p => p.trim()).filter(Boolean);
+  paras.forEach((p, pi) => {
+    for(const s of splitSentences(p)) out.push({ text: s, para: pi });
+  });
+  return out;
+}
+
+// Giọng cho từng câu: hội thoại bật + câu tiếng Anh -> voice_id của đoạn (A/B)
+// QA vòng 4: voiceA/B/dialogOn được chốt lúc bấm Nghe, không đọc lại mỗi câu
+// (đổi setting giữa chừng sẽ làm các câu sau khác giọng bất ngờ).
+function voiceIdFor(s, voice, dialogOn, voiceAVal, voiceBVal){
+  if(!dialogOn) return null;
+  if(detectLangNorm(s.text, voice) !== "en") return null;
+  const sel = s.para % 2 === 0 ? voiceAVal : voiceBVal;
+  return sel === "auto" ? null : sel;
+}
+
+/* QA vòng 4 (2026-10-12): ttsStop PHẢI là biến cục bộ mỗi lần bấm Nghe.
+   Trước đây là biến global -> bấm Dừng rồi Nghe nhanh: generation cũ đang chờ
+   fetch sẽ thấy ttsStop=false (do generation mới reset) và sống lại, 2 luồng
+   giành nhau thẻ <audio>. */
+
+async function synthOne(sentence, voice, voiceId, emotion){
+  const body = { text: sentence, voice };
+  if(voiceId) body.voice_id = voiceId;
+  if(emotion) body.emotion = emotion; // #5: backend chỉ dùng cho tiếng Anh qua ElevenLabs
+  const r = await fetch("/api/tts", {
+    method: "POST",
+    headers: apiHeaders(),
+    body: JSON.stringify(body)
+  });
+  if(r.status === 401){ localStorage.removeItem("elab_authToken"); location.href = "/login"; throw "auth"; }
+  if(r.status === 402) throw "quota";
+  if(!r.ok) throw "tts";
+  return { blob: await r.blob(), isMp3: (r.headers.get("Content-Type") || "").toLowerCase().includes("mpeg") };
+}
 
 $("speakBtn").addEventListener("click", async () => {
   const t = I18N[LANG];
   const text = $("txt").value.trim();
   if(!text){ toast(t.needText); return; }
-  const btn = $("speakBtn");
-  btn.disabled = true;
-  $("status").textContent = t.creating;
+  // QA vòng 9: mỗi lần bấm Nghe là một generation riêng. Merge/SRT async của lần cũ
+  // không được ghi đè UI của lần mới (race khi bấm Nghe liên tiếp).
+  genSeq++;
+  const myGen = genSeq;
+  const voice = $("voiceSel").value;
+  // QA vòng 4: chốt settings lúc bấm Nghe (emotion, hội thoại) để các câu nhất quán
+  const emoVal = $("emoSel").value || null;
+  const dialogOn = $("dialogMode").checked;
+  const voiceAVal = dialogOn ? ($("voiceA").value || "auto") : "auto";
+  const voiceBVal = dialogOn ? ($("voiceB").value || "auto") : "auto";
+  // QA 2026-10-11 (bug B): chuẩn hoá TỪNG CÂU theo ngôn ngữ của câu đó.
+  // Trước đây chuẩn hoá cả bài bằng 1 ngôn ngữ -> câu tiếng Anh trong bài tiếng Việt
+  // bị đọc số kiểu Việt ("I have 3 apples" -> "I have ba apples").
+  const rawSentences = splitSentencesWithPara(text);
+  let normChanged = false;
+  const sentences = [];
+  let totalChars = 0;
+  for(const s of rawSentences){
+    const norm = normalizeText(s.text, detectLangNorm(s.text, voice)).slice(0, 500);
+    if(norm !== s.text) normChanged = true;
+    if(!norm) continue;
+    if(totalChars + norm.length > 5000) break;
+    sentences.push({ text: norm, para: s.para });
+    totalChars += norm.length;
+  }
+  $("normNote").style.display = normChanged ? "block" : "none";
+  if(!sentences.length){ toast(t.needText); return; }
+
+  const btn = $("speakBtn"), stopBtn = $("stopBtn");
+  btn.style.display = "none"; stopBtn.style.display = "block";
+  let ttsStop = false; // cục bộ mỗi generation (xem ghi chú QA vòng 4 ở trên)
+  try{ $("player").pause(); }catch(e){} // dừng phát lại bản cũ nếu đang phát
   $("player").style.display = "none";
   $("dlBtn").style.display = "none";
-  try{
-    const r = await fetch("/api/tts", {
-      method: "POST",
-      headers: apiHeaders(),
-      body: JSON.stringify({ text, voice: $("voiceSel").value, speed: +$("speed").value })
-    });
-    if(r.status === 401){ localStorage.removeItem("elab_authToken"); location.href="/login"; return; }
-    if(r.status === 402){ toast(t.quotaOut); $("status").textContent=""; btn.disabled=false; return; }
-    if(r.status === 503){ toast(t.engineDown); $("status").textContent=""; btn.disabled=false; return; }
-    if(!r.ok) throw new Error("TTS error "+r.status);
-    const blob = await r.blob();
-    const url = URL.createObjectURL(blob);
-    $("player").src = url;
+  $("driveBtn").style.display = "none"; driveBlob = null;
+  $("status").textContent = t.creating;
+
+  const parts = new Array(sentences.length).fill(null); // {blob,isMp3} | "failed"
+  let fetchIdx = 0, playIdx = 0, started = false, quotaHit = false, fetchDone = false;
+
+  $("player").onended = () => { playIdx++; pumpPlay(); };
+
+  function pumpPlay(){
+    if(ttsStop) return;
+    while(playIdx < sentences.length && parts[playIdx] === "failed") playIdx++;
+    if(playIdx >= sentences.length){ finish(); return; }
+    if(!parts[playIdx]){
+      // QA vòng 5: fetch đã xong mà part vẫn trống (vd dính quota ở câu đầu)
+      // -> không bao giờ có audio -> finish() thay vì chờ vô hạn.
+      if(fetchDone){ finish(); return; }
+      setTimeout(pumpPlay, 300); return; // chờ tải xong
+    }
+    const old = $("player").src;
+    $("player").src = URL.createObjectURL(parts[playIdx].blob);
+    if(old) URL.revokeObjectURL(old);
+    $("status").textContent = t.playing_sentence(playIdx + 1, sentences.length);
     $("player").style.display = "block";
-    $("dlBtn").href = url;
-    $("dlBtn").style.display = "inline-block";
-    $("status").textContent = "";
+    $("player").playbackRate = +$("speed").value;
     $("player").play().catch(()=>{});
+  }
+
+  async function fetchLoop(){
+    while(fetchIdx < sentences.length && !ttsStop && !quotaHit){
+      $("status").textContent = t.creating_sentence(fetchIdx + 1, sentences.length);
+      try{
+        parts[fetchIdx] = await synthOne(sentences[fetchIdx].text, voice,
+          voiceIdFor(sentences[fetchIdx], voice, dialogOn, voiceAVal, voiceBVal), emoVal);
+      }catch(e){
+        if(e === "quota"){ quotaHit = true; toast(t.quotaOut); break; }
+        if(e === "auth") return; // đã chuyển về /login
+        parts[fetchIdx] = "failed"; // lỗi câu này: bỏ qua, tiếp câu sau
+      }
+      fetchIdx++;
+      if(!started && parts[0] && parts[0] !== "failed"){ started = true; pumpPlay(); }
+    }
+    fetchDone = true; // QA vòng 5: đánh dấu fetch đã xong để pumpPlay không chờ vô hạn
+    if(!started && !ttsStop){ started = true; pumpPlay(); }
+  }
+
+  function finish(){
+    const items = [];
+    parts.forEach((p, i) => { if(p && p !== "failed") items.push({ part: p, text: sentences[i].text }); });
+    const showDl = (blob, name, label) => {
+      const old = $("dlBtn").href;
+      $("dlBtn").href = URL.createObjectURL(blob);
+      if(old && old.indexOf("blob:") === 0) URL.revokeObjectURL(old);
+      $("dlBtn").download = name;
+      $("dlBtn").textContent = label;
+      $("dlBtn").style.display = "inline-block";
+      // Giữ blob để "Lưu vào Drive" (tính năng 2026-10-12, anh Chốt phương án A)
+      driveBlob = blob; driveName = name;
+      $("driveBtn").style.display = "inline-block";
+      // Nghe lại toàn bài không cần tải: nạp bản full vào player (yêu cầu 2026-10-12).
+      // File chỉ nằm trong bộ nhớ tạm của trình duyệt, tắt trang là mất.
+      // Dùng URL riêng (không chung với nút tải) để revoke độc lập.
+      const pl = $("player");
+      if(pl.src && pl.src.indexOf("blob:") === 0) URL.revokeObjectURL(pl.src);
+      pl.src = URL.createObjectURL(blob);
+      pl.onended = null; // hết chế độ phát từng câu
+      pl.style.display = "block";
+    };
+    const showSrt = srtText => {
+      const blob = new Blob(["﻿" + srtText], { type: "text/plain;charset=utf-8" });
+      const old = $("srtBtn").href;
+      $("srtBtn").href = URL.createObjectURL(blob);
+      if(old && old.indexOf("blob:") === 0) URL.revokeObjectURL(old);
+      $("srtBtn").style.display = "inline-block";
+    };
+    $("srtBtn").style.display = "none";
+    if(items.length === 1){
+      const p = items[0].part;
+      showDl(p.blob, p.isMp3 ? "voice.mp3" : "voice.wav",
+             p.isMp3 ? t.download_mp3 : t.download);
+      buildSrt(items).then(
+        srt => { if(myGen === genSeq) showSrt(srt); },
+        () => { if(myGen === genSeq && !ttsStop) toast(t.engineDown); });
+    } else if(items.length > 1){
+      mergeToWavWithSrt(items.map(x => x.part.blob), items.map(x => x.text)).then(
+        ({ wav, srt }) => { if(myGen !== genSeq) return; showDl(wav, "voice.wav", t.download); showSrt(srt); },
+        // QA vòng 6: gộp lỗi (hiếm) thì báo user, không im lặng mất nút tải
+        () => { if(myGen === genSeq && !ttsStop) toast(t.engineDown); });
+    } else if(!quotaHit && !ttsStop){
+      toast(t.engineDown);
+    }
+    $("status").textContent = "";
+    btn.style.display = "block"; stopBtn.style.display = "none";
     loadPlan();
-  }catch(e){ toast(t.err+e.message); $("status").textContent=""; }
+  }
+
+  stopBtn.onclick = () => {
+    ttsStop = true;
+    try{ $("player").pause(); }catch(e){}
+    finish();
+  };
+
+  fetchLoop();
+});
+
+/* Lưu vào Drive (tính năng 2026-10-12, anh Chốt phương án A).
+   Dùng OAuth Google Drive đã có (scope drive.file: chỉ file do app tạo). */
+$("driveBtn").addEventListener("click", async () => {
+  const t = I18N[LANG];
+  if(!driveBlob) return;
+  const btn = $("driveBtn");
+  btn.disabled = true;
+  const oldLabel = btn.textContent;
+  const api = (url, opt) => fetch(url, Object.assign({ headers: apiHeaders() }, opt || {}))
+    .then(r => { if(!r.ok) throw new Error("http " + r.status); return r.json(); });
+  btn.textContent = t.driveUploading;
+  try{
+    // 1. Kiểm tra đã kết nối Drive chưa
+    let st = await api("/api/drive/status").catch(() => null);
+    if(!st || !st.connected){
+      // Chưa kết nối: mở trang authorize ở tab mới, poll chờ xong (tối đa 2 phút).
+      // Nếu user đóng tab mà chưa xong thì dừng ngay, không treo nút.
+      btn.textContent = t.driveNeedConnect;
+      const au = await api("/api/drive/auth-url").catch(() => null);
+      if(!au || !au.url) throw new Error("auth");
+      const authTab = window.open(au.url, "_blank");
+      let ok = false;
+      for(let i = 0; i < 60; i++){
+        await new Promise(r => setTimeout(r, 2000));
+        if(authTab && authTab.closed) break; // user đóng tab -> dừng
+        st = await api("/api/drive/status").catch(() => null);
+        if(st && st.connected){ ok = true; break; }
+      }
+      if(!ok) throw new Error("timeout");
+    }
+    // 2. Upload blob -> base64
+    btn.textContent = t.driveUploading;
+    const b64 = await new Promise((res, rej) => {
+      const fr = new FileReader();
+      fr.onload = () => res(fr.result.split(",")[1]);
+      fr.onerror = rej;
+      fr.readAsDataURL(driveBlob);
+    });
+    const up = await api("/api/drive/upload", {
+      method: "POST",
+      body: JSON.stringify({
+        name: driveName,
+        mimeType: driveBlob.type || "audio/wav",
+        data: b64,
+      }),
+    }).catch(() => null);
+    if(!up || !up.id) throw new Error("upload");
+    toast(t.driveDone);
+  }catch(e){
+    toast(t.driveFail);
+  }
+  btn.textContent = oldLabel;
   btn.disabled = false;
 });
 
 applyLang(LANG);
 </script>
 <script src="/english/js/lang-dropdown.js?v=__BUILD__"></script>
+<script>/* FIT 8b-8: nút chuyển theme */
+document.getElementById('themeBtn').onclick = ()=>{
+  if(window.__elabTheme){ window.__elabTheme.toggle(); return; }
+  const dark = document.documentElement.classList.toggle('pp-dark');
+  try{ localStorage.setItem('pp_theme', dark ? 'dark' : 'light'); }catch(e){}
+};</script>
+<script>import("/english/js/shared/theme.js").catch(function(){});</script>
+<script>import("/english/js/shared/i18n.js").then(m=>{try{m.setApp("voice")}catch(e){}}).catch(function(){});</script>
 </body>
 </html>
