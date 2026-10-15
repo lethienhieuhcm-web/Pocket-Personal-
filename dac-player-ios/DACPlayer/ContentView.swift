@@ -63,7 +63,7 @@ struct LibraryView: View {
     @State private var libraryTab = 0
     /// Đồng bộ thông minh: tự sync nếu cache cũ hơn 15 phút
     @State private var isSyncing = false
-    @State private var lastSyncText = "" 
+    @State private var lastSyncText = ""
 
     private var visibleTracks: [Track] {
         searchText.isEmpty ? api.tracks : api.searchOffline(searchText)
