@@ -29,6 +29,6 @@ interface TrackDao {
     @Query("DELETE FROM tracks")
     suspend fun clear()
 
-    @Query("SELECT * FROM tracks WHERE title LIKE '%' || :query || '%' ORDER BY title ASC")
+    @Query("SELECT * FROM tracks WHERE LOWER(title) LIKE '%' || LOWER(:query) || '%' ORDER BY title ASC")
     suspend fun search(query: String): List<TrackEntity>
 }

@@ -136,7 +136,7 @@ async function api(path, opts){
 // ===== State =====
 const audio = document.getElementById('audio');
 const audioPf = document.getElementById('audioPrefetch');
-let queue = [], qIndex = -1, currentTrack = null;
+let queue = [], qIndex = -1, currentTrack = null, allTracks = [];
 let driveToken = getDriveToken();
 
 // ===== Drive connect (server-side token) =====
@@ -204,6 +204,7 @@ async function loadLibrary(){
 function renderTracks(files){
   const list = document.getElementById('trackList');
   queue = [];
+  allTracks = files.slice();
   let html = '';
   files.forEach((t,i)=>{
     queue.push(t);
@@ -403,23 +404,28 @@ function renderFolder(j, parentId){
   list.querySelectorAll('[data-type="track"]').forEach(el=>{ el.onclick=()=>playTrack(parseInt(el.getAttribute('data-idx'))); });
 }
 
-async function doSearch(q){
+// Tìm kiếm client-side (như iOS/Android): lọc từ danh sách đã tải, nhanh và chính xác
+// Big tech pattern: dataset nhỏ (<1000) thì filter ở client, không gọi server
+function doSearch(q){
   const list = document.getElementById('trackList');
-  list.innerHTML = '<div class="dp-loading">Đang tìm...</div>';
   document.getElementById('breadcrumb').innerHTML = '';
-  try{
-    const r = await api('/api/dac/search?q='+encodeURIComponent(q));
-    if(!r) return;
-    const j = await r.json();
-    queue = [];
-    let html = '';
-    (j.results||j.tracks||[]).forEach((t,i)=>{
-      queue.push(t);
-      html += '<div class="dp-item" data-idx="'+i+'"><span class="ic">🎵</span><div class="nm"><div class="t">'+esc(t.name)+'</div></div>'+badgeHtml(t)+'</div>';
-    });
-    list.innerHTML = html || '<div class="dp-center">Không tìm thấy</div>';
-    list.querySelectorAll('[data-idx]').forEach(el=>{ el.onclick=()=>playTrack(parseInt(el.getAttribute('data-idx'))); });
-  }catch(e){ list.innerHTML = '<div class="dp-err">Tìm kiếm thất bại.</div>'; }
+  const query = q.toLowerCase().trim();
+  // Lọc từ allTracks (danh sách gốc đầy đủ), không phụ thuộc queue đang phát
+  const source = (typeof allTracks !== 'undefined' && allTracks.length) ? allTracks : queue;
+  const results = source.filter(t => {
+    const name = (t.name || '').toLowerCase();
+    const title = (t.title || '').toLowerCase();
+    const artist = (t.artist || '').toLowerCase();
+    return name.includes(query) || title.includes(query) || artist.includes(query);
+  });
+  queue = [];
+  let html = '';
+  results.forEach((t,i)=>{
+    queue.push(t);
+    html += '<div class="dp-item" data-idx="'+i+'"><span class="ic">🎵</span><div class="nm"><div class="t">'+esc(t.name)+'</div></div>'+badgeHtml(t)+'</div>';
+  });
+  list.innerHTML = html || '<div class="dp-center">Không tìm thấy</div>';
+  list.querySelectorAll('[data-idx]').forEach(el=>{ el.onclick=()=>playTrack(parseInt(el.getAttribute('data-idx'))); });
 }
 
 // ===== Badge =====
@@ -446,17 +452,25 @@ async function playTrack(idx){
   try{
     const headers = {'Authorization':'Bearer '+token};
     if(driveToken) headers['X-Drive-Token'] = driveToken;
-    const r = await fetch('/api/dac/stream/'+encodeURIComponent(currentTrack.id), {headers:headers});
-    if(!r.ok) throw new Error('Stream failed: '+r.status);
-    const j = await r.json();
-    if(!j.url) throw new Error('No URL');
-    audio.src = j.url;
-    await audio.play();
+    // Lấy direct URL từ Drive (có access_token), gán trực tiếp vào audio.src
+    // <audio> không cần CORS, browser tự stream
+    const sr = await fetch('/api/dac/stream/'+encodeURIComponent(currentTrack.id), {headers:headers});
+    if(!sr.ok) throw new Error('Không lấy được link phát nhạc');
+    const sj = await sr.json();
+    if(!sj.url) throw new Error('Không lấy được link phát nhạc');
+    audio.src = sj.url;
+    try {
+      await audio.play();
+    } catch(playErr) {
+      const ae = audio.error;
+      const errInfo = ae ? ('code='+ae.code+' msg='+ae.message) : 'no audio.error';
+      throw new Error('Play failed: '+(playErr.message||playErr)+' | '+errInfo);
+    }
     updatePlayerUI();
     setupMediaSession();
     prefetchNext();
   }catch(e){
-    showErr('Không phát được file này.');
+    showErr('Lỗi: '+(e.message||'Không phát được'));
   }
   showLoading(false);
 }
