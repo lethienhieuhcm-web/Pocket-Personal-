@@ -1,7 +1,7 @@
 # Kiến trúc DAC Pocket P3 Native Android "Trái Tim Nguyên Chất"
 
 Ngày: 2026-10-16 · Người thực hiện: Muse (VM sandbox)
-Trạng thái: ĐÃ CHỐT SPEC, CHƯA CODE
+Trạng thái: ĐANG CODE — v1 gần xong (17/10): ✅ 7.1, 7.3, 7.4, 7.5, 7.6, 7.7 | ⏳ 7.2 (chờ DAC thật)
 Phương pháp: tổng hợp từ mổ UAPP (7 patterns) + mổ Neutron (mixer gapless, USB tuning) — KHÔNG bịa, mọi quyết định đều có nguồn gốc rõ ràng.
 **Xác thực kiến trúc từ 3 nguồn độc lập:** UAPP v7.1.2.8, Neutron v2.27.2, HiBy v4.3.1 — 3 hãng độc lập — đều đi cùng đường: **libusb + isochronous, bypass toàn bộ Android audio stack, Java chỉ xin quyền + giao FD cho native**. Sự hội tụ này là xác thực mạnh nhất cho quyết định chọn decent-player.
 

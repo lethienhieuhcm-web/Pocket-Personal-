@@ -1,7 +1,9 @@
 # Spec P3 — DAC Pocket Native Android "Trái Tim Nguyên Chất"
 
-**Ngày Chốt:** 2026-10-16 · **Trạng thái:** ĐÃ CHỐT SPEC, CHƯA CODE
+**Ngày Chốt:** 2026-10-16 · **Trạng thái:** ĐANG CODE — v1 gần xong (còn 7.2 DSD Native chờ DAC thật)
 **Triết lý:** Tín hiệu từ file tới DAC phải nguyên chất tuyệt đối. Bất kỳ khâu nào chạm vào bits đều phải báo cho user biết.
+
+**Tiến độ implement (17/10):** ✅ 7.1 DoP, 7.3 DSD→PCM, 7.4 Buffer, 7.5 Volume (+UI), 7.6 Quirks (+UI override), 7.7 Hot-swap | ⏳ 7.2 DSD Native (v2)
 
 ---
 
@@ -107,10 +109,15 @@ cách UAPP / Neutron / HiBy đã làm (đã mổ và có báo cáo).
 | 7.1a | **ĐÃ CODE 17/10** | `DopPacker.kt` (pack DoP v1.1, đảo bit, marker luân phiên) + `DsfExtractor.kt` (Media3 Extractor, DSF stereo, little-endian) + `DopPackerTest.kt` (unit test). Đăng ký vào `PlayerManager` qua `setExtractorsFactory`. 3 bug fix khi review: marker sai chuỗi, timeUs=0, endianness big/little | — |
 | 7.2 | DSD Native (v2) | Cần alt setting riêng trong driver → làm sau khi v1 ổn (fork lib hoặc contribute upstream) | UAPP `getAvailableDSDRates`; HiBy UAC2 alt setting |
 | 7.3 | DSD→PCM fallback | Dùng FFmpeg decode (có sẵn trong pipeline ExoPlayer của lib, Path 1) | UAPP `libaudsd2pcm.so` |
+| 7.3a | **ĐÃ CODE 17/10** ✅ | `DsdToPcmConverter.kt` — FIR 32-tap Hamming, decimate 32 (DSD64→88.2kHz). Đối chiếu: cả 3 app convert riêng, không dùng FFmpeg decoder. Build #234 SUCCESS | — |
 | 7.4 | Buffer config 100/200/400ms | Patch native duy nhất: `USB_AUDIO_NUM_URBS` (đang hardcode 80) thành parameter qua JNI, default 80 | Neutron phơi low-latency config cho user |
+| 7.4a | **ĐÃ CODE 17/10** ✅ | Native: ring buffer tĩnh → con trỏ + numUrbs (param qua JNI); Kotlin: `UsbAudioStream`/`UsbAudioSinkConfig`; App: UI chọn 80/200/400 trong DacSettingsActivity. Vendor toàn bộ decent-player vào repo. Build #257 SUCCESS | — |
 | 7.5 | Hardware volume | App-level: UAC feature-unit `SET_CUR` qua USB control transfer; DAC không có feature-unit → software volume + báo rõ | UAPP `USBMixerUnit`/`USBMixerUnitVolumeController`; HiBy khóa volume USB |
+| 7.5a | **ĐÃ CODE 17/10** ✅ | `UsbVolumeController.kt` (parse Feature Unit UAC, SET_CUR dB log scale) + UI SeekBar trong DacSettingsActivity (mặc định 100 bit-perfect, chỉ gửi USB khi thả tay). Build #236/#248 SUCCESS | — |
 | 7.6 | Quirks | Hardcode Kotlin object theo `vendorId:productId` (như UAPP `lh4.c()`); user override qua SharedPreferences (như Neutron/HiBy). KHÔNG dùng Room — quirks check ở USB hot path cần đồng bộ ngay; hạt giống từ blocklist UAPP (vendor 1478, 4184, 1133…) | UAPP `lh4.c()` blocklist; Neutron `USBForce1MsPacket`; HiBy `UsbSpeedSettingActivity` |
+| 7.6a | **ĐÃ CODE 17/10** ✅ | `DacQuirks.kt` (hardcode) + UI override trong DacSettingsActivity (5 quirk: ép gói 1ms, tốc độ bus, ép sample rate, tắt DSD, chặn DAC). Build #243/#248 SUCCESS | — |
 | 7.7 | Đổi DAC khác giữa chừng | Lib singleton không hot-swap được → UX: cắm lại cùng DAC thì tự nối lại; cắm DAC khác → báo restart app | `KNOWN_LIMITATIONS.md` của lib |
+| 7.7a | **ĐÃ CODE 17/10** ✅ | `UsbHotSwapReceiver.kt` (BroadcastReceiver, đối chiếu Neutron/UAPP) + `PlayerManager.pauseIfPlaying()` + dialog restart. Build #258 SUCCESS | — |
 
 **Thứ tự ưu tiên khi code:** driver integration (có sẵn) → DoP (7.1) → hardware
 volume (7.5) → quirks (7.6) → buffer config (7.4) → DSD native (7.2, v2).
