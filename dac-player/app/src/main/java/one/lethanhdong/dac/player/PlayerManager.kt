@@ -188,10 +188,20 @@ class PlayerManager(private val context: Context) {
         val bitDepth: Int?,
         val formatLabel: String,
         val viaUsbDac: Boolean,
+        /** Nhãn DSD (DSD64/DSD128...) khi phát file DSD qua DoP, null nếu không phải DSD. */
+        val dsdLabel: String? = null,
     ) {
-        /** Badge hiện ở UI: "FLAC • 24-bit • 96 kHz → USB DAC". */
+        /**
+         * Badge hiện ở UI:
+         * - Thường: "FLAC • 24-bit • 96 kHz → USB DAC".
+         * - DSD qua DoP: "DSD64 → DoP → USB DAC" (hiện đúng signal path).
+         */
         fun badgeText(): String =
-            AudioFormat.badgeText(formatLabel, bitDepth, sampleRateHz, viaUsbDac)
+            if (dsdLabel != null) {
+                AudioFormat.dsdBadgeText(dsdLabel, viaUsbDac)
+            } else {
+                AudioFormat.badgeText(formatLabel, bitDepth, sampleRateHz, viaUsbDac)
+            }
     }
 
     private val _audioQuality = MutableStateFlow<AudioQuality?>(null)
@@ -262,11 +272,19 @@ class PlayerManager(private val context: Context) {
             } catch (e: Exception) {
                 false
             }
+            // DSD qua DoP: suy nhãn DSD từ DoP rate (176400 → DSD64...).
+            // Hiện badge "DSD64 → DoP → USB DAC" thay vì "176.4 kHz" gây hiểu lầm.
+            val dsdLabel = if (AudioFormat.isDsdFile(title) && sampleRate != null) {
+                AudioFormat.dsdLabel(sampleRate)
+            } else {
+                null
+            }
             _audioQuality.value = AudioQuality(
                 sampleRateHz = sampleRate,
                 bitDepth = bitDepth,
                 formatLabel = label,
                 viaUsbDac = viaUsb,
+                dsdLabel = dsdLabel,
             )
         }
     }

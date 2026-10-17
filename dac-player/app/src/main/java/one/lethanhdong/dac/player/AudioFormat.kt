@@ -22,9 +22,26 @@ object AudioFormat {
             "m4a" in mt || "mp4" in mt || t.endsWith(".m4a") -> "M4A"
             "ogg" in mt || "opus" in mt -> "OGG"
             "aiff" in mt || t.endsWith(".aiff") -> "AIFF"
-            "dsd" in mt || t.endsWith(".dsf") -> "DSD"
+            "dsd" in mt || t.endsWith(".dsf") || t.endsWith(".dff") -> "DSD"
             else -> "AUDIO"
         }
+    }
+
+    /**
+     * Nhãn DSD từ DoP sample rate: 176400 → "DSD64", 352800 → "DSD128", 705600 → "DSD256".
+     * Trả về null nếu không phải rate DoP chuẩn.
+     */
+    fun dsdLabel(dopRateHz: Int): String? = when (dopRateHz) {
+        176400 -> "DSD64"
+        352800 -> "DSD128"
+        705600 -> "DSD256"
+        else -> null
+    }
+
+    /** File có phải DSD không (dựa vào tên file). */
+    fun isDsdFile(title: String): Boolean {
+        val t = title.lowercase()
+        return t.endsWith(".dsf") || t.endsWith(".dff")
     }
 
     /** 96000 → "96 kHz", 44100 → "44.1 kHz". */
@@ -46,6 +63,16 @@ object AudioFormat {
         if (bitDepth != null && bitDepth > 0) parts.add("$bitDepth-bit")
         if (sampleRateHz != null && sampleRateHz > 0) parts.add(formatSampleRate(sampleRateHz))
         val src = parts.joinToString(" • ")
+        return if (viaUsbDac) "$src → USB DAC" else src
+    }
+
+    /**
+     * Badge cho DSD qua DoP — hiện đúng signal path theo triết lý "Trái Tim Nguyên Chất".
+     * Ví dụ: "DSD64 → DoP → USB DAC".
+     * Không hiện "176.4 kHz" vì đó là rate PCM của DoP, không phải rate DSD gốc.
+     */
+    fun dsdBadgeText(dsdLabel: String, viaUsbDac: Boolean): String {
+        val src = "$dsdLabel → DoP"
         return if (viaUsbDac) "$src → USB DAC" else src
     }
 }
