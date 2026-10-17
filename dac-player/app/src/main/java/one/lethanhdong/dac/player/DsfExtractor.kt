@@ -21,8 +21,13 @@ import java.io.IOException
  * - Chunk "DSD " (28 bytes): magic(4) + chunkSize(8 LE) + totalSize(8 LE) + metaPtr(8 LE)
  * - Chunk "fmt " (52 bytes): magic(4) + chunkSize(8) + version(4) + formatId(4)
  *   + channelType(4) + channelNum(4) + sampleFreq(4 LE) + bitsPerSample(4)
- *   + sampleCount(8 LE) + blockSize(4) + reserved(4)
- * - Chunk "data": magic(4) + chunkSize(8 LE) + DSD raw (interleave theo block/channel)
+ *   + sampleCount(8 LE) + blockSizePerChannel(4 LE) + reserved(4)
+ * - Chunk "data": magic(4) + chunkSize(8 LE) + DSD raw
+ *
+ * QUAN TRỌNG — DSD data trong DSF lưu theo BLOCK, không xen kẽ từng sample:
+ *   [L block 4096 bytes][R block 4096 bytes][L block][R block]...
+ *   (blockSizePerChannel đọc từ fmt chunk, thường là 4096)
+ * Code phải de-interleave block trước khi pack DoP.
  *
  * Output: PCM 24-bit little-endian, sample rate = DSD rate / 16 (DoP),
  * mỗi sample đã pack marker 0x05/0xFA qua DopPacker.
@@ -56,9 +61,16 @@ class DsfExtractor : Extractor {
 
     private var sampleRateHz: Int = 0      // DSD rate gốc (vd 2822400)
     private var channelCount: Int = 0
+    private var blockSizePerChannel: Int = 4096 // đọc từ fmt chunk
     private var dataStart: Long = 0        // offset bắt đầu DSD raw
     private var dataEnd: Long = 0          // offset kết thúc
     private var totalDsdBytes: Long = 0
+
+    // Buffer de-interleave: 1 block group = blockSize * channelCount bytes
+    // Layout trên đĩa: [L block][R block] → tách thành L stream, R stream
+    private var blockBuf: ByteArray = ByteArray(0)
+    private var blockBufPos: Int = 0  // vị trí đã pack trong blockBuf
+    private var blockBufValid: Int = 0 // số byte hợp lệ trong blockBuf
 
     private var markerA: Byte = DopPacker.MARKER_A
     private var samplesOutput: Long = 0 // đếm sample PCM đã output (để tính timeUs)
@@ -94,40 +106,62 @@ class DsfExtractor : Extractor {
             input.skipFully((dataStart - input.position).toInt())
         }
 
-        // Đọc DSD raw theo frame stereo (2 byte/kênh), pack thành DoP
-        val bytesPerFrame = 2 * channelCount // 2 byte DSD mỗi kênh
-        val framesPerRead = pcmBuf.size / 6  // 6 bytes PCM mỗi frame stereo
-        val dsdToRead = framesPerRead * bytesPerFrame
-        val dsdBuf = ByteArray(dsdToRead)
-
-        val read = input.read(dsdBuf, 0, dsdToRead)
-        if (read == C.RESULT_END_OF_INPUT) return Extractor.RESULT_END_OF_INPUT
-        if (read <= 0) return Extractor.RESULT_CONTINUE
-
         // Chỉ hỗ trợ stereo (2 kênh) ở v1 — mono/DSD khác báo lỗi rõ
         if (channelCount != 2) {
             throw IOException("DsfExtractor v1 chỉ hỗ trợ stereo, file này có $channelCount kênh")
         }
 
-        val fullFrames = read / bytesPerFrame
+        // Đọc 1 block group: [L blockSize bytes][R blockSize bytes]
+        val blockGroupSize = blockSizePerChannel * channelCount
+        if (blockBuf.size != blockGroupSize) {
+            blockBuf = ByteArray(blockGroupSize)
+            blockBufPos = 0
+            blockBufValid = 0
+        }
+
+        // Nạp đầy block group (có thể cần nhiều lần read)
+        if (blockBufPos >= blockBufValid) {
+            var filled = 0
+            while (filled < blockGroupSize) {
+                val r = input.read(blockBuf, filled, blockGroupSize - filled)
+                if (r == C.RESULT_END_OF_INPUT) {
+                    return if (filled == 0) Extractor.RESULT_END_OF_INPUT
+                           else Extractor.RESULT_CONTINUE
+                }
+                if (r <= 0) break
+                filled += r
+            }
+            if (filled == 0) return Extractor.RESULT_CONTINUE
+            blockBufValid = filled
+            blockBufPos = 0
+        }
+
+        // De-interleave block: L = [0, blockSize), R = [blockSize, 2*blockSize)
+        // Pack từng cặp byte liên tiếp thành frame DoP stereo
+        val bytesAvailable = blockBufValid - blockBufPos
+        // Số byte DSD mỗi kênh còn lại trong block hiện tại
+        val blockOffset = blockBufPos % blockSizePerChannel
+        val bytesLeftInBlock = blockSizePerChannel - blockOffset
+        // Giới hạn pack theo pcmBuf và theo block boundary
+        val maxFramesByBuf = pcmBuf.size / 6
+        val maxFramesByBlock = bytesLeftInBlock / 2 // 2 byte DSD = 1 sample DoP
+        val framesToPack = minOf(maxFramesByBuf, maxFramesByBlock)
+
         var pcmPos = 0
-        var dsdPos = 0
-        // Mỗi frame stereo = 2 sample PCM. Marker luân phiên mỗi SAMPLE theo
-        // chuẩn DoP v1.1: L=05, R=FA, L=05, R=FA... Vì số sample/frame là chẵn (2),
-        // frame tiếp theo bắt đầu lại với cùng marker → KHÔNG đổi markerA giữa frame.
-        // (Bug đã fix 17/10: đổi marker mỗi frame cho ra chuỗi 05,FA,FA,05... sai chuẩn.)
-        repeat(fullFrames) {
-            val dsdL = byteArrayOf(dsdBuf[dsdPos], dsdBuf[dsdPos + 1])
-            val dsdR = byteArrayOf(dsdBuf[dsdPos + 2], dsdBuf[dsdPos + 3])
+        repeat(framesToPack) { i ->
+            val lOff = blockBufPos + i * 2
+            val rOff = blockBufPos + blockSizePerChannel + i * 2
+            val dsdL = byteArrayOf(blockBuf[lOff], blockBuf[lOff + 1])
+            val dsdR = byteArrayOf(blockBuf[rOff], blockBuf[rOff + 1])
             DopPacker.packStereoFrame(dsdL, dsdR, markerA, pcmBuf, pcmPos)
             pcmPos += 6
-            dsdPos += bytesPerFrame
         }
+        blockBufPos += framesToPack * 2
 
         val dopRate = DopPacker.dopSampleRate(sampleRateHz)
         // timeUs tăng dần: mỗi frame = 2 sample
         val timeUs = samplesOutput * 1_000_000L / dopRate
-        samplesOutput += fullFrames * 2
+        samplesOutput += framesToPack * 2
 
         trackOutput?.sampleData(ParsableByteArray(pcmBuf, pcmPos), pcmPos)
         trackOutput?.sampleMetadata(
@@ -174,7 +208,8 @@ class DsfExtractor : Extractor {
             "bitsPerSample không hỗ trợ: $bitsPerSample"
         }
         pb.skipBytes(8) // sampleCount
-        pb.skipBytes(4) // blockSize
+        blockSizePerChannel = pb.readLittleEndianInt()
+        require(blockSizePerChannel > 0) { "blockSizePerChannel không hợp lệ: $blockSizePerChannel" }
         pb.skipBytes(4) // reserved
 
         // Tìm chunk "data" (ngay sau fmt trong file chuẩn, offset 80 = 28+52)

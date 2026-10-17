@@ -46,12 +46,13 @@ class PlayerManager(private val context: Context) {
             renderersFactory.wrapLoadControl(DefaultLoadControl())
         )
         .setMediaSourceFactory(
-            // Đăng ký DsfExtractor để phát file .dsf qua DoP (spec P3 7.1).
+            // Đăng ký DsfExtractor + DffExtractor để phát file DSD qua DoP (spec P3 7.1).
             // DefaultExtractorsFactory.createExtractors() đã có sẵn các
-            // extractor chuẩn; ta thêm DsfExtractor vào đầu để ưu tiên sniff.
+            // extractor chuẩn; ta thêm 2 extractor DSD vào đầu để ưu tiên sniff.
             DefaultMediaSourceFactory(context).setExtractorsFactory {
                 val extractors = DefaultExtractorsFactory()
                     .createExtractors().toMutableList()
+                extractors.add(0, DffExtractor())
                 extractors.add(0, DsfExtractor())
                 extractors.toTypedArray()
             }
