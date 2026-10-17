@@ -10,4 +10,16 @@
     <string name="download_offline">Tải về nghe offline</string>
     <string name="downloaded_offline">Đã tải về</string>
     <string name="folder_title">Thư mục nhạc</string>
+    <!-- Màn hình cài đặt DAC (spec P3 dòng 23) -->
+    <string name="dac_settings_title">Cài đặt DAC</string>
+    <string name="dac_not_connected">Chưa có DAC nào được kết nối. Hãy cắm DAC qua USB để cài đặt.</string>
+    <string name="dac_unknown">DAC không rõ tên</string>
+    <string name="dac_info_format">%1$s\n%2$s</string>
+    <string name="dsd_method_title">Phương thức phát DSD</string>
+    <string name="dsd_native">Native (trực tiếp)</string>
+    <string name="dsd_native_unavailable">Native (trực tiếp) — chưa hỗ trợ</string>
+    <string name="dsd_dop">DoP (DSD qua PCM)</string>
+    <string name="dsd_pcm">Chuyển sang PCM</string>
+    <string name="dsd_pcm_unavailable">Chuyển sang PCM — chưa hỗ trợ</string>
+    <string name="dsd_method_saved">Đã lưu cài đặt.</string>
 </resources>

@@ -51,6 +51,12 @@
             android:name=".LicensesActivity"
             android:exported="false" />
 
+        <!-- Màn hình cài đặt per-DAC (spec P3 dòng 23).
+             Không exported (chỉ mở từ trong app). -->
+        <activity
+            android:name=".DacSettingsActivity"
+            android:exported="false" />
+
         <!-- 2.1: Màn hình nhập nhạc từ Drive share link.
              Không exported (chỉ mở từ trong app). -->
         <activity

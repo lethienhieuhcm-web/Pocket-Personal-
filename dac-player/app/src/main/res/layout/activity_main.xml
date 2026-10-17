@@ -102,6 +102,14 @@
             android:layout_weight="1"
             android:text="Thư mục" />
 
+        <!-- Cài đặt DAC (spec P3 dòng 23) -->
+        <Button
+            android:id="@+id/dacSettingsButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="DAC" />
+
         <Button
             android:id="@+id/logoutButton"
             android:layout_width="0dp"

@@ -170,6 +170,10 @@ class MainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.folderButton).setOnClickListener {
             startActivity(Intent(this@MainActivity, FolderActivity::class.java))
         }
+        // Cài đặt DAC (spec P3 dòng 23: per-DAC settings)
+        findViewById<Button>(R.id.dacSettingsButton).setOnClickListener {
+            startActivity(Intent(this@MainActivity, DacSettingsActivity::class.java))
+        }
 
         refreshAuthUi()
 

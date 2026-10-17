@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- res/layout/activity_dac_settings.xml — màn hình cài đặt per-DAC (spec P3 dòng 23) -->
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="16dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/dac_settings_title"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="16dp" />
+
+        <TextView
+            android:id="@+id/dacInfoText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="14sp"
+            android:layout_marginBottom="24dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/dsd_method_title"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="8dp" />
+
+        <RadioGroup
+            android:id="@+id/dsdMethodGroup"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <RadioButton
+                android:id="@+id/radioNative"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/dsd_native"
+                android:padding="8dp" />
+
+            <RadioButton
+                android:id="@+id/radioDop"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/dsd_dop"
+                android:padding="8dp" />
+
+            <RadioButton
+                android:id="@+id/radioPcm"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/dsd_pcm"
+                android:padding="8dp" />
+
+        </RadioGroup>
+
+    </LinearLayout>
+</ScrollView>
