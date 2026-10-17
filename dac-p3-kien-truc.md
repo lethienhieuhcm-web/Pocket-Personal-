@@ -166,7 +166,7 @@ cách UAPP / Neutron / HiBy đã làm. Không fork lib trừ khi bắt buộc
 | 7.3 | DSD→PCM fallback | Dùng FFmpeg decode (có sẵn trong pipeline ExoPlayer của lib) | UAPP `libaudsd2pcm.so` |
 | 7.4 | Buffer config 100/200/400ms | Patch native duy nhất: `USB_AUDIO_NUM_URBS` (đang hardcode 80) thành parameter qua JNI, default 80 | Neutron phơi low-latency config cho user |
 | 7.5 | Hardware volume | App-level: UAC feature-unit `SET_CUR` qua USB control transfer; DAC không có feature-unit → software volume + báo rõ | UAPP `USBMixerUnit`; HiBy khóa volume USB |
-| 7.6 | Quirks table | Room table theo `vendorId:productId`; hạt giống từ blocklist UAPP | UAPP `lh4.c()` blocklist |
+| 7.6 | Quirks | Hardcode Kotlin object theo `vendorId:productId` (như UAPP `lh4.c()`); user override qua SharedPreferences (như Neutron/HiBy). KHÔNG dùng Room — quirks check ở USB hot path cần đồng bộ ngay; hạt giống từ blocklist UAPP | UAPP `lh4.c()` blocklist; Neutron `USBForce1MsPacket`; HiBy `UsbSpeedSettingActivity` |
 | 7.7 | Đổi DAC khác giữa chừng | Lib singleton không hot-swap được → UX: cắm lại cùng DAC thì tự nối lại; cắm DAC khác → báo restart app | `KNOWN_LIMITATIONS.md` của lib |
 
 **Thứ tự ưu tiên khi code:** driver integration → DoP (7.1) → hardware volume (7.5) → quirks (7.6) → buffer config (7.4) → DSD native (7.2, v2).
@@ -258,7 +258,7 @@ File 24/96 FLAC → Decode → USB → DAC (tên DAC, rate thực)
 | DSD→PCM fallback (FFmpeg) | UAPP `libaudsd2pcm.so` |
 | Buffer config (patch URBS) | Neutron low-latency config |
 | Hardware volume (feature-unit) | UAPP `USBMixerUnit`; HiBy khóa volume |
-| Quirks table (Room) | UAPP `lh4.c()` blocklist |
+| Quirks (hardcode + prefs) | UAPP `lh4.c()` blocklist; Neutron/HiBy user setting |
 | Đổi DAC giữa chừng (UX) | Lib `KNOWN_LIMITATIONS.md` |
 | Metadata (MediaMetadataRetriever) | Spec Chốt (lib không bundle TagLib) |
 | Không SWIG tay, không EQ | Phân tích trade-off |

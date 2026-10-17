@@ -95,7 +95,7 @@ flowchart LR
 <tr><td>7.3</td><td>DSD→PCM fallback</td><td>FFmpeg decode (có sẵn trong pipeline ExoPlayer)</td><td>UAPP</td></tr>
 <tr><td>7.4</td><td>Buffer config 100/200/400ms</td><td>Patch native duy nhất: <code>USB_AUDIO_NUM_URBS</code> thành parameter qua JNI, default 80</td><td>Neutron</td></tr>
 <tr><td>7.5</td><td>Hardware volume</td><td>App-level: UAC feature-unit <code>SET_CUR</code> qua USB control transfer</td><td>UAPP; HiBy</td></tr>
-<tr><td>7.6</td><td>Quirks table</td><td>Room table theo <code>vendorId:productId</code>; hạt giống từ blocklist UAPP</td><td>UAPP</td></tr>
+<tr><td>7.6</td><td>Quirks</td><td>Hardcode Kotlin object (như UAPP <code>lh4.c()</code>); user override qua SharedPreferences (như Neutron/HiBy). KHÔNG dùng Room</td><td>UAPP/Neutron/HiBy</td></tr>
 <tr><td>7.7</td><td>Đổi DAC giữa chừng</td><td>Lib singleton không hot-swap → cắm DAC khác báo restart app</td><td>Lib docs</td></tr>
 </table>
 <p><b>Thứ tự code:</b> driver → DoP (7.1) → hardware volume (7.5) → quirks (7.6) → buffer (7.4) → DSD native (7.2, v2).</p>
