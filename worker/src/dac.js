@@ -196,13 +196,57 @@ export async function handleDacMusic(request, env) {
 // App gửi Drive token qua header X-Drive-Token.
 // Worker validate session, verify file tồn tại, trả URL có token.
 // App stream TRỰC TIẾP từ Google, Worker không proxy bytes.
+// Test endpoint: kiểm tra xem Google trả gì cho media URL (debug, không lộ token)
+export async function handleDacStreamTest(request, env) {
+  const s = await getSession(request, env);
+  if (!s) return jerr('Not logged in', 401);
+  const driveToken = await getDriveToken(request, env, s.email);
+  if (!driveToken) return jerr('Drive not connected', 400);
+  const fileId = new URL(request.url).pathname.split('/').pop() || '';
+  if (!fileId) return jerr('Bad file id', 400);
+  try {
+    const out = {};
+    // Test 1: query param token (cũ)
+    const testUrl = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&access_token=${encodeURIComponent(driveToken)}`;
+    const r1 = await fetch(testUrl, { method: 'HEAD' });
+    out.query = { status: r1.status, ct: r1.headers.get('Content-Type')||'' };
+    // Test 2: Bearer header (kiểu mihonban) — chưa đo bao giờ
+    const r2 = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
+      { method: 'HEAD', headers: { 'Authorization': 'Bearer ' + driveToken } });
+    out.bearer = { status: r2.status, ct: r2.headers.get('Content-Type')||'' };
+    return sJson(out);
+  } catch(e) {
+    return jerr('Test failed: ' + e.message, 500);
+  }
+}
+
+// Trả Drive access token tươi cho browser để gọi Google trực tiếp (mượt P1)
+// Token là của chính user, ngắn hạn (~1h), browser vốn đã giữ từ OAuth
+// Nguồn: pattern cloudstream (browser fetch Google trực tiếp, né IP block Worker)
+export async function handleDacDriveToken(request, env) {
+  const s = await getSession(request, env);
+  if (!s) return jerr('Not logged in', 401);
+  const driveToken = await getDriveToken(request, env, s.email);
+  if (!driveToken) return jerr('Drive not connected', 400);
+  // Validate token thật với Google: token bị revoke thì D1 không biết,
+  // Google trả 401 không kèm CORS header khiến browser báo "Failed to fetch" mù mờ
+  // Nguồn: phân tích cloudstream (họ fetch y hệt, Google có trả CORS khi token đúng)
+  try {
+    const v = await fetch('https://www.googleapis.com/oauth2/v1/tokeninfo?access_token='+encodeURIComponent(driveToken));
+    if (!v.ok) return jerr('Drive token invalid, please reconnect Drive', 401);
+  } catch(e) {
+    // Không validate được (lỗi mạng): cứ trả token, để browser thử
+  }
+  return sJson({ token: driveToken });
+}
+
 export async function handleDacStream(request, env) {
   const s = await getSession(request, env);
   if (!s) return jerr('Not logged in', 401);
   const driveToken = await getDriveToken(request, env, s.email);
   if (!driveToken) return jerr('Drive not connected', 400);
   const fileId = new URL(request.url).pathname.split('/').pop() || '';
-  if (!fileId || !/^[a-zA-Z0-9_-]+$/.test(fileId)) return jerr('Bad file id', 400);
+  if (!fileId || !/^[a-zA-Z0-9_-]+$/.test(fileId)) return jerr('A3: Bad file id', 400);
   // Verify file tồn tại và là audio (chặn IDOR)
   try {
     const meta = await fetch(
@@ -215,18 +259,269 @@ export async function handleDacStream(request, env) {
     }
     const info = await meta.json();
     if (!AUDIO_EXT.test(info.name || '') && !(info.mimeType || '').startsWith('audio/')) {
-      return jerr('Audio only', 400);
+      return jerr('A5: Audio only', 400);
     }
     // Trả direct URL — App dùng cho ExoPlayer
-    const url = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&access_token=${encodeURIComponent(driveToken)}`;
+    const url = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&access_token=${encodeURIComponent(driveToken)}&confirm=t`;
     return sJson({ url, name: info.name, mimeType: info.mimeType, size: info.size });
   } catch (e) {
     return jerr('Stream failed', 500);
   }
 }
 
+// GET /api/dac/audio/{id} — proxy audio cho web browser.
+// Browser không fetch được URL Drive trực tiếp (CORS), nên Worker proxy bytes.
+// Hỗ trợ Range request để seek được (chuẩn big tech: Spotify/Apple Music đều vậy).
+// SHA-256 hex helper cho signed URL
+async function sha256hex(str){
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+// Tạo signed URL cho audio (big tech pattern: short-lived token)
+// Frontend: fetch /api/dac/audio-sign/{id} (cần auth) -> nhận {url} -> gán audio.src trực tiếp
+export async function handleDacAudioSign(request, env) {
+  try {
+    const s = await getSession(request, env);
+    if (!s) return jerr('Not logged in', 401);
+    const fileId = new URL(request.url).pathname.split('/').pop() || '';
+    if (!fileId || !/^[a-zA-Z0-9_-]+$/.test(fileId)) return jerr('Bad file id', 400);
+    // P2b: ký token ngắn hạn (10 phút) — session token không còn nằm trong URL
+    const exp = Date.now() + 10*60*1000;
+    const secret = env.JWT_SECRET || 'dac-audio-sign';
+    const sig = await sha256hex(fileId + '|' + s.email + '|' + exp + '|' + secret);
+    const raw = fileId + '|' + s.email + '|' + exp + '|' + sig;
+    const t = btoa(raw).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+    const url = new URL(request.url);
+    return sJson({ url: url.origin + '/api/dac/audio/' + fileId + '?t=' + t });
+  } catch(e) {
+    return jerr('Sign error: ' + e.message, 500);
+  }
+}
+
+// Serve audio bằng signed token (không cần Authorization header)
+// <audio> có thể dùng trực tiếp, browser tự xử lý Range/seek
+export async function handleDacAudioToken(request, env) {
+  const url = new URL(request.url);
+  const fileId = url.pathname.split('/').pop() || '';
+  const token = url.searchParams.get('t') || '';
+  if (!fileId || !/^[a-zA-Z0-9_-]+$/.test(fileId)) return jerr('Bad file id', 400);
+  if (!token) return jerr('Missing token', 401);
+  try {
+    const decoded = atob(token.replace(/-/g,'+').replace(/_/g,'/'));
+    const parts = decoded.split('|');
+    if (parts.length !== 4) return jerr('Bad token', 401);
+    const [tid, email, expStr, sig] = parts;
+    if (tid !== fileId) return jerr('Token mismatch', 401);
+    if (Date.now() > parseInt(expStr, 10)) return jerr('Token expired', 401);
+    const secret = env.JWT_SECRET || 'dac-audio-sign';
+    const expectedSig = await sha256hex(tid + '|' + email + '|' + expStr + '|' + secret);
+    if (sig !== expectedSig) return jerr('Bad signature', 401);
+  } catch(e) {
+    return jerr('Invalid token', 401);
+  }
+  // Token hợp lệ: proxy audio từ Drive (dùng email từ token)
+  const driveToken = await getDriveToken(request, env, email);
+  if (!driveToken) return jerr('Drive not connected', 400);
+  try {
+    const meta = await fetch(
+      `https://www.googleapis.com/drive/v3/files/${fileId}?fields=id,name,mimeType,size`,
+      { headers: { 'Authorization': 'Bearer ' + driveToken } }
+    );
+    if (!meta.ok) return jerr('File not found', 404);
+    const info = await meta.json();
+    if (!AUDIO_EXT.test(info.name || '') && !(info.mimeType || '').startsWith('audio/')) {
+      return jerr('Audio only', 400);
+    }
+    const headers = { 'Authorization': 'Bearer ' + driveToken };
+    const range = request.headers.get('Range');
+    if (range) headers['Range'] = range;
+    const dr = await fetch(
+      `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
+      { headers }
+    );
+    if (!dr.ok) return jerr('Drive fetch failed', 502);
+    const rh = new Headers(dr.headers);
+    rh.set('Content-Type', mimeFor(info.name || ''));
+    rh.set('Cache-Control', 'private, max-age=3600');
+    rh.set('Access-Control-Allow-Origin', '*');
+    return new Response(dr.body, { status: dr.status, headers: rh });
+  } catch(e) {
+    return jerr('Audio proxy failed', 502);
+  }
+}
+
+// mượt P1c: Range engine chuẩn RFC 7233 (học audioneko)
+// Không forward Range verbatim nữa — parse, validate theo file size, tự dựng lại.
+
+// Cache metadata trong memory Worker (1h) — tránh gọi Drive API mỗi lần seek
+const _audioMetaCache = new Map();
+
+function parseRangeHeader(rangeHeader, totalSize) {
+  // Không có Range → stream từ đầu (nhưng vẫn trả 206 để browser biết hỗ trợ seek)
+  if (!rangeHeader || !rangeHeader.startsWith('bytes=')) {
+    return { start: 0, end: totalSize - 1 };
+  }
+  const spec = rangeHeader.slice(6).trim();
+  // Suffix range: "bytes=-500" (500 bytes cuối)
+  if (spec.startsWith('-')) {
+    const n = parseInt(spec.slice(1), 10);
+    if (isNaN(n) || n <= 0) return { start: 0, end: totalSize - 1 };
+    return { start: Math.max(0, totalSize - n), end: totalSize - 1 };
+  }
+  const parts = spec.split('-');
+  const start = parts[0] ? parseInt(parts[0].trim(), 10) : 0;
+  if (isNaN(start) || start < 0 || start >= totalSize) return null;
+  let end;
+  if (parts[1] && parts[1].trim()) {
+    end = parseInt(parts[1].trim(), 10);
+    if (isNaN(end) || end >= totalSize) end = totalSize - 1;
+  } else {
+    end = totalSize - 1;
+  }
+  if (start > end) return null;
+  return { start, end };
+}
+
+async function getAudioMetadata(fileId, driveToken) {
+  const now = Date.now();
+  const cached = _audioMetaCache.get(fileId);
+  if (cached && cached.expiresAt > now) return cached.meta;
+  try {
+    const r = await fetch(
+      `https://www.googleapis.com/drive/v3/files/${fileId}?fields=id,name,mimeType,size`,
+      { headers: { 'Authorization': 'Bearer ' + driveToken } }
+    );
+    if (!r.ok) {
+      return null;
+    }
+    const info = await r.json();
+    const size = parseInt(info.size || '0', 10);
+    if (!size || size <= 0) return null;
+    // Chuẩn hóa MIME: Drive đôi khi trả audio/x-flac, browser cần audio/flac
+    let mime = info.mimeType || '';
+    if (mime === 'audio/x-flac') mime = 'audio/flac';
+    if (!mime.startsWith('audio/')) {
+      // Fallback theo đuôi file nếu Drive trả sai
+      mime = mimeFor(info.name || '');
+    }
+    const meta = { name: info.name || '', mimeType: mime, size };
+    _audioMetaCache.set(fileId, { meta, expiresAt: now + 3600000 });
+    // Giới hạn cache 500 file để không tràn memory
+    if (_audioMetaCache.size > 500) {
+      const firstKey = _audioMetaCache.keys().next().value;
+      _audioMetaCache.delete(firstKey);
+    }
+    return meta;
+  } catch (e) {
+    return null;
+  }
+}
+
+export async function handleDacAudio(request, env) {
+  // P2b: chấp nhận signed token ngắn hạn (?t=) — session token không còn nằm trong URL
+  // Fallback: token qua query param (?token=) hoặc Authorization header (backward compat)
+  let s = await getSession(request, env);
+  const url = new URL(request.url);
+  if (!s) {
+    const sigToken = url.searchParams.get('t');
+    if (sigToken) {
+      try {
+        // padding base64url
+        let b64 = sigToken.replace(/-/g,'+').replace(/_/g,'/');
+        while (b64.length % 4) b64 += '=';
+        const decoded = atob(b64);
+        const parts = decoded.split('|');
+        if (parts.length === 4) {
+          const [tid, email, expStr, sig] = parts;
+          const fileIdFromPath = url.pathname.split('/').pop() || '';
+          const secret = env.JWT_SECRET || 'dac-audio-sign';
+          const expectedSig = await sha256hex(tid + '|' + email + '|' + expStr + '|' + secret);
+          if (tid === fileIdFromPath && sig === expectedSig && Date.now() <= parseInt(expStr, 10)) {
+            s = { email }; // signed token hợp lệ
+          }
+        }
+      } catch(e) { /* invalid token → s vẫn null */ }
+    }
+  }
+  if (!s) {
+    const qToken = url.searchParams.get('token');
+    if (qToken) {
+      const fakeReq = new Request(request.url, {
+        headers: { 'Authorization': 'Bearer ' + qToken }
+      });
+      s = await getSession(fakeReq, env);
+    }
+  }
+  if (!s) return jerr('A1: Not logged in', 401);
+  const driveToken = await getDriveToken(request, env, s.email);
+  if (!driveToken) return jerr('A2: Drive not connected', 400);
+  const fileId = new URL(request.url).pathname.split('/').pop() || '';
+  if (!fileId || !/^[a-zA-Z0-9_-]+$/.test(fileId)) return jerr('A3: Bad file id', 400);
+
+  try {
+    // Lấy metadata để validate (IDOR protection) và biết MIME
+    const meta = await getAudioMetadata(fileId, driveToken);
+    if (!meta) return jerr('A4: File not found', 404);
+    if (!AUDIO_EXT.test(meta.name || '') && !meta.mimeType.startsWith('audio/')) {
+      return jerr('A5: Audio only', 400);
+    }
+
+    // HEAD: chỉ trả headers
+    if (request.method === 'HEAD') {
+      return new Response(null, { status: 200, headers: {
+        'Content-Type': meta.mimeType,
+        'Content-Length': meta.size.toString(),
+        'Accept-Ranges': 'bytes',
+        'Cache-Control': 'private, max-age=3600',
+      }});
+    }
+
+    // Forward verbatim: giữ nguyên Range của client (nếu có), không tự tạo
+    // Học mihonban/drivecast: đơn giản, Google xử lý Range chuẩn
+    const headers = { 'Authorization': 'Bearer ' + driveToken };
+    const clientRange = request.headers.get('Range');
+    if (clientRange) {
+      headers['Range'] = clientRange;
+    }
+
+    let dr = await fetch(
+      `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&supportsAllDrives=true`,
+      { headers }
+    );
+    // Retry 401 một lần (học mihonban)
+    if (dr.status === 401) {
+      _audioMetaCache.delete(fileId);
+      dr = await fetch(
+        `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&supportsAllDrives=true`,
+        { headers }
+      );
+    }
+    if (!dr.ok) {
+      return jerr('Không tải được nhạc', 502);
+    }
+    // Không pipe HTML (virus scan page) vào <audio>
+    const ct = dr.headers.get('Content-Type') || '';
+    if (ct.includes('text/html')) {
+      return jerr('File quá lớn, Google yêu cầu xác nhận', 502);
+    }
+
+    // Relay response từ Google, nhưng override:
+    // - Content-Type: từ metadata (chuẩn audio/flac)
+    // - Content-Disposition: Google trả "attachment" (bắt tải về) → "inline" để browser phát
+    const rh = new Headers(dr.headers);
+    rh.set('Content-Type', meta.mimeType);
+    rh.set('Content-Disposition', 'inline');
+    rh.set('Accept-Ranges', 'bytes');
+    return new Response(dr.body, { status: dr.status, headers: rh });
+  } catch (e) {
+    return jerr('Không phát được nhạc', 502);
+  }
+}
+
+
 // dac-pass: đã xoá handleDacUpload và handleDacCopy (R2 không còn cần).
-// Nhạc nằm trên Google Drive của user, app stream trực tiếp.
+// Nhạc nằm trên Google Drive của user, native app stream trực tiếp, web qua proxy.
 
 // --- 4.2: D1 index + sync tăng dần ---
 
@@ -720,7 +1015,7 @@ export async function handleDacCopy(request, env) {
     // 3. Server-side copy
     const destName = (body.destName || meta.name || '').trim() || meta.name;
     const copyBody = { name: destName };
-    // Copy vào thư mục "DAC Player" (tạo nếu chưa có) — gọn cho user
+    // Copy nhạc vào root Drive của user (đơn giản, không tạo thêm thư mục)
     // (đơn giản: copy vào root, user tự sắp xếp; tạo folder thêm 1 API call)
     const r = await fetch(
       `https://www.googleapis.com/drive/v3/files/${sourceId}/copy?fields=id,name,size,mimeType`,

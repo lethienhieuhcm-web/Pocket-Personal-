@@ -8,7 +8,7 @@ import {handleAnalytics, handleInsights, handleBankGet, handleBankPost, handleRe
 import {handleRegister, handleSendCode, handleVerifyCode, handleLogin, handleLogout, handleMe, handleGoogleLogin, handleGoogleCallback, handleGoogleIdToken, handleListSessions, handleRevokeSession, handleVerifyEmail, handleResendVerification, handleForgotPassword, handleResetPassword, handleResetPasswordPage } from './auth.js';
 import {handleGetPlan, handleGetUsage, handleSetPlan} from './billing.js';
 import {handleDriveAuthUrl, handleDriveCallback, handleDriveStatus, handleDriveDisconnect, handleDriveMusic, handleDriveStream, handleDriveUpload} from './drive.js';
-import {handleDacMusic, handleDacStream, handleDacResolve, handleDacCopy, handleDacFolders, handleDacSync, handleDacSearch, handleDacLibrary, handleDacPlaylistList, handleDacPlaylistCreate, handleDacPlaylistDelete, handleDacPlaylistGet, handleDacPlaylistSetItems} from './dac.js';
+import {handleDacMusic, handleDacStream, handleDacStreamTest, handleDacDriveToken, handleDacAudio, handleDacAudioSign, handleDacAudioToken, handleDacResolve, handleDacCopy, handleDacFolders, handleDacSync, handleDacSearch, handleDacLibrary, handleDacPlaylistList, handleDacPlaylistCreate, handleDacPlaylistDelete, handleDacPlaylistGet, handleDacPlaylistSetItems} from './dac.js';
 import {handleSpotifyAuthUrl, handleSpotifyCallback, handleSpotifyStatus, handleSpotifySearch} from './spotify.js';
 import {handleBrowse, handleBrowseWs} from './browser.js';
 import { drizzle } from "drizzle-orm/d1";
@@ -95,7 +95,13 @@ const ROUTES = [
   ['GET',    '/api/dac/music',       handleDacMusic,           'user'],
   ['GET',    '/api/dac/folders',     handleDacFolders,         'user'],
   ['POST',   '/api/dac/sync',        handleDacSync,            'user'],
-  ['GET',    '/api/dac/stream/*',    handleDacStream,            'user'],
+  ['GET',    '/api/dac/stream/*',    handleDacStream, handleDacStreamTest,            'user'],
+  ['GET',    '/api/dac/stream-test/*', handleDacStreamTest,       'user'],
+  ['GET',    '/api/dac/drive-token',  handleDacDriveToken,        'user'],
+  ['GET',    '/api/dac/audio/*',     handleDacAudio,             'public'],
+  ['HEAD',   '/api/dac/audio/*',     handleDacAudio,             'public'],
+  ['GET',    '/api/dac/audio-sign/*', handleDacAudioSign,        'user'],
+  ['GET',    '/api/dac/audio-t/*',   handleDacAudioToken,        'public'],
   ['GET',    '/api/dac/search',      handleDacSearch,            'user'],
   ['GET',    '/api/dac/library',     handleDacLibrary,           'user'],
   // --- 4.9: playlist D1 (đồng bộ 2 máy) ---
@@ -328,9 +334,13 @@ export default {
     if (url.pathname === "/dac" || url.pathname === "/dac.html") {
       return serveAsset(env, "/english/dac.html"+url.search);
    }
-    // dacweb v2.1: Web Player cho dac-app
-    if (url.pathname === "/dacplayer" || url.pathname === "/dacplayer/") {
+    // dacweb v2.1: Web Player cho dac-app (đổi tên DAC Player → DAC Pocket 2026-10-16)
+    if (url.pathname === "/dacpocket" || url.pathname === "/dacpocket/") {
       return serveAsset(env, "/english/dacplayer.html"+url.search);
+   }
+    // Redirect tên cũ → tên mới (giữ query string, 301 permanent)
+    if (url.pathname === "/dacplayer" || url.pathname === "/dacplayer/") {
+      return Response.redirect(url.origin + "/dacpocket/" + url.search, 301);
    }
     if (url.pathname === "/dac-player-debug.apk") {
       // 2.5: APK vượt 25 MiB giới hạn Workers Assets → serve từ R2 DATA.
