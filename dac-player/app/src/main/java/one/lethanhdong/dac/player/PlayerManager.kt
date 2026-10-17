@@ -68,6 +68,9 @@ class PlayerManager(private val context: Context) {
             // giữ seek position, chuyển bài (EOF-to-next-track), và chuyển mượt
             // giữa file local và HTTP stream.
             renderersFactory.usbSink.attachToPlayer(exo)
+            // Đọc setting DSD per-DAC (DoP/Native/PCM) cho extractor.
+            // Spec P3 dòng 23: ưu tiên Native → DoP → PCM, chọn trong setting per-DAC.
+            DacSettings.refreshFromConnectedDac(context)
         }
 
     /** Phát 1 file local (giữ API cũ cho MainActivity nút pick). */

@@ -70,7 +70,12 @@ class DffExtractor : Extractor {
     private val pcmBuf = ByteArray(6 * 1024)
 
     @Throws(IOException::class)
-    override fun sniff(input: ExtractorInput): Boolean = sniffMagic(input)
+    override fun sniff(input: ExtractorInput): Boolean {
+        // Chỉ nhận file DSD khi setting per-DAC cho phép (DoP/Native).
+        // Nếu user chọn PCM fallback → trả về false để extractor khác xử lý.
+        if (!DacSettings.shouldUseDsdExtractors()) return false
+        return sniffMagic(input)
+    }
 
     override fun init(output: ExtractorOutput) {
         this.output = output
