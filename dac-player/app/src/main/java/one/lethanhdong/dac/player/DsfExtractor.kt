@@ -61,6 +61,7 @@ class DsfExtractor : Extractor {
 
     private var sampleRateHz: Int = 0      // DSD rate gốc (vd 2822400)
     private var channelCount: Int = 0
+    private var sampleCount: Long = 0    // tổng số DSD sample/kênh (để tính duration + seek)
     private var blockSizePerChannel: Int = 4096 // đọc từ fmt chunk
     private var dataStart: Long = 0        // offset bắt đầu DSD raw
     private var dataEnd: Long = 0          // offset kết thúc
@@ -97,6 +98,29 @@ class DsfExtractor : Extractor {
         output.endTracks()
     }
 
+    /** SeekMap cho DSF: tính byte position từ timeUs (block-aligned). */
+    private inner class DsfSeekMap : SeekMap {
+        override fun isSeekable(): Boolean = true
+        override fun getDurationUs(): Long =
+            if (sampleRateHz > 0 && sampleCount > 0)
+                sampleCount * 1_000_000L / sampleRateHz
+            else C.TIME_UNSET
+
+        override fun getSeekPoints(timeUs: Long): SeekMap.SeekPoints {
+            val durationUs = getDurationUs()
+            val clampedUs = timeUs.coerceIn(0, durationUs)
+            // Sample index → block index (block-aligned để đơn giản)
+            val targetSample = clampedUs * sampleRateHz / 1_000_000L
+            val samplesPerBlock = blockSizePerChannel * 8L
+            val blockIndex = (targetSample / samplesPerBlock).coerceIn(
+                0, (sampleCount / samplesPerBlock)
+            )
+            val filePos = dataStart + blockIndex * blockSizePerChannel * channelCount
+            val seekPoint = SeekMap.SeekPoint(clampedUs, filePos)
+            return SeekMap.SeekPoints(seekPoint, seekPoint)
+        }
+    }
+
     @Throws(IOException::class)
     override fun read(input: ExtractorInput, seekPosition: PositionHolder): Int {
         if (sampleRateHz == 0) {
@@ -119,8 +143,8 @@ class DsfExtractor : Extractor {
                 .setPcmEncoding(pcmEncoding)
                 .build()
             trackOutput?.format(format)
-            // Không seek được → dùng Unseekable (chuẩn Media3 cho stream live/raw)
-            output?.seekMap(SeekMap.Unseekable(C.TIME_UNSET))
+            // Seek được: dùng DsfSeekMap (block-aligned)
+            output?.seekMap(DsfSeekMap())
             input.skipFully((dataStart - input.position).toInt())
         }
 
@@ -223,7 +247,12 @@ class DsfExtractor : Extractor {
     }
 
     override fun seek(position: Long, timeUs: Long) {
-        // v1: không seek (SeekMap báo không seekable)
+        // Reset buffer state để đọc từ vị trí mới
+        blockBufPos = 0
+        blockBufValid = 0
+        // Reset DoP marker để tránh lệch phase sau seek
+        markerA = DopPacker.MARKER_A
+        // samplesOutput sẽ được tính lại từ timeUs ở lần read tiếp theo
     }
 
     override fun release() {
@@ -259,7 +288,7 @@ class DsfExtractor : Extractor {
         require(bitsPerSample == 1 || bitsPerSample == 8) {
             "bitsPerSample không hỗ trợ: $bitsPerSample"
         }
-        pb.skipBytes(8) // sampleCount
+        sampleCount = pb.readLittleEndianLong() // tổng DSD sample/kênh (để seek)
         blockSizePerChannel = pb.readLittleEndianInt()
         require(blockSizePerChannel > 0) { "blockSizePerChannel không hợp lệ: $blockSizePerChannel" }
         pb.skipBytes(4) // reserved

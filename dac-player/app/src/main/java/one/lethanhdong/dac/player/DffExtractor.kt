@@ -65,6 +65,29 @@ class DffExtractor : Extractor {
     private var dataStart: Long = 0
     private var dataSize: Long = 0
 
+    /** Tổng DSD sample/kênh = (dataSize / channelCount) * 8. Tính sau parseHeader. */
+    private var totalSamples: Long = 0
+
+    /** SeekMap cho DFF: data multiplexed theo sample, byte offset trực tiếp. */
+    private inner class DffSeekMap : SeekMap {
+        override fun isSeekable(): Boolean = true
+        override fun getDurationUs(): Long =
+            if (sampleRateHz > 0 && totalSamples > 0)
+                totalSamples * 1_000_000L / sampleRateHz
+            else C.TIME_UNSET
+
+        override fun getSeekPoints(timeUs: Long): SeekMap.SeekPoints {
+            val durationUs = getDurationUs()
+            val clampedUs = timeUs.coerceIn(0, durationUs)
+            val targetSample = clampedUs * sampleRateHz / 1_000_000L
+            // Multiplexed: mỗi 8 sample = 1 byte/kênh → byteOffset = (sample/8) * channels
+            val byteOffset = (targetSample / 8) * channelCount
+            val filePos = (dataStart + byteOffset).coerceIn(dataStart, dataStart + dataSize)
+            val seekPoint = SeekMap.SeekPoint(clampedUs, filePos)
+            return SeekMap.SeekPoints(seekPoint, seekPoint)
+        }
+    }
+
     private var markerA: Byte = DopPacker.MARKER_A
     private var samplesOutput: Long = 0
     private val pcmBuf = ByteArray(6 * 1024)
@@ -94,6 +117,8 @@ class DffExtractor : Extractor {
     override fun read(input: ExtractorInput, seekPosition: PositionHolder): Int {
         if (sampleRateHz == 0) {
             parseHeader(input)
+            // Tính tổng sample từ dataSize (multiplexed: 1 byte = 8 sample/kênh)
+            totalSamples = (dataSize / channelCount) * 8
             val outRate: Int
             if (isPcmMode()) {
                 // PCM fallback: DSD→PCM bằng software, rate = DSD/32
@@ -109,8 +134,8 @@ class DffExtractor : Extractor {
                 .setPcmEncoding(C.ENCODING_PCM_24BIT)
                 .build()
             trackOutput?.format(format)
-            // Không seek được → dùng Unseekable (chuẩn Media3 cho stream live/raw)
-            output?.seekMap(SeekMap.Unseekable(C.TIME_UNSET))
+            // Seek được: dùng DffSeekMap
+            output?.seekMap(DffSeekMap())
             input.skipFully((dataStart - input.position).toInt())
         }
 
@@ -193,7 +218,8 @@ class DffExtractor : Extractor {
     }
 
     override fun seek(position: Long, timeUs: Long) {
-        // v1: không seek
+        // Reset marker để tránh lệch phase sau seek
+        markerA = DopPacker.MARKER_A
     }
 
     override fun release() {
