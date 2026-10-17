@@ -1,4 +1,4 @@
-# DAC Player — iOS (Swift, Native)
+# DAC Pocket — iOS (Swift, Native)
 
 App nhạc bit-perfect cho iOS, dùng chung Worker API với bản Android
 (`dac-player/`). Native Swift + SwiftUI, DAC qua AVAudioSession.

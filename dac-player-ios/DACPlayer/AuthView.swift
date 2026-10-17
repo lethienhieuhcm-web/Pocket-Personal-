@@ -20,7 +20,7 @@ struct AuthView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 16) {
-                Text("DAC Player")
+                Text("DAC Pocket")
                     .font(.largeTitle)
                     .bold()
                 Text(isRegisterMode ? "Tạo tài khoản" : "Đăng nhập")

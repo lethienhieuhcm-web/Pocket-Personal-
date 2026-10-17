@@ -210,7 +210,7 @@ struct LoginSession: Codable, Identifiable {
         else if u.contains("mac os") { os = "macOS" }
         else if u.contains("linux") { os = "Linux" }
         else { os = "Thiết bị" }
-        let app = (u.contains("dac") || u.contains("lethanhdong")) ? "DAC Player" : "Trình duyệt"
+        let app = (u.contains("dac") || u.contains("lethanhdong")) ? "DAC Pocket" : "Trình duyệt"
         return "\(os) · \(app)"
     }
 
