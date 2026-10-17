@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lưu đồ kiến trúc DAC Pocket P3 "Trái Tim Nguyên Chất"</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+body { font-family: system-ui, sans-serif; max-width: 1000px; margin: 0 auto; padding: 20px; background: #0d1117; color: #e6edf3; }
+h1 { color: #0d9d6c; }
+h2 { color: #e6edf3; border-bottom: 1px solid #21262d; padding-bottom: 8px; }
+.card { background: #161b22; border: 1px solid #21262d; border-radius: 8px; padding: 16px; margin: 16px 0; }
+.note { color: #8b949e; font-size: 13px; }
+table { border-collapse: collapse; width: 100%; margin: 12px 0; }
+th, td { border: 1px solid #21262d; padding: 8px 12px; text-align: left; font-size: 13px; }
+th { background: #161b22; color: #0d9d6c; }
+</style>
+</head>
+<body>
+<h1>Lưu đồ kiến trúc DAC Pocket P3 "Trái Tim Nguyên Chất"</h1>
+<p class="note">Ngày: 2026-10-16 · Trạng thái: ĐÃ CHỐT SPEC, CHƯA CODE<br/>Nguồn: mổ UAPP (7 patterns) + mổ Neutron (mixer gapless, USB tuning) + mổ HiBy (userspace ALSA, bus speed, volume lock) · Triết lý: tín hiệu nguyên chất tuyệt đối<br/><b>Xác thực kiến trúc:</b> 3 hãng độc lập (UAPP, Neutron, HiBy) đều hội tụ về libusb + isochronous + bypass Android — xác thực mạnh nhất cho quyết định chọn decent-player</p>
+
+<h2>1. Sơ đồ 6 tầng kiến trúc</h2>
+<div class="card"><div class="mermaid">
+flowchart TB
+    subgraph APP["Tầng 6 — Ứng dụng Kotlin"]
+        UI["UI · Signal Path visualization<br/>Setting per-DAC · Room DB<br/>MVVM + Repository · Dark only"]
+    end
+    subgraph JNI["Tầng 5 — Cầu JNI"]
+        WRAP["decent-player wrapper<br/>Không viết SWIG tay"]
+    end
+    subgraph ENG["Tầng 4 — Engine native"]
+        FQ["FileQueue<br/>current + next decoder<br/>gapless đã chứng minh"]
+        DB["DoubleBuffer<br/>lót đĩa theo block"]
+        OD["OutputDevice strategy<br/>USB / AAudio / Android"]
+        BP["Chuỗi bit-perfect 3 bước<br/>isPossible → setWhenPossible<br/>→ copyIntToUSBBitPerfect"]
+    end
+    subgraph DEC["Tầng 3 — Giải mã"]
+        FF["FFmpeg (LGPL) · TagLib<br/>SoX resample (chỉ khi bắt buộc)"]
+    end
+    subgraph USB["Tầng 2 — USB driver"]
+        DRV["libusb · isochronous transfer<br/>bypass toàn bộ Android audio stack<br/>(xác thực: UAPP + Neutron)"]
+    end
+    subgraph AND["Tầng 1 — Android OS"]
+        HAL["USB Host API · UsbManager<br/>chỉ xin quyền + lấy FD"]
+    end
+    APP --> JNI --> ENG --> DEC --> USB --> AND
+    ENG -.->|dự phòng| OBOE["Oboe → loa máy<br/>badge đỏ"]
+</div></div>
+
+<h2>2. Luồng gắn DAC USB (học từ code UAPP thật)</h2>
+<div class="card"><div class="mermaid">
+sequenceDiagram
+    participant DAC as USB DAC
+    participant OS as Android OS
+    participant APP as DAC Pocket (Kotlin)
+    participant NAT as Native (decent-player)
+    DAC->>OS: Cắm DAC (USB Audio Class)
+    OS->>APP: USB_DEVICE_ATTACHED<br/>(filter: usb-device class=1)
+    APP->>APP: Lọc class (1/0/239/255)<br/>Loại blocklist (14 vendor)<br/>Bỏ qua dock audio (vid 2235)
+    APP->>OS: requestPermission(device)<br/>(action riêng, NOT_EXPORTED)
+    OS->>APP: Permission granted
+    APP->>OS: openDevice() → UsbDeviceConnection
+    APP->>NAT: InitializeUSBDevice<br/>Fd + Raw descriptors<br/>+ Vendor/Product ID
+    NAT->>NAT: libusb parse descriptor<br/>claim interface<br/>query sample rates
+    APP->>APP: Load setting per-DAC<br/>(vendorId:productId)
+    NAT->>DAC: Sẵn sàng · isochronous stream
+</div></div>
+
+<h2>3. Luồng phát một bài — chuỗi bit-perfect</h2>
+<div class="card"><div class="mermaid">
+flowchart LR
+    SRC["File / Stream<br/>(Drive · local · Samba)"] --> FQ2["FileQueue<br/>setNextDataSource<br/>decode sẵn bài tiếp"]
+    FQ2 --> DEC2["Decoder<br/>FFmpeg native thread"]
+    DEC2 --> DB2["DoubleBuffer<br/>ghi/đọc theo block"]
+    DB2 --> DSD{"DSD?"}
+    DSD -->|DAC native| CAP["isBitPerfectPossible()<br/>hỏi DAC capability"]
+    DSD -->|Không| PCM["DSD→PCM"]
+    PCM --> CAP
+    CAP -->|Được| BP2["setSampleRate(rate gốc)<br/>badge Direct 16/44.1 ✅"]
+    CAP -->|Không| UP["Same-family upsample<br/>44.1→88.2 / 48→96<br/>badge Resample ⚠️"]
+    BP2 --> OD2{"OutputDevice"}
+    UP --> OD2
+    OD2 -->|USB DAC| U2["copyIntToUSBBitPerfect()<br/>libusb isochronous"]
+    OD2 -->|Loa máy| A2["Oboe<br/>badge đỏ Không bit-perfect"]
+</div></div>
+
+<h2>4. Phần tự viết — lib không có, mình làm (Chốt 2026-10-17)</h2>
+<div class="card">
+<p>Nguyên tắc: spec P3 làm chuẩn. Lib thiếu gì thì tự viết ở app-level. Không fork lib trừ khi bắt buộc (buffer config là trường hợp duy nhất cần patch native).</p>
+<table>
+<tr><th>#</th><th>Hạng mục</th><th>Cách làm</th><th>Tham khảo</th></tr>
+<tr><td>7.1</td><td>DSD DoP (v1)</td><td>App-level: custom DSF/DFF extractor → pack marker <code>0x05</code>/<code>0xFA</code> vào frame PCM 24-bit → set rate DoP tương đương</td><td>Plan Phase 1 của tác giả lib; HiBy</td></tr>
+<tr><td>7.2</td><td>DSD Native (v2)</td><td>Cần alt setting riêng trong driver → làm sau v1 ổn</td><td>UAPP; HiBy</td></tr>
+<tr><td>7.3</td><td>DSD→PCM fallback</td><td>FFmpeg decode (có sẵn trong pipeline ExoPlayer)</td><td>UAPP</td></tr>
+<tr><td>7.4</td><td>Buffer config 100/200/400ms</td><td>Patch native duy nhất: <code>USB_AUDIO_NUM_URBS</code> thành parameter qua JNI, default 80</td><td>Neutron</td></tr>
+<tr><td>7.5</td><td>Hardware volume</td><td>App-level: UAC feature-unit <code>SET_CUR</code> qua USB control transfer</td><td>UAPP; HiBy</td></tr>
+<tr><td>7.6</td><td>Quirks table</td><td>Room table theo <code>vendorId:productId</code>; hạt giống từ blocklist UAPP</td><td>UAPP</td></tr>
+<tr><td>7.7</td><td>Đổi DAC giữa chừng</td><td>Lib singleton không hot-swap → cắm DAC khác báo restart app</td><td>Lib docs</td></tr>
+</table>
+<p><b>Thứ tự code:</b> driver → DoP (7.1) → hardware volume (7.5) → quirks (7.6) → buffer (7.4) → DSD native (7.2, v2).</p>
+<p><b>Metadata v1:</b> MediaMetadataRetriever — lib không bundle TagLib.</p>
+</div>
+
+<h2>5. Bảng đối chiếu quyết định</h2>
+<div class="card">
+<table>
+<tr><th>Quyết định DAC Pocket</th><th>Nguồn</th></tr>
+<tr><td>libusb + isochronous, bypass Android</td><td>UAPP + Neutron (2 nguồn độc lập)</td></tr>
+<tr><td>Java chỉ xin quyền, giao FD cho native</td><td>UAPP <code>lh4.d()</code></td></tr>
+<tr><td>Blocklist 14 vendor/product</td><td>UAPP <code>lh4.c()</code></td></tr>
+<tr><td>Setting per-DAC (<code>|||</code>)</td><td>UAPP <code>bp.java</code></td></tr>
+<tr><td>Upsample cùng họ</td><td>UAPP <code>AudioPlayer.java</code></td></tr>
+<tr><td>Chuỗi bit-perfect 3 bước</td><td>UAPP (mổ sâu symbols)</td></tr>
+<tr><td>FileQueue gapless</td><td>UAPP (mổ sâu)</td></tr>
+<tr><td>Gapless kiến trúc mixer</td><td>Neutron</td></tr>
+<tr><td>Force 1ms packet + Ignore Audio Focus</td><td>Neutron</td></tr>
+<tr><td>Bus speed override (Full/High/Auto)</td><td>HiBy</td></tr>
+<tr><td>Khóa volume USB (bit-perfect)</td><td>HiBy</td></tr>
+<tr><td>Force sample rate (DAC báo sai)</td><td>HiBy</td></tr>
+<tr><td>Seamless vs Fade loại trừ nhau</td><td>HiBy</td></tr>
+<tr><td>Hai đường USB (UAC chuẩn + SA riêng)</td><td>HiBy</td></tr>
+<tr><td>Userspace ALSA (<code>snd_usb_*</code>)</td><td>HiBy</td></tr>
+<tr><td>Async isochronous + feedback endpoint</td><td>HiBy</td></tr>
+<tr><td>Render switching tự động</td><td>HiBy</td></tr>
+<tr><td>DSD→PCM tới DSD512 + DST</td><td>HiBy</td></tr>
+<tr><td>Không SWIG tay, không EQ</td><td>Phân tích trade-off</td></tr>
+</table>
+</div>
+
+<p class="note">Chi tiết đầy đủ trong <b>dac-p3-kien-truc.md</b>. Spec: <b>dac-app-plan-p3-spec.md</b>. Plan: <b>dac-app-plan.md</b> (4.4, 4.5, 4.11–4.14).<br/>Nguồn mổ: UAPP v7.1.2.8 + Neutron v2.27.2 + HiBy v4.3.1.<br/>Giới hạn: chưa code, chưa test DAC thật. decent-player cần verify API khi bắt tay code.</p>
+
+<script>mermaid.initialize({ startOnLoad: true, theme: 'dark' });</script>
+</body>
+</html>

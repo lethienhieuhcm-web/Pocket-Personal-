@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>DAC Player</title>
+<title>DAC Pocket</title>
 <link rel="stylesheet" href="/design-system.css?v=__BUILD__">
 <style>
 /* dacweb P1 — dark mode mặc định, mobile-first */
@@ -59,7 +59,7 @@ body{background:#0d1117;color:#e6edf3;margin:0;font-family:var(--pp-font);paddin
 
 <div class="dp-header">
   <div style="display:flex;align-items:center;justify-content:space-between">
-    <h1>🎵 DAC Player</h1>
+    <h1>🎵 DAC Pocket</h1>
     <button id="btnSync" title="Đồng bộ thư viện" style="background:none;border:none;color:#8b949e;font-size:20px;cursor:pointer;padding:8px">⟳</button>
   </div>
   <input class="dp-search" id="searchBox" type="search" placeholder="Tìm kiếm nhạc..." autocomplete="off">
@@ -444,27 +444,30 @@ function fmtSize(b){ if(!b) return ''; const mb=b/1048576; return mb>=1? mb.toFi
 function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
 // ===== Playback =====
+// P2b: helper tạo headers auth cho API calls
+function authHeaders(){
+  const h = {'Authorization':'Bearer '+token};
+  if(driveToken) h['X-Drive-Token'] = driveToken;
+  return h;
+}
 async function playTrack(idx){
   if(idx<0||idx>=queue.length) return;
   qIndex = idx;
   currentTrack = queue[idx];
+  gaplessReady = false; // reset cho track mới
   showLoading(true);
   try{
-    const headers = {'Authorization':'Bearer '+token};
-    if(driveToken) headers['X-Drive-Token'] = driveToken;
-    // Lấy direct URL từ Drive (có access_token), gán trực tiếp vào audio.src
-    // <audio> không cần CORS, browser tự stream
-    const sr = await fetch('/api/dac/stream/'+encodeURIComponent(currentTrack.id), {headers:headers});
-    if(!sr.ok) throw new Error('Không lấy được link phát nhạc');
-    const sj = await sr.json();
-    if(!sj.url) throw new Error('Không lấy được link phát nhạc');
-    audio.src = sj.url;
+    // P2b: lấy signed URL ngắn hạn (10 phút) — session token không nằm trong URL
+    // Browser → Worker same origin (không CORS) → Google
+    const signRes = await fetch('/api/dac/audio-sign/'+encodeURIComponent(currentTrack.id), {headers: authHeaders()});
+    if(!signRes.ok) throw new Error('Không lấy được link phát nhạc');
+    const signJson = await signRes.json();
+    if(!signJson.url) throw new Error('Không phát được bài này');
+    audio.src = signJson.url;
     try {
       await audio.play();
     } catch(playErr) {
-      const ae = audio.error;
-      const errInfo = ae ? ('code='+ae.code+' msg='+ae.message) : 'no audio.error';
-      throw new Error('Play failed: '+(playErr.message||playErr)+' | '+errInfo);
+      throw new Error('Không phát được bài này');
     }
     updatePlayerUI();
     setupMediaSession();
@@ -495,22 +498,26 @@ function updatePlayerUI(){
   const fpB = document.getElementById('fpBadge');
   fpB.textContent = badge; fpB.style.display='';
   document.getElementById('miniPlayer').classList.add('show');
-  document.title = currentTrack.name + ' — DAC Player';
+  document.title = currentTrack.name + ' — DAC Pocket';
   showLoading(false);
 }
 
 // Prefetch bài tiếp theo ở 50%
 let prefetched = -1;
-function prefetchNext(){
+async function prefetchNext(){
   const ni = qIndex+1;
   if(ni>=queue.length || ni===prefetched) return;
   prefetched = ni;
   const nt = queue[ni];
-  const headers = {'Authorization':'Bearer '+token};
-  if(driveToken) headers['X-Drive-Token'] = driveToken;
-  fetch('/api/dac/stream/'+encodeURIComponent(nt.id), {headers:headers})
-    .then(r=>r.json()).then(j=>{ if(j.url) audioPf.src = j.url; }).catch(()=>{});
+  // P2a+P2b: preload bằng signed URL ngắn hạn vào audioPf để browser cache sẵn
+  try{
+    const r = await fetch('/api/dac/audio-sign/'+encodeURIComponent(nt.id), {headers: authHeaders()});
+    if(!r.ok) return;
+    const j = await r.json();
+    if(j.url){ audioPf.src = j.url; audioPf.load(); }
+  }catch(e){ /* prefetch fail thì thôi, không ảnh hưởng phát chính */ }
 }
+let gaplessReady = false;
 audio.addEventListener('timeupdate', ()=>{
   if(!audio.duration) return;
   const pct = (audio.currentTime/audio.duration)*100;
@@ -519,6 +526,12 @@ audio.addEventListener('timeupdate', ()=>{
   document.getElementById('fpCur').textContent = fmtTime(audio.currentTime);
   // Prefetch ở 50%
   if(pct>50) prefetchNext();
+  // Gapless P2a: khi còn <5s, đảm bảo track tiếp đã preload
+  const remain = audio.duration - audio.currentTime;
+  if(remain < 5 && remain > 0 && qIndex+1 < queue.length && !gaplessReady){
+    gaplessReady = true;
+    prefetchNext();
+  }
   if('mediaSession' in navigator){
     try{ navigator.mediaSession.setPositionState({duration:audio.duration, playbackRate:audio.playbackRate, position:audio.currentTime}); }catch(e){}
   }
@@ -528,7 +541,7 @@ audio.addEventListener('loadedmetadata', ()=>{
 });
 audio.addEventListener('play', ()=>showLoading(false));
 audio.addEventListener('pause', ()=>showLoading(false));
-audio.addEventListener('ended', ()=>{ if(qIndex+1<queue.length) playTrack(qIndex+1); });
+audio.addEventListener('ended', ()=>{ nextTrack(); });
 audio.addEventListener('error', ()=>showErr('Lỗi phát nhạc.'));
 
 function fmtTime(s){ if(!s||isNaN(s)) return '0:00'; const m=Math.floor(s/60), ss=Math.floor(s%60); return m+':'+(ss<10?'0':'')+ss; }
@@ -539,8 +552,26 @@ document.getElementById('mpPlayBtn').onclick = togglePlay;
 document.getElementById('fpPlayBtn').onclick = togglePlay;
 document.getElementById('mpInfo').onclick = ()=>document.getElementById('fullPlayer').classList.add('show');
 document.getElementById('fpClose').onclick = ()=>document.getElementById('fullPlayer').classList.remove('show');
-document.getElementById('fpPrev').onclick = ()=>{ if(qIndex>0) playTrack(qIndex-1); else { audio.currentTime=0; } };
-document.getElementById('fpNext').onclick = ()=>{ if(qIndex+1<queue.length) playTrack(qIndex+1); };
+// P2a: next/prev thông minh — dùng queue hiện tại, hết thì fallback sang allTracks
+function nextTrack(){
+  if(qIndex+1 < queue.length){ playTrack(qIndex+1); return; }
+  // Hết queue hiện tại → thử allTracks (nếu đang phát từ search/filter hẹp)
+  if(allTracks.length > 1){
+    const curId = currentTrack && currentTrack.id;
+    const ai = allTracks.findIndex(t => t.id === curId);
+    if(ai >= 0 && ai+1 < allTracks.length){
+      queue = allTracks.slice(); // mở rộng queue
+      playTrack(ai+1);
+      return;
+    }
+  }
+}
+function prevTrack(){
+  if(qIndex > 0){ playTrack(qIndex-1); return; }
+  audio.currentTime = 0; // đầu queue → restart
+}
+document.getElementById('fpPrev').onclick = prevTrack;
+document.getElementById('fpNext').onclick = nextTrack;
 document.getElementById('fpSeek').addEventListener('change', (e)=>{
   if(audio.duration) audio.currentTime = (e.target.value/1000)*audio.duration;
 });
@@ -549,11 +580,11 @@ document.getElementById('fpSeek').addEventListener('change', (e)=>{
 function setupMediaSession(){
   if(!('mediaSession' in navigator) || !currentTrack) return;
   try{
-    navigator.mediaSession.metadata = new MediaMetadata({ title: currentTrack.name, artist: 'DAC Player', album: '' });
+    navigator.mediaSession.metadata = new MediaMetadata({ title: currentTrack.name, artist: 'DAC Pocket', album: '' });
     navigator.mediaSession.setActionHandler('play', ()=>audio.play());
     navigator.mediaSession.setActionHandler('pause', ()=>audio.pause());
-    navigator.mediaSession.setActionHandler('previoustrack', ()=>{ if(qIndex>0) playTrack(qIndex-1); });
-    navigator.mediaSession.setActionHandler('nexttrack', ()=>{ if(qIndex+1<queue.length) playTrack(qIndex+1); });
+    navigator.mediaSession.setActionHandler('previoustrack', prevTrack);
+    navigator.mediaSession.setActionHandler('nexttrack', nextTrack);
     navigator.mediaSession.setActionHandler('seekto', (d)=>{ if(d.seekTime!=null && audio.duration) audio.currentTime = d.seekTime; });
   }catch(e){}
 }
