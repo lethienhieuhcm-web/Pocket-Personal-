@@ -81,6 +81,118 @@ class DacSettingsActivity : AppCompatActivity() {
         }
 
         setupVolumeControl(vendorId, productId)
+        setupQuirkControls(vendorId, productId)
+    }
+
+    /**
+     * Thiết lập UI quirk override (spec P3 7.6).
+     *
+     * Đối chiếu 3 app:
+     * - UAPP: hardcode, user không sửa được
+     * - Neutron: phơi ra UI (Force 1ms packet + mô tả khi nào dùng)
+     * - HiBy: Activity riêng từng món (bus speed, sample/bit...)
+     * - Quyết định: theo Neutron — mỗi quirk có mô tả khi nào cần dùng
+     */
+    private fun setupQuirkControls(vendorId: Int, productId: Int) {
+        val quirks = one.lethanhdong.dac.player.DacQuirks
+
+        // Helper: kiểm tra có phải user override không (để hiện badge)
+        val prefs = getSharedPreferences("dac_quirks", MODE_PRIVATE)
+        fun isCustom(type: String): Boolean =
+            prefs.contains("${quirks.key(vendorId, productId)}:$type")
+
+        fun updateBadge(badge: TextView, type: String) {
+            badge.text = if (isCustom(type)) {
+                getString(R.string.quirk_badge_custom)
+            } else {
+                getString(R.string.quirk_badge_default)
+            }
+        }
+
+        // 1. Ép gói 1ms (Switch)
+        val switch1ms = findViewById<android.widget.Switch>(R.id.quirk1msSwitch)
+        val badge1ms = findViewById<TextView>(R.id.quirk1msBadge)
+        switch1ms.isChecked = quirks.getQuirk(this, vendorId, productId, quirks.FORCE_1MS_PACKET) == "1"
+        updateBadge(badge1ms, quirks.FORCE_1MS_PACKET)
+        switch1ms.setOnCheckedChangeListener { _, isChecked ->
+            if (isChecked) {
+                quirks.setUserOverride(this, vendorId, productId, quirks.FORCE_1MS_PACKET, "1")
+            } else {
+                quirks.clearUserOverride(this, vendorId, productId, quirks.FORCE_1MS_PACKET)
+            }
+            updateBadge(badge1ms, quirks.FORCE_1MS_PACKET)
+        }
+
+        // 2. Tốc độ bus (RadioGroup: 0=Auto, 1=Full, 2=High)
+        val busGroup = findViewById<android.widget.RadioGroup>(R.id.quirkBusGroup)
+        val badgeBus = findViewById<TextView>(R.id.quirkBusBadge)
+        when (quirks.getQuirk(this, vendorId, productId, quirks.BUS_SPEED)) {
+            "1" -> busGroup.check(R.id.quirkBusFull)
+            "2" -> busGroup.check(R.id.quirkBusHigh)
+            else -> busGroup.check(R.id.quirkBusAuto)
+        }
+        updateBadge(badgeBus, quirks.BUS_SPEED)
+        busGroup.setOnCheckedChangeListener { _, checkedId ->
+            val value = when (checkedId) {
+                R.id.quirkBusFull -> "1"
+                R.id.quirkBusHigh -> "2"
+                else -> "0"
+            }
+            if (value == "0") {
+                quirks.clearUserOverride(this, vendorId, productId, quirks.BUS_SPEED)
+            } else {
+                quirks.setUserOverride(this, vendorId, productId, quirks.BUS_SPEED, value)
+            }
+            updateBadge(badgeBus, quirks.BUS_SPEED)
+        }
+
+        // 3. Ép tần số mẫu (EditText)
+        val rateInput = findViewById<android.widget.EditText>(R.id.quirkRateInput)
+        val rateApply = findViewById<android.widget.Button>(R.id.quirkRateApply)
+        val rateClear = findViewById<android.widget.Button>(R.id.quirkRateClear)
+        rateInput.setText(quirks.getQuirk(this, vendorId, productId, quirks.FORCE_SAMPLE_RATE) ?: "")
+        rateApply.setOnClickListener {
+            val rate = rateInput.text.toString().trim()
+            if (rate.isNotEmpty() && rate.toIntOrNull() != null && rate.toInt() > 0) {
+                quirks.setUserOverride(this, vendorId, productId, quirks.FORCE_SAMPLE_RATE, rate)
+                Toast.makeText(this, R.string.dsd_method_saved, Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(this, R.string.quirk_rate_hint, Toast.LENGTH_SHORT).show()
+            }
+        }
+        rateClear.setOnClickListener {
+            quirks.clearUserOverride(this, vendorId, productId, quirks.FORCE_SAMPLE_RATE)
+            rateInput.setText("")
+            Toast.makeText(this, R.string.dsd_method_saved, Toast.LENGTH_SHORT).show()
+        }
+
+        // 4. Tắt DSD (Switch)
+        val switchDsd = findViewById<android.widget.Switch>(R.id.quirkDsdSwitch)
+        val badgeDsd = findViewById<TextView>(R.id.quirkDsdBadge)
+        switchDsd.isChecked = quirks.getQuirk(this, vendorId, productId, quirks.DISABLE_DSD) == "1"
+        updateBadge(badgeDsd, quirks.DISABLE_DSD)
+        switchDsd.setOnCheckedChangeListener { _, isChecked ->
+            if (isChecked) {
+                quirks.setUserOverride(this, vendorId, productId, quirks.DISABLE_DSD, "1")
+            } else {
+                quirks.clearUserOverride(this, vendorId, productId, quirks.DISABLE_DSD)
+            }
+            updateBadge(badgeDsd, quirks.DISABLE_DSD)
+        }
+
+        // 5. Chặn DAC (Switch)
+        val switchBlock = findViewById<android.widget.Switch>(R.id.quirkBlockSwitch)
+        val badgeBlock = findViewById<TextView>(R.id.quirkBlockBadge)
+        switchBlock.isChecked = quirks.isBlocklisted(this, vendorId, productId)
+        updateBadge(badgeBlock, quirks.BLOCKLIST)
+        switchBlock.setOnCheckedChangeListener { _, isChecked ->
+            if (isChecked) {
+                quirks.setUserOverride(this, vendorId, productId, quirks.BLOCKLIST, "1")
+            } else {
+                quirks.clearUserOverride(this, vendorId, productId, quirks.BLOCKLIST)
+            }
+            updateBadge(badgeBlock, quirks.BLOCKLIST)
+        }
     }
 
     /**

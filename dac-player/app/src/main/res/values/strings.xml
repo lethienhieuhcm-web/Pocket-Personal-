@@ -27,4 +27,24 @@
     <string name="volume_badge_hardware">Phần cứng</string>
     <string name="volume_badge_max">Phần cứng • Tối đa (nguyên chất)</string>
     <string name="volume_set_failed">Không điều chỉnh được âm lượng DAC.</string>
+    <string name="quirk_title">Tương thích DAC</string>
+    <string name="quirk_desc">Tùy chỉnh khi DAC gặp vấn đề. Mỗi tùy chọn giải thích khi nào cần dùng.</string>
+    <string name="quirk_1ms_title">Ép gói tin 1ms</string>
+    <string name="quirk_1ms_desc">Cho DAC buffer nhỏ hoặc xử lý USB không chuẩn gây giật định kỳ (như Neutron).</string>
+    <string name="quirk_bus_title">Tốc độ bus USB</string>
+    <string name="quirk_bus_desc">Cho DAC kén tốc độ bus (như HiBy). Thử Full-speed nếu High-speed bị lỗi.</string>
+    <string name="quirk_bus_auto">Tự động</string>
+    <string name="quirk_bus_full">Full-speed</string>
+    <string name="quirk_bus_high">High-speed</string>
+    <string name="quirk_rate_title">Ép tần số mẫu</string>
+    <string name="quirk_rate_desc">Khi DAC báo sai khả năng. Để trống = tự động.</string>
+    <string name="quirk_rate_hint">VD: 44100</string>
+    <string name="quirk_apply">Áp dụng</string>
+    <string name="quirk_clear">Xóa</string>
+    <string name="quirk_dsd_title">Tắt DSD</string>
+    <string name="quirk_dsd_desc">Khi DAC báo hỗ trợ DSD nhưng phát bị lỗi.</string>
+    <string name="quirk_block_title">Chặn DAC này</string>
+    <string name="quirk_block_desc">Không dùng DAC này với app.</string>
+    <string name="quirk_badge_default">Mặc định</string>
+    <string name="quirk_badge_custom">Tùy chỉnh</string>
 </resources>

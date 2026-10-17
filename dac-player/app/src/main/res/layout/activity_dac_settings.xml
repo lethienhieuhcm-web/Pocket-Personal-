@@ -103,5 +103,209 @@
 
         </LinearLayout>
 
+        <!-- 7.6: Quirk override (như Neutron/HiBy phơi ra UI) -->
+        <LinearLayout
+            android:id="@+id/quirkSection"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginTop="24dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/quirk_title"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="4dp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/quirk_desc"
+                android:textSize="12sp"
+                android:layout_marginBottom="12dp" />
+
+            <!-- Ép gói 1ms -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/quirk_1ms_title"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/quirk_1ms_desc"
+                android:textSize="12sp"
+                android:layout_marginBottom="4dp" />
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="12dp">
+                <Switch
+                    android:id="@+id/quirk1msSwitch"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
+                <TextView
+                    android:id="@+id/quirk1msBadge"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textSize="12sp"
+                    android:padding="4dp"
+                    android:layout_marginStart="8dp" />
+            </LinearLayout>
+
+            <!-- Tốc độ bus -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/quirk_bus_title"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/quirk_bus_desc"
+                android:textSize="12sp"
+                android:layout_marginBottom="4dp" />
+            <RadioGroup
+                android:id="@+id/quirkBusGroup"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="4dp">
+                <RadioButton
+                    android:id="@+id/quirkBusAuto"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/quirk_bus_auto"
+                    android:padding="4dp" />
+                <RadioButton
+                    android:id="@+id/quirkBusFull"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/quirk_bus_full"
+                    android:padding="4dp" />
+                <RadioButton
+                    android:id="@+id/quirkBusHigh"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/quirk_bus_high"
+                    android:padding="4dp" />
+            </RadioGroup>
+            <TextView
+                android:id="@+id/quirkBusBadge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="12sp"
+                android:padding="4dp"
+                android:layout_marginBottom="12dp" />
+
+            <!-- Ép tần số mẫu -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/quirk_rate_title"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/quirk_rate_desc"
+                android:textSize="12sp"
+                android:layout_marginBottom="4dp" />
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="12dp">
+                <EditText
+                    android:id="@+id/quirkRateInput"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:hint="@string/quirk_rate_hint"
+                    android:inputType="number" />
+                <Button
+                    android:id="@+id/quirkRateApply"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/quirk_apply" />
+                <Button
+                    android:id="@+id/quirkRateClear"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/quirk_clear" />
+            </LinearLayout>
+
+            <!-- Tắt DSD -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/quirk_dsd_title"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/quirk_dsd_desc"
+                android:textSize="12sp"
+                android:layout_marginBottom="4dp" />
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="12dp">
+                <Switch
+                    android:id="@+id/quirkDsdSwitch"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
+                <TextView
+                    android:id="@+id/quirkDsdBadge"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textSize="12sp"
+                    android:padding="4dp"
+                    android:layout_marginStart="8dp" />
+            </LinearLayout>
+
+            <!-- Chặn DAC -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/quirk_block_title"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/quirk_block_desc"
+                android:textSize="12sp"
+                android:layout_marginBottom="4dp" />
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+                <Switch
+                    android:id="@+id/quirkBlockSwitch"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
+                <TextView
+                    android:id="@+id/quirkBlockBadge"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textSize="12sp"
+                    android:padding="4dp"
+                    android:layout_marginStart="8dp" />
+            </LinearLayout>
+
+        </LinearLayout>
+
     </LinearLayout>
 </ScrollView>
