@@ -9,8 +9,18 @@ Run via cron every 5 minutes.
 import json, re, sys, os, tempfile
 from datetime import datetime
 
-sys.path.insert(0, "/opt/hatch/skills/skill-creator/bin")
-from dynamic_credentials import add_surrogate_to_request
+# Prefer the bundled copy next to this script (survives VM replacements and
+# system skill-path moves); fall back to the live system skill path if present.
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+if _SCRIPT_DIR not in sys.path:
+    sys.path.insert(0, _SCRIPT_DIR)
+if os.path.isdir("/opt/muse/skills/custom-connector-setup/bin"):
+    sys.path.insert(1, "/opt/muse/skills/custom-connector-setup/bin")
+try:
+    from dynamic_credentials import add_surrogate_to_request
+except ModuleNotFoundError:
+    sys.path.insert(0, "/opt/muse/skills/custom-connector-setup/bin")
+    from dynamic_credentials import add_surrogate_to_request
 
 import urllib.request
 
@@ -178,8 +188,11 @@ def extract_with_ocr_fallback(pdf_bytes, title):
             print(f"  OCR failed: {e}")
     return parts
 
-def process_pdf(pdf_bytes, title):
-    text_parts = extract_with_ocr_fallback(pdf_bytes, title)
+def process_parts(text_parts, title):
+    """Shared pipeline: text parts -> chapters + CEFR + word frequencies.
+
+    Used by both PDF and EPUB processing (EPUB has no OCR stage).
+    """
     full_text = "\n".join(text_parts)
     # Clean
     full_text = re.sub(r"\n{3,}", "\n\n", full_text)
@@ -209,6 +222,14 @@ def process_pdf(pdf_bytes, title):
         "ts": int(datetime.now().timestamp() * 1000),
         "status": "done",
     }, all_words
+
+def process_pdf(pdf_bytes, title):
+    """PDF path: extract text with OCR fallback, then shared pipeline."""
+    return process_parts(extract_with_ocr_fallback(pdf_bytes, title), title)
+
+def process_epub(epub_bytes, title):
+    """EPUB path: extract text from EPUB, then shared pipeline."""
+    return process_parts(extract_epub(epub_bytes), title)
 
 def main():
     print(f"[{datetime.now()}] Book processor starting", flush=True)
