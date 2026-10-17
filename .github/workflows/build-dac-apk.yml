@@ -31,6 +31,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup libflac source
+        run: |
+          bash decent-player/libs/decent-media3-decoder-flac/setup.sh
+
       # Clone decent-player sparse (chỉ lấy libs/, tránh AGPL Felicity).
           
       - name: Setup JDK 21
@@ -132,6 +136,10 @@ jobs:
 
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Setup libflac source
+        run: |
+          bash decent-player/libs/decent-media3-decoder-flac/setup.sh
 
       # Setup giống hệt job build (decent-player, JDK, SDK, NDK, Gradle) —
       # job này tự build test APK nên cần đủ toolchain, không dùng lại artifact.
