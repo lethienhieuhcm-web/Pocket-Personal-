@@ -9,6 +9,8 @@ import androidx.media3.common.Tracks
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.extractor.DefaultExtractorsFactory
 import com.decent.usbaudio.UsbAudioDevice
 import java.io.File
 import kotlinx.coroutines.CoroutineScope
@@ -42,6 +44,17 @@ class PlayerManager(private val context: Context) {
         .setRenderersFactory(renderersFactory)
         .setLoadControl(
             renderersFactory.wrapLoadControl(DefaultLoadControl())
+        )
+        .setMediaSourceFactory(
+            // Đăng ký DsfExtractor để phát file .dsf qua DoP (spec P3 7.1).
+            // DefaultExtractorsFactory.createExtractors() đã có sẵn các
+            // extractor chuẩn; ta thêm DsfExtractor vào đầu để ưu tiên sniff.
+            DefaultMediaSourceFactory(context).setExtractorsFactory {
+                val extractors = DefaultExtractorsFactory()
+                    .createExtractors().toMutableList()
+                extractors.add(0, DsfExtractor())
+                extractors.toTypedArray()
+            }
         )
         .build()
         .also { exo ->
