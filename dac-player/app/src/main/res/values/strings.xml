@@ -47,4 +47,10 @@
     <string name="quirk_block_desc">Không dùng DAC này với app.</string>
     <string name="quirk_badge_default">Mặc định</string>
     <string name="quirk_badge_custom">Tùy chỉnh</string>
+    <string name="buffer_title">Bộ đệm USB</string>
+    <string name="buffer_desc">Dung lượng bộ đệm cho đường USB. Tăng lên nếu bị giật/gián đoạn.</string>
+    <string name="buffer_80">80 (~80ms) — mặc định</string>
+    <string name="buffer_200">200 (~200ms)</string>
+    <string name="buffer_400">400 (~400ms)</string>
+    <string name="buffer_restart_note">Cần khởi động lại app để áp dụng.</string>
 </resources>

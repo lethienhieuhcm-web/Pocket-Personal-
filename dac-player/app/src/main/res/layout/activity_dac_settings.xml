@@ -307,5 +307,58 @@
 
         </LinearLayout>
 
+        <!-- 7.4: Buffer config -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/buffer_title"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:layout_marginTop="24dp"
+            android:layout_marginBottom="4dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/buffer_desc"
+            android:textSize="12sp"
+            android:layout_marginBottom="8dp" />
+
+        <RadioGroup
+            android:id="@+id/bufferGroup"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <RadioButton
+                android:id="@+id/buffer80"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/buffer_80"
+                android:padding="8dp" />
+
+            <RadioButton
+                android:id="@+id/buffer200"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/buffer_200"
+                android:padding="8dp" />
+
+            <RadioButton
+                android:id="@+id/buffer400"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/buffer_400"
+                android:padding="8dp" />
+
+        </RadioGroup>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/buffer_restart_note"
+            android:textSize="12sp"
+            android:layout_marginTop="8dp" />
+
     </LinearLayout>
 </ScrollView>

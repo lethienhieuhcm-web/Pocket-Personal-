@@ -67,6 +67,23 @@ object DacSettings {
     }
 
     /**
+     * Buffer (số URB) — global, không per-DAC vì là thuộc tính pipeline.
+     * 80 ≈ 80ms @44.1kHz (mặc định), 200 ≈ 200ms, 400 ≈ 400ms.
+     */
+    fun getBufferUrbs(context: Context): Int {
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        return prefs.getInt("buffer_urbs", 80).coerceIn(16, 400)
+    }
+
+    fun setBufferUrbs(context: Context, urbs: Int) {
+        require(urbs in 16..400) { "Số URB không hợp lệ: $urbs" }
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .putInt("buffer_urbs", urbs)
+            .apply()
+    }
+
+    /**
      * Key SharedPreferences cho hardware volume — per-DAC như DSD method.
      * Giá trị 0–100, mặc định 100 (tối đa = bit-perfect).
      */

@@ -50,7 +50,13 @@ class DacRenderersFactory(context: Context) : DefaultRenderersFactory(context) {
         // Dòng tích hợp lõi: wrap delegate bằng UsbAudioSink.
         // UsbAudioSink tự phát hiện encoding (float vs integer) trong handleBuffer()
         // và route sang enqueue(FloatArray) hoặc enqueueRaw(ByteArray).
-        UsbAudioSink(delegate, appContext)
+        // Buffer URBs từ setting (7.4) — cần restart app để áp dụng vì ring
+        // allocate lúc tạo stream.
+        val numUrbs = DacSettings.getBufferUrbs(appContext)
+        UsbAudioSink(
+            delegate, appContext,
+            com.decent.usbaudio.media3.UsbAudioSinkConfig(numUrbs = numUrbs)
+        )
     }
 
     init {

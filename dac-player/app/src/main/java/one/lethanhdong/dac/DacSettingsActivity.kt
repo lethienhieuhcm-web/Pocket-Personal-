@@ -82,6 +82,37 @@ class DacSettingsActivity : AppCompatActivity() {
 
         setupVolumeControl(vendorId, productId)
         setupQuirkControls(vendorId, productId)
+        setupBufferControl()
+    }
+
+    /**
+     * Thiết lập UI buffer config (spec P3 7.4).
+     *
+     * Đối chiếu 3 app:
+     * - UAPP: DoubleBuffer lót đĩa
+     * - Neutron: phơi UI Hardware/Software Latency
+     * - HiBy: không đề cập
+     *
+     * Buffer áp dụng khi tạo stream mới → cần restart app.
+     */
+    private fun setupBufferControl() {
+        val bufferGroup = findViewById<android.widget.RadioGroup>(R.id.bufferGroup)
+
+        when (one.lethanhdong.dac.player.DacSettings.getBufferUrbs(this)) {
+            200 -> bufferGroup.check(R.id.buffer200)
+            400 -> bufferGroup.check(R.id.buffer400)
+            else -> bufferGroup.check(R.id.buffer80)
+        }
+
+        bufferGroup.setOnCheckedChangeListener { _, checkedId ->
+            val urbs = when (checkedId) {
+                R.id.buffer200 -> 200
+                R.id.buffer400 -> 400
+                else -> 80
+            }
+            one.lethanhdong.dac.player.DacSettings.setBufferUrbs(this, urbs)
+            Toast.makeText(this, R.string.buffer_restart_note, Toast.LENGTH_LONG).show()
+        }
     }
 
     /**
