@@ -104,6 +104,7 @@ cách UAPP / Neutron / HiBy đã làm (đã mổ và có báo cáo).
 | # | Hạng mục | Cách làm | Tham khảo |
 |---|---|---|---|
 | 7.1 | DSD DoP (v1) | App-level, không đụng driver: custom DSF/DFF extractor → pack marker `0x05`/`0xFA` vào frame PCM 24-bit → set rate DoP tương đương (DSD64→176.4kHz…) | Plan Phase 1 của chính tác giả lib (`DSD_SUPPORT.md`); HiBy `check dop dsd` |
+| 7.1a | **ĐÃ CODE 17/10** | `DopPacker.kt` (pack DoP v1.1, đảo bit, marker luân phiên) + `DsfExtractor.kt` (Media3 Extractor, DSF stereo, little-endian) + `DopPackerTest.kt` (unit test). Đăng ký vào `PlayerManager` qua `setExtractorsFactory`. 3 bug fix khi review: marker sai chuỗi, timeUs=0, endianness big/little | — |
 | 7.2 | DSD Native (v2) | Cần alt setting riêng trong driver → làm sau khi v1 ổn (fork lib hoặc contribute upstream) | UAPP `getAvailableDSDRates`; HiBy UAC2 alt setting |
 | 7.3 | DSD→PCM fallback | Dùng FFmpeg decode (có sẵn trong pipeline ExoPlayer của lib, Path 1) | UAPP `libaudsd2pcm.so` |
 | 7.4 | Buffer config 100/200/400ms | Patch native duy nhất: `USB_AUDIO_NUM_URBS` (đang hardcode 80) thành parameter qua JNI, default 80 | Neutron phơi low-latency config cho user |

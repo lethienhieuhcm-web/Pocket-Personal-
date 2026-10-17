@@ -90,7 +90,7 @@ flowchart LR
 <p>Nguyên tắc: spec P3 làm chuẩn. Lib thiếu gì thì tự viết ở app-level. Không fork lib trừ khi bắt buộc (buffer config là trường hợp duy nhất cần patch native).</p>
 <table>
 <tr><th>#</th><th>Hạng mục</th><th>Cách làm</th><th>Tham khảo</th></tr>
-<tr><td>7.1</td><td>DSD DoP (v1)</td><td>App-level: custom DSF/DFF extractor → pack marker <code>0x05</code>/<code>0xFA</code> vào frame PCM 24-bit → set rate DoP tương đương</td><td>Plan Phase 1 của tác giả lib; HiBy</td></tr>
+<tr><td>7.1</td><td>DSD DoP (v1) — <b style="color:#4ade80">ĐÃ CODE 17/10</b></td><td><code>DopPacker.kt</code> + <code>DsfExtractor.kt</code> + <code>DopPackerTest.kt</code>. Pack DoP v1.1 (marker <code>0x05</code>/<code>0xFA</code> luân phiên), DSF stereo little-endian → PCM 176.4kHz/24-bit</td><td>Plan Phase 1 của tác giả lib; HiBy</td></tr>
 <tr><td>7.2</td><td>DSD Native (v2)</td><td>Cần alt setting riêng trong driver → làm sau v1 ổn</td><td>UAPP; HiBy</td></tr>
 <tr><td>7.3</td><td>DSD→PCM fallback</td><td>FFmpeg decode (có sẵn trong pipeline ExoPlayer)</td><td>UAPP</td></tr>
 <tr><td>7.4</td><td>Buffer config 100/200/400ms</td><td>Patch native duy nhất: <code>USB_AUDIO_NUM_URBS</code> thành parameter qua JNI, default 80</td><td>Neutron</td></tr>
@@ -128,7 +128,7 @@ flowchart LR
 </table>
 </div>
 
-<p class="note">Chi tiết đầy đủ trong <b>dac-p3-kien-truc.md</b>. Spec: <b>dac-app-plan-p3-spec.md</b>. Plan: <b>dac-app-plan.md</b> (4.4, 4.5, 4.11–4.14).<br/>Nguồn mổ: UAPP v7.1.2.8 + Neutron v2.27.2 + HiBy v4.3.1.<br/>Giới hạn: chưa code, chưa test DAC thật. decent-player cần verify API khi bắt tay code.</p>
+<p class="note">Chi tiết đầy đủ trong <b>dac-p3-kien-truc.md</b>. Spec: <b>dac-app-plan-p3-spec.md</b>. Plan: <b>dac-app-plan.md</b> (4.4, 4.5, 4.11–4.14).<br/>Nguồn mổ: UAPP v7.1.2.8 + Neutron v2.27.2 + HiBy v4.3.1.<br/>Giới hạn: Phase 1 (DoP) đã code + unit test, chưa test DAC thật. decent-player cần verify API khi bắt tay code.</p>
 
 <script>mermaid.initialize({ startOnLoad: true, theme: 'dark' });</script>
 </body>
