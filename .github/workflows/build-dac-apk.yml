@@ -32,21 +32,7 @@ jobs:
         uses: actions/checkout@v4
 
       # Clone decent-player sparse (chỉ lấy libs/, tránh AGPL Felicity).
-      # Pin commit đã verify (2026-10-12) để build reproducible.
-      - name: Clone decent-player libs (sparse, pinned)
-        run: |
-          git clone --filter=blob:none --sparse \
-            https://github.com/Ma145/decent-player.git decent-player
-          cd decent-player
-          git checkout d039f9d6b1ec30901a5cd6edf72c29cde362a549
-          git sparse-checkout set libs
-          ls libs/decent-usb-audio-driver \
-             libs/decent-usb-audio-wrapper-media3 \
-             libs/decent-media3-decoder-flac
-          # Tải libflac source (xiph/flac) — cần cho CMake build native
-          # (theo libs/decent-media3-decoder-flac/setup.sh)
-          bash libs/decent-media3-decoder-flac/setup.sh
-
+          
       - name: Setup JDK 21
         uses: actions/setup-java@v4
         with:
@@ -149,14 +135,6 @@ jobs:
 
       # Setup giống hệt job build (decent-player, JDK, SDK, NDK, Gradle) —
       # job này tự build test APK nên cần đủ toolchain, không dùng lại artifact.
-      - name: Clone decent-player libs (sparse, pinned)
-        run: |
-          git clone --filter=blob:none --sparse \
-            https://github.com/Ma145/decent-player.git decent-player
-          cd decent-player
-          git checkout d039f9d6b1ec30901a5cd6edf72c29cde362a549
-          git sparse-checkout set libs
-          bash libs/decent-media3-decoder-flac/setup.sh
 
       - name: Setup JDK 21
         uses: actions/setup-java@v4
