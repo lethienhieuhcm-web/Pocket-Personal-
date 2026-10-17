@@ -22,4 +22,9 @@
     <string name="dsd_pcm">Chuyển sang PCM</string>
     <string name="dsd_pcm_unavailable">Chuyển sang PCM — chưa hỗ trợ</string>
     <string name="dsd_method_saved">Đã lưu cài đặt.</string>
+    <string name="volume_title">Âm lượng phần cứng</string>
+    <string name="volume_label_format">Âm lượng: %1$d</string>
+    <string name="volume_badge_hardware">Phần cứng</string>
+    <string name="volume_badge_max">Phần cứng • Tối đa (nguyên chất)</string>
+    <string name="volume_set_failed">Không điều chỉnh được âm lượng DAC.</string>
 </resources>

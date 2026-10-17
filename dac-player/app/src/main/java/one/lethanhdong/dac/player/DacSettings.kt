@@ -67,6 +67,28 @@ object DacSettings {
     }
 
     /**
+     * Key SharedPreferences cho hardware volume — per-DAC như DSD method.
+     * Giá trị 0–100, mặc định 100 (tối đa = bit-perfect).
+     */
+    private fun volumeKey(vendorId: Int, productId: Int): String =
+        "${dacKey(vendorId, productId)}|||Volume"
+
+    /** Đọc hardware volume đã lưu cho DAC (0–100, mặc định 100). */
+    fun getVolume(context: Context, vendorId: Int, productId: Int): Int {
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        return prefs.getInt(volumeKey(vendorId, productId), 100).coerceIn(0, 100)
+    }
+
+    /** Lưu hardware volume cho DAC. */
+    fun setVolume(context: Context, vendorId: Int, productId: Int, volume: Int) {
+        require(volume in 0..100) { "Volume không hợp lệ: $volume" }
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .putInt(volumeKey(vendorId, productId), volume)
+            .apply()
+    }
+
+    /**
      * Cập nhật [currentDsdMethod] từ DAC đang cắm.
      * Gọi khi app khởi động, khi DAC kết nối/thay đổi.
      * Nếu không có DAC: giữ nguyên giá trị hiện tại.

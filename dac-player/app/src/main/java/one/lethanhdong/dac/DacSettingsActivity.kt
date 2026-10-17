@@ -79,5 +79,71 @@ class DacSettingsActivity : AppCompatActivity() {
             DacSettings.setDsdMethod(this, vendorId, productId, method)
             Toast.makeText(this, R.string.dsd_method_saved, Toast.LENGTH_SHORT).show()
         }
+
+        setupVolumeControl(vendorId, productId)
+    }
+
+    /**
+     * Thiết lập điều khiển hardware volume (spec P3 7.5).
+     *
+     * Đối chiếu 3 app:
+     * - UAPP: có USBMixerUnit — hardware volume qua UAC Feature Unit
+     * - HiBy: khóa volume USB để giữ bit-perfect
+     * - Quyết định: cho phép như UAPP, mặc định 100 (bit-perfect)
+     */
+    private fun setupVolumeControl(vendorId: Int, productId: Int) {
+        val volumeSection = findViewById<android.widget.LinearLayout>(R.id.volumeSection)
+        val volumeSeekBar = findViewById<android.widget.SeekBar>(R.id.volumeSeekBar)
+        val volumeLabel = findViewById<TextView>(R.id.volumeLabel)
+        val volumeBadge = findViewById<TextView>(R.id.volumeBadge)
+
+        val controller = one.lethanhdong.dac.player.UsbVolumeController(this)
+        if (!controller.init()) {
+            // DAC không có Feature Unit → ẩn volume control
+            volumeSection.visibility = android.view.View.GONE
+            return
+        }
+
+        volumeSection.visibility = android.view.View.VISIBLE
+
+        // Đọc volume đã lưu (mặc định 100)
+        var currentVolume = DacSettings.getVolume(this, vendorId, productId)
+        volumeSeekBar.progress = currentVolume
+        updateVolumeLabel(volumeLabel, volumeBadge, currentVolume)
+
+        // Áp dụng volume đã lưu vào DAC
+        controller.setVolume(currentVolume)
+
+        volumeSeekBar.setOnSeekBarChangeListener(object : android.widget.SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: android.widget.SeekBar?, progress: Int, fromUser: Boolean) {
+                if (!fromUser) return
+                currentVolume = progress
+                updateVolumeLabel(volumeLabel, volumeBadge, progress)
+            }
+
+            override fun onStartTrackingTouch(seekBar: android.widget.SeekBar?) {}
+
+            override fun onStopTrackingTouch(seekBar: android.widget.SeekBar?) {
+                // Chỉ gửi lệnh USB khi user thả tay (tránh spam controlTransfer)
+                if (controller.setVolume(currentVolume)) {
+                    DacSettings.setVolume(this@DacSettingsActivity, vendorId, productId, currentVolume)
+                } else {
+                    Toast.makeText(
+                        this@DacSettingsActivity,
+                        R.string.volume_set_failed,
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            }
+        })
+    }
+
+    private fun updateVolumeLabel(label: TextView, badge: TextView, volume: Int) {
+        label.text = getString(R.string.volume_label_format, volume)
+        badge.text = if (volume == 100) {
+            getString(R.string.volume_badge_max)
+        } else {
+            getString(R.string.volume_badge_hardware)
+        }
     }
 }
