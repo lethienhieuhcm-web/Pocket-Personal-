@@ -1,7 +1,6 @@
 package one.lethanhdong.dac.player
 
 import android.content.Context
-import android.hardware.usb.UsbConstants
 import android.hardware.usb.UsbDevice
 import android.hardware.usb.UsbDeviceConnection
 import android.hardware.usb.UsbManager
@@ -31,6 +30,8 @@ import com.decent.usbaudio.UsbAudioDevice
 class UsbVolumeController(private val context: Context) {
 
     companion object {
+        // USB descriptor types
+        private const val USB_DT_INTERFACE = 0x04
         // UAC constants
         private const val CS_INTERFACE = 0x24
         private const val FEATURE_UNIT = 0x06
@@ -100,7 +101,7 @@ class UsbVolumeController(private val context: Context) {
             if (len < 3 || i + len > raw.size) break
             val descType = raw[i + 1].toInt() and 0xFF
 
-            if (descType == UsbConstants.USB_DT_INTERFACE) {
+            if (descType == USB_DT_INTERFACE) {
                 val ifaceClass = raw[i + 5].toInt() and 0xFF
                 val ifaceSubclass = raw[i + 6].toInt() and 0xFF
                 if (ifaceClass == 1 && ifaceSubclass == 1) {
@@ -137,7 +138,8 @@ class UsbVolumeController(private val context: Context) {
     /**
      * Set volume trực tiếp bằng đơn vị 1/256 dB.
      */
-    fun setVolumeDb256(db256: Int, fuId: Int = featureUnitId ?: return false): Boolean {
+    fun setVolumeDb256(db256: Int, fuId: Int? = null): Boolean {
+        val fid = fuId ?: featureUnitId ?: return false
         val device = UsbAudioDevice.getInstance(context).findUsbAudioDevice()
             ?: return false
         val mgr = usbManager ?: return false
@@ -150,7 +152,7 @@ class UsbVolumeController(private val context: Context) {
                 ((value shr 8) and 0xFF).toByte()
             )
             val wValue = (VOLUME_CONTROL shl 8) or 0 // channel 0 = master
-            val wIndex = (fuId shl 8) or audioControlIface
+            val wIndex = (fid shl 8) or audioControlIface
             val ret = conn.controlTransfer(
                 REQ_TYPE_CLASS_INTERFACE_OUT,
                 REQ_SET_CUR,
