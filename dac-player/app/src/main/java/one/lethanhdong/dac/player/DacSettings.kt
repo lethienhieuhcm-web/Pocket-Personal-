@@ -11,7 +11,7 @@ import android.content.Context
  * Spec P3 dòng 23: DSD ưu tiên Native → DoP → PCM, chọn trong setting per-DAC.
  * - 0 = Native (DSD native — Phase 5, chưa implement)
  * - 1 = DoP (mặc định — Phase 1 đã xong)
- * - 2 = PCM (DSD→PCM fallback — cần FFmpeg, chưa xong)
+ * - 2 = PCM (DSD→PCM fallback — convert bằng software trong extractor, đã xong 17/10)
  *
  * Vì extractor của Media3 không có Context, PlayerManager sẽ đọc setting
  * khi DAC thay đổi và cập nhật vào [currentDsdMethod] (static) để extractor
@@ -82,7 +82,14 @@ object DacSettings {
         }
     }
 
-    /** Extractor DSD có nên nhận file không? Chỉ khi method là DoP (hoặc Native sau này). */
+    /**
+     * Extractor DSD có nên nhận file không? True cho cả 3 mode:
+     * DoP (output DoP), Native (sau này), PCM (output PCM fallback).
+     * @deprecated Dùng currentDsdMethod trực tiếp trong extractor.
+     */
+    @Deprecated("Dùng currentDsdMethod trực tiếp")
     fun shouldUseDsdExtractors(): Boolean =
-        currentDsdMethod == DSD_METHOD_DOP || currentDsdMethod == DSD_METHOD_NATIVE
+        currentDsdMethod == DSD_METHOD_DOP ||
+        currentDsdMethod == DSD_METHOD_NATIVE ||
+        currentDsdMethod == DSD_METHOD_PCM
 }

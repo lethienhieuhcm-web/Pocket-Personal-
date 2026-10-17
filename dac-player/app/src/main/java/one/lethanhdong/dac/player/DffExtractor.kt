@@ -71,11 +71,18 @@ class DffExtractor : Extractor {
 
     @Throws(IOException::class)
     override fun sniff(input: ExtractorInput): Boolean {
-        // Chỉ nhận file DSD khi setting per-DAC cho phép (DoP/Native).
-        // Nếu user chọn PCM fallback → trả về false để extractor khác xử lý.
-        if (!DacSettings.shouldUseDsdExtractors()) return false
+        // Nhận file DSD khi method là DoP/Native (output DoP) HOẶC PCM (output PCM fallback).
+        // Spec P3 7.3: DSD→PCM fallback — convert bằng software trong extractor.
+        val method = DacSettings.currentDsdMethod
+        if (method != DacSettings.DSD_METHOD_DOP &&
+            method != DacSettings.DSD_METHOD_NATIVE &&
+            method != DacSettings.DSD_METHOD_PCM) return false
         return sniffMagic(input)
     }
+
+    /** True nếu đang ở chế độ PCM fallback (convert DSD→PCM thay vì pack DoP). */
+    private fun isPcmMode(): Boolean =
+        DacSettings.currentDsdMethod == DacSettings.DSD_METHOD_PCM
 
     override fun init(output: ExtractorOutput) {
         this.output = output
@@ -87,11 +94,18 @@ class DffExtractor : Extractor {
     override fun read(input: ExtractorInput, seekPosition: PositionHolder): Int {
         if (sampleRateHz == 0) {
             parseHeader(input)
-            val dopRate = DopPacker.dopSampleRate(sampleRateHz)
+            val outRate: Int
+            if (isPcmMode()) {
+                // PCM fallback: DSD→PCM bằng software, rate = DSD/32
+                outRate = DsdToPcmConverter.pcmSampleRate(sampleRateHz)
+            } else {
+                // DoP: rate = DSD/16
+                outRate = DopPacker.dopSampleRate(sampleRateHz)
+            }
             val format = Format.Builder()
                 .setSampleMimeType(MimeTypes.AUDIO_RAW)
                 .setChannelCount(channelCount)
-                .setSampleRate(dopRate)
+                .setSampleRate(outRate)
                 .setPcmEncoding(C.ENCODING_PCM_24BIT)
                 .build()
             trackOutput?.format(format)
@@ -105,32 +119,71 @@ class DffExtractor : Extractor {
         }
 
         // DSDIFF multiplexed theo sample: [L0][R0][L1][R1]...
-        // 1 frame stereo = 4 bytes DSD → 6 bytes PCM DoP
-        val bytesPerFrame = 2 * channelCount // 4 bytes
-        val framesPerRead = pcmBuf.size / 6
-        val dsdToRead = framesPerRead * bytesPerFrame
-        val dsdBuf = ByteArray(dsdToRead)
+        val outRate: Int
+        val pcmPos: Int
+        val samplesThisBatch: Long
+        if (isPcmMode()) {
+            // PCM fallback: 8 bytes DSD multiplexed → de-multiplex → 1 PCM sample/kênh
+            // [L0][R0][L1][R1][L2][R2][L3][R3] → L=[L0..L3], R=[R0..R3] → 6 bytes PCM stereo
+            outRate = DsdToPcmConverter.pcmSampleRate(sampleRateHz)
+            val maxPcmSamplesByBuf = pcmBuf.size / 6
+            val dsdToRead = maxPcmSamplesByBuf * 8 // 8 bytes DSD → 1 PCM sample stereo
+            val dsdBuf = ByteArray(dsdToRead)
 
-        val read = input.read(dsdBuf, 0, dsdToRead)
-        if (read == C.RESULT_END_OF_INPUT) return Extractor.RESULT_END_OF_INPUT
-        if (read <= 0) return Extractor.RESULT_CONTINUE
+            val read = input.read(dsdBuf, 0, dsdToRead)
+            if (read == C.RESULT_END_OF_INPUT) return Extractor.RESULT_END_OF_INPUT
+            if (read <= 0) return Extractor.RESULT_CONTINUE
 
-        val fullFrames = read / bytesPerFrame
-        var pcmPos = 0
-        var dsdPos = 0
-        // Marker luân phiên mỗi sample: L=05, R=FA, L=05, R=FA...
-        // Số sample/frame chẵn (2) → giữ nguyên markerA giữa các frame.
-        repeat(fullFrames) {
-            val dsdL = byteArrayOf(dsdBuf[dsdPos], dsdBuf[dsdPos + 1])
-            val dsdR = byteArrayOf(dsdBuf[dsdPos + 2], dsdBuf[dsdPos + 3])
-            DopPacker.packStereoFrame(dsdL, dsdR, markerA, pcmBuf, pcmPos)
-            pcmPos += 6
-            dsdPos += bytesPerFrame
+            val fullGroups = read / 8 // mỗi group 8 bytes → 1 PCM sample stereo
+            // De-multiplex: tách L và R
+            val dsdL = ByteArray(fullGroups * 4)
+            val dsdR = ByteArray(fullGroups * 4)
+            for (g in 0 until fullGroups) {
+                val base = g * 8
+                // L: byte 0,2,4,6 của group; R: byte 1,3,5,7
+                dsdL[g * 4] = dsdBuf[base]
+                dsdL[g * 4 + 1] = dsdBuf[base + 2]
+                dsdL[g * 4 + 2] = dsdBuf[base + 4]
+                dsdL[g * 4 + 3] = dsdBuf[base + 6]
+                dsdR[g * 4] = dsdBuf[base + 1]
+                dsdR[g * 4 + 1] = dsdBuf[base + 3]
+                dsdR[g * 4 + 2] = dsdBuf[base + 5]
+                dsdR[g * 4 + 3] = dsdBuf[base + 7]
+            }
+            pcmPos = DsdToPcmConverter.convertStereo(
+                dsdL, 0, dsdR, 0, fullGroups * 4, pcmBuf, 0
+            )
+            samplesThisBatch = fullGroups * 2L
+        } else {
+            // DoP: 1 frame stereo = 4 bytes DSD → 6 bytes PCM DoP
+            outRate = DopPacker.dopSampleRate(sampleRateHz)
+            val bytesPerFrame = 2 * channelCount // 4 bytes
+            val framesPerRead = pcmBuf.size / 6
+            val dsdToRead = framesPerRead * bytesPerFrame
+            val dsdBuf = ByteArray(dsdToRead)
+
+            val read = input.read(dsdBuf, 0, dsdToRead)
+            if (read == C.RESULT_END_OF_INPUT) return Extractor.RESULT_END_OF_INPUT
+            if (read <= 0) return Extractor.RESULT_CONTINUE
+
+            val fullFrames = read / bytesPerFrame
+            var pos = 0
+            var dsdPos = 0
+            // Marker luân phiên mỗi sample: L=05, R=FA, L=05, R=FA...
+            // Số sample/frame chẵn (2) → giữ nguyên markerA giữa các frame.
+            repeat(fullFrames) {
+                val dsdL = byteArrayOf(dsdBuf[dsdPos], dsdBuf[dsdPos + 1])
+                val dsdR = byteArrayOf(dsdBuf[dsdPos + 2], dsdBuf[dsdPos + 3])
+                DopPacker.packStereoFrame(dsdL, dsdR, markerA, pcmBuf, pos)
+                pos += 6
+                dsdPos += bytesPerFrame
+            }
+            pcmPos = pos
+            samplesThisBatch = fullFrames * 2L
         }
 
-        val dopRate = DopPacker.dopSampleRate(sampleRateHz)
-        val timeUs = samplesOutput * 1_000_000L / dopRate
-        samplesOutput += fullFrames * 2
+        val timeUs = samplesOutput * 1_000_000L / outRate
+        samplesOutput += samplesThisBatch
 
         trackOutput?.sampleData(ParsableByteArray(pcmBuf, pcmPos), pcmPos)
         trackOutput?.sampleMetadata(
