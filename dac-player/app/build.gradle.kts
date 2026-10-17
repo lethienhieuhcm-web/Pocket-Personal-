@@ -206,3 +206,10 @@ dependencies {
     // 4.6: runTest cho test logic refresh token.
     androidTestImplementation(libs.coroutines.test)
 }
+
+// 7.6: Tắt KSP incremental cho Room — fix lỗi
+// "MissingType: Element 'MusicDatabase' references a type that is not present"
+// khi thêm entity mới (DacQuirk). KSP incremental không nhận diện file mới.
+ksp {
+    arg("room.incremental", "false")
+}
