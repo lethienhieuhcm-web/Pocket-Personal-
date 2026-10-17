@@ -10,6 +10,7 @@ import androidx.media3.extractor.ExtractorInput
 import androidx.media3.extractor.ExtractorOutput
 import androidx.media3.extractor.PositionHolder
 import androidx.media3.extractor.SeekMap
+import androidx.media3.extractor.SeekPoint
 import androidx.media3.extractor.TrackOutput
 import java.io.IOException
 
@@ -116,7 +117,7 @@ class DsfExtractor : Extractor {
                 0, (sampleCount / samplesPerBlock)
             )
             val filePos = dataStart + blockIndex * blockSizePerChannel * channelCount
-            val seekPoint = SeekMap.SeekPoint(clampedUs, filePos)
+            val seekPoint = SeekPoint(clampedUs, filePos)
             return SeekMap.SeekPoints(seekPoint, seekPoint)
         }
     }

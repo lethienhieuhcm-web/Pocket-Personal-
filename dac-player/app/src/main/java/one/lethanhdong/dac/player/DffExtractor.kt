@@ -10,6 +10,7 @@ import androidx.media3.extractor.ExtractorInput
 import androidx.media3.extractor.ExtractorOutput
 import androidx.media3.extractor.PositionHolder
 import androidx.media3.extractor.SeekMap
+import androidx.media3.extractor.SeekPoint
 import androidx.media3.extractor.TrackOutput
 import java.io.IOException
 
@@ -83,7 +84,7 @@ class DffExtractor : Extractor {
             // Multiplexed: mỗi 8 sample = 1 byte/kênh → byteOffset = (sample/8) * channels
             val byteOffset = (targetSample / 8) * channelCount
             val filePos = (dataStart + byteOffset).coerceIn(dataStart, dataStart + dataSize)
-            val seekPoint = SeekMap.SeekPoint(clampedUs, filePos)
+            val seekPoint = SeekPoint(clampedUs, filePos)
             return SeekMap.SeekPoints(seekPoint, seekPoint)
         }
     }
