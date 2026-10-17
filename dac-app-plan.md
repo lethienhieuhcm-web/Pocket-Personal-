@@ -107,7 +107,7 @@ Cross-platform framework chỉ giúp share 50% (UI + Logic). 50% còn lại (DAC
 │ Android App (Kotlin — Native)                                │
 │                                                               │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────────┐   │
-│  │ Auth Screen  │  │ Music Library│  │ DAC Player       │   │
+│  │ Auth Screen  │  │ Music Library│  │ DAC Pocket       │   │
 │  │ - Đăng ký    │  │ - List nhạc  │  │ - USB DAC        │   │
 │  │ - Đăng nhập  │  │ - Tìm kiếm   │  │ - Bit-perfect    │   │
 │  │ - Đăng xuất  │  │ - Import     │  │ - Play/Pause/Seek│   │
@@ -142,7 +142,7 @@ Cross-platform framework chỉ giúp share 50% (UI + Logic). 50% còn lại (DAC
 │ iOS App (Swift — Native)                                      │
 │                                                               │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────────┐   │
-│  │ Auth Screen  │  │ Music Library│  │ DAC Player       │   │
+│  │ Auth Screen  │  │ Music Library│  │ DAC Pocket       │   │
 │  │ - Đăng ký    │  │ - List nhạc  │  │ - USB DAC        │   │
 │  │ - Đăng nhập  │  │ - Tìm kiếm   │  │ - Bit-perfect*   │   │
 │  │ - Đăng xuất  │  │ - Import     │  │ - Play/Pause/Seek│   │
@@ -459,7 +459,7 @@ func login(email: String, password: String) async -> Result {
 ### Phase 4 — Hoàn thiện (cả 2 platform)
 
 **Mục tiêu:** Tính năng nâng cao, polish, chuẩn bị launch.
-**Nguyên tắc sắp xếp (học từ ông lớn, chốt 2026-10-14):** table stakes trước (cái nào cả 5 ông đều có thì mình phải có), rồi đến nền tảng tốc độ, rồi đến điểm khác biệt của Drive, rồi polish. Chi tiết nghiên cứu: artifact "DAC Player Competitive Research".
+**Nguyên tắc sắp xếp (học từ ông lớn, chốt 2026-10-14):** table stakes trước (cái nào cả 5 ông đều có thì mình phải có), rồi đến nền tảng tốc độ, rồi đến điểm khác biệt của Drive, rồi polish. Chi tiết nghiên cứu: artifact "DAC Pocket Competitive Research".
 
 #### Bước 4.1 — Duyệt theo thư mục Drive (cả 2 platform) ✅ PASS 2026-10-14
 
@@ -491,6 +491,9 @@ func login(email: String, password: String) async -> Result {
 |------|----------|--------|
 | Hiển thị 2 số | Format nguồn (VD 96kHz/24-bit) + tốc độ thực ra DAC | HiBy output-stats (long-press) — best-in-class |
 | Chứng minh bit-perfect | User thấy DAC nhận đúng rate của file, không resample lén | Điểm yếu của UAPP ("best guess", bị Head-Fi chê) |
+| **Upsample cùng họ (bổ sung từ mổ UAPP 16/10)** | DAC không hỗ trợ rate gốc → chọn bội số cùng họ cao nhất (44.1→88.2→176.4→352.8 / 48→96→192→384). **Không bao giờ** nhảy chéo họ. Tắt badge bit-perfect + báo rõ "Đang resample" | UAPP `AudioPlayer.java` |
+| **Model Track 2 trường (bổ sung từ mổ UAPP 16/10)** | `sampleRate` (thực ra DAC) + `originalSampleRate` (của file) — làm ngay khi code model, đừng để sau | UAPP lưu 2 số mỗi bài |
+| **Chuỗi kiểm tra bit-perfect 3 bước (bổ sung từ mổ sâu UAPP 16/10)** | `isBitPerfectPossible()` → `setBitPerfectWhenPossible()` → `copyIntToUSBBitPerfect()`. Kiểm tra khả thi trước, bật khi được, dùng đường copy riêng cho bit-perfect | UAPP `AudioServer` symbols |
 
 #### Bước 4.5 — Gapless playback (cả 2 platform)
 
@@ -499,6 +502,11 @@ func login(email: String, password: String) async -> Result {
 | Android | Nếu decent-player hỗ trợ → bật gapless | Neutron "sample accurate" |
 | iOS | AVQueuePlayer hoặc custom gapless logic | — |
 | Nguyên tắc | 1 output stream liên tục, pre-decode bài tiếp ở boundary — KHÔNG crossfade | Onkyo chỉ có crossfade = điểm trừ |
+| **Gapless per-output (bổ sung từ mổ UAPP 16/10)** | Cờ gapless theo từng output mode, không phải toàn cục. Engine native lo pre-decode ở boundary | UAPP `<mode>¦¦¦IsGapless` |
+| **Gapless kiến trúc mixer (bổ sung từ mổ Neutron 16/10)** | Master-mixer chạy liên tục không dừng; bài mới decode vào sub-mixer mới rồi link vào master. Gapless là bản chất pipeline, không phải switch bật/tắt. Crossfade là DSP riêng, không phải cơ chế gapless | Neutron `IMasterMix`/`ISubMix`, `CreateSubMix` |
+| **FileQueue current/next decoder (bổ sung từ mổ sâu UAPP 16/10)** | Bài tiếp decode sẵn trong hàng đợi (`setNextDataSource`), hết bài hiện tại thì `setNextToCurrent`. Kiểm tra bit-perfect theo từng decoder (`isCurrentDecoderBitperfect`) | UAPP `FileQueue` symbols |
+| **DoubleBuffer lót đĩa (bổ sung từ mổ sâu UAPP 16/10)** | Decode ghi theo block xuống buffer đĩa, render đọc theo block. Chịu được file DSD/lớn khi RAM ít | UAPP `DoubleBuffer` symbols |
+| **Seamless vs Fade loại trừ nhau (bổ sung từ mổ HiBy 17/10)** | Gapless (seamless) và crossfade/fade không thể cùng bật. UI: bật cái này → tự tắt cái kia | HiBy `enableSeamless(!fade)` |
 
 #### Bước 4.6 — Access + Refresh token (cả 2 platform)
 
@@ -545,6 +553,48 @@ func login(email: String, password: String) async -> Result {
 | Launch | Android: deploy `/dac`. iOS: TestFlight → App Store (nếu có $99) |
 
 **Kết quả Phase 4:** Cả 2 app hoàn thiện, sẵn sàng launch.
+
+#### Bước 4.11 — Setting theo từng DAC (học từ mổ UAPP 16/10)
+
+| Việc | Chi tiết | Học từ |
+|------|----------|--------|
+| Key theo DAC | Lưu setting theo `vendorId:productId`, không phải toàn app | UAPP `<tên DAC>¦¦¦<flag>` |
+| Các cờ per-DAC | `BitPerfect`, `IsGapless`, `DSDMode`, `Upsampling` | UAPP |
+| Tự nhớ | Cắm DAC A → load config A, đổi sang DAC B → load config B | UAPP |
+| **Khóa volume USB (bổ sung từ mổ HiBy 17/10)** | Mặc định khóa volume USB khi ở chế độ bit-perfect — không cho Android/OS đụng vào volume. User muốn chỉnh thì tắt khóa (và mất badge bit-perfect) | HiBy `UsbAudioLockSettingActivity` |
+
+#### Bước 4.12 — Bảng quirks DAC (học từ mổ UAPP 16/10)
+
+| Việc | Chi tiết | Học từ |
+|------|----------|--------|
+| Hạt giống | Copy blocklist vendor/product từ code UAPP (`lh4.c()`): 1478, 4184, 1133, 5421, 12806, 1152, 2362, 3010, 6790/29987, 42500/1813, 6551/37479, 5964/21930, 1505, 2652 | Code thật UAPP |
+| Ghi dần | Gặp DAC lạ có vấn đề → ghi vào bảng, lần sau tự xử | UAPP |
+| Lỗi dễ hiểu | Mỗi case lỗi có message riêng (NoDevicesFound / OpenFailed / PermissionDenied) + hướng sửa, không phải mã khô | UAPP `kh4.java` |
+| **Phơi tuning ra user (bổ sung từ mổ Neutron 16/10)** | Cho user bật/tắt "Force 1ms packet" cho DAC firmware yếu. Triết lý: audiophile muốn kiểm soát, không giấu như UAPP | Neutron `USBForce1MsPacket` |
+| **Tách bạch buffer (bổ sung từ mổ Neutron 16/10)** | Preload cho network ≠ granularity/latency cho driver. Không dùng một núm chỉnh cho mọi thứ | Neutron `BUFPRELOAD` vs `HWLATENCY`/`SWLATENCY` |
+| **Bus speed override (bổ sung từ mổ HiBy 17/10)** | Cho user chọn Auto / Full-speed (USB 1.1) / High-speed (USB 2.0) khi DAC kén bus speed | HiBy `UsbSpeedSettingActivity` |
+| **Force sample rate (bổ sung từ mổ HiBy 17/10)** | Cho user ép sample rate khi DAC báo sai capability (firmware lỗi). Ghi rõ "đang ép rate" trên UI | HiBy `forceSampleRate`, `enableForceRate` |
+
+#### Bước 4.14 — Giữ DAC độc quyền (học từ mổ Neutron 16/10)
+
+| Việc | Chi tiết | Học từ |
+|------|----------|--------|
+| Ignore Audio Focus | Khi đang phát qua USB DAC → bỏ qua yêu cầu audio focus từ app khác, giữ thiết bị | Neutron `Ignore Audio Focus` |
+| Lý do | Đang nghe nhạc Hi-Res mà có thông báo chen vào → mất bit-perfect | — |
+
+#### Bước 4.13 — Luồng USB Android (học từ mổ UAPP 16/10 + HiBy 17/10)
+
+| Việc | Chi tiết | Học từ |
+|------|----------|--------|
+| Intent filter | `USB_DEVICE_ATTACHED` + `usb-device class="1"` (chỉ bắt USB Audio Class) | UAPP Manifest |
+| Permission | Action tự định nghĩa `com.extreamsd.uapp.USB_PERMISSION`, Android 13+ dùng `RECEIVER_NOT_EXPORTED` | UAPP `kh4.java` |
+| Giao cho native | `openDevice()` → gói `InitializeUSBDevice{Fd, DeviceName, Vendor, Product, Raw, BusSpeed}` → native lo hết | UAPP `lh4.d()` |
+| Bỏ qua dock audio | Vendor 2235 (dock) → skip nếu có ≥2 thiết bị (tránh bắt nhầm) | UAPP `kh4.java` |
+| Java là "lễ tân" | Không parse descriptor, không control transfer ở Java | Khớp decent-player đã Chốt |
+| **Hai đường USB song song (bổ sung từ mổ HiBy 17/10)** | HiBy tách 2 loại thiết bị: UAC chuẩn (type=1) + SA riêng cho đồ nhà (type=2). DAC Pocket v1 chỉ cần đường UAC chuẩn; nhưng kiến trúc phải cho phép thêm loại thiết bị mới mà không sửa lõi (pattern strategy) | HiBy `ActiveDeviceInfo.java` (`USB_DEVICE_UAC=1`, `USB_DEVICE_SA_RENDER=2`) |
+| **Userspace ALSA (bổ sung từ mổ HiBy 17/10)** | HiBy port logic driver USB audio của Linux kernel (`snd_usb_*`) lên chạy trên libusb — parse descriptor, chọn clock source, set alt setting theo chuẩn UAC1/UAC2. Cách làm "đúng phần cứng" hơn libusb thuần, đáng học khi gặp DAC kén mà decent-player không xử lý được. v1 dùng decent-player; ghi nhận pattern này cho phase quirks nâng cao | HiBy strings `libhibyservice.so`: `snd_usb_parse_audio_interface`, `UAC20Device set_sample_rate_v1/v2` |
+| **Async isochronous + feedback endpoint (bổ sung từ mổ HiBy 17/10)** | Chế độ async: DAC làm chủ clock, host đồng bộ theo qua feedback endpoint. Đây là chuẩn đúng cho bit-perfect (không phải adaptive/sync). Verify decent-player có hỗ trợ async trước khi Chốt code | HiBy: `"UAC20Device Resubmitting feedback transfer failed"`, `transfer->stream->stream_ep` |
+| **Render switching tự động (bổ sung từ mổ HiBy 17/10)** | Cắm DAC có audio interface → tự chuyển sang USB render; rút ra → về loa máy. Không hỏi user | HiBy `sdk/MediaPlayer.java` (`RANDER_USB`/`RANDER_AUDIOTRACK`) |
 
 ---
 
@@ -1043,7 +1093,11 @@ Drive API nhanh hơn Download+Upload ~80 lần vì copy trên server Google, kh�
 | **dac-app Android** | **decent-player (MIT)** | ✅ **Bypass hoàn toàn** | ✅ **Có** | **MIT, 0đ** |
 | **dac-app iOS** | **AVAudioSession** | ❌ **Không bypass** | ⚠️ **Gần đúng** | **Apple, 0đ** |
 
-dac-app Android dùng cùng phương pháp "true bypass" như UAPP và Resonāda — phương pháp tốt nhất, đảm bảo bit-perfect trên mọi máy. iOS không có true bypass, nhưng iOS không resample như Android nên vẫn đạt gần bit-perfect.
+dac-app Android dùng cùng phương pháp "true bypass" như UAPP và Resonāda — phương pháp tốt nhất, đảm bảo bit-perfect trên mọi máy.
+
+**Xác thực kiến trúc từ 3 nguồn độc lập (17/10):** UAPP v7.1.2.8, Neutron v2.27.2 và HiBy v4.3.1 — 3 hãng độc lập — đều đi cùng đường: **libusb + isochronous transfer, bypass toàn bộ audio stack Android, Java chỉ xin quyền + giao file descriptor cho native**. Khi 3 đối thủ cùng hội tụ một kiến trúc, đó là xác thực mạnh nhất cho quyết định chọn decent-player (đi cùng đường). Plan này trích dẫn UAPP nhiều nhất vì UAPP được mổ sâu nhất (có code thật, tên file, số dòng); Neutron đóng góp tinh chỉnh (mixer gapless, 1ms packet, tách buffer); HiBy đóng góp "đúng phần cứng" (userspace ALSA, async isochronous, volume lock). Vai trò khác nhau, không phải thiên vị.
+
+iOS không có true bypass, nhưng iOS không resample như Android nên vẫn đạt gần bit-perfect.
 
 ---
 

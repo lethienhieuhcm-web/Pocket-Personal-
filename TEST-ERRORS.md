@@ -40,7 +40,34 @@
 - Thêm refresh logic vào `getDriveToken` của dac.js (dùng `refresh_token` đổi access token mới qua `oauth2.googleapis.com/token`, lưu lại D1).
 - Export `getOAuthConfig` từ drive.js, import vào dac.js (xoá duplicate config).
 
-**Trạng thái:** ✅ Đã sửa backend. Đang deploy + test.
+**Trạng thái:** ✅ Đã sửa backend (token refresh). Phát hiện thêm: browser báo "Failed to load because no supported source was found" khi gán URL Drive trực tiếp vào `audio.src`.
+
+**Cách sửa thêm (kiểu ông lớn):** Đổi `playTrack` sang tải audio qua `fetch()` → `blob()` → `URL.createObjectURL()` → phát. Cách này thấy rõ lỗi HTTP (thay vì lỗi media chung chung) và tránh vấn đề với token trong URL.
+
+**Trạng thái:** 🔄 Đang test bản fetch+blob (build 20261016000213).
+
+**Cập nhật:** fetch URL Drive trực tiếp cũng fail (CORS). Nguyên nhân gốc thật: browser không fetch được `www.googleapis.com` do thiếu CORS headers.
+
+**Cách sửa (chuẩn big tech):** Thêm endpoint `/api/dac/audio/{id}` proxy bytes qua Worker (hỗ trợ Range để seek). Web dùng proxy, native app vẫn dùng direct URL (không bị CORS). Build 20261016000538 đang test.
+
+**Cập nhật 2:** Proxy tải bytes thành công nhưng `audio.play()` vẫn báo "no supported source". Nguyên nhân: Google trả Content-Type sai (application/octet-stream) khiến browser không decode được.
+
+**Cách sửa:** Backend set Content-Type đúng theo đuôi file (dùng `mimeFor()` có sẵn). Frontend tạo blob với type rõ ràng. Build 20261016002648 đang test.
+
+---
+
+## Lỗi 4 — Ô tìm kiếm web không tìm được "canon_in_d" (16/10/2026)
+
+**Triệu chứng:** Gõ "canon" vào ô tìm kiếm web, báo "Không tìm thấy" dù bài `canon_in_d.mp3` có trong thư viện (37 tracks).
+
+**Nguyên nhân gốc:** Web dùng server-side FTS5 (`/api/dac/search`) với query phức tạp (`canon* in* d*` — implicit AND), trong khi Android/iOS dùng client-side substring filter đơn giản. FTS không match do tokenization hoặc index out-of-sync.
+
+**Cách sửa (theo ông lớn — big tech pattern):** Dataset nhỏ (<1000 items) thì filter ở client, không gọi server. Spotify/Apple Music cũng làm vậy cho library local.
+- **Web:** Chuyển `doSearch()` sang client-side filter từ `allTracks` (giống iOS `contains()`, Android `LIKE`). Build 20261016022709. ✅ Browser test pass: gõ "canon" ra đúng 1 kết quả `canon_in_d.mp3`.
+- **Android:** Sửa `TrackDao.search()` thành case-insensitive (`LOWER(title) LIKE`) cho đồng nhất với iOS. Commit local `0440acf` (chưa push — cần anh re-grant GitHub).
+- **iOS:** Đã đúng (`lowercased().contains()`), không cần sửa.
+
+**Trạng thái:** ✅ Web đã fix xong và verify. Android đã push GitHub commit `d72ae84` (16/10/2026).
 
 ---
 
