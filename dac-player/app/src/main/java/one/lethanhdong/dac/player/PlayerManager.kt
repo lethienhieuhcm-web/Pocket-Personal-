@@ -179,6 +179,11 @@ class PlayerManager(private val context: Context) {
         if (player.isPlaying) player.pause() else player.play()
     }
 
+    /** 7.7: dừng phát khi rút DAC — chỉ pause nếu đang phát. */
+    fun pauseIfPlaying() {
+        if (player.isPlaying) player.pause()
+    }
+
     fun release() {
         player.release()
     }

@@ -23,6 +23,7 @@ import one.lethanhdong.dac.player.MusicApiClient
 import one.lethanhdong.dac.player.PlayerManager
 import one.lethanhdong.dac.player.OfflineManager
 import one.lethanhdong.dac.player.TrackAdapter
+import one.lethanhdong.dac.player.UsbHotSwapReceiver
 import javax.inject.Inject
 
 /**
@@ -57,6 +58,9 @@ class MainActivity : AppCompatActivity() {
 
     /** ID các track đã tải offline — để hiện trạng thái nút tải. */
     private val downloadedIds = mutableSetOf<String>()
+
+    /** 7.7: receiver xử lý rút/cắm DAC giữa chừng. */
+    private var usbHotSwapReceiver: UsbHotSwapReceiver? = null
 
     /** Title track đang phát — để ghép badge chất lượng vào status. */
     private var currentPlayingTitle: String? = null
@@ -384,6 +388,31 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        // 7.7: đăng ký receiver xử lý rút/cắm DAC
+        if (usbHotSwapReceiver == null) {
+            usbHotSwapReceiver = UsbHotSwapReceiver(
+                context = this,
+                onDacDetached = {
+                    // Dừng phát khi rút DAC
+                    playerManager.get().pauseIfPlaying()
+                },
+                onSameDacReattached = {
+                    // Cùng DAC cắm lại — sẵn sàng phát tiếp, không cần làm gì thêm
+                },
+                onDifferentDacAttached = {
+                    // DAC khác — báo user restart app
+                    androidx.appcompat.app.AlertDialog.Builder(this)
+                        .setTitle("Đã cắm DAC khác")
+                        .setMessage("Cần khởi động lại app để sử dụng DAC mới.")
+                        .setPositiveButton("Khởi động lại") { _, _ ->
+                            finishAffinity()
+                        }
+                        .setNegativeButton("Để sau", null)
+                        .show()
+                }
+            )
+        }
+        usbHotSwapReceiver?.register()
         // Đồng bộ thông minh: chỉ sync nếu cache cũ hơn 15 phút, chống gọi lồng nhau
         if (::apiClient.isInitialized && apiClient.isDriveConnected() && !isSyncing) {
             val stale = System.currentTimeMillis() - apiClient.lastSync > 15 * 60 * 1000
@@ -401,6 +430,12 @@ class MainActivity : AppCompatActivity() {
                 loadTracks()
             }
         }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        // 7.7: hủy đăng ký receiver khi activity không còn foreground
+        usbHotSwapReceiver?.unregister()
     }
 
     override fun onDestroy() {
