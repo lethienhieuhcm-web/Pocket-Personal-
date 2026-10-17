@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">DAC Player</string>
+    <string name="app_name">DAC Pocket</string>
     <!-- 1.4: contentDescription cho ảnh bìa trong item_track.xml -->
     <string name="track_cover">Ảnh bìa</string>
     <!-- 1.5: LicensesActivity -->

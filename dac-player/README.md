@@ -1,4 +1,4 @@
-# DAC Player — plan "dac"
+# DAC Pocket — plan "dac"
 
 App Android native phát nhạc bit-perfect qua USB DAC, dùng y chang 3 thư viện
 MIT của `Ma145/decent-player`.

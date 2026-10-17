@@ -308,7 +308,7 @@ data class LoginSession(
             u.contains("linux") -> "Linux"
             else -> "Thiết bị"
         }
-        val app = if (u.contains("dac") || u.contains("lethanhdong")) "DAC Player" else "Trình duyệt"
+        val app = if (u.contains("dac") || u.contains("lethanhdong")) "DAC Pocket" else "Trình duyệt"
         return "$os · $app"
     }
 }

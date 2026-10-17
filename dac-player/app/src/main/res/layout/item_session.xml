@@ -17,7 +17,7 @@
             android:id="@+id/deviceLabel"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Android · DAC Player"
+            android:text="Android · DAC Pocket"
             android:textSize="15sp"
             android:textStyle="bold" />
 
