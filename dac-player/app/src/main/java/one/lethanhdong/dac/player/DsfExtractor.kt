@@ -97,12 +97,8 @@ class DsfExtractor : Extractor {
                 .setPcmEncoding(C.ENCODING_PCM_24BIT)
                 .build()
             trackOutput?.format(format)
-            output?.seekMap(object : SeekMap {
-                override fun isSeekable() = false
-                override fun getDurationUs() = C.TIME_UNSET
-                override fun getSeekPoints(timeUs: Long) =
-                    SeekMap.SeekPoints(SeekMap.SeekPoint(0, dataStart))
-            })
+            // Không seek được → dùng Unseekable (chuẩn Media3 cho stream live/raw)
+            output?.seekMap(SeekMap.Unseekable(C.TIME_UNSET))
             input.skipFully((dataStart - input.position).toInt())
         }
 

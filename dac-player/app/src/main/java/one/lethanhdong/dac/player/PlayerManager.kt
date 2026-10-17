@@ -47,15 +47,19 @@ class PlayerManager(private val context: Context) {
         )
         .setMediaSourceFactory(
             // Đăng ký DsfExtractor + DffExtractor để phát file DSD qua DoP (spec P3 7.1).
-            // DefaultExtractorsFactory.createExtractors() đã có sẵn các
-            // extractor chuẩn; ta thêm 2 extractor DSD vào đầu để ưu tiên sniff.
-            DefaultMediaSourceFactory(context).setExtractorsFactory {
-                val extractors = DefaultExtractorsFactory()
-                    .createExtractors().toMutableList()
-                extractors.add(0, DffExtractor())
-                extractors.add(0, DsfExtractor())
-                extractors.toTypedArray()
-            }
+            // Media3 1.9.3: truyền ExtractorsFactory qua constructor (setExtractorsFactory đã bỏ).
+            // DefaultExtractorsFactory.createExtractors() đã có sẵn các extractor chuẩn;
+            // ta thêm 2 extractor DSD vào đầu để ưu tiên sniff.
+            DefaultMediaSourceFactory(
+                context,
+                androidx.media3.extractor.ExtractorsFactory {
+                    val extractors = DefaultExtractorsFactory()
+                        .createExtractors().toMutableList()
+                    extractors.add(0, DffExtractor())
+                    extractors.add(0, DsfExtractor())
+                    extractors.toTypedArray()
+                }
+            )
         )
         .build()
         .also { exo ->
