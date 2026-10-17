@@ -1,4 +1,4 @@
-# DAC Player Design Tokens v1.0
+# DAC Pocket Design Tokens v1.0
 # 80/20 Design System — Chốt 2026-10-15
 # 80% chung cho Web/iOS/Android, 20% thích ứng theo nền tảng
 
