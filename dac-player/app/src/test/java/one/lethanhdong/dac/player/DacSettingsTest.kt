@@ -12,6 +12,7 @@ class DacSettingsTest {
     @Test
     fun dacKey_format() {
         // vendorId=0x1234, productId=0x5678 → "0x1234:0x5678"
+        // Key đầy đủ theo plan (kien-truc.md:185): "0x1234:0x5678|||DSDMethod"
         assertEquals("0x1234:0x5678", DacSettings.dacKey(0x1234, 0x5678))
     }
 

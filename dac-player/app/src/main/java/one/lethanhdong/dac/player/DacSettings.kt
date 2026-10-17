@@ -27,7 +27,6 @@ object DacSettings {
     const val DSD_METHOD_DEFAULT = DSD_METHOD_DOP
 
     private const val PREFS = "dac_settings"
-    private const val KEY_DSD_METHOD = "dsd_method"
 
     /**
      * DSD method hiện tại (static, để extractor không cần Context).
@@ -41,10 +40,17 @@ object DacSettings {
     fun dacKey(vendorId: Int, productId: Int): String =
         "0x${vendorId.toString(16)}:0x${productId.toString(16)}"
 
+    /**
+     * Key SharedPreferences cho DSD method — đúng format plan (kien-truc.md dòng 185):
+     * prefs["$dacId|||DSDMethod"] = 0  // 0=Native, 1=DoP, 2=PCM
+     */
+    private fun dsdMethodKey(vendorId: Int, productId: Int): String =
+        "${dacKey(vendorId, productId)}|||DSDMethod"
+
     /** Đọc DSD method đã lưu cho DAC, null nếu chưa có. */
     fun getDsdMethod(context: Context, vendorId: Int, productId: Int): Int {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        return prefs.getInt("${dacKey(vendorId, productId)}_$KEY_DSD_METHOD", DSD_METHOD_DEFAULT)
+        return prefs.getInt(dsdMethodKey(vendorId, productId), DSD_METHOD_DEFAULT)
     }
 
     /** Lưu DSD method cho DAC. */
@@ -54,7 +60,7 @@ object DacSettings {
         }
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .edit()
-            .putInt("${dacKey(vendorId, productId)}_$KEY_DSD_METHOD", method)
+            .putInt(dsdMethodKey(vendorId, productId), method)
             .apply()
         // Cập nhật static nếu đang là DAC hiện tại
         currentDsdMethod = method
