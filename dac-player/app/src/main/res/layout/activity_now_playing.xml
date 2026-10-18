@@ -1,0 +1,216 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Màn hình Đang phát — thiết kế v4 (hướng HiBy) -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#0d1117">
+
+    <!-- Nền blur từ ảnh bìa -->
+    <ImageView
+        android:id="@+id/blurBackground"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="centerCrop"
+        android:alpha="0.3" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <!-- Top bar -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <ImageButton
+                android:id="@+id/backButton"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:background="@drawable/circle_button"
+                android:src="@drawable/ic_arrow_back"
+                android:contentDescription="Quay lại" />
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Đang phát"
+                android:textSize="19sp"
+                android:textStyle="bold"
+                android:textColor="#e6edf3"
+                android:gravity="center" />
+
+            <View
+                android:layout_width="36dp"
+                android:layout_height="36dp" />
+        </LinearLayout>
+
+        <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <!-- Ảnh bìa lớn -->
+                <ImageView
+                    android:id="@+id/albumArt"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:adjustViewBounds="true"
+                    android:scaleType="centerCrop"
+                    android:layout_marginTop="10dp"
+                    android:background="@drawable/rounded_album_art"
+                    android:clipToOutline="true" />
+
+                <!-- Tên bài -->
+                <TextView
+                    android:id="@+id/trackTitle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Tên bài"
+                    android:textSize="19sp"
+                    android:textStyle="bold"
+                    android:textColor="#e6edf3"
+                    android:gravity="center"
+                    android:layout_marginTop="18dp" />
+
+                <!-- Nghệ sĩ -->
+                <TextView
+                    android:id="@+id/trackArtist"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Nghệ sĩ"
+                    android:textSize="13sp"
+                    android:textColor="#8b949e"
+                    android:gravity="center"
+                    android:layout_marginTop="5dp" />
+
+                <!-- Spec badges -->
+                <LinearLayout
+                    android:id="@+id/specBadges"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center"
+                    android:layout_marginTop="12dp" />
+
+                <!-- Signal Path pill -->
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:background="@drawable/signal_pill"
+                    android:paddingStart="15dp"
+                    android:paddingEnd="15dp"
+                    android:paddingTop="7dp"
+                    android:paddingBottom="7dp"
+                    android:layout_marginTop="14dp"
+                    android:id="@+id/signalPill">
+
+                    <View
+                        android:id="@+id/signalDot"
+                        android:layout_width="8dp"
+                        android:layout_height="8dp"
+                        android:background="@drawable/signal_dot_green" />
+
+                    <TextView
+                        android:id="@+id/signalText"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Nguyên chất"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:textColor="#e6edf3"
+                        android:layout_marginStart="7dp" />
+                </LinearLayout>
+
+                <!-- Progress bar -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:layout_marginTop="22dp">
+
+                    <SeekBar
+                        android:id="@+id/progressBar"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:progress="32"
+                        android:max="100" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginTop="7dp">
+
+                        <TextView
+                            android:id="@+id/currentTime"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="1:23"
+                            android:textSize="11sp"
+                            android:textColor="#8b949e" />
+
+                        <TextView
+                            android:id="@+id/totalTime"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="4:12"
+                            android:textSize="11sp"
+                            android:textColor="#8b949e"
+                            android:gravity="end" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <!-- Controls -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical|center"
+                    android:layout_marginTop="18dp"
+                    android:layout_marginBottom="16dp">
+
+                    <ImageButton
+                        android:id="@+id/prevButton"
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:src="@drawable/ic_skip_previous"
+                        android:contentDescription="Bài trước" />
+
+                    <ImageButton
+                        android:id="@+id/playPauseButton"
+                        android:layout_width="62dp"
+                        android:layout_height="62dp"
+                        android:background="@drawable/circle_button_white"
+                        android:src="@drawable/ic_play"
+                        android:contentDescription="Phát/Dừng"
+                        android:layout_marginStart="36dp"
+                        android:layout_marginEnd="36dp" />
+
+                    <ImageButton
+                        android:id="@+id/nextButton"
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:src="@drawable/ic_skip_next"
+                        android:contentDescription="Bài tiếp" />
+                </LinearLayout>
+            </LinearLayout>
+        </ScrollView>
+    </LinearLayout>
+</FrameLayout>

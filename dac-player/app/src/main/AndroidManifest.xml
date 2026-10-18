@@ -45,6 +45,11 @@
                 android:resource="@xml/usb_audio_device_filter" />
         </activity>
 
+        <!-- Màn hình Đang phát — thiết kế v4 -->
+        <activity
+            android:name=".NowPlayingActivity"
+            android:exported="false" />
+
         <!-- 1.5: Màn hình Giấy phép mã nguồn mở (nghĩa vụ LGPL — FFmpeg).
              Không exported (chỉ mở từ trong app). -->
         <activity
