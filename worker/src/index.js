@@ -8,7 +8,7 @@ import {handleAnalytics, handleInsights, handleBankGet, handleBankPost, handleRe
 import {handleRegister, handleSendCode, handleVerifyCode, handleLogin, handleLogout, handleMe, handleGoogleLogin, handleGoogleCallback, handleGoogleIdToken, handleListSessions, handleRevokeSession, handleVerifyEmail, handleResendVerification, handleForgotPassword, handleResetPassword, handleResetPasswordPage } from './auth.js';
 import {handleGetPlan, handleGetUsage, handleSetPlan} from './billing.js';
 import {handleDriveAuthUrl, handleDriveCallback, handleDriveStatus, handleDriveDisconnect, handleDriveMusic, handleDriveStream, handleDriveUpload} from './drive.js';
-import {handleDacMusic, handleDacStream, handleDacStreamTest, handleDacDriveToken, handleDacAudio, handleDacAudioSign, handleDacAudioToken, handleDacResolve, handleDacCopy, handleDacFolders, handleDacSync, handleDacSearch, handleDacLibrary, handleDacPlaylistList, handleDacPlaylistCreate, handleDacPlaylistDelete, handleDacPlaylistGet, handleDacPlaylistSetItems} from './dac.js';
+import {handleDacMusic, handleDacStream, handleDacStreamTest, handleDacDriveToken, handleDacAudio, handleDacAudioSign, handleDacAudioToken, handleDacResolve, handleDacCopy, handleDacFolders, handleDacSync, handleDacSearch, handleDacLibrary, handleDacPlaylistList, handleDacPlaylistCreate, handleDacPlaylistDelete, handleDacPlaylistGet, handleDacPlaylistSetItems, handleDacAuthLogin, handleDacAuthRefresh, handleDacAuthLogout} from './dac.js';
 import {handleSpotifyAuthUrl, handleSpotifyCallback, handleSpotifyStatus, handleSpotifySearch} from './spotify.js';
 import {handleBrowse, handleBrowseWs} from './browser.js';
 import { drizzle } from "drizzle-orm/d1";
@@ -92,26 +92,30 @@ const ROUTES = [
   ['POST',   '/api/drive/disconnect',handleDriveDisconnect,  'user'],
   ['POST',   '/api/drive/upload',    handleDriveUpload,      'user'],
   // --- dac-pass (Chốt 2026-10-13): nhạc từ Drive user, Worker passthrough ---
-  ['GET',    '/api/dac/music',       handleDacMusic,           'user'],
-  ['GET',    '/api/dac/folders',     handleDacFolders,         'user'],
-  ['POST',   '/api/dac/sync',        handleDacSync,            'user'],
+  // --- DAC auth riêng (tách khỏi web, Chốt 2026-10-18) ---
+  ['POST',   '/api/dac/auth/login',   handleDacAuthLogin,       'public'],
+  ['POST',   '/api/dac/auth/refresh', handleDacAuthRefresh,     'public'],
+  ['POST',   '/api/dac/auth/logout',  handleDacAuthLogout,      'public'],
+  ['GET',    '/api/dac/music',       handleDacMusic,           'dac'],
+  ['GET',    '/api/dac/folders',     handleDacFolders,         'dac'],
+  ['POST',   '/api/dac/sync',        handleDacSync,            'dac'],
   ['GET',    '/api/dac/stream/*',    handleDacStream, handleDacStreamTest,            'user'],
-  ['GET',    '/api/dac/stream-test/*', handleDacStreamTest,       'user'],
-  ['GET',    '/api/dac/drive-token',  handleDacDriveToken,        'user'],
+  ['GET',    '/api/dac/stream-test/*', handleDacStreamTest,       'dac'],
+  ['GET',    '/api/dac/drive-token',  handleDacDriveToken,        'dac'],
   ['GET',    '/api/dac/audio/*',     handleDacAudio,             'public'],
   ['HEAD',   '/api/dac/audio/*',     handleDacAudio,             'public'],
-  ['GET',    '/api/dac/audio-sign/*', handleDacAudioSign,        'user'],
+  ['GET',    '/api/dac/audio-sign/*', handleDacAudioSign,        'dac'],
   ['GET',    '/api/dac/audio-t/*',   handleDacAudioToken,        'public'],
-  ['GET',    '/api/dac/search',      handleDacSearch,            'user'],
-  ['GET',    '/api/dac/library',     handleDacLibrary,           'user'],
+  ['GET',    '/api/dac/search',      handleDacSearch,            'dac'],
+  ['GET',    '/api/dac/library',     handleDacLibrary,           'dac'],
   // --- 4.9: playlist D1 (đồng bộ 2 máy) ---
-  ['GET',    '/api/dac/playlists',   handleDacPlaylistList,        'user'],
-  ['POST',   '/api/dac/playlists',   handleDacPlaylistCreate,      'user'],
-  ['DELETE', '/api/dac/playlists/*', handleDacPlaylistDelete,      'user'],
-  ['GET',    '/api/dac/playlists/*', handleDacPlaylistGet,         'user'],
-  ['PUT',    '/api/dac/playlists/*', handleDacPlaylistSetItems,    'user'],
-  ['POST',   '/api/dac/resolve',     handleDacResolve,           'user'],
-  ['POST',   '/api/dac/copy',        handleDacCopy,              'user'],
+  ['GET',    '/api/dac/playlists',   handleDacPlaylistList,        'dac'],
+  ['POST',   '/api/dac/playlists',   handleDacPlaylistCreate,      'dac'],
+  ['DELETE', '/api/dac/playlists/*', handleDacPlaylistDelete,      'dac'],
+  ['GET',    '/api/dac/playlists/*', handleDacPlaylistGet,         'dac'],
+  ['PUT',    '/api/dac/playlists/*', handleDacPlaylistSetItems,    'dac'],
+  ['POST',   '/api/dac/resolve',     handleDacResolve,           'dac'],
+  ['POST',   '/api/dac/copy',        handleDacCopy,              'dac'],
   // --- spotify ---
   ['GET',    '/api/spotify/auth-url',handleSpotifyAuthUrl,   'user'],
   ['GET',    '/api/spotify/callback',handleSpotifyCallback,  'custom'],
@@ -257,6 +261,12 @@ async function dispatch(request, env, url){
         const u = await getUser(env, s.email);
         if(!u || u.email !== OWNER_EMAIL) return jerr('Admin only', 403);
      }
+   }else if(auth === 'dac'){
+      // DAC auth riêng — chấp nhận cả web session (tương thích ngược)
+      // và DAC access token
+      const { getDacSession } = await import('./dac.js');
+      const s = await getDacSession(request, env) || await getSession(request, env);
+      if(!s) return jerr('Not logged in', 401);
    }else if(auth === 'internal'){
       if(!internalOk(request, env)) return jerr('Forbidden', 403);
    }

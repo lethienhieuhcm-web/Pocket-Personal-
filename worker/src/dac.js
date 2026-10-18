@@ -140,7 +140,7 @@ function isAudio(name, mimeType) {
 // App gửi Drive token qua header X-Drive-Token (lấy từ AccountManager).
 // Worker validate session + gọi Drive API trực tiếp, không lưu token.
 export async function handleDacMusic(request, env) {
-  const s = await getSession(request, env);
+  const s = await getDacSession(request, env) || await getSession(request, env);
   if (!s) return jerr('Not logged in', 401);
   // 4.2: Ưu tiên đọc từ D1 index (không giới hạn 100 file như query Drive cũ).
   try {
@@ -198,7 +198,7 @@ export async function handleDacMusic(request, env) {
 // App stream TRỰC TIẾP từ Google, Worker không proxy bytes.
 // Test endpoint: kiểm tra xem Google trả gì cho media URL (debug, không lộ token)
 export async function handleDacStreamTest(request, env) {
-  const s = await getSession(request, env);
+  const s = await getDacSession(request, env) || await getSession(request, env);
   if (!s) return jerr('Not logged in', 401);
   const driveToken = await getDriveToken(request, env, s.email);
   if (!driveToken) return jerr('Drive not connected', 400);
@@ -224,7 +224,7 @@ export async function handleDacStreamTest(request, env) {
 // Token là của chính user, ngắn hạn (~1h), browser vốn đã giữ từ OAuth
 // Nguồn: pattern cloudstream (browser fetch Google trực tiếp, né IP block Worker)
 export async function handleDacDriveToken(request, env) {
-  const s = await getSession(request, env);
+  const s = await getDacSession(request, env) || await getSession(request, env);
   if (!s) return jerr('Not logged in', 401);
   const driveToken = await getDriveToken(request, env, s.email);
   if (!driveToken) return jerr('Drive not connected', 400);
@@ -241,7 +241,7 @@ export async function handleDacDriveToken(request, env) {
 }
 
 export async function handleDacStream(request, env) {
-  const s = await getSession(request, env);
+  const s = await getDacSession(request, env) || await getSession(request, env);
   if (!s) return jerr('Not logged in', 401);
   const driveToken = await getDriveToken(request, env, s.email);
   if (!driveToken) return jerr('Drive not connected', 400);
@@ -282,7 +282,7 @@ async function sha256hex(str){
 // Frontend: fetch /api/dac/audio-sign/{id} (cần auth) -> nhận {url} -> gán audio.src trực tiếp
 export async function handleDacAudioSign(request, env) {
   try {
-    const s = await getSession(request, env);
+    const s = await getDacSession(request, env) || await getSession(request, env);
     if (!s) return jerr('Not logged in', 401);
     const fileId = new URL(request.url).pathname.split('/').pop() || '';
     if (!fileId || !/^[a-zA-Z0-9_-]+$/.test(fileId)) return jerr('Bad file id', 400);
@@ -421,7 +421,7 @@ async function getAudioMetadata(fileId, driveToken) {
 export async function handleDacAudio(request, env) {
   // P2b: chấp nhận signed token ngắn hạn (?t=) — session token không còn nằm trong URL
   // Fallback: token qua query param (?token=) hoặc Authorization header (backward compat)
-  let s = await getSession(request, env);
+  let s = await getDacSession(request, env) || await getSession(request, env);
   const url = new URL(request.url);
   if (!s) {
     const sigToken = url.searchParams.get('t');
@@ -537,7 +537,7 @@ export async function handleDacAudio(request, env) {
  * Trả về: {full: bool, synced: n, total: m}
  */
 export async function handleDacSync(request, env) {
-  const s = await getSession(request, env);
+  const s = await getDacSession(request, env) || await getSession(request, env);
   if (!s) return jerr('Not logged in', 401);
   const driveToken = await getDriveToken(request, env, s.email);
   if (!driveToken) return jerr('Drive not connected', 400);
@@ -765,7 +765,7 @@ async function dacIndexFolder(env, email, parentId) {
  * Auth: session Pocket Personal + X-Drive-Token (không lưu token).
  */
 export async function handleDacFolders(request, env) {
-  const s = await getSession(request, env);
+  const s = await getDacSession(request, env) || await getSession(request, env);
   if (!s) return jerr('Not logged in', 401);
   const url = new URL(request.url);
   let parentId = url.searchParams.get('parentId') || 'root';
@@ -859,7 +859,7 @@ export async function handleDacFolders(request, env) {
  * Nếu là file: files = [file đó] (nếu là audio).
  */
 export async function handleDacResolve(request, env) {
-  const s = await getSession(request, env);
+  const s = await getDacSession(request, env) || await getSession(request, env);
   if (!s) return jerr('Not logged in', 401);
   const driveToken = await getDriveToken(request, env, s.email);
   if (!driveToken) return jerr('Drive not connected', 400);
@@ -979,7 +979,7 @@ async function recordCopy(env, userId, sourceId, name, size, method) {
  * Lỗi scope: 403 { error: 'insufficient_scope', details }
  */
 export async function handleDacCopy(request, env) {
-  const s = await getSession(request, env);
+  const s = await getDacSession(request, env) || await getSession(request, env);
   if (!s) return jerr('Not logged in', 401);
   const driveToken = await getDriveToken(request, env, s.email);
   if (!driveToken) return jerr('Drive not connected', 400);
@@ -1077,7 +1077,7 @@ export async function handleDacCopy(request, env) {
  *   (name contains), trả total=-1 (Drive không đếm tổng rẻ được).
  */
 export async function handleDacSearch(request, env) {
-  const s = await getSession(request, env);
+  const s = await getDacSession(request, env) || await getSession(request, env);
   if (!s) return jerr('Not logged in', 401);
   const url = new URL(request.url);
   const q = (url.searchParams.get('q') || '').trim();
@@ -1158,7 +1158,7 @@ export async function handleDacSearch(request, env) {
 
 // GET /api/dac/library — flat list tất cả nhạc (cho tab Bài hát)
 export async function handleDacLibrary(request, env) {
-  const s = await getSession(request, env);
+  const s = await getDacSession(request, env) || await getSession(request, env);
   if (!s) return jerr('Not logged in', 401);
   const url = new URL(request.url);
   const limit = Math.min(200, Math.max(1, parseInt(url.searchParams.get('limit') || '100', 10) || 100));
@@ -1316,7 +1316,7 @@ function dacPlaylistId(requestUrl) {
 
 /** GET /api/dac/playlists → {playlists:[{id,name,itemCount,createdAt,updatedAt}]} */
 export async function handleDacPlaylistList(request, env) {
-  const s = await getSession(request, env);
+  const s = await getDacSession(request, env) || await getSession(request, env);
   if (!s) return jerr('Not logged in', 401);
   const email = s.email.toLowerCase();
   await ensureDacPlaylistSchema(env);
@@ -1336,7 +1336,7 @@ export async function handleDacPlaylistList(request, env) {
 
 /** POST /api/dac/playlists {name} → {id,name} */
 export async function handleDacPlaylistCreate(request, env) {
-  const s = await getSession(request, env);
+  const s = await getDacSession(request, env) || await getSession(request, env);
   if (!s) return jerr('Not logged in', 401);
   const email = s.email.toLowerCase();
   let name = '';
@@ -1355,7 +1355,7 @@ export async function handleDacPlaylistCreate(request, env) {
 
 /** DELETE /api/dac/playlists/{id} → {ok:true} */
 export async function handleDacPlaylistDelete(request, env) {
-  const s = await getSession(request, env);
+  const s = await getDacSession(request, env) || await getSession(request, env);
   if (!s) return jerr('Not logged in', 401);
   const email = s.email.toLowerCase();
   const id = dacPlaylistId(request.url);
@@ -1370,7 +1370,7 @@ export async function handleDacPlaylistDelete(request, env) {
 
 /** GET /api/dac/playlists/{id} → {id,name,items:[{fileId,name,artist,title,mimeType,size}]} */
 export async function handleDacPlaylistGet(request, env) {
-  const s = await getSession(request, env);
+  const s = await getDacSession(request, env) || await getSession(request, env);
   if (!s) return jerr('Not logged in', 401);
   const email = s.email.toLowerCase();
   const id = dacPlaylistId(request.url);
@@ -1395,7 +1395,7 @@ export async function handleDacPlaylistGet(request, env) {
 
 /** PUT /api/dac/playlists/{id} {items:[...]} → thay toàn bộ items, {ok:true,count} */
 export async function handleDacPlaylistSetItems(request, env) {
-  const s = await getSession(request, env);
+  const s = await getDacSession(request, env) || await getSession(request, env);
   if (!s) return jerr('Not logged in', 401);
   const email = s.email.toLowerCase();
   const id = dacPlaylistId(request.url);
@@ -1429,4 +1429,130 @@ export async function handleDacPlaylistSetItems(request, env) {
     await env.DB.batch(stmts.slice(i, i + 80));
   }
   return sJson({ ok: true, count: items.length });
+}
+
+// ==== DAC Auth riêng (tách khỏi web auth) ====
+// Access token: 1h, Refresh token: 30d, rotation mỗi lần dùng.
+// Lưu trong KV: dac-access/{token} -> {email, exp}, dac-refresh/{token} -> {email, exp}
+
+function dacRandToken() {
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
+}
+
+/**
+ * POST /api/dac/auth/login — đăng nhập cho app DAC.
+ * Body: {email, password}
+ * Trả về: {accessToken, refreshToken, expiresIn}
+ */
+export async function handleDacAuthLogin(request, env) {
+  const body = await request.json().catch(() => ({}));
+  const email = String(body.email || '').toLowerCase().trim();
+  const password = String(body.password || '');
+
+  if (!email || !password) return jerr('Thiếu email/mật khẩu', 400);
+
+  // Verify password (dùng logic từ auth.js)
+  const { getUser, pbkdf2Hash } = await import('./auth.js');
+  const DUMMY_SALT_B64 = "AAAAAAAAAAAAAAAAAAAAAA==";
+  const u = await getUser(env, email);
+  const hash = await pbkdf2Hash(password, u ? u.salt : DUMMY_SALT_B64);
+  if (!u || hash !== u.hash) return jerr('Sai email hoặc mật khẩu', 401);
+  if (u.verified === false) return jerr('Email chưa xác thực', 403);
+
+  const accessToken = dacRandToken();
+  const refreshToken = dacRandToken();
+  const now = Date.now();
+
+  await env.AUTHDB.put(`dac-access/${accessToken}.json`, JSON.stringify({
+    email, exp: now + 3600 * 1000 // 1h
+  }), { expirationTtl: 3600 });
+
+  await env.AUTHDB.put(`dac-refresh/${refreshToken}.json`, JSON.stringify({
+    email, exp: now + 30 * 24 * 3600 * 1000 // 30d
+  }), { expirationTtl: 30 * 24 * 3600 });
+
+  return sJson({
+    accessToken,
+    refreshToken,
+    expiresIn: 3600,
+    email
+  });
+}
+
+/**
+ * POST /api/dac/auth/refresh — đổi refresh token lấy cặp mới.
+ * Body: {refreshToken}
+ * Rotation: thu hồi cũ, cấp mới.
+ */
+export async function handleDacAuthRefresh(request, env) {
+  const body = await request.json().catch(() => ({}));
+  const oldRefresh = String(body.refreshToken || '');
+
+  if (!oldRefresh) return jerr('Thiếu refresh token', 400);
+
+  const data = await env.AUTHDB.get(`dac-refresh/${oldRefresh}.json`, 'json');
+  if (!data || data.exp < Date.now()) {
+    return jerr('Refresh token hết hạn', 401);
+  }
+
+  // Rotation: xóa cũ
+  await env.AUTHDB.delete(`dac-refresh/${oldRefresh}.json`);
+
+  // Cấp mới
+  const accessToken = dacRandToken();
+  const refreshToken = dacRandToken();
+  const now = Date.now();
+
+  await env.AUTHDB.put(`dac-access/${accessToken}.json`, JSON.stringify({
+    email: data.email, exp: now + 3600 * 1000
+  }), { expirationTtl: 3600 });
+
+  await env.AUTHDB.put(`dac-refresh/${refreshToken}.json`, JSON.stringify({
+    email: data.email, exp: now + 30 * 24 * 3600 * 1000
+  }), { expirationTtl: 30 * 24 * 3600 });
+
+  return sJson({
+    accessToken,
+    refreshToken,
+    expiresIn: 3600,
+    email: data.email
+  });
+}
+
+/**
+ * POST /api/dac/auth/logout — thu hồi cả 2 token.
+ * Headers: Authorization: Bearer <accessToken>
+ * Body: {refreshToken}
+ */
+export async function handleDacAuthLogout(request, env) {
+  const auth = request.headers.get('Authorization') || '';
+  const accessToken = auth.replace(/^Bearer\s+/i, '').trim();
+  const body = await request.json().catch(() => ({}));
+  const refreshToken = String(body.refreshToken || '');
+
+  if (accessToken) {
+    await env.AUTHDB.delete(`dac-access/${accessToken}.json`);
+  }
+  if (refreshToken) {
+    await env.AUTHDB.delete(`dac-refresh/${refreshToken}.json`);
+  }
+
+  return sJson({ ok: true });
+}
+
+/**
+ * Lấy DAC session từ access token.
+ * Trả về {email} hoặc null.
+ */
+export async function getDacSession(request, env) {
+  const auth = request.headers.get('Authorization') || '';
+  const token = auth.replace(/^Bearer\s+/i, '').trim();
+  if (!token) return null;
+
+  const data = await env.AUTHDB.get(`dac-access/${token}.json`, 'json');
+  if (!data || data.exp < Date.now()) return null;
+
+  return { email: data.email };
 }
