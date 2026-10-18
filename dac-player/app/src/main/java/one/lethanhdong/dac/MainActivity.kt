@@ -65,6 +65,9 @@ class MainActivity : AppCompatActivity() {
     /** Title track đang phát — để ghép badge chất lượng vào status. */
     private var currentPlayingTitle: String? = null
 
+    /** AudioQuality hiện tại — để mở Signal Path dialog. */
+    private var currentAudioQuality: one.lethanhdong.dac.player.PlayerManager.AudioQuality? = null
+
     /** Job prefetch queue — huỷ khi user chọn bài khác. */
     private var prefetchJob: kotlinx.coroutines.Job? = null
 
@@ -114,6 +117,11 @@ class MainActivity : AppCompatActivity() {
 
         statusText = findViewById(R.id.statusText)
         trackList = findViewById(R.id.trackList)
+
+        // Signal Path: bấm vào status để xem chi tiết đường tín hiệu
+        statusText.setOnClickListener {
+            showSignalPathDialog()
+        }
 
         // Hiện version để user biết đang dùng bản nào (dac-pass 2026-10-13)
         try {
@@ -184,6 +192,7 @@ class MainActivity : AppCompatActivity() {
         // 4.4: hiện badge chất lượng nguồn → DAC khi đang phát.
         lifecycleScope.launch {
             playerManager.get().audioQuality.collect { q ->
+                currentAudioQuality = q
                 val t = currentPlayingTitle
                 if (q != null && t != null) {
                     statusText.text = "Đang phát: $t — ${q.badgeText()}"
@@ -442,5 +451,62 @@ class MainActivity : AppCompatActivity() {
         // 4.1: playerManager là singleton (Hilt) — không release ở đây nữa.
         // Nhạc tiếp tục phát khi chuyển sang FolderActivity.
         super.onDestroy()
+    }
+
+    /**
+     * Mở dialog Signal Path — hiện 5 khâu từ file đến DAC.
+     * Lấy dữ liệu từ AudioQuality + DacSettings + UsbVolumeController.
+     */
+    private fun showSignalPathDialog() {
+        val q = currentAudioQuality ?: return
+
+        // Lấy USB device hiện tại
+        val usbDevice = try {
+            one.lethanhdong.dac.player.UsbVolumeController(this).let { ctrl ->
+                // Lấy device từ UsbAudioDevice
+                null // Sẽ lấy qua UsbManager
+            }
+        } catch (e: Exception) { null }
+
+        val usbManager = getSystemService(android.content.Context.USB_SERVICE)
+            as android.hardware.usb.UsbManager
+        val device = usbManager.deviceList.values.firstOrNull { d ->
+            // Tìm USB audio device (class 1)
+            (0 until d.interfaceCount).any { i ->
+                d.getInterface(i).interfaceClass == 1
+            }
+        }
+
+        val vendorId = device?.vendorId ?: 0
+        val productId = device?.productId ?: 0
+
+        // Thu thập dữ liệu
+        val volume = if (vendorId != 0) {
+            one.lethanhdong.dac.player.DacSettings.getVolume(this, vendorId, productId)
+        } else 100
+
+        val hasHwVolume = try {
+            one.lethanhdong.dac.player.UsbVolumeController(this).hasHardwareVolume
+        } catch (e: Exception) { false }
+
+        val bufferUrbs = one.lethanhdong.dac.player.DacSettings.getBufferUrbs(this)
+        val dsdMethod = one.lethanhdong.dac.player.DacSettings.currentDsdMethod
+        val dacName = device?.productName
+
+        // Đánh giá
+        val result = one.lethanhdong.dac.player.SignalPath.assess(
+            fileFormat = q.formatLabel,
+            bitDepth = q.bitDepth,
+            sampleRateHz = q.sampleRateHz,
+            channels = q.channels,
+            dsdMethod = dsdMethod,
+            volumePercent = volume,
+            hasHardwareVolume = hasHwVolume,
+            bufferUrbs = bufferUrbs,
+            dacName = dacName,
+            dacSampleRateHz = null // v1: dùng rate file làm proxy [suy luận]
+        )
+
+        one.lethanhdong.dac.player.SignalPathDialog(this, result).show()
     }
 }
