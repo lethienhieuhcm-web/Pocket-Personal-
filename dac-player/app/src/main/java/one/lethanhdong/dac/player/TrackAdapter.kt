@@ -25,6 +25,8 @@ class TrackAdapter(
     private val onDownloadClick: ((MusicApiClient.Track) -> Unit)? = null,
     /** 4.3: track đã tải offline chưa — để hiện trạng thái nút. */
     private val isDownloaded: (String) -> Boolean = { false },
+    /** true = dùng grid layout (2 cột) cho tab Album */
+    var isGridMode: Boolean = false,
 ) : ListAdapter<MusicApiClient.Track, TrackAdapter.TrackViewHolder>(DIFF) {
 
     companion object {
@@ -44,7 +46,7 @@ class TrackAdapter(
         private val coverView: ImageView = view.findViewById(R.id.coverView)
         private val titleView: TextView = view.findViewById(R.id.titleView)
         private val badgeView: TextView = view.findViewById(R.id.badgeView)
-        private val downloadButton: ImageButton = view.findViewById(R.id.downloadButton)
+        private val downloadButton: ImageButton? = view.findViewById(R.id.downloadButton)
 
         fun bind(track: MusicApiClient.Track) {
             // 4.8: hiện "Nghệ sĩ - Tên bài" khi parse được artist từ tên file.
@@ -61,24 +63,27 @@ class TrackAdapter(
                 crossfade(true)
             }
             itemView.setOnClickListener { onTrackClick(track) }
-            // 4.3: nút tải offline.
-            if (onDownloadClick != null) {
-                downloadButton.visibility = View.VISIBLE
-                val done = isDownloaded(track.id)
-                downloadButton.alpha = if (done) 1f else 0.5f
-                downloadButton.contentDescription = itemView.context.getString(
-                    if (done) R.string.downloaded_offline else R.string.download_offline
-                )
-                downloadButton.setOnClickListener { onDownloadClick.invoke(track) }
-            } else {
-                downloadButton.visibility = View.GONE
+            // 4.3: nút tải offline (chỉ có ở list mode, grid mode không có nút).
+            downloadButton?.let { btn ->
+                if (onDownloadClick != null) {
+                    btn.visibility = View.VISIBLE
+                    val done = isDownloaded(track.id)
+                    btn.alpha = if (done) 1f else 0.5f
+                    btn.contentDescription = itemView.context.getString(
+                        if (done) R.string.downloaded_offline else R.string.download_offline
+                    )
+                    btn.setOnClickListener { onDownloadClick.invoke(track) }
+                } else {
+                    btn.visibility = View.GONE
+                }
             }
         }
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): TrackViewHolder {
+        val layoutId = if (isGridMode) R.layout.item_album_grid else R.layout.item_track
         val view = LayoutInflater.from(parent.context)
-            .inflate(R.layout.item_track, parent, false)
+            .inflate(layoutId, parent, false)
         return TrackViewHolder(view)
     }
 

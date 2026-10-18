@@ -141,8 +141,6 @@ class MainActivity : AppCompatActivity() {
         )
         trackList.layoutManager = LinearLayoutManager(this)
         trackList.adapter = trackAdapter
-
-        // Redesign 80/20: tabs Bài hát / Album / Nghệ sĩ
         tabSongs = findViewById(R.id.tabSongs)
         tabAlbums = findViewById(R.id.tabAlbums)
         tabArtists = findViewById(R.id.tabArtists)
@@ -269,15 +267,18 @@ class MainActivity : AppCompatActivity() {
         when (currentTab) {
             0 -> {
                 // Bài hát: flat list
+                trackAdapter.isGridMode = false
+                trackList.layoutManager = LinearLayoutManager(this)
                 trackAdapter.submitList(allTracks)
                 trackAdapter.notifyDataSetChanged()
             }
             1 -> {
-                // Album: nhóm và hiển thị tên album
+                // Album: grid 2 cột (thiết kế v4)
+                trackAdapter.isGridMode = true
+                trackList.layoutManager = androidx.recyclerview.widget.GridLayoutManager(this, 2)
                 val albums = allTracks.groupBy {
                     it.album.ifEmpty { "(Chưa rõ album)" }
                 }.toSortedMap()
-                // Hiển thị dạng header: hiện tại dùng flat list với tên album
                 trackAdapter.submitList(allTracks.sortedBy {
                     it.album.ifEmpty { "(Chưa rõ album)" }
                 })
@@ -285,7 +286,9 @@ class MainActivity : AppCompatActivity() {
                 statusText.text = "${albums.size} album • ${allTracks.size} bài"
             }
             2 -> {
-                // Nghệ sĩ: nhóm theo artist
+                // Nghệ sĩ: nhóm theo artist (list mode)
+                trackAdapter.isGridMode = false
+                trackList.layoutManager = LinearLayoutManager(this)
                 val artists = allTracks.groupBy {
                     it.artist.ifEmpty { "(Chưa rõ nghệ sĩ)" }
                 }.toSortedMap()
