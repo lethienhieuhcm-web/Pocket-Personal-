@@ -110,6 +110,18 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Create Release with APK
+        if: success()
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: dac-pocket-${{ github.run_number }}
+          name: "DAC Pocket APK #${{ github.run_number }}"
+          body: "Bản build tự động từ CI. Commit: ${{ github.sha }}"
+          prerelease: true
+          files: |
+            app/build/outputs/apk/debug/*.apk
+            app/build/outputs/apk/release/*.apk
+
   # Job emulator — test 1.2 (EncryptedSharedPreferences) + instrumented test trên máy ảo.
   # Chạy sau job build (needs) để không tốn 8 phút emulator khi build đã lỗi.
   # Emulator KHÔNG test được USB DAC (không passthrough) — chỉ test UI/auth/storage.
