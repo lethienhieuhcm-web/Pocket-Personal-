@@ -42,7 +42,7 @@ book_image = (
 stock_image = (
     modal.Image.debian_slim(python_version="3.13")
     .pip_install("requests")
-    .pip_install("vnstock", extra_index_url="https://vnstocks.com/api/simple")
+    .pip_install("vnstock>=5,<6", extra_index_url="https://vnstocks.com/api/simple")
 )
 
 app = modal.App("pocket-personal-crons")
@@ -296,7 +296,8 @@ def publish_snapshot():
                 item["close"] = clean_num(last.get("close"))
                 item["volume"] = clean_num(last.get("volume"))
                 t = last.get("time")
-                item["time"] = t[:10] if isinstance(t, str) else str(t)
+                # 5.x: time la pandas Timestamp -> lay date; 4.x: str -> cat 10 ky tu
+                item["time"] = t[:10] if isinstance(t, str) else str(t)[:10]
                 if len(recs) >= 2:
                     prev, cur = clean_num(recs[-2].get("close")), item["close"]
                     if prev and cur:
@@ -314,23 +315,30 @@ def publish_snapshot():
 
     # Quotes: map field that cua vnstock sang dung contract frontend
     # {close, change, pct_change, volume, value_vnd, exchange} theo ma CK.
+    # vnstock 5.x: dung price_board (1 call cho 20 ma) thay vi 20x quote().
+    # 5.x khong co san price_change/percent_change/volume_accumulated/total_value
+    # -> change/pct_change tu tinh tu reference_price; volume/value_vnd = None
+    # (frontend khong dung 2 field nay tu quotes; AI context co fallback "—").
     symbols = ["VCB", "BID", "CTG", "TCB", "MBB", "VPB", "HPG", "VHM", "VIC", "VNM",
                "MSN", "FPT", "MWG", "SSI", "VND", "HCM", "STB", "ACB", "SHB", "POW"]
     by_symbol = {}
-    for sym in symbols:
-        recs = vn_call(lambda s=sym: market.quote(s).to_dict("records"),
-                       f"quote-{sym}", retries=2)
-        if recs:
-            r = recs[0]
+    board_recs = vn_call(lambda: market.price_board(symbols).to_dict("records"),
+                         "quote-board", retries=2)
+    if board_recs:
+        for r in board_recs:
+            sym = r.get("symbol")
+            close = clean_num(r.get("close_price"))
+            ref = clean_num(r.get("reference_price"))
+            chg = round(close - ref, 2) if (close is not None and ref) else None
+            pct = round(chg / ref * 100, 2) if (chg is not None and ref) else None
             by_symbol[sym] = {
-                "close": clean_num(r.get("close_price")),
-                "change": clean_num(r.get("price_change")),
-                "pct_change": clean_num(r.get("percent_change")),
-                "volume": clean_num(r.get("volume_accumulated")),
-                "value_vnd": clean_num(r.get("total_value")),
+                "close": close,
+                "change": chg,
+                "pct_change": pct,
+                "volume": None,
+                "value_vnd": None,
                 "exchange": r.get("exchange"),
             }
-        time.sleep(4)  # respect rate limit (15 calls/min shared)
 
     if by_symbol:
         try:
