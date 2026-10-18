@@ -1,0 +1,30 @@
+name: PP Health Check
+
+# Moved from VM cron `pp-health-check` (every 15m) on 2026-10-18.
+# Runs the committed scripts/health_check.sh; Telegram creds come from
+# repo Secrets (written to the path the script expects).
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare dealhunter env (Telegram creds)
+        run: |
+          sudo mkdir -p /home/hatch/workspace/shopee-deal-hunter
+          printf 'DEALHUNTER_TELEGRAM_BOT_TOKEN=%s\nDEALHUNTER_TELEGRAM_CHAT_ID=%s\n' \
+            "$TG_TOKEN" "$TG_CHAT" | sudo tee /home/hatch/workspace/shopee-deal-hunter/.env > /dev/null
+          sudo chmod 600 /home/hatch/workspace/shopee-deal-hunter/.env
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHAT_ID }}
+
+      - name: Run health check
+        run: bash scripts/health_check.sh
