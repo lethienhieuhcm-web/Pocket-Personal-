@@ -50,6 +50,11 @@
             android:name=".NowPlayingActivity"
             android:exported="false" />
 
+        <!-- Màn hình Cài đặt — thiết kế v4 -->
+        <activity
+            android:name=".SettingsActivity"
+            android:exported="false" />
+
         <!-- 1.5: Màn hình Giấy phép mã nguồn mở (nghĩa vụ LGPL — FFmpeg).
              Không exported (chỉ mở từ trong app). -->
         <activity
