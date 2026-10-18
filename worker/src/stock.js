@@ -364,6 +364,12 @@ export async function hStockNews(request, env){
   return sJson(d);
 }
 
+/* Tin thi truong: gop tu top30 ma, dedupe, sort moi nhat (hoc FireAnt MarketNews) */
+export async function hStockMarketNews(request, env){
+  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
+  return cachedMarket(request, env, "market/market_news.json", 900); // 15m cache
+}
+
 export async function getCompanyProfile(env, sym){
   sym = String(sym||"").toUpperCase();
   if(!sym) return {symbol:sym};
@@ -883,6 +889,7 @@ export async function hStockPublish(request, env){
     await sPut(env, "market/news/"+sym+".json", doc({symbol:sym, items:body.news[sym]}));
     n++;
   }
+  if(body.market_news) await put1("market_news", {items:body.market_news});
   if(body.events) for(const sym of Object.keys(body.events)){
     await sPut(env, "market/events/"+sym+".json", doc({symbol:sym, items:body.events[sym]}));
     n++;

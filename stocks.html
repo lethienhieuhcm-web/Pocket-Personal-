@@ -134,6 +134,25 @@ h4{font-size:var(--pp-text-sm)}
 <div id="stkTabMarket">
   <div class="card"><div id="stkIndices"></div></div>
   <div class="card">
+    <h3 data-i18n="top_movers">Top tăng / giảm</h3>
+    <div class="row" style="margin-bottom:8px">
+      <select id="topEx" class="gptInput" style="max-width:140px">
+        <option value="">Tất cả sàn</option>
+        <option value="HOSE">HOSE</option>
+        <option value="HNX">HNX</option>
+        <option value="UPCOM">UPCOM</option>
+      </select>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div><h4 style="color:var(--up,#16a34a)" data-i18n="top_gainers">Tăng mạnh</h4><div id="stkTopGain"></div></div>
+      <div><h4 style="color:var(--dn,#dc2626)" data-i18n="top_losers">Giảm mạnh</h4><div id="stkTopLose"></div></div>
+    </div>
+  </div>
+  <div class="card">
+    <h3 data-i18n="market_news">Tin thị trường</h3>
+    <div id="stkMarketNews" style="max-height:320px;overflow-y:auto"></div>
+  </div>
+  <div class="card">
     <h3 data-i18n="search_symbol">Tìm mã</h3>
     <div class="row">
       <input id="stkSearch" class="gptInput" data-i18n-ph="search_ph" placeholder="ví dụ: HPG, VCB…" style="flex:1" autocomplete="off">

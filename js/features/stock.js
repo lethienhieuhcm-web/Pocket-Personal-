@@ -14,7 +14,7 @@ unwatched:"Đã bỏ theo dõi",watched:"Đã thêm vào theo dõi",chart_fail:"
 loading_news:"Đang tải tin tức…",no_news:"Chưa có tin tức.",loading_events:"Đang tải sự kiện…",no_events:"Chưa có sự kiện.",
 ex_date:"Ngày GDKHQ",ratio:"Tỷ lệ",per_share:"/cổ phiếu",
 ref_price:"Tham chiếu",open_price:"Mở cửa",high_price:"Cao nhất",low_price:"Thấp nhất",volume:"Khối lượng",value:"Giá trị",billion:"tỷ",
-loading_screener:"Đang tải bộ lọc…",no_data:"Chưa có dữ liệu.",
+loading_screener:"Đang tải bộ lọc…",no_data:"Chưa có dữ liệu.",top_movers:"Top tăng / giảm",top_gainers:"Tăng mạnh",top_losers:"Giảm mạnh",market_news:"Tin thị trường",
 th_symbol:"Mã",th_score:"Điểm",th_price:"Giá",th_pct:"%",th_pe:"P/E",th_qty:"SL",th_avg_cost:"Giá vốn",th_pl:"Lãi/Lỗ",th_date:"Ngày",th_side:"Mua/Bán",
 select_symbol_first:"Chọn một mã trước",calculating:"Đang tính…",
 bt_strategy:"Chiến lược",bt_buyhold:"Mua & giữ",bt_trades_winrate:"Số lệnh / Tỷ lệ thắng",bt_maxdd:"Lỗ tối đa",
@@ -51,7 +51,7 @@ unwatched:"Unfollowed",watched:"Added to watchlist",chart_fail:"Chart could not 
 loading_news:"Loading news…",no_news:"No news yet.",loading_events:"Loading events…",no_events:"No events yet.",
 ex_date:"Ex-date",ratio:"Ratio",per_share:"/share",
 ref_price:"Reference",open_price:"Open",high_price:"High",low_price:"Low",volume:"Volume",value:"Value",billion:"B",
-loading_screener:"Loading screener…",no_data:"No data yet.",
+loading_screener:"Loading screener…",no_data:"No data yet.",top_movers:"Top gainers / losers",top_gainers:"Top gainers",top_losers:"Top losers",market_news:"Market news",
 th_symbol:"Symbol",th_score:"Score",th_price:"Price",th_pct:"%",th_pe:"P/E",th_qty:"Qty",th_avg_cost:"Avg cost",th_pl:"P&L",th_date:"Date",th_side:"Side",
 select_symbol_first:"Select a symbol first",calculating:"Calculating…",
 bt_strategy:"Strategy",bt_buyhold:"Buy & hold",bt_trades_winrate:"Trades / Winrate",bt_maxdd:"Max drawdown",
@@ -88,7 +88,7 @@ unwatched:"已取消关注",watched:"已加入关注",chart_fail:"图表加载�
 loading_news:"正在加载新闻…",no_news:"暂无新闻。",loading_events:"正在加载事件…",no_events:"暂无事件。",
 ex_date:"除权日",ratio:"比例",per_share:"/股",
 ref_price:"参考价",open_price:"开盘",high_price:"最高",low_price:"最低",volume:"成交量",value:"成交额",billion:"十亿",
-loading_screener:"正在加载筛选器…",no_data:"暂无数据。",
+loading_screener:"正在加载筛选器…",no_data:"暂无数据。",top_movers:"涨跌榜",top_gainers:"涨幅榜",top_losers:"跌幅榜",market_news:"市场新闻",
 th_symbol:"代码",th_score:"评分",th_price:"价格",th_pct:"%",th_pe:"市盈率",th_qty:"数量",th_avg_cost:"平均成本",th_pl:"盈亏",th_date:"日期",th_side:"方向",
 select_symbol_first:"请先选择一只股票",calculating:"计算中…",
 bt_strategy:"策略",bt_buyhold:"买入持有",bt_trades_winrate:"交易次数 / 胜率",bt_maxdd:"最大回撤",
@@ -125,7 +125,7 @@ unwatched:"팔로우를 해제했습니다",watched:"관심 목록에 추가했�
 loading_news:"뉴스를 불러오는 중…",no_news:"아직 뉴스가 없습니다.",loading_events:"이벤트를 불러오는 중…",no_events:"아직 이벤트가 없습니다.",
 ex_date:"배당락일",ratio:"비율",per_share:"/주",
 ref_price:"기준가",open_price:"시가",high_price:"고가",low_price:"저가",volume:"거래량",value:"거래대금",billion:"십억",
-loading_screener:"스크리너를 불러오는 중…",no_data:"아직 데이터가 없습니다.",
+loading_screener:"스크리너를 불러오는 중…",no_data:"아직 데이터가 없습니다.",top_movers:"상승/하락 Top",top_gainers:"급등",top_losers:"급락",market_news:"시장 뉴스",
 th_symbol:"종목",th_score:"점수",th_price:"가격",th_pct:"%",th_pe:"PER",th_qty:"수량",th_avg_cost:"평균 단가",th_pl:"손익",th_date:"날짜",th_side:"구분",
 select_symbol_first:"먼저 종목을 선택하세요",calculating:"계산 중…",
 bt_strategy:"전략",bt_buyhold:"바이앤홀드",bt_trades_winrate:"거래 수 / 승률",bt_maxdd:"최대 낙폭",
@@ -191,6 +191,9 @@ export function bindStock(){
   document.querySelectorAll(".stktab").forEach(b=>{
     b.onclick = ()=>{ stkTab = b.dataset.t; renderStockTab(); };
   });
+  // top movers exchange filter
+  const tex = $("topEx");
+  if(tex) tex.addEventListener("change", renderTopMovers);
   // watchlist add
   const wbtn = $("wlAddBtn");
   if(wbtn) wbtn.onclick = addWatchlist;
@@ -301,7 +304,7 @@ function renderStockTab(){
     const el = $("stkTab"+n[0].toUpperCase()+n.slice(1));
     if(el) el.style.display = n===stkTab ? "" : "none";
   });
-  if(stkTab==="market"){ renderIndices(); renderScreener(); }
+  if(stkTab==="market"){ renderIndices(); renderScreener(); renderTopMovers(); renderMarketNews(); }
   if(stkTab==="watch") renderWatchlist();
   if(stkTab==="port") renderPortfolio();
   if(stkTab==="alert"){ renderAlerts(); renderTargets(); }
@@ -664,6 +667,50 @@ async function renderScreener(){
       }).join("") + `</table>`;
     box.querySelectorAll("tr[data-sym]").forEach(tr=> tr.onclick = ()=>openSymbol(tr.dataset.sym));
   }catch(e){ box.innerHTML = '<div class="hint">'+t("error")+": "+esc(e.message)+'</div>'; }
+}
+
+/* ---------- market news (hoc FireAnt MarketNews) ---------- */
+async function renderMarketNews(){
+  const box = $("stkMarketNews");
+  if(!box) return;
+  box.innerHTML = '<div class="hint">'+t("loading_news")+'</div>';
+  try{
+    const j = await sApi("/news/market");
+    const items = j.items||[];
+    box.innerHTML = items.length ? items.slice(0,15).map(n=>
+      `<div class="stknews"><a href="${esc(n.url||"#")}" target="_blank" rel="noopener"><b>${esc(n.title||"")}</b></a><div class="hint">${esc(n.symbol||"")} · ${esc(n.publish_time||"")}</div></div>`
+    ).join("") : '<div class="hint">'+t("no_news")+'</div>';
+  }catch(e){ box.innerHTML = '<div class="hint">—</div>'; }
+}
+
+/* ---------- top movers (hoc FireAnt TopSymbols) ---------- */
+async function renderTopMovers(){
+  const gbox = $("stkTopGain"), lbox = $("stkTopLose");
+  if(!gbox || !lbox) return;
+  const hint = '<div class="hint">'+t("loading")+'</div>';
+  gbox.innerHTML = hint; lbox.innerHTML = hint;
+  try{
+    const ex = $("topEx") ? $("topEx").value : "";
+    let url = "/screener?sort=pct_change&";
+    if(ex) url += "exchange="+encodeURIComponent(ex)+"&";
+    const [gj, lj] = await Promise.all([
+      sApi(url+"order=desc"),
+      sApi(url+"order=asc"),
+    ]);
+    const mk = (rows)=>{
+      rows = (rows||[]).filter(r=>r.pct_change!=null).slice(0,10);
+      if(!rows.length) return '<div class="hint">'+t("no_data")+'</div>';
+      return `<table class="stktbl">` + rows.map(r=>{
+        const pc=r.pct_change, cls=pcCls(pc);
+        return `<tr data-sym="${esc(r.symbol)}"><td><b>${esc(r.symbol)}</b></td><td>${r.close??"—"}</td><td class="${cls}">${fmtPct(pc)}</td></tr>`;
+      }).join("") + `</table>`;
+    };
+    gbox.innerHTML = mk(gj.rows); lbox.innerHTML = mk(lj.rows);
+    [gbox,lbox].forEach(b=>b.querySelectorAll("tr[data-sym]").forEach(tr=>tr.onclick=()=>openSymbol(tr.dataset.sym)));
+  }catch(e){
+    const err = '<div class="hint">'+t("error")+": "+esc(e.message)+'</div>';
+    gbox.innerHTML = err; lbox.innerHTML = err;
+  }
 }
 
 /* ---------- backtest ---------- */
