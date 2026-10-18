@@ -364,6 +364,21 @@ export async function hStockNews(request, env){
   return sJson(d);
 }
 
+export async function getCompanyProfile(env, sym){
+  sym = String(sym||"").toUpperCase();
+  if(!sym) return {symbol:sym};
+  const d = await sGet(env, "market/company_profile/"+sym+".json");
+  return d || {symbol:sym};
+}
+
+export async function hStockCompanyProfile(request, env){
+  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
+  const sym = (new URL(request.url).searchParams.get("symbol")||"").toUpperCase();
+  if(!sym) return jerr("Symbol required", 400);
+  const d = await getCompanyProfile(env, sym);
+  return sJson(d);
+}
+
 export async function hStockEvents(request, env){
   const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
   const sym = (new URL(request.url).searchParams.get("symbol")||"").toUpperCase();
@@ -870,6 +885,10 @@ export async function hStockPublish(request, env){
   }
   if(body.events) for(const sym of Object.keys(body.events)){
     await sPut(env, "market/events/"+sym+".json", doc({symbol:sym, items:body.events[sym]}));
+    n++;
+  }
+  if(body.company_profile) for(const sym of Object.keys(body.company_profile)){
+    await sPut(env, "market/company_profile/"+sym+".json", doc(Object.assign({symbol:sym}, body.company_profile[sym])));
     n++;
   }
   if(body.intraday) for(const key of Object.keys(body.intraday)){

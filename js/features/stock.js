@@ -462,8 +462,32 @@ async function loadNewsEvents(sym){
       const close = q.close;
       const pe = (close && f.eps>0) ? (close*1000/f.eps).toFixed(2) : "—";
       const pb = (close && f.bvps>0) ? (close*1000/f.bvps).toFixed(2) : "—";
-      fbox.innerHTML = `<div class="stkfund"><span>P/E <b>${pe}</b></span><span>P/B <b>${pb}</b></span><span>ROE <b>${f.roe??"—"}%</b></span><span>ROA <b>${f.roa??"—"}%</b></span><span>EPS <b>${fmtN(f.eps)}</b></span><span>Sector <b>${esc(f.industry||"—")}</b></span></div>`;
+      // Health scores (tu chu: Altman Z + Piotroski F)
+      const az = f.altman_z;
+      const azCls = az==null?"":az>2.99?"up":az>1.81?"":"dn";
+      const pf = f.piotroski;
+      const pfCls = pf==null?"":pf>=8?"up":pf<=2?"dn":"";
+      fbox.innerHTML = `<div class="stkfund"><span>P/E <b>${pe}</b></span><span>P/B <b>${pb}</b></span><span>ROE <b>${f.roe??"—"}%</b></span><span>ROA <b>${f.roa??"—"}%</b></span><span>EPS <b>${fmtN(f.eps)}</b></span><span>Altman Z <b class="${azCls}">${az??"—"}</b></span><span>Piotroski <b class="${pfCls}">${pf??"—"}/9</b></span><span>Sector <b>${esc(f.industry||"—")}</b></span></div>`;
     }catch(e){ fbox.innerHTML = '<div class="hint">—</div>'; }
+  }
+  // company profile (ho so: lanh dao, cong ty con, so huu...)
+  const pbox = $("stkProfile");
+  if(pbox){
+    pbox.innerHTML = '<div class="hint">'+t("loading")+'</div>';
+    try{
+      const p = await sApi("/company/profile?symbol="+encodeURIComponent(sym));
+      let h = "";
+      const off = p.officers||[];
+      if(off.length) h += `<div style="margin-bottom:8px"><b>${t("officers_h")}</b>`+
+        off.slice(0,5).map(o=>`<div class="hint">${esc(o.name||"")} — ${esc(o.position||"")}${o.rate?` (${(o.rate*100).toFixed(1)}%)`:""}</div>`).join("")+`</div>`;
+      const own = p.ownership||[];
+      if(own.length) h += `<div style="margin-bottom:8px"><b>${t("ownership_h")}</b>`+
+        own.slice(0,5).map(o=>`<div class="hint">${esc(o.owner_type||"")}: ${(o.ownership_percentage??"—")}%</div>`).join("")+`</div>`;
+      const sub = p.subsidiaries||[];
+      if(sub.length) h += `<div style="margin-bottom:8px"><b>${t("subs_h")} (${sub.length})</b>`+
+        sub.slice(0,5).map(s=>`<div class="hint">${esc(s.name||s.symbol||"")}</div>`).join("")+`</div>`;
+      pbox.innerHTML = h || '<div class="hint">—</div>';
+    }catch(e){ pbox.innerHTML = '<div class="hint">—</div>'; }
   }
 }
 
