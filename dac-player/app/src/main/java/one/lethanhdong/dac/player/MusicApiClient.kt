@@ -61,6 +61,7 @@ class MusicApiClient(
     }
 
     private val auth by lazy { AuthManager(context, baseUrl) }
+    private val dacAuth by lazy { DacAuthManager(context, baseUrl) }
     private val driveAuth by lazy { driveAuthManager ?: DriveAuthManager(context) }
 
     /** 4.6: Mutex serialize refresh — tránh bão request khi nhiều call cùng 401. */
@@ -79,7 +80,17 @@ class MusicApiClient(
         return block("")
     }
 
-    private fun authToken(): String? = auth.token()
+    /**
+     * 4.6: Ưu tiên DAC access token, fallback về web session.
+     * DAC token tự refresh khi hết hạn.
+     */
+    private suspend fun authToken(): String? {
+        return try {
+            dacAuth.validAccessToken() ?: auth.token()
+        } catch (e: Exception) {
+            auth.token()
+        }
+    }
 
     /** GET Worker API, trả về body string. Throw IllegalStateException nếu lỗi. */
     private suspend fun get(path: String, driveToken: String? = null): String =

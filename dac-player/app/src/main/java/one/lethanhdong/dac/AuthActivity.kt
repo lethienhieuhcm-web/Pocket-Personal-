@@ -10,6 +10,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import one.lethanhdong.dac.player.AuthManager
+import one.lethanhdong.dac.player.DacAuthManager
 import one.lethanhdong.dac.player.AuthValidator
 import one.lethanhdong.dac.player.EmailNotVerifiedException
 import one.lethanhdong.dac.player.GoogleSignInManager
@@ -28,6 +29,7 @@ import one.lethanhdong.dac.player.GoogleSignInManager
 class AuthActivity : AppCompatActivity() {
 
     private lateinit var authManager: AuthManager
+    private lateinit var dacAuthManager: DacAuthManager
     private lateinit var emailInput: EditText
     private lateinit var passwordInput: EditText
     private lateinit var errorText: TextView
@@ -45,6 +47,7 @@ class AuthActivity : AppCompatActivity() {
         setContentView(R.layout.activity_auth)
 
         authManager = AuthManager(this)
+        dacAuthManager = DacAuthManager(this)
 
         emailInput = findViewById(R.id.emailInput)
         passwordInput = findViewById(R.id.passwordInput)
@@ -129,6 +132,12 @@ class AuthActivity : AppCompatActivity() {
         lifecycleScope.launch {
             try {
                 authManager.login(email, password)
+                // 4.6: Đăng nhập DAC auth riêng (không chặn nếu lỗi — web session vẫn dùng được)
+                try {
+                    dacAuthManager.login(email, password)
+                } catch (e: Exception) {
+                    // bỏ qua, DAC endpoints chấp nhận cả web session
+                }
                 goToMain()
             } catch (e: EmailNotVerifiedException) {
                 // 2.2: hiện nút gửi lại email xác nhận
