@@ -841,10 +841,14 @@ export async function hStockPublish(request, env){
   let body;
   try{ body = await request.json(); }catch(e){ return jerr("Bad JSON", 400); }
   const now = new Date().toISOString();
+  // Provenance: VM gui kem _prov {source, retrieved_at} trong moi chunk (hoc tu vnstock 5).
+  // Giu lai vao moi file R2 de sau nay biet so lieu tu dau, luc nao.
+  const prov = (body._prov && typeof body._prov === "object") ? body._prov : null;
+  const doc = (o)=> prov ? Object.assign({updated:now, _prov:prov}, o) : Object.assign({updated:now}, o);
   let n = 0;
   const put1 = async (key, val)=>{
     if(val===undefined) return;
-    await sPut(env, "market/"+key+".json", Object.assign({updated:now}, val));
+    await sPut(env, "market/"+key+".json", doc(val));
     n++;
   };
   if(body.indices) await put1("indices", {rows:body.indices});
@@ -853,23 +857,23 @@ export async function hStockPublish(request, env){
   if(body.fundamentals) await put1("fundamentals", {by_symbol:body.fundamentals});
   if(body.symbols) await put1("symbols", {rows:body.symbols});
   if(body.ohlcv) for(const sym of Object.keys(body.ohlcv)){
-    await sPut(env, "market/ohlcv/"+sym+".json", {updated:now, rows:body.ohlcv[sym]});
+    await sPut(env, "market/ohlcv/"+sym+".json", doc({rows:body.ohlcv[sym]}));
     n++;
   }
   if(body.indicators) for(const sym of Object.keys(body.indicators)){
-    await sPut(env, "market/indicators/"+sym+".json", {updated:now, rows:body.indicators[sym]});
+    await sPut(env, "market/indicators/"+sym+".json", doc({rows:body.indicators[sym]}));
     n++;
   }
   if(body.news) for(const sym of Object.keys(body.news)){
-    await sPut(env, "market/news/"+sym+".json", {updated:now, symbol:sym, items:body.news[sym]});
+    await sPut(env, "market/news/"+sym+".json", doc({symbol:sym, items:body.news[sym]}));
     n++;
   }
   if(body.events) for(const sym of Object.keys(body.events)){
-    await sPut(env, "market/events/"+sym+".json", {updated:now, symbol:sym, items:body.events[sym]});
+    await sPut(env, "market/events/"+sym+".json", doc({symbol:sym, items:body.events[sym]}));
     n++;
   }
   if(body.intraday) for(const key of Object.keys(body.intraday)){
-    await sPut(env, "market/intraday/"+key+".json", {updated:now, rows:body.intraday[key]});
+    await sPut(env, "market/intraday/"+key+".json", doc({rows:body.intraday[key]}));
     n++;
   }
   // Push real-time update to Ably (fire-and-forget; skip if no key)
