@@ -200,13 +200,26 @@ def publish_snapshot():
     _vnhome = "/data/.vnstock"
     os.makedirs(_vnhome, exist_ok=True)
     os.environ["HOME"] = "/data"  # ~/.vnstock -> /data/.vnstock (persistent)
-    _auth_ok = os.path.exists(os.path.join(_vnhome, "auth", "device_id"))
-    if not _auth_ok and VNSTOCK_KEY:
+    # Kiem tra device da register THAT chua (file ton tai chua du;
+    # lan truoc register that bai van de lai file stale)
+    def _device_ok():
+        try:
+            _sp = subprocess.run(["vnstock", "status"], capture_output=True,
+                                 timeout=30, env={**os.environ, "HOME": "/data"})
+            _out = _sp.stdout.decode() + _sp.stderr.decode()
+            return "Thiết bị:" in _out and "chưa" not in _out.lower().split("thiết bị:")[1][:50]
+        except Exception:
+            return False
+    if not _device_ok() and VNSTOCK_KEY:
         print("vnstock: registering device with Community key...", flush=True)
         try:
+            # Xoa auth stale truoc khi register lai
+            import shutil
+            shutil.rmtree(os.path.join(_vnhome, "auth"), ignore_errors=True)
             _rp = subprocess.run(
                 ["vnstock", "register", "--stdin"],
                 input=VNSTOCK_KEY.encode(), capture_output=True, timeout=90,
+                env={**os.environ, "HOME": "/data"},
             )
             print("vnstock register: " + _rp.stdout.decode()[:300], flush=True)
             if _rp.returncode != 0:
