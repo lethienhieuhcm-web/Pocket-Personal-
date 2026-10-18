@@ -63,6 +63,10 @@ class AuthActivity : AppCompatActivity() {
         forgotPasswordButton.setOnClickListener { doForgotPassword() }
         resendButton.setOnClickListener { doResendVerification() }
         googleSignInButton.setOnClickListener { doGoogleSignIn() }
+        findViewById<Button>(R.id.skipLoginButton).setOnClickListener {
+            // Bản test: bỏ qua đăng nhập, vào thẳng Main
+            goToMain()
+        }
     }
 
     private fun showError(message: String) {

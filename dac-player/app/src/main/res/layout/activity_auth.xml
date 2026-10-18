@@ -91,4 +91,12 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
         android:text="Đăng nhập bằng Google" />
+
+    <!-- Bản test: bỏ qua đăng nhập -->
+    <Button
+        android:id="@+id/skipLoginButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="Dùng thử không cần đăng nhập" />
 </LinearLayout>
