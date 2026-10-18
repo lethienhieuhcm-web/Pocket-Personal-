@@ -54,6 +54,9 @@ class SearchActivity : AppCompatActivity() {
         statusText = findViewById(R.id.searchStatus)
         searchInput = findViewById(R.id.searchInput)
 
+        // Chip gợi ý — thiết kế v4
+        setupChips()
+
         trackAdapter = TrackAdapter(
             onTrackClick = { track -> playTrack(track) },
             imageLoader = CoverArt.imageLoader(this, apiClient),
@@ -222,6 +225,39 @@ class SearchActivity : AppCompatActivity() {
             } catch (e: Exception) {
                 // bỏ qua
             }
+        }
+    }
+
+    /**
+     * Chip gợi ý — thiết kế v4.
+     * Bấm chip → điền vào ô search và tìm luôn.
+     */
+    private fun setupChips() {
+        val chipRow = findViewById<android.widget.LinearLayout>(R.id.chipRow)
+        val suggestions = listOf("FLAC", "DSD", "24-bit", "96kHz", "WAV", "MP3")
+
+        for (text in suggestions) {
+            val chip = android.widget.Button(this).apply {
+                this.text = text
+                textSize = 12f
+                val padding = (8 * resources.displayMetrics.density).toInt()
+                setPadding(padding * 2, padding, padding * 2, padding)
+                background = getDrawable(R.drawable.spec_badge)
+                setTextColor(0xFFE6EDF3.toInt())
+            }
+            val params = android.widget.LinearLayout.LayoutParams(
+                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT,
+                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                marginEnd = (8 * resources.displayMetrics.density).toInt()
+            }
+            chip.layoutParams = params
+            chip.setOnClickListener {
+                searchInput.setText(text)
+                searchInput.setSelection(text.length)
+                doSearch()
+            }
+            chipRow.addView(chip)
         }
     }
 }

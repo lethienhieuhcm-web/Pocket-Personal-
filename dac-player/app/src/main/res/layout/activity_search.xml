@@ -45,6 +45,20 @@
         android:textSize="13sp"
         android:layout_marginBottom="8dp" />
 
+    <!-- Chip gợi ý — thiết kế v4 -->
+    <HorizontalScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp"
+        android:scrollbars="none">
+
+        <LinearLayout
+            android:id="@+id/chipRow"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal" />
+    </HorizontalScrollView>
+
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/searchResultsList"
         android:layout_width="match_parent"
