@@ -192,13 +192,27 @@ def publish_snapshot():
     PUBLISH_URL = "https://lethanhdong.one/api/internal/stock-publish"
     ALERT_URL = "https://lethanhdong.one/api/internal/modal-alert"
     SECRET = os.environ["STOCK_PUBLISH_SECRET"]
-    VNSTOCK_KEY = os.environ.get("VNSTOCK_API_KEY")  # 5.x: khong dung, giu de khong vo secret cu
+    VNSTOCK_KEY = os.environ.get("VNSTOCK_API_KEY")
 
-    # vnstock 5.x: KHONG ghi api_key.json (co che 4.x). 5.x dung device
-    # registration rieng; neu ghi api_key.json ma chua register -> loi
-    # "Thiet bi chua duoc dang ky" va khong lay duoc data.
-    # Modal chi goi ~5 calls/30 phut -> chay Guest mode la du (quota 20/phut).
-    # Key Community cua anh chi dung tren VM (da register device o do).
+    # vnstock 5.x: dang ky device bang key Community (Henrry yeu cau).
+    # Luu auth tren volume persistent /data de khong register lai moi run.
+    import subprocess
+    _vnhome = "/data/.vnstock"
+    os.makedirs(_vnhome, exist_ok=True)
+    os.environ["HOME"] = "/data"  # ~/.vnstock -> /data/.vnstock (persistent)
+    _auth_ok = os.path.exists(os.path.join(_vnhome, "auth", "device_id"))
+    if not _auth_ok and VNSTOCK_KEY:
+        print("vnstock: registering device with Community key...", flush=True)
+        try:
+            _rp = subprocess.run(
+                ["vnstock", "register", "--stdin"],
+                input=VNSTOCK_KEY.encode(), capture_output=True, timeout=90,
+            )
+            print("vnstock register: " + _rp.stdout.decode()[:300], flush=True)
+            if _rp.returncode != 0:
+                print("vnstock register FAILED: " + _rp.stderr.decode()[:300], flush=True)
+        except Exception as _re:
+            print(f"vnstock register error: {_re}", flush=True)
 
     from vnstock import Market
     import vnstock as _vnmod  # doc version runtime de gan vao _prov
