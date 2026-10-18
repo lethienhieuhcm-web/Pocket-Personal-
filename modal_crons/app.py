@@ -42,7 +42,7 @@ book_image = (
 stock_image = (
     modal.Image.debian_slim(python_version="3.13")
     .pip_install("requests")
-    .pip_install("vnstock>=5,<6", extra_index_url="https://vnstocks.com/api/simple")
+    .pip_install("vnstock>=5,<6", extra_index_url="https://vnstocks.com/api/packages")
 )
 
 app = modal.App("pocket-personal-crons")
