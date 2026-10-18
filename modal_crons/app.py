@@ -192,13 +192,13 @@ def publish_snapshot():
     PUBLISH_URL = "https://lethanhdong.one/api/internal/stock-publish"
     ALERT_URL = "https://lethanhdong.one/api/internal/modal-alert"
     SECRET = os.environ["STOCK_PUBLISH_SECRET"]
-    VNSTOCK_KEY = os.environ["VNSTOCK_API_KEY"]
+    VNSTOCK_KEY = os.environ.get("VNSTOCK_API_KEY")  # 5.x: khong dung, giu de khong vo secret cu
 
-    # Write vnstock key to expected location for the library
-    vnstock_dir = os.path.expanduser("~/.vnstock")
-    os.makedirs(vnstock_dir, exist_ok=True)
-    with open(os.path.join(vnstock_dir, "api_key.json"), "w") as f:
-        json.dump({"api_key": VNSTOCK_KEY}, f)
+    # vnstock 5.x: KHONG ghi api_key.json (co che 4.x). 5.x dung device
+    # registration rieng; neu ghi api_key.json ma chua register -> loi
+    # "Thiet bi chua duoc dang ky" va khong lay duoc data.
+    # Modal chi goi ~5 calls/30 phut -> chay Guest mode la du (quota 20/phut).
+    # Key Community cua anh chi dung tren VM (da register device o do).
 
     from vnstock import Market
     import vnstock as _vnmod  # doc version runtime de gan vao _prov
