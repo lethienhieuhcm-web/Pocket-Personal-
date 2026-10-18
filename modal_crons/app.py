@@ -201,6 +201,7 @@ def publish_snapshot():
         json.dump({"api_key": VNSTOCK_KEY}, f)
 
     from vnstock import Market
+    import vnstock as _vnmod  # doc version runtime de gan vao _prov
 
     def vn_call(fn, label, retries=3):
         for attempt in range(retries):
@@ -224,6 +225,14 @@ def publish_snapshot():
         req.add_header("User-Agent", "Mozilla/5.0 (compatible; PocketPersonal/1.0)")
         with urllib.request.urlopen(req, timeout=60) as resp:
             return json.loads(resp.read().decode())
+
+    def _prov(source):
+        """Provenance (hoc tu vnstock 5): gan version vnstock THAT dang chay
+        trong image, de biet du lieu tu stock4 hay stock5."""
+        from datetime import datetime, timezone
+        ver = getattr(_vnmod, "__version__", "?")
+        return {"source": f"{source}/{ver}",
+                "retrieved_at": datetime.now(timezone.utc).isoformat()}
 
     def send_fail_alert(detail):
         """Bao Henrry qua Telegram khi run that bai hoan toan (kieu ong lon:
@@ -292,7 +301,7 @@ def publish_snapshot():
             time.sleep(2)  # respect rate limit
         if idx_rows:
             # Contract Worker: {"indices": [...]} -> market/indices.json {rows: [...]}
-            result = publish({"indices": idx_rows})
+            result = publish({"indices": idx_rows, "_prov": _prov("vnstock")})
             print(f"  indices: {len(idx_rows)} -> {result}")
             ok_indices = True
     except Exception as e:
@@ -321,7 +330,7 @@ def publish_snapshot():
     if by_symbol:
         try:
             # Contract Worker: {"quotes": {SYM: {...}}} -> market/quotes.json {by_symbol: {...}}
-            result = publish({"quotes": by_symbol})
+            result = publish({"quotes": by_symbol, "_prov": _prov("vnstock")})
             print(f"  quotes: {len(by_symbol)} symbols -> {result}")
             ok_quotes = True
         except Exception as e:
