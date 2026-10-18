@@ -84,6 +84,23 @@ object DacSettings {
     }
 
     /**
+     * Gapless — global, không per-DAC.
+     * Mặc định bật (theo HiBy "seamless").
+     * Tắt → force stop/start giữa các bài (có gap).
+     */
+    fun isGaplessEnabled(context: Context): Boolean {
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        return prefs.getBoolean("gapless_enabled", true)
+    }
+
+    fun setGaplessEnabled(context: Context, enabled: Boolean) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean("gapless_enabled", enabled)
+            .apply()
+    }
+
+    /**
      * Key SharedPreferences cho hardware volume — per-DAC như DSD method.
      * Giá trị 0–100, mặc định 100 (tối đa = bit-perfect).
      */
