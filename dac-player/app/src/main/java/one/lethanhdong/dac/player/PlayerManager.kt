@@ -198,6 +198,8 @@ class PlayerManager(private val context: Context) {
         val viaUsbDac: Boolean,
         /** Nhãn DSD (DSD64/DSD128...) khi phát file DSD qua DoP, null nếu không phải DSD. */
         val dsdLabel: String? = null,
+        /** Số kênh (2 = Stereo). Thêm cho Signal Path. */
+        val channels: Int? = null,
     ) {
         /**
          * Badge hiện ở UI:
@@ -293,6 +295,7 @@ class PlayerManager(private val context: Context) {
                 formatLabel = label,
                 viaUsbDac = viaUsb,
                 dsdLabel = dsdLabel,
+                channels = format?.channelCount?.takeIf { it > 0 },
             )
         }
     }
