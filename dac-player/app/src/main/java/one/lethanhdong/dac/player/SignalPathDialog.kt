@@ -4,8 +4,10 @@ import android.app.Dialog
 import android.content.Context
 import android.os.Bundle
 import android.view.LayoutInflater
+import android.view.View
 import android.widget.LinearLayout
 import android.widget.TextView
+import one.lethanhdong.dac.R
 
 /**
  * Dialog hiển thị đường tín hiệu (Signal Path).
@@ -52,9 +54,9 @@ class SignalPathDialog(
 
             if (stage.warning != null) {
                 warning.text = "⚠ ${stage.warning}"
-                warning.visibility = android.view.View.VISIBLE
+                warning.visibility = View.VISIBLE
             } else {
-                warning.visibility = android.view.View.GONE
+                warning.visibility = View.GONE
             }
 
             container.addView(row)
