@@ -329,7 +329,10 @@ async function renderIndices(){
     const upd = j.updated ? new Date(j.updated) : null;
     // Nhan nguon du lieu (hoc tu vnstock 5: provenance). _prov co tu worker sau build 20261018084500.
     const pv = j._prov && j._prov.source;
-    const gen = pv ? (pv.indexOf("vnstock5")>=0 ? "vnstock 5" : pv.indexOf("vnstock4")>=0 ? "vnstock 4" : pv) : "";
+    // Trich major version: "vnstock/4.0.9" -> "vnstock 4", "vnstock4" -> "vnstock 4"
+    let gen = pv || "";
+    const vm = pv && /vnstock[\/_]?(\d)/i.exec(pv);
+    if (vm) gen = "vnstock " + vm[1];
     $("stkUpd").textContent = (upd ? t("updated")+upd.toLocaleString(LOCALES[LANG]||"en-US") : "") + (gen ? " · "+t("dataSrc")+gen : "");
   }catch(e){ box.innerHTML = '<div class="hint">'+t("error")+": "+esc(e.message)+'</div>'; }
 }
