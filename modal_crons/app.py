@@ -230,7 +230,12 @@ def publish_snapshot():
         """Provenance (hoc tu vnstock 5): gan version vnstock THAT dang chay
         trong image, de biet du lieu tu stock4 hay stock5."""
         from datetime import datetime, timezone
-        ver = getattr(_vnmod, "__version__", "?")
+        ver = "?"
+        try:
+            from importlib.metadata import version as _pkg_version
+            ver = _pkg_version("vnstock")
+        except Exception:
+            ver = getattr(_vnmod, "__version__", "?")
         return {"source": f"{source}/{ver}",
                 "retrieved_at": datetime.now(timezone.utc).isoformat()}
 
