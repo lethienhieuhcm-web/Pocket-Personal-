@@ -989,8 +989,8 @@ function done(el,ok,msg){el.className='row '+(ok?'ok':'fail');el.textContent=(ok
 document.getElementById('go').onclick=async function(){this.disabled=true;document.getElementById('out').innerHTML='';
 var r=row('1. Tải SDK từ unpkg.com');
 try{var s=await fetch('https://unpkg.com/@hyperbeam/web@0.0.39/dist/index.js',{method:'HEAD'});done(r,s.ok,'unpkg.com: '+(s.ok?'vào được':'lỗi '+s.status));}catch(e){done(r,false,'unpkg.com: BỊ CHẶN');}
-r=row('2. Kết nối API Hyperbeam');
-try{var s2=await fetch('https://engine.hyperbeam.com/v0/vm',{method:'GET'});done(r,true,'engine.hyperbeam.com: vào được');}catch(e){done(r,false,'engine.hyperbeam.com: BỊ CHẶN');}
+r=row('2. Kết nối máy chủ video Hyperbeam (*.hyperbeam.com)');
+try{var s2=await fetch('https://hyperbeam.com/favicon.ico',{method:'HEAD',mode:'no-cors'});done(r,true,'hyperbeam.com: vào được (không bị chặn DNS)');}catch(e){done(r,false,'hyperbeam.com: BỊ CHẶN');}
 r=row('3. WebRTC');try{var pc=new RTCPeerConnection();done(r,true,'Trình duyệt hỗ trợ WebRTC');
 r=row('4. ICE (tường lửa UDP)');
 var got=false;pc.onicecandidate=function(ev){if(ev.candidate&&!got){got=true;done(r,true,'ICE chạy: '+ev.candidate.type);try{pc.close();}catch(e){}}};
