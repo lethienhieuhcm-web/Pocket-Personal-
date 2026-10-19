@@ -932,18 +932,22 @@ export async function hStockPublish(request, env){
   if(body.foreign_flow){
     await put1("foreign_flow", {by_symbol:body.foreign_flow});
     // Append lich su foreign flow theo tung ma
-    const today = new Date().toISOString().slice(0,10);
+    // Ho tro backfill: neu payload co trade_date thi dung, khong thi dung today
+    const defaultDate = new Date().toISOString().slice(0,10);
     for(const sym of Object.keys(body.foreign_flow)){
       const d = body.foreign_flow[sym];
       if(!d || d.buy_volume==null) continue;
+      const tdate = d.trade_date || defaultDate;
       const hkey = "market/foreign_flow_history/"+sym+".json";
       const h = await sGet(env, hkey) || {rows:[]};
       const rows = h.rows || [];
-      const idx = rows.findIndex(r=>r.trade_date===today);
-      const entry = {trade_date:today, buy_volume:d.buy_volume, sell_volume:d.sell_volume,
+      const idx = rows.findIndex(r=>r.trade_date===tdate);
+      const entry = {trade_date:tdate, buy_volume:d.buy_volume, sell_volume:d.sell_volume,
         net_volume:d.net_volume, buy_value_est:d.buy_value_est||null,
         sell_value_est:d.sell_value_est||null, net_value_est:d.net_value_est||null};
       if(idx>=0) rows[idx] = entry; else rows.push(entry);
+      // Sort theo ngay va giu 500 phien moi nhat
+      rows.sort((a,b)=>(a.trade_date||"").localeCompare(b.trade_date||""));
       const trimmed = rows.slice(-500);
       await sPut(env, hkey, doc({symbol:sym, rows:trimmed}));
       n++;
