@@ -979,3 +979,24 @@ export async function handleHbSession(request, env, url) {
   }
   return jerr("Method not allowed", 405);
 }
+
+// TEMP debug 19/10 — nhận lỗi client gửi về, lưu D1 để đọc. XÓA sau khi fix xong.
+export async function handleHbDebug(request, env, url) {
+  const sess = await resolveSession(request, env, url);
+  if (!sess) return jerr("Not logged in", 401);
+  let b = {};
+  try { b = await request.json(); } catch (e) { /* kệ */ }
+  const step = String(b.step || "").slice(0, 64);
+  const name = String(b.name || "").slice(0, 64);
+  const message = String(b.message || "").slice(0, 500);
+  try {
+    await env.DB.prepare(
+      "CREATE TABLE IF NOT EXISTS hb_debug (id INTEGER PRIMARY KEY AUTOINCREMENT, ts INTEGER, step TEXT, name TEXT, message TEXT)"
+    ).run();
+    await env.DB.prepare(
+      "INSERT INTO hb_debug (ts, step, name, message) VALUES (?, ?, ?, ?)"
+    ).bind(Date.now(), step, name, message).run();
+  } catch (e) { return jerr("db fail", 500); }
+  return new Response(JSON.stringify({ ok: true }),
+    { headers: { "Content-Type": "application/json" } });
+}
