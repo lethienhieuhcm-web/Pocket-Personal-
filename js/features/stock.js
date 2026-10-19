@@ -479,13 +479,51 @@ async function loadNewsEvents(sym){
     try{
       const q2 = q||{};
       const fb = q2.foreign_buy_volume, fs = q2.foreign_sell_volume;
+      const fmtV = v=>v==null?"—":Number(v).toLocaleString("vi-VN");
+      let h = "";
       if(fb!=null && fs!=null){
         const net = fb - fs;
         const netCls = net>0?"up":net<0?"dn":"";
-        const fmtV = v=>v==null?"—":Number(v).toLocaleString("vi-VN");
-        ffbox.innerHTML = `<div class="stkfund"><span>${t("foreign_buy")} <b class="up">${fmtV(fb)}</b></span><span>${t("foreign_sell")} <b class="dn">${fmtV(fs)}</b></span><span>${t("foreign_net")} <b class="${netCls}">${net>0?"+":""}${fmtV(net)}</b></span></div>`;
-      }else{
-        ffbox.innerHTML = '<div class="hint">—</div>';
+        h += `<div class="stkfund"><span>${t("foreign_buy")} <b class="up">${fmtV(fb)}</b></span><span>${t("foreign_sell")} <b class="dn">${fmtV(fs)}</b></span><span>${t("foreign_net")} <b class="${netCls}">${net>0?"+":""}${fmtV(net)}</b></span></div>`;
+      }
+      // Lich su khoi ngoai
+      h += `<div style="margin-top:8px"><div class="row" style="gap:8px;margin-bottom:6px;align-items:center">`
+        + `<select id="ffHistRange" class="gptInput" style="width:auto"><option value="30">30 phiên</option><option value="90">3 tháng</option><option value="250">1 năm</option><option value="500">Tất cả</option></select>`
+        + `<button id="ffHistExport" class="btnSm">${t("export_csv")||"Xuất CSV"}</button></div>`
+        + `<div id="ffHistTbl"><div class="hint">${t("loading")}</div></div></div>`;
+      ffbox.innerHTML = h || '<div class="hint">—</div>';
+      const loadFHist = async (limit)=>{
+        const tbl = $("ffHistTbl");
+        if(!tbl) return;
+        try{
+          const hj = await sApi("/foreign-flow/history?symbol="+encodeURIComponent(sym)+"&limit="+limit);
+          const rows = hj.rows||[];
+          if(!rows.length){ tbl.innerHTML = '<div class="hint">'+t("no_data")+'</div>'; return; }
+          tbl.innerHTML = `<table class="stktbl"><tr><th>${t("th_date")}</th><th>${t("foreign_buy")}</th><th>${t("foreign_sell")}</th><th>${t("foreign_net")}</th></tr>`
+            + rows.map(r=>{
+              const nc = r.net_volume>0?"up":r.net_volume<0?"dn":"";
+              return `<tr><td>${esc(r.trade_date||"")}</td><td>${fmtV(r.buy_volume)}</td><td>${fmtV(r.sell_volume)}</td><td class="${nc}">${r.net_volume>0?"+":""}${fmtV(r.net_volume)}</td></tr>`;
+            }).join("") + `</table>`;
+          tbl._rows = rows;
+        }catch(e){ tbl.innerHTML = '<div class="hint">—</div>'; }
+      };
+      const frange = $("ffHistRange");
+      if(frange){ frange.onchange = ()=>loadFHist(frange.value); loadFHist(30); }
+      const fexp = $("ffHistExport");
+      if(fexp){
+        fexp.onclick = ()=>{
+          const tbl = $("ffHistTbl");
+          const rows = (tbl && tbl._rows) || [];
+          if(!rows.length){ toast(t("no_data")); return; }
+          const csv = "Ngay,Mua_KL,Ban_KL,Rong_KL\n"
+            + rows.map(r=>[r.trade_date, r.buy_volume, r.sell_volume, r.net_volume].join(",")).join("\n");
+          const blob = new Blob(["\ufeff"+csv], {type:"text/csv;charset=utf-8"});
+          const a = document.createElement("a");
+          a.href = URL.createObjectURL(blob);
+          a.download = "khoingoai_"+sym+".csv";
+          a.click();
+          URL.revokeObjectURL(a.href);
+        };
       }
     }catch(e){ ffbox.innerHTML = '<div class="hint">—</div>'; }
   }

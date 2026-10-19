@@ -16,7 +16,7 @@ import { and, eq, lt, sql } from "drizzle-orm";
 import { rateLimits } from "./schema.js";
 import {getSession, getUser, OWNER_EMAIL} from './auth.js';
 import {jerr} from './utils.js';
-import {hStockVersion, hStockIndices, hStockQuote, hStockOhlcv, hStockSymbols, hStockScreener, hStockScreener2, hStockFundamentals, hStockNews, hStockMarketNews, hStockForeignFlow, hStockProprietaryFlow, hStockProprietaryHistory, hStockEvents, hStockCompanyProfile, hStockBacktest, hStockCompare, hWatchlistGet, hWatchlistAdd, hWatchlistDel, hPortfolio, hTxnAdd, hTxnDel, hTxnNote, hCostHistory, hAlertsGet, hAlertsAdd, hAlertsDel, hAlertsBySymbol, hTargetsGet, hTargetsSet, hTargetsDel, hPinStatus, hPinSet, hPinVerify, hPinDel, hMigrateR2ToD1, hStockPublish, hModalAlert, hStockReportData, hStockAlertDone, hStockTargetDone} from './stock.js';
+import {hStockVersion, hStockIndices, hStockQuote, hStockOhlcv, hStockSymbols, hStockScreener, hStockScreener2, hStockFundamentals, hStockNews, hStockMarketNews, hStockForeignFlow, hStockForeignHistory, hStockProprietaryFlow, hStockProprietaryHistory, hStockEvents, hStockCompanyProfile, hStockBacktest, hStockCompare, hWatchlistGet, hWatchlistAdd, hWatchlistDel, hPortfolio, hTxnAdd, hTxnDel, hTxnNote, hCostHistory, hAlertsGet, hAlertsAdd, hAlertsDel, hAlertsBySymbol, hTargetsGet, hTargetsSet, hTargetsDel, hPinStatus, hPinSet, hPinVerify, hPinDel, hMigrateR2ToD1, hStockPublish, hModalAlert, hStockReportData, hStockAlertDone, hStockTargetDone} from './stock.js';
 
 // Build ID - replaced with timestamp on every deploy (see cf_deploy.py)
 const BUILD_ID = "__BUILD__";
@@ -154,6 +154,7 @@ const ROUTES = [
   ['GET',    '/api/stock/news',      hStockNews,             'user'],
   ['GET',    '/api/stock/news/market', hStockMarketNews,      'user'],
   ['GET',    '/api/stock/foreign-flow', hStockForeignFlow,    'user'],
+  ['GET',    '/api/stock/foreign-flow/history', hStockForeignHistory, 'user'],
   ['GET',    '/api/stock/proprietary-flow', hStockProprietaryFlow, 'user'],
   ['GET',    '/api/stock/proprietary-flow/history', hStockProprietaryHistory, 'user'],
   ['GET',    '/api/stock/events',    hStockEvents,           'user'],

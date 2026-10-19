@@ -396,6 +396,19 @@ export async function hStockProprietaryHistory(request, env){
     updated:d?d.updated:null});
 }
 
+/* Lich su foreign flow theo ma: ?symbol=ACB&limit=30 */
+export async function hStockForeignHistory(request, env){
+  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
+  const u = new URL(request.url);
+  const sym = (u.searchParams.get("symbol")||"").toUpperCase();
+  if(!sym) return jerr("Missing symbol", 400);
+  const limit = Math.min(parseInt(u.searchParams.get("limit")||"30")||30, 500);
+  const d = await sGet(env, "market/foreign_flow_history/"+sym+".json");
+  const rows = (d && d.rows) || [];
+  return sJson({symbol:sym, count:rows.length, rows:rows.slice(-limit).reverse(),
+    updated:d?d.updated:null});
+}
+
 export async function getCompanyProfile(env, sym){
   sym = String(sym||"").toUpperCase();
   if(!sym) return {symbol:sym};
@@ -916,7 +929,26 @@ export async function hStockPublish(request, env){
     n++;
   }
   if(body.market_news) await put1("market_news", {items:body.market_news});
-  if(body.foreign_flow) await put1("foreign_flow", {by_symbol:body.foreign_flow});
+  if(body.foreign_flow){
+    await put1("foreign_flow", {by_symbol:body.foreign_flow});
+    // Append lich su foreign flow theo tung ma
+    const today = new Date().toISOString().slice(0,10);
+    for(const sym of Object.keys(body.foreign_flow)){
+      const d = body.foreign_flow[sym];
+      if(!d || d.buy_volume==null) continue;
+      const hkey = "market/foreign_flow_history/"+sym+".json";
+      const h = await sGet(env, hkey) || {rows:[]};
+      const rows = h.rows || [];
+      const idx = rows.findIndex(r=>r.trade_date===today);
+      const entry = {trade_date:today, buy_volume:d.buy_volume, sell_volume:d.sell_volume,
+        net_volume:d.net_volume, buy_value_est:d.buy_value_est||null,
+        sell_value_est:d.sell_value_est||null, net_value_est:d.net_value_est||null};
+      if(idx>=0) rows[idx] = entry; else rows.push(entry);
+      const trimmed = rows.slice(-500);
+      await sPut(env, hkey, doc({symbol:sym, rows:trimmed}));
+      n++;
+    }
+  }
   if(body.proprietary_flow){
     await put1("proprietary_flow", {by_symbol:body.proprietary_flow});
     // Append vao lich su theo tung ma (giu toi da 500 phien ~2 nam)
