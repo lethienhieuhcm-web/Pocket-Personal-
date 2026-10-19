@@ -38,6 +38,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 #empty svg{width:64px;height:64px;opacity:.4}
 #empty p{font-size:var(--pp-text-sm);max-width:320px}
 #toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:10px 20px;border-radius:20px;display:none;z-index:1000;max-width:90%;font-size:var(--pp-text-sm)}
+.modebtn{flex-shrink:0;border:1px solid var(--pp-accent);border-radius:20px;background:transparent;color:var(--pp-accent);font-size:var(--pp-text-xs);font-weight:700;padding:6px 12px;cursor:pointer;white-space:nowrap}
+.modebtn.active{background:var(--pp-accent);color:#fff}
+#hbWrap{position:absolute;inset:0;display:none;background:#000}
+#hbContainer{position:absolute;inset:0}
 </style>
 <script>/* Gốc theme: snippet chuẩn, không sửa. Controller ở /english/js/shared/theme.js */
 try{var s=localStorage.getItem('pp_theme');if(!s){s=localStorage.getItem('elab_theme')||localStorage.getItem('hub_theme');if(s)localStorage.setItem('pp_theme',s)}var d=s?s==='dark':matchMedia('(prefers-color-scheme: dark)').matches;if(d)document.documentElement.classList.add('pp-dark')}catch(e){}</script>
@@ -47,6 +51,7 @@ try{var s=localStorage.getItem('pp_theme');if(!s){s=localStorage.getItem('elab_t
   <a class="back" href="/hub">← Pocket Personal</a>
   <img class="app-ic" src="/english/icons/icon-browser-192.png" alt="">
   <h1 data-i18n="title">Trình duyệt</h1>
+  <button id="modeBtn" class="modebtn" data-i18n="mode_interactive">Tương tác</button>
   <div class="pp-langdrop" id="langDrop">
     <button class="pp-langdrop-btn" aria-label="Language">
       <svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
@@ -79,7 +84,7 @@ try{var s=localStorage.getItem('pp_theme');if(!s){s=localStorage.getItem('elab_t
 </div>
 <div class="statusbar">
   <span class="dot" id="proxyDot"></span>
-  <span data-i18n="proxy_on">Đang qua proxy</span>
+  <span id="proxyLabel" data-i18n="proxy_on">Đang qua proxy</span>
   <span class="host" id="hostLine"></span>
   <span class="quota" id="quotaLine"></span>
 </div>
@@ -89,7 +94,8 @@ try{var s=localStorage.getItem('pp_theme');if(!s){s=localStorage.getItem('elab_t
     <p data-i18n="empty_hint">Nhập địa chỉ web ở trên để mở qua proxy. Website sẽ thấy địa chỉ mạng khác, không phải của thiết bị này.</p>
   </div>
   <iframe id="view" title="browser" sandbox="allow-scripts allow-same-origin allow-forms" style="display:none"></iframe>
-  <div id="loading"><div class="spin"></div><p data-i18n="loading">Đang tải…</p></div>
+  <div id="hbWrap"><div id="hbContainer"></div></div>
+  <div id="loading"><div class="spin"></div><p id="loadingText" data-i18n="loading">Đang tải…</p></div>
 </div>
 <div id="toast"></div>
 <script>
@@ -109,25 +115,37 @@ addr_placeholder:"Nhập địa chỉ web…",proxy_on:"Đang qua proxy",loading
 empty_hint:"Nhập địa chỉ web ở trên để mở qua proxy. Website sẽ thấy địa chỉ mạng khác, không phải của thiết bị này.",
 quota_left:"Còn {n}/{m} lượt",quota_unlimited:"Không giới hạn",err_login:"Bạn cần đăng nhập lại",err_badurl:"Địa chỉ không hợp lệ",
 err_blocked:"Địa chỉ này không được phép",err_quota:"Hết lượt hôm nay, nâng cấp để dùng thêm",
-update_available:"Có bản mới",update_btn:"Cập nhật",update_later:"Để sau"},
+update_available:"Có bản mới",update_btn:"Cập nhật",update_later:"Để sau",
+mode_interactive:"Tương tác",mode_stop:"Kết thúc",hb_creating:"Đang mở máy tương tác…",
+hb_failed:"Không mở được phiên tương tác",hb_ended:"Đã kết thúc phiên tương tác",
+hb_noconfig:"Chưa cấu hình máy tương tác",hb_via:"Qua máy tương tác"},
 en:{title:"Browser",go:"Go",back:"Back",forward:"Forward",reload:"Reload",
 addr_placeholder:"Enter web address…",proxy_on:"Via proxy",loading:"Loading…",
 empty_hint:"Enter a web address above to open it via proxy. Websites will see a different network address, not this device's.",
 quota_left:"{n}/{m} left",quota_unlimited:"Unlimited",err_login:"Please log in again",err_badurl:"Invalid address",
 err_blocked:"This address is not allowed",err_quota:"Daily limit reached, upgrade for more",
-update_available:"New version available",update_btn:"Update",update_later:"Later"},
+update_available:"New version available",update_btn:"Update",update_later:"Later",
+mode_interactive:"Interactive",mode_stop:"End",hb_creating:"Starting interactive session…",
+hb_failed:"Could not start interactive session",hb_ended:"Interactive session ended",
+hb_noconfig:"Interactive not configured",hb_via:"Via interactive computer"},
 zh:{title:"浏览器",go:"前往",back:"返回",forward:"前进",reload:"重新加载",
 addr_placeholder:"输入网址…",proxy_on:"通过代理",loading:"加载中…",
 empty_hint:"在上方输入网址，通过代理打开。网站将看到不同的网络地址，而不是此设备的地址。",
 quota_left:"剩余 {n}/{m} 次",quota_unlimited:"无限制",err_login:"请重新登录",err_badurl:"地址无效",
 err_blocked:"不允许此地址",err_quota:"今日额度已用完，升级可继续使用",
-update_available:"有新版本",update_btn:"更新",update_later:"稍后"},
+update_available:"有新版本",update_btn:"更新",update_later:"稍后",
+mode_interactive:"互动",mode_stop:"结束",hb_creating:"正在启动互动会话…",
+hb_failed:"无法启动互动会话",hb_ended:"互动会话已结束",
+hb_noconfig:"未配置互动会话",hb_via:"通过互动计算机"},
 ko:{title:"브라우저",go:"이동",back:"뒤로",forward:"앞으로",reload:"새로고침",
 addr_placeholder:"웹 주소 입력…",proxy_on:"프록시 경유 중",loading:"로딩 중…",
 empty_hint:"위 주소를 입력하면 프록시로 열립니다. 웹사이트에는 이 기기의 주소가 아닌 다른 네트워크 주소가 표시됩니다.",
 quota_left:"{n}/{m}회 남음",quota_unlimited:"무제한",err_login:"다시 로그인해 주세요",err_badurl:"주소가 올바르지 않습니다",
 err_blocked:"허용되지 않은 주소입니다",err_quota:"오늘 한도 초과, 업그레이드하면 계속 사용",
-update_available:"새 버전 있음",update_btn:"업데이트",update_later:"나중에"}
+update_available:"새 버전 있음",update_btn:"업데이트",update_later:"나중에",
+mode_interactive:"인터랙티브",mode_stop:"종료",hb_creating:"인터랙티브 세션 시작 중…",
+hb_failed:"인터랙티브 세션을 시작할 수 없습니다",hb_ended:"인터랙티브 세션 종료됨",
+hb_noconfig:"인터랙티브가 구성되지 않았습니다",hb_via:"인터랙티브 컴퓨터 경유"}
 };
 var curLang = 'vi';
 function t(k){
@@ -172,6 +190,7 @@ function applyLang(l){
       v = I18N[l][k]; if(v) el.setAttribute('aria-label', v);
     }
   });
+  try{ if(window.__hbSyncModeBtn) window.__hbSyncModeBtn(); }catch(e){}
   refreshQuota();
 }
 window.__elabSetLang = applyLang;
@@ -236,11 +255,112 @@ function openUrl(raw){
   // fail/không commit.
   view.src = '/api/browse?url=' + b64url(href) + '&t=' + encodeURIComponent(tok);
 }
-document.getElementById('goBtn').onclick = function(){ openUrl(addrInput.value); };
-addrInput.addEventListener('keydown', function(e){ if(e.key === 'Enter') openUrl(addrInput.value); });
+document.getElementById('goBtn').onclick = function(){
+  if(hbMode){ hbRestart(); return; } // che do tuong tac: mo session moi o URL moi
+  openUrl(addrInput.value);
+};
+addrInput.addEventListener('keydown', function(e){
+  if(e.key !== 'Enter') return;
+  if(hbMode){ hbRestart(); return; }
+  openUrl(addrInput.value);
+});
 document.getElementById('backBtn').onclick = function(){ try{ view.contentWindow.history.back(); }catch(e){} };
 document.getElementById('fwdBtn').onclick = function(){ try{ view.contentWindow.history.forward(); }catch(e){} };
 document.getElementById('reloadBtn').onclick = function(){ showLoading(); try{ view.contentWindow.location.reload(); }catch(e){ hideLoading(); } };
+
+/* Che do Tuong tac (Hyperbeam) — Henrry Chot 19/10.
+   Worker tao session (key nam o secret), client chi nhan embed_url
+   roi render bang SDK chinh hang @hyperbeam/web. */
+var hbWrap = document.getElementById('hbWrap');
+var hbContainer = document.getElementById('hbContainer');
+var modeBtn = document.getElementById('modeBtn');
+var hbSessionId = null, hbClient = null, hbMode = false;
+
+function syncModeBtn(){
+  modeBtn.textContent = t(hbMode ? 'mode_stop' : 'mode_interactive');
+  modeBtn.classList.toggle('active', !!hbMode);
+}
+window.__hbSyncModeBtn = syncModeBtn;
+
+function setNavEnabled(on){
+  ['backBtn','fwdBtn','reloadBtn'].forEach(function(id){
+    try{ document.getElementById(id).disabled = !on; }catch(e){}
+  });
+}
+
+function hbCleanup(silent){
+  hbSessionId = null; hbClient = null; hbMode = false;
+  try{ hbContainer.innerHTML = ''; }catch(e){}
+  hbWrap.style.display = 'none';
+  emptyBox.style.display = '';
+  view.style.display = 'none';
+  setNavEnabled(true);
+  hostLine.textContent = '';
+  try{ document.getElementById('proxyLabel').textContent = t('proxy_on'); }catch(e){}
+  try{ document.getElementById('loadingText').textContent = t('loading'); }catch(e){}
+  syncModeBtn();
+  if(!silent) toast(t('hb_ended'));
+}
+
+async function hbStart(){
+  if(hbMode) return;
+  var tok = getToken();
+  if(!tok){ toast(t('err_login')); location.href = '/login'; return; }
+  var href = normalizeUrl(addrInput.value) || 'https://example.com';
+  emptyBox.style.display = 'none';
+  view.style.display = 'none';
+  hbWrap.style.display = '';
+  try{ document.getElementById('loadingText').textContent = t('hb_creating'); }catch(e){}
+  showLoading();
+  try{
+    var r = await fetch('/api/hb/session', {
+      method: 'POST',
+      headers: {'Authorization':'Bearer '+tok, 'Content-Type':'application/json'},
+      body: JSON.stringify({start_url: href})
+    });
+    if(r.status === 501){ hideLoading(); hbCleanup(true); toast(t('hb_noconfig')); return; }
+    if(!r.ok){ hideLoading(); hbCleanup(true); toast(t('hb_failed')); return; }
+    var j = await r.json();
+    if(!j.embed_url || !j.session_id){ hideLoading(); hbCleanup(true); toast(t('hb_failed')); return; }
+    hbSessionId = j.session_id;
+    var mod = await import('https://unpkg.com/@hyperbeam/web@latest/dist/index.js');
+    var Hyperbeam = mod.default || mod.Hyperbeam;
+    hbClient = await Hyperbeam(hbContainer, j.embed_url, {
+      onDisconnect: function(){ hbCleanup(false); }
+    });
+    hbMode = true;
+    setNavEnabled(false);
+    hideLoading();
+    try{ document.getElementById('loadingText').textContent = t('loading'); }catch(e){}
+    try{ document.getElementById('proxyLabel').textContent = t('hb_via'); }catch(e){}
+    hostLine.textContent = new URL(href).hostname + ' · ' + t('mode_interactive');
+    syncModeBtn();
+  }catch(e){
+    hideLoading(); hbCleanup(true); toast(t('hb_failed'));
+  }
+}
+
+async function hbStop(silent){
+  var tok = getToken();
+  var sid = hbSessionId;
+  hbSessionId = null;
+  if(sid && tok){
+    try{
+      await fetch('/api/hb/session?id=' + encodeURIComponent(sid), {
+        method: 'DELETE', headers: {'Authorization':'Bearer '+tok}
+      });
+    }catch(e){}
+  }
+  hbCleanup(silent);
+}
+
+async function hbRestart(){ await hbStop(true); hbStart(); }
+
+modeBtn.onclick = function(){
+  if(hbMode){ hbStop(false); }
+  else { hbStart(); }
+};
+syncModeBtn();
 
 /* Đồng bộ thanh địa chỉ theo trang trong iframe (same-origin nên đọc được) */
 function syncFromIframe(){

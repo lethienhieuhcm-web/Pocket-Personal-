@@ -910,3 +910,72 @@ export async function handleBrowseWs(request, env, url) {
   } catch (_) { /* không chặn WS vì lỗi đếm */ }
   return new Response(null, { status: 101, webSocket: client });
 }
+
+// --- Hyperbeam interactive tier (Henrry Chốt 19/10/2026) ---
+// POST /api/hb/session {start_url?} -> {session_id, embed_url}
+// DELETE /api/hb/session?id=<session_id> -> {ok:true}
+// HYPERBEAM_API_KEY chỉ nằm ở Worker secret, KHÔNG lộ ra client.
+// embed_url chứa token riêng của session — an toàn trả cho đúng user đã login.
+const HB_API = "https://engine.hyperbeam.com"; // verify live 19/10/2026
+
+async function hbCall(env, method, path, body) {
+  const key = (env.HYPERBEAM_API_KEY || "").trim();
+  if (!key) return { err: "not_configured" };
+  let res;
+  try {
+    res = await fetch(HB_API + path, {
+      method,
+      headers: {
+        "Authorization": "Bearer " + key,
+        "Content-Type": "application/json",
+        "User-Agent": "Mozilla/5.0",
+      },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  } catch (e) {
+    return { err: "network" };
+  }
+  let data = {};
+  try { data = JSON.parse((await res.text()) || "{}"); } catch (e) {}
+  if (!res.ok) return { err: "hyperbeam_" + res.status, status: res.status };
+  return { data };
+}
+
+export async function handleHbSession(request, env, url) {
+  const sess = await resolveSession(request, env, url);
+  if (!sess) return jerr("Not logged in", 401);
+  const user = await getUser(env, sess.email);
+  if (!user) return jerr("User not found", 401);
+
+  if (request.method === "POST") {
+    let startUrl = "https://example.com";
+    try {
+      const b = await request.json();
+      if (b && typeof b.start_url === "string") {
+        const u = new URL(b.start_url);
+        if (u.protocol === "http:" || u.protocol === "https:") startUrl = u.href;
+      }
+    } catch (e) { /* giữ default */ }
+    const r = await hbCall(env, "POST", "/v0/vm", {
+      start_url: startUrl,
+      region: "AS", // gần VN nhất
+      timeout: { absolute: 3600, inactive: 300, warning: 60 },
+    });
+    if (r.err === "not_configured") return jerr("Interactive chưa cấu hình", 501);
+    if (r.err) return jerr("Không tạo được phiên tương tác", 502);
+    return new Response(JSON.stringify({
+      session_id: r.data.session_id,
+      embed_url: r.data.embed_url,
+    }), { headers: { "Content-Type": "application/json" } });
+  }
+  if (request.method === "DELETE") {
+    const id = url.searchParams.get("id") || "";
+    if (!/^[A-Za-z0-9-]{8,64}$/.test(id)) return jerr("Bad id", 400);
+    const r = await hbCall(env, "DELETE", "/v0/vm/" + id);
+    if (r.err === "not_configured") return jerr("Interactive chưa cấu hình", 501);
+    if (r.err) return jerr("Không hủy được phiên", 502);
+    return new Response(JSON.stringify({ ok: true }),
+      { headers: { "Content-Type": "application/json" } });
+  }
+  return jerr("Method not allowed", 405);
+}
