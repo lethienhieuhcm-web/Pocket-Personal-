@@ -661,6 +661,7 @@ export async function handleBrowse(request, env, url) {
   }
   let current = target;
   let upstream = null;
+  let stillRedirecting = false; // het 6 hop ma van redirect (vd chuoi auth dai) -> bao loi gon
   for (let hop = 0; hop < 6; hop++) {
     const h = new Headers();
     // UA tran (Henrry 19/10 Chot: FB loc UA day du -> 400, UA tran -> 200)
@@ -721,11 +722,14 @@ export async function handleBrowse(request, env, url) {
         bodyBuf = null;
       }
       current = next;
+      stillRedirecting = true;
       continue;
     }
+    stillRedirecting = false;
     break;
   }
-  if (!upstream) return errorPage("Không mở được trang", "Quá nhiều lần chuyển hướng.");
+  if (!upstream || stillRedirecting)
+    return errorPage("Không mở được trang", "Quá nhiều lần chuyển hướng.");
 
   const ct = upstream.headers.get("content-type") || "";
   const isHtml = ct.includes("text/html") || ct.includes("application/xhtml");
