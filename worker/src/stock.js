@@ -382,6 +382,20 @@ export async function hStockProprietaryFlow(request, env){
   return cachedMarket(request, env, "market/proprietary_flow.json", 300); // 5m cache
 }
 
+/* Lich su proprietary flow theo ma: ?symbol=ACB&limit=30 */
+export async function hStockProprietaryHistory(request, env){
+  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
+  const u = new URL(request.url);
+  const sym = (u.searchParams.get("symbol")||"").toUpperCase();
+  if(!sym) return jerr("Missing symbol", 400);
+  const limit = Math.min(parseInt(u.searchParams.get("limit")||"30")||30, 500);
+  const d = await sGet(env, "market/proprietary_flow_history/"+sym+".json");
+  const rows = (d && d.rows) || [];
+  // Tra ve moi nhat truoc, gioi han so luong
+  return sJson({symbol:sym, count:rows.length, rows:rows.slice(-limit).reverse(),
+    updated:d?d.updated:null});
+}
+
 export async function getCompanyProfile(env, sym){
   sym = String(sym||"").toUpperCase();
   if(!sym) return {symbol:sym};
@@ -903,7 +917,28 @@ export async function hStockPublish(request, env){
   }
   if(body.market_news) await put1("market_news", {items:body.market_news});
   if(body.foreign_flow) await put1("foreign_flow", {by_symbol:body.foreign_flow});
-  if(body.proprietary_flow) await put1("proprietary_flow", {by_symbol:body.proprietary_flow});
+  if(body.proprietary_flow){
+    await put1("proprietary_flow", {by_symbol:body.proprietary_flow});
+    // Append vao lich su theo tung ma (giu toi da 500 phien ~2 nam)
+    for(const sym of Object.keys(body.proprietary_flow)){
+      const d = body.proprietary_flow[sym];
+      if(!d || d.buy_volume==null) continue;
+      const hkey = "market/proprietary_flow_history/"+sym+".json";
+      const h = await sGet(env, hkey) || {rows:[]};
+      const rows = h.rows || [];
+      // Tranh trung ngay (neu publish lai cung ngay thi update)
+      const tdate = d.trade_date || "";
+      const idx = rows.findIndex(r=>r.trade_date===tdate);
+      const entry = {trade_date:tdate, buy_volume:d.buy_volume, sell_volume:d.sell_volume,
+        net_volume:d.net_volume, buy_value_vnd:d.buy_value_vnd,
+        sell_value_vnd:d.sell_value_vnd, net_value_vnd:d.net_value_vnd};
+      if(idx>=0) rows[idx] = entry; else rows.push(entry);
+      // Giu 500 phien moi nhat
+      const trimmed = rows.slice(-500);
+      await sPut(env, hkey, doc({symbol:sym, rows:trimmed}));
+      n++;
+    }
+  }
   if(body.events) for(const sym of Object.keys(body.events)){
     await sPut(env, "market/events/"+sym+".json", doc({symbol:sym, items:body.events[sym]}));
     n++;

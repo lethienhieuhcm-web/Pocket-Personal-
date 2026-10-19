@@ -14,7 +14,7 @@ unwatched:"Đã bỏ theo dõi",watched:"Đã thêm vào theo dõi",chart_fail:"
 loading_news:"Đang tải tin tức…",no_news:"Chưa có tin tức.",loading_events:"Đang tải sự kiện…",no_events:"Chưa có sự kiện.",
 ex_date:"Ngày GDKHQ",ratio:"Tỷ lệ",per_share:"/cổ phiếu",
 ref_price:"Tham chiếu",open_price:"Mở cửa",high_price:"Cao nhất",low_price:"Thấp nhất",volume:"Khối lượng",value:"Giá trị",billion:"tỷ",
-loading_screener:"Đang tải bộ lọc…",no_data:"Chưa có dữ liệu.",top_movers:"Top tăng / giảm",top_gainers:"Tăng mạnh",top_losers:"Giảm mạnh",market_news:"Tin thị trường",foreign_h:"Khối ngoại",foreign_buy:"Mua",foreign_sell:"Bán",foreign_net:"Ròng",prop_h:"Tự doanh",prop_buy:"Mua",prop_sell:"Bán",prop_net:"Ròng",prop_netval:"GT ròng",prop_date:"Ngày GD",
+loading_screener:"Đang tải bộ lọc…",no_data:"Chưa có dữ liệu.",top_movers:"Top tăng / giảm",top_gainers:"Tăng mạnh",top_losers:"Giảm mạnh",market_news:"Tin thị trường",foreign_h:"Khối ngoại",foreign_buy:"Mua",foreign_sell:"Bán",foreign_net:"Ròng",prop_h:"Tự doanh",prop_buy:"Mua",prop_sell:"Bán",prop_net:"Ròng",prop_netval:"GT ròng",prop_date:"Ngày GD",export_csv:"Xuất CSV",
 th_symbol:"Mã",th_score:"Điểm",th_price:"Giá",th_pct:"%",th_pe:"P/E",th_qty:"SL",th_avg_cost:"Giá vốn",th_pl:"Lãi/Lỗ",th_date:"Ngày",th_side:"Mua/Bán",
 select_symbol_first:"Chọn một mã trước",calculating:"Đang tính…",
 bt_strategy:"Chiến lược",bt_buyhold:"Mua & giữ",bt_trades_winrate:"Số lệnh / Tỷ lệ thắng",bt_maxdd:"Lỗ tối đa",
@@ -51,7 +51,7 @@ unwatched:"Unfollowed",watched:"Added to watchlist",chart_fail:"Chart could not 
 loading_news:"Loading news…",no_news:"No news yet.",loading_events:"Loading events…",no_events:"No events yet.",
 ex_date:"Ex-date",ratio:"Ratio",per_share:"/share",
 ref_price:"Reference",open_price:"Open",high_price:"High",low_price:"Low",volume:"Volume",value:"Value",billion:"B",
-loading_screener:"Loading screener…",no_data:"No data yet.",top_movers:"Top gainers / losers",top_gainers:"Top gainers",top_losers:"Top losers",market_news:"Market news",foreign_h:"Foreign Flow",foreign_buy:"Buy",foreign_sell:"Sell",foreign_net:"Net",prop_h:"Proprietary",prop_buy:"Buy",prop_sell:"Sell",prop_net:"Net",prop_netval:"Net value",prop_date:"Trade date",
+loading_screener:"Loading screener…",no_data:"No data yet.",top_movers:"Top gainers / losers",top_gainers:"Top gainers",top_losers:"Top losers",market_news:"Market news",foreign_h:"Foreign Flow",foreign_buy:"Buy",foreign_sell:"Sell",foreign_net:"Net",prop_h:"Proprietary",prop_buy:"Buy",prop_sell:"Sell",prop_net:"Net",prop_netval:"Net value",prop_date:"Trade date",export_csv:"Export CSV",
 th_symbol:"Symbol",th_score:"Score",th_price:"Price",th_pct:"%",th_pe:"P/E",th_qty:"Qty",th_avg_cost:"Avg cost",th_pl:"P&L",th_date:"Date",th_side:"Side",
 select_symbol_first:"Select a symbol first",calculating:"Calculating…",
 bt_strategy:"Strategy",bt_buyhold:"Buy & hold",bt_trades_winrate:"Trades / Winrate",bt_maxdd:"Max drawdown",
@@ -88,7 +88,7 @@ unwatched:"已取消关注",watched:"已加入关注",chart_fail:"图表加载�
 loading_news:"正在加载新闻…",no_news:"暂无新闻。",loading_events:"正在加载事件…",no_events:"暂无事件。",
 ex_date:"除权日",ratio:"比例",per_share:"/股",
 ref_price:"参考价",open_price:"开盘",high_price:"最高",low_price:"最低",volume:"成交量",value:"成交额",billion:"十亿",
-loading_screener:"正在加载筛选器…",no_data:"暂无数据。",top_movers:"涨跌榜",top_gainers:"涨幅榜",top_losers:"跌幅榜",market_news:"市场新闻",foreign_h:"外资",foreign_buy:"买入",foreign_sell:"卖出",foreign_net:"净",prop_h:"自营",prop_buy:"买入",prop_sell:"卖出",prop_net:"净",prop_netval:"净值",prop_date:"交易日",
+loading_screener:"正在加载筛选器…",no_data:"暂无数据。",top_movers:"涨跌榜",top_gainers:"涨幅榜",top_losers:"跌幅榜",market_news:"市场新闻",foreign_h:"外资",foreign_buy:"买入",foreign_sell:"卖出",foreign_net:"净",prop_h:"自营",prop_buy:"买入",prop_sell:"卖出",prop_net:"净",prop_netval:"净值",prop_date:"交易日",export_csv:"导出CSV",
 th_symbol:"代码",th_score:"评分",th_price:"价格",th_pct:"%",th_pe:"市盈率",th_qty:"数量",th_avg_cost:"平均成本",th_pl:"盈亏",th_date:"日期",th_side:"方向",
 select_symbol_first:"请先选择一只股票",calculating:"计算中…",
 bt_strategy:"策略",bt_buyhold:"买入持有",bt_trades_winrate:"交易次数 / 胜率",bt_maxdd:"最大回撤",
@@ -125,7 +125,7 @@ unwatched:"팔로우를 해제했습니다",watched:"관심 목록에 추가했�
 loading_news:"뉴스를 불러오는 중…",no_news:"아직 뉴스가 없습니다.",loading_events:"이벤트를 불러오는 중…",no_events:"아직 이벤트가 없습니다.",
 ex_date:"배당락일",ratio:"비율",per_share:"/주",
 ref_price:"기준가",open_price:"시가",high_price:"고가",low_price:"저가",volume:"거래량",value:"거래대금",billion:"십억",
-loading_screener:"스크리너를 불러오는 중…",no_data:"아직 데이터가 없습니다.",top_movers:"상승/하락 Top",top_gainers:"급등",top_losers:"급락",market_news:"시장 뉴스",foreign_h:"외국인",foreign_buy:"매수",foreign_sell:"매도",foreign_net:"순",prop_h:"자기매매",prop_buy:"매수",prop_sell:"매도",prop_net:"순",prop_netval:"순액",prop_date:"거래일",
+loading_screener:"스크리너를 불러오는 중…",no_data:"아직 데이터가 없습니다.",top_movers:"상승/하락 Top",top_gainers:"급등",top_losers:"급락",market_news:"시장 뉴스",foreign_h:"외국인",foreign_buy:"매수",foreign_sell:"매도",foreign_net:"순",prop_h:"자기매매",prop_buy:"매수",prop_sell:"매도",prop_net:"순",prop_netval:"순액",prop_date:"거래일",export_csv:"CSV 내보내기",
 th_symbol:"종목",th_score:"점수",th_price:"가격",th_pct:"%",th_pe:"PER",th_qty:"수량",th_avg_cost:"평균 단가",th_pl:"손익",th_date:"날짜",th_side:"구분",
 select_symbol_first:"먼저 종목을 선택하세요",calculating:"계산 중…",
 bt_strategy:"전략",bt_buyhold:"바이앤홀드",bt_trades_winrate:"거래 수 / 승률",bt_maxdd:"최대 낙폭",
@@ -496,14 +496,58 @@ async function loadNewsEvents(sym){
     try{
       const pf = await sApi("/proprietary-flow");
       const d = (pf.by_symbol||{})[sym];
+      const fmtV = v=>v==null?"—":Number(v).toLocaleString("vi-VN");
+      const fmtT = v=>v==null?"—":(v/1e9).toFixed(2)+" tỷ";
+      let h = "";
       if(d && d.buy_volume!=null){
         const net = d.net_volume;
         const netCls = net>0?"up":net<0?"dn":"";
-        const fmtV = v=>v==null?"—":Number(v).toLocaleString("vi-VN");
-        const fmtT = v=>v==null?"—":(v/1e9).toFixed(2)+" tỷ";
-        pfbox.innerHTML = `<div class="stkfund"><span>${t("prop_buy")} <b class="up">${fmtV(d.buy_volume)}</b></span><span>${t("prop_sell")} <b class="dn">${fmtV(d.sell_volume)}</b></span><span>${t("prop_net")} <b class="${netCls}">${net>0?"+":""}${fmtV(net)}</b></span><span>${t("prop_netval")} <b class="${netCls}">${fmtT(d.net_value_vnd)}</b></span></div><div class="hint">${t("prop_date")}: ${esc(d.trade_date||"—")}</div>`;
-      }else{
-        pfbox.innerHTML = '<div class="hint">—</div>';
+        h += `<div class="stkfund"><span>${t("prop_buy")} <b class="up">${fmtV(d.buy_volume)}</b></span><span>${t("prop_sell")} <b class="dn">${fmtV(d.sell_volume)}</b></span><span>${t("prop_net")} <b class="${netCls}">${net>0?"+":""}${fmtV(net)}</b></span><span>${t("prop_netval")} <b class="${netCls}">${fmtT(d.net_value_vnd)}</b></span></div><div class="hint">${t("prop_date")}: ${esc(d.trade_date||"—")}</div>`;
+      }
+      // Lich su 30 phien + xuat file
+      h += `<div style="margin-top:8px"><div class="row" style="gap:8px;margin-bottom:6px;align-items:center">`
+        + `<select id="pfHistRange" class="gptInput" style="width:auto"><option value="30">30 phiên</option><option value="90">3 tháng</option><option value="250">1 năm</option><option value="500">Tất cả</option></select>`
+        + `<button id="pfHistExport" class="btnSm">${t("export_csv")||"Xuất CSV"}</button></div>`
+        + `<div id="pfHistTbl"><div class="hint">${t("loading")}</div></div></div>`;
+      pfbox.innerHTML = h || '<div class="hint">—</div>';
+      // Load lich su
+      const loadHist = async (limit)=>{
+        const tbl = $("pfHistTbl");
+        if(!tbl) return;
+        try{
+          const hj = await sApi("/proprietary-flow/history?symbol="+encodeURIComponent(sym)+"&limit="+limit);
+          const rows = hj.rows||[];
+          if(!rows.length){ tbl.innerHTML = '<div class="hint">'+t("no_data")+'</div>'; return; }
+          tbl.innerHTML = `<table class="stktbl"><tr><th>${t("th_date")}</th><th>${t("prop_buy")}</th><th>${t("prop_sell")}</th><th>${t("prop_net")}</th><th>${t("prop_netval")}</th></tr>`
+            + rows.map(r=>{
+              const nc = r.net_volume>0?"up":r.net_volume<0?"dn":"";
+              return `<tr><td>${esc(r.trade_date||"")}</td><td>${fmtV(r.buy_volume)}</td><td>${fmtV(r.sell_volume)}</td><td class="${nc}">${r.net_volume>0?"+":""}${fmtV(r.net_volume)}</td><td class="${nc}">${fmtT(r.net_value_vnd)}</td></tr>`;
+            }).join("") + `</table>`;
+          // Luu rows de xuat file
+          tbl._rows = rows;
+        }catch(e){ tbl.innerHTML = '<div class="hint">—</div>'; }
+      };
+      const rangeSel = $("pfHistRange");
+      if(rangeSel){
+        rangeSel.onchange = ()=>loadHist(rangeSel.value);
+        loadHist(30);
+      }
+      const expBtn = $("pfHistExport");
+      if(expBtn){
+        expBtn.onclick = ()=>{
+          const tbl = $("pfHistTbl");
+          const rows = (tbl && tbl._rows) || [];
+          if(!rows.length){ toast(t("no_data")); return; }
+          const csv = "Ngay,Mua_KL,Ban_KL,Rong_KL,Mua_GT_VND,Ban_GT_VND,Rong_GT_VND\n"
+            + rows.map(r=>[r.trade_date, r.buy_volume, r.sell_volume, r.net_volume,
+              r.buy_value_vnd, r.sell_value_vnd, r.net_value_vnd].join(",")).join("\n");
+          const blob = new Blob(["\ufeff"+csv], {type:"text/csv;charset=utf-8"});
+          const a = document.createElement("a");
+          a.href = URL.createObjectURL(blob);
+          a.download = "tudoanh_"+sym+".csv";
+          a.click();
+          URL.revokeObjectURL(a.href);
+        };
       }
     }catch(e){ pfbox.innerHTML = '<div class="hint">—</div>'; }
   }
