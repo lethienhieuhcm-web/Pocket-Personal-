@@ -370,6 +370,18 @@ export async function hStockMarketNews(request, env){
   return cachedMarket(request, env, "market/market_news.json", 900); // 15m cache
 }
 
+/* Foreign flow tu chu: tu price_board (thay Market().foreign_flow() bi khoa) */
+export async function hStockForeignFlow(request, env){
+  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
+  return cachedMarket(request, env, "market/foreign_flow.json", 900); // 15m cache
+}
+
+/* Proprietary flow tu chu: tu PDF cua HOSE (thay Market().proprietary_flow() bi khoa) */
+export async function hStockProprietaryFlow(request, env){
+  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
+  return cachedMarket(request, env, "market/proprietary_flow.json", 300); // 5m cache
+}
+
 export async function getCompanyProfile(env, sym){
   sym = String(sym||"").toUpperCase();
   if(!sym) return {symbol:sym};
@@ -890,6 +902,8 @@ export async function hStockPublish(request, env){
     n++;
   }
   if(body.market_news) await put1("market_news", {items:body.market_news});
+  if(body.foreign_flow) await put1("foreign_flow", {by_symbol:body.foreign_flow});
+  if(body.proprietary_flow) await put1("proprietary_flow", {by_symbol:body.proprietary_flow});
   if(body.events) for(const sym of Object.keys(body.events)){
     await sPut(env, "market/events/"+sym+".json", doc({symbol:sym, items:body.events[sym]}));
     n++;

@@ -473,6 +473,40 @@ async function loadNewsEvents(sym){
       fbox.innerHTML = `<div class="stkfund"><span>P/E <b>${pe}</b></span><span>P/B <b>${pb}</b></span><span>ROE <b>${f.roe??"—"}%</b></span><span>ROA <b>${f.roa??"—"}%</b></span><span>EPS <b>${fmtN(f.eps)}</b></span><span>Altman Z <b class="${azCls}">${az??"—"}</b></span><span>Piotroski <b class="${pfCls}">${pf??"—"}/9</b></span><span>Sector <b>${esc(f.industry||"—")}</b></span></div>`;
     }catch(e){ fbox.innerHTML = '<div class="hint">—</div>'; }
   }
+  // foreign flow tu chu (khoi ngoai mua/ban)
+  const ffbox = $("stkForeignFlow");
+  if(ffbox){
+    try{
+      const q2 = q||{};
+      const fb = q2.foreign_buy_volume, fs = q2.foreign_sell_volume;
+      if(fb!=null && fs!=null){
+        const net = fb - fs;
+        const netCls = net>0?"up":net<0?"dn":"";
+        const fmtV = v=>v==null?"—":Number(v).toLocaleString("vi-VN");
+        ffbox.innerHTML = `<div class="stkfund"><span>${t("foreign_buy")} <b class="up">${fmtV(fb)}</b></span><span>${t("foreign_sell")} <b class="dn">${fmtV(fs)}</b></span><span>${t("foreign_net")} <b class="${netCls}">${net>0?"+":""}${fmtV(net)}</b></span></div>`;
+      }else{
+        ffbox.innerHTML = '<div class="hint">—</div>';
+      }
+    }catch(e){ ffbox.innerHTML = '<div class="hint">—</div>'; }
+  }
+  // proprietary flow tu chu (tu doanh CTCK, data EOD tu PDF HOSE)
+  const pfbox = $("stkPropFlow");
+  if(pfbox){
+    pfbox.innerHTML = '<div class="hint">'+t("loading")+'</div>';
+    try{
+      const pf = await sApi("/proprietary-flow");
+      const d = (pf.by_symbol||{})[sym];
+      if(d && d.buy_volume!=null){
+        const net = d.net_volume;
+        const netCls = net>0?"up":net<0?"dn":"";
+        const fmtV = v=>v==null?"—":Number(v).toLocaleString("vi-VN");
+        const fmtT = v=>v==null?"—":(v/1e9).toFixed(2)+" tỷ";
+        pfbox.innerHTML = `<div class="stkfund"><span>${t("prop_buy")} <b class="up">${fmtV(d.buy_volume)}</b></span><span>${t("prop_sell")} <b class="dn">${fmtV(d.sell_volume)}</b></span><span>${t("prop_net")} <b class="${netCls}">${net>0?"+":""}${fmtV(net)}</b></span><span>${t("prop_netval")} <b class="${netCls}">${fmtT(d.net_value_vnd)}</b></span></div><div class="hint">${t("prop_date")}: ${esc(d.trade_date||"—")}</div>`;
+      }else{
+        pfbox.innerHTML = '<div class="hint">—</div>';
+      }
+    }catch(e){ pfbox.innerHTML = '<div class="hint">—</div>'; }
+  }
   // company profile (ho so: lanh dao, cong ty con, so huu...)
   const pbox = $("stkProfile");
   if(pbox){
@@ -691,7 +725,7 @@ async function renderTopMovers(){
   gbox.innerHTML = hint; lbox.innerHTML = hint;
   try{
     const ex = $("topEx") ? $("topEx").value : "";
-    let url = "/screener?sort=pct_change&";
+    let url = "/screener?sort=pct_change&min_value=1000000000&";
     if(ex) url += "exchange="+encodeURIComponent(ex)+"&";
     const [gj, lj] = await Promise.all([
       sApi(url+"order=desc"),
