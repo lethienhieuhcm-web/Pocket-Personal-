@@ -274,7 +274,7 @@ document.getElementById('reloadBtn').onclick = function(){ showLoading(); try{ v
 var hbWrap = document.getElementById('hbWrap');
 var hbContainer = document.getElementById('hbContainer');
 var modeBtn = document.getElementById('modeBtn');
-var hbSessionId = null, hbClient = null, hbMode = false;
+var hbSessionId = null, hbClient = null, hbMode = false, hbStarting = false;
 
 function syncModeBtn(){
   modeBtn.textContent = t(hbMode ? 'mode_stop' : 'mode_interactive');
@@ -288,8 +288,9 @@ function setNavEnabled(on){
   });
 }
 
-function hbCleanup(silent){
-  hbSessionId = null; hbClient = null; hbMode = false;
+function hbCleanup(silent, reason){
+  hbSessionId = null; hbClient = null; hbMode = false; hbStarting = false;
+  try{ modeBtn.disabled = false; }catch(e){}
   try{ hbContainer.innerHTML = ''; }catch(e){}
   hbWrap.style.display = 'none';
   emptyBox.style.display = '';
@@ -299,11 +300,13 @@ function hbCleanup(silent){
   try{ document.getElementById('proxyLabel').textContent = t('proxy_on'); }catch(e){}
   try{ document.getElementById('loadingText').textContent = t('loading'); }catch(e){}
   syncModeBtn();
-  if(!silent) toast(t('hb_ended'));
+  if(!silent) toast(t('hb_ended') + (reason ? ' (' + reason + ')' : ''));
 }
 
 async function hbStart(){
-  if(hbMode) return;
+  if(hbMode || hbStarting) return; // chong bam dup tao 2 session chong nhau
+  hbStarting = true;
+  try{ modeBtn.disabled = true; }catch(e){}
   var tok = getToken();
   if(!tok){ toast(t('err_login')); location.href = '/login'; return; }
   var href = normalizeUrl(addrInput.value) || 'https://example.com';
@@ -326,9 +329,18 @@ async function hbStart(){
     var mod = await import('https://unpkg.com/@hyperbeam/web@latest/dist/index.js');
     var Hyperbeam = mod.default || mod.Hyperbeam;
     hbClient = await Hyperbeam(hbContainer, j.embed_url, {
-      onDisconnect: function(){ hbCleanup(false); }
+      timeout: 15000, // mang VN cham, cho lau hon default 2s
+      onDisconnect: function(ev){
+        var reason = (ev && ev.type) ? ev.type : 'unknown';
+        hbCleanup(false, reason);
+      },
+      onConnectionStateChange: function(ev){
+        try{ console.log('[hb] conn:', ev && ev.state); }catch(e){}
+      }
     });
     hbMode = true;
+    hbStarting = false;
+    try{ modeBtn.disabled = false; }catch(e){}
     setNavEnabled(false);
     hideLoading();
     try{ document.getElementById('loadingText').textContent = t('loading'); }catch(e){}
