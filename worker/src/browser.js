@@ -99,6 +99,8 @@ function b64decodeToBuf(b64) {
 // HTMLRewriter.transform, .headers.get/getSetCookie, .body streaming).
 // Trả null khi chưa cấu hình relay -> caller fallback fetch trực tiếp.
 // Ném lỗi khi relay từ chối (401/403) hoặc response sai định dạng.
+// Relay stream NDJSON (chunk 64KB) -> Worker pipe thang vao Response body,
+// khong doi buffer het (TTFB nhanh gap ~4 lan so voi ban JSON 1 cuc).
 async function fetchViaRelay(env, targetHref, method, headers, bodyBuf, timeoutMs) {
   const cfg = relayCfg(env);
   if (!cfg) return null;
@@ -109,9 +111,11 @@ async function fetchViaRelay(env, targetHref, method, headers, bodyBuf, timeoutM
     method: method,
     headers: plain,
     body_b64: bodyBuf && bodyBuf.byteLength ? b64encodeBuf(bodyBuf) : null,
+    stream: true,
   };
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeoutMs || 25000);
+  const done = () => clearTimeout(timer);
   let res;
   try {
     res = await fetch(cfg.url, {
@@ -124,27 +128,114 @@ async function fetchViaRelay(env, targetHref, method, headers, bodyBuf, timeoutM
       signal: ctrl.signal,
     });
   } catch (e) {
-    clearTimeout(timer);
+    done();
     throw e;
   }
-  clearTimeout(timer);
   if (res.status === 401 || res.status === 403) {
+    done();
     throw new Error("relay rejected (" + res.status + ")");
   }
-  let data;
-  try {
-    data = await res.json();
-  } catch (e) {
-    throw new Error("relay bad json");
+  const ct = res.headers.get("content-type") || "";
+  if (!ct.includes("x-ndjson") || !res.body) {
+    // Fallback: relay cu (JSON 1 cuc) — doc het roi dung nhu truoc.
+    let data;
+    try {
+      data = await res.json();
+    } catch (e) {
+      done();
+      throw new Error("relay bad json");
+    }
+    done();
+    if (!data || typeof data.status !== "number" || typeof data.body_b64 !== "string") {
+      throw new Error("relay bad response");
+    }
+    return responseFromRelayJson(data.status, data.headers, data.body_b64);
   }
-  if (!data || typeof data.status !== "number" || typeof data.body_b64 !== "string") {
-    throw new Error("relay bad response");
+  // Stream NDJSON: dong dau = head {status, headers}, sau la {chunk_b64} / {done}.
+  const reader = res.body.getReader();
+  const dec = new TextDecoder();
+  let buf = "";
+  async function readLine() {
+    while (true) {
+      const nl = buf.indexOf("\n");
+      if (nl >= 0) {
+        const line = buf.slice(0, nl);
+        buf = buf.slice(nl + 1);
+        return line;
+      }
+      const r = await reader.read();
+      if (r.done) {
+        const line = buf;
+        buf = "";
+        return line || null;
+      }
+      buf += dec.decode(r.value, { stream: true });
+    }
+  }
+  let head;
+  try {
+    head = JSON.parse(await readLine());
+  } catch (e) {
+    done();
+    throw new Error("relay bad stream head");
+  }
+  if (!head || typeof head.status !== "number" || !Array.isArray(head.headers)) {
+    done();
+    throw new Error("relay bad stream head");
   }
   const rh = new Headers();
-  for (const pair of data.headers || []) {
+  for (const pair of head.headers) {
     try { rh.append(pair[0], pair[1]); } catch (e) { /* header lạ: bỏ qua */ }
   }
-  return new Response(b64decodeToBuf(data.body_b64), { status: data.status, headers: rh });
+  const stream = new ReadableStream({
+    async pull(controller) {
+      let line;
+      try {
+        line = await readLine();
+      } catch (e) {
+        done();
+        controller.error(e);
+        return;
+      }
+      if (line === null) {
+        done();
+        controller.close();
+        return;
+      }
+      if (!line.trim()) return;
+      let msg;
+      try {
+        msg = JSON.parse(line);
+      } catch (e) {
+        done();
+        controller.error(new Error("relay bad chunk"));
+        return;
+      }
+      if (msg.done) {
+        done();
+        controller.close();
+        return;
+      }
+      if (typeof msg.chunk_b64 === "string" && msg.chunk_b64) {
+        controller.enqueue(b64decodeToBuf(msg.chunk_b64));
+      }
+    },
+    cancel() {
+      done();
+      try { reader.cancel(); } catch (e) {}
+      try { ctrl.abort(); } catch (e) {}
+    },
+  });
+  return new Response(stream, { status: head.status, headers: rh });
+}
+
+// Dung Response tu dang JSON 1 cuc cua relay (fallback khi relay cu).
+function responseFromRelayJson(status, hlist, bodyB64) {
+  const rh = new Headers();
+  for (const pair of hlist || []) {
+    try { rh.append(pair[0], pair[1]); } catch (e) { /* header lạ: bỏ qua */ }
+  }
+  return new Response(b64decodeToBuf(bodyB64 || ""), { status: status, headers: rh });
 }
 
 // --- Auth: Bearer header (XHR) hoặc ?t= (iframe navigation không gửi header được) ---
@@ -611,6 +702,9 @@ export async function handleBrowse(request, env, url) {
     await storeCookies(env, user.email, current, upstream.headers);
     const st = upstream.status;
     if (st >= 300 && st < 400 && upstream.headers.has("Location")) {
+      // Redirect: khong doc body nua — huy stream de giai phong timer/connection
+      // (quan trong voi relay stream: khong thi timer 25s treo toi khi het han).
+      try { await upstream.body.cancel(); } catch (e) {}
       let next;
       try {
         next = new URL(upstream.headers.get("Location"), current.href);
