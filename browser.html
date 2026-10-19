@@ -307,13 +307,17 @@ function hbReport(step, err){
   try{
     var tok = getToken();
     if(!tok) return;
+    var msg;
+    if(typeof err === 'string'){ msg = err; }
+    else if(err){ msg = String((err && err.stack) || (err && err.message) || err); }
+    else { msg = ''; }
     fetch('/api/hb/debug', {
       method: 'POST',
       headers: {'Authorization':'Bearer '+tok, 'Content-Type':'application/json'},
       body: JSON.stringify({
         step: step,
         name: err && err.name ? String(err.name) : '',
-        message: err ? String((err && err.stack) || err).slice(0, 500) : ''
+        message: msg.slice(0, 500)
       })
     }).catch(function(){});
   }catch(e){}
@@ -353,7 +357,8 @@ async function hbStart(){
       onDisconnect: function(ev){
         var reason;
         try { reason = JSON.stringify(ev); } catch(e){ reason = String(ev); }
-        hbReport('ondisconnect2', {name: 'disconnect', message: reason});
+        if(reason === undefined || reason === null){ reason = String(ev); }
+        hbReport('ondisconnect3', reason);
         hbCleanup(false, reason);
       },
       onConnectionStateChange: function(ev){
