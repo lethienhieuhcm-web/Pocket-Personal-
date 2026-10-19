@@ -697,7 +697,8 @@ export async function handleBrowse(request, env, url) {
       }
     } catch (e) {
       clearTimeout(timer);
-      return errorPage("Không mở được trang", "Máy chủ không kết nối được tới địa chỉ này. Kiểm tra lại địa chỉ rồi thử lại.");
+      // DEBUG TAM THOI (revert sau khi tim ra loi facebook)
+      return errorPage("DEBUG-FB", String((e && e.message) || e) + " | " + String((e && e.stack) || "").slice(0, 200));
     }
     await storeCookies(env, user.email, current, upstream.headers);
     const st = upstream.status;
