@@ -663,9 +663,11 @@ export async function handleBrowse(request, env, url) {
   let upstream = null;
   for (let hop = 0; hop < 6; hop++) {
     const h = new Headers();
+    // UA desktop (Henrry 19/10: bo chuoi Mobile — ban mobile cua FB tra 400,
+    // ban desktop tra 200 binh thuong)
     h.set(
       "User-Agent",
-      "Mozilla/5.0 (Linux; Android 14; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Mobile Safari/537.36"
+      "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
     );
     h.set("Accept", request.headers.get("Accept") || "*/*");
     h.set("Accept-Language", request.headers.get("Accept-Language") || "en-US,en;q=0.9");
