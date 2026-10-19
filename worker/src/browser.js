@@ -1,6 +1,8 @@
 // worker/src/browser.js — Proxy browser backend.
-// P0 đã Chốt 2026-10-12: PWA -> Worker fetch TRỰC TIẾP tới website đích
-// (không qua VM). Website đích thấy IP egress Cloudflare, không thấy IP máy user.
+// Kiến trúc 19/10/2026 (Henrry Chốt): PWA -> Worker -> relay botkeep -> website đích.
+// Worker POST tới relay (Bearer EGRESS_TOKEN); relay fetch bằng IP egress của
+// server botkeep cá nhân. Website đích thấy IP botkeep, không thấy IP Cloudflare
+// hay IP máy user. Không có EGRESS_TOKEN -> fallback fetch trực tiếp (hành vi cũ).
 // Quy tắc 9 (RULES.md): KHÔNG né CAPTCHA/anti-bot, KHÔNG dùng proxy để vượt chặn.
 // Nếu site chặn bot/trả captcha -> trả nguyên trạng thái về cho user, không bypass.
 
@@ -59,6 +61,90 @@ function isAllowedTarget(u) {
   }
   if (h === "[::1]" || h === "::1") return false;
   return true;
+}
+
+// --- Egress relay (botkeep): Worker -> relay (IP cá nhân) -> website đích ---
+// Relay protocol (egress-relay.py, verify live 19/10/2026):
+//   POST /fetch {"url","method","headers","body_b64"} (Bearer EGRESS_TOKEN)
+//     -> 200 {"status","headers":[[k,v],...],"body_b64","truncated"}
+//   GET /health -> {"ok":true}
+// Relay KHÔNG follow redirect (trả 3xx nguyên) — Worker giữ logic redirect
+// manual + SSRF guard + cookie jar per-hop như cũ.
+const RELAY_URL_DEFAULT = "https://wwfzth.bot-keep.xyz"; // verify live 19/10/2026
+
+function relayCfg(env) {
+  const token = env.EGRESS_TOKEN || "";
+  if (!token) return null;
+  const base = (env.EGRESS_RELAY_URL || RELAY_URL_DEFAULT).replace(/\/+$/, "");
+  return { url: base + "/fetch", token };
+}
+
+function b64encodeBuf(buf) {
+  const bytes = new Uint8Array(buf);
+  let bin = "";
+  for (let i = 0; i < bytes.length; i += 0x8000) {
+    bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+  }
+  return btoa(bin);
+}
+
+function b64decodeToBuf(b64) {
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes.buffer;
+}
+
+// Fetch 1 hop qua relay. Trả về Response (tương thích với code xử lý bên dưới:
+// HTMLRewriter.transform, .headers.get/getSetCookie, .body streaming).
+// Trả null khi chưa cấu hình relay -> caller fallback fetch trực tiếp.
+// Ném lỗi khi relay từ chối (401/403) hoặc response sai định dạng.
+async function fetchViaRelay(env, targetHref, method, headers, bodyBuf, timeoutMs) {
+  const cfg = relayCfg(env);
+  if (!cfg) return null;
+  const plain = {};
+  headers.forEach((v, k) => { plain[k] = v; });
+  const payload = {
+    url: targetHref,
+    method: method,
+    headers: plain,
+    body_b64: bodyBuf && bodyBuf.byteLength ? b64encodeBuf(bodyBuf) : null,
+  };
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs || 25000);
+  let res;
+  try {
+    res = await fetch(cfg.url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + cfg.token,
+      },
+      body: JSON.stringify(payload),
+      signal: ctrl.signal,
+    });
+  } catch (e) {
+    clearTimeout(timer);
+    throw e;
+  }
+  clearTimeout(timer);
+  if (res.status === 401 || res.status === 403) {
+    throw new Error("relay rejected (" + res.status + ")");
+  }
+  let data;
+  try {
+    data = await res.json();
+  } catch (e) {
+    throw new Error("relay bad json");
+  }
+  if (!data || typeof data.status !== "number" || typeof data.body_b64 !== "string") {
+    throw new Error("relay bad response");
+  }
+  const rh = new Headers();
+  for (const pair of data.headers || []) {
+    try { rh.append(pair[0], pair[1]); } catch (e) { /* header lạ: bỏ qua */ }
+  }
+  return new Response(b64decodeToBuf(data.body_b64), { status: data.status, headers: rh });
 }
 
 // --- Auth: Bearer header (XHR) hoặc ?t= (iframe navigation không gửi header được) ---
@@ -503,18 +589,25 @@ export async function handleBrowse(request, env, url) {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 20000);
     try {
-      upstream = await fetch(current.href, {
-        method,
-        headers: h,
-        body: method === "POST" ? bodyBuf : undefined,
-        redirect: "manual",
-        signal: ctrl.signal,
-      });
+      // Ưu tiên qua relay botkeep (IP cá nhân). Không cấu hình -> direct (cũ).
+      const via = await fetchViaRelay(env, current.href, method, h, bodyBuf, 25000);
+      if (via) {
+        clearTimeout(timer);
+        upstream = via;
+      } else {
+        upstream = await fetch(current.href, {
+          method,
+          headers: h,
+          body: method === "POST" ? bodyBuf : undefined,
+          redirect: "manual",
+          signal: ctrl.signal,
+        });
+        clearTimeout(timer);
+      }
     } catch (e) {
       clearTimeout(timer);
       return errorPage("Không mở được trang", "Máy chủ không kết nối được tới địa chỉ này. Kiểm tra lại địa chỉ rồi thử lại.");
     }
-    clearTimeout(timer);
     await storeCookies(env, user.email, current, upstream.headers);
     const st = upstream.status;
     if (st >= 300 && st < 400 && upstream.headers.has("Location")) {
