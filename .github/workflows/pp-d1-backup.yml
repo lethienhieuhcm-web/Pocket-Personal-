@@ -1,0 +1,36 @@
+name: PP D1 Backup
+
+# Moved from VM cron `pp-d1-backup` (daily 03:00 +07) .
+# Needs repo Secret CLOUDFLARE_API_TOKEN (D1 read on the Pocket Personal DB).
+# scripts/d1_backup.py needs a small patch to fall back to the vendored
+# token client when the skill path is absent (see PATCH note below).
+
+on:
+  schedule:
+    # 03:00 Asia/Ho_Chi_Minh = 20:00 UTC (previous day)
+    - cron: '0 20 * * *'
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Run D1 backup
+        run: python3 scripts/d1_backup.py
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+
+      - name: Upload backup artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: d1-backup-${{ github.run_id }}
+          path: backups/d1/*.json
+          retention-days: 30
