@@ -959,6 +959,8 @@ export async function handleHbSession(request, env, url) {
     const r = await hbCall(env, "POST", "/v0/vm", {
       start_url: startUrl,
       region: "AS", // gần VN nhất (fix 19/10: KHONG truyen timeout custom vi gay rot ket noi)
+      // tag: moi user 1 slot - neu da co session thi tra ve session cu, khong tao moi (tranh het 2 slot Testing)
+      tag: "pp-" + sess.email.replace(/[^a-zA-Z0-9]/g, "_").slice(0, 40),
     });
     if (r.err === "not_configured") return jerr("Interactive chưa cấu hình", 501);
     if (r.err) return jerr("Không tạo được phiên tương tác", 502);
