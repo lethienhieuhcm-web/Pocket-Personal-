@@ -349,9 +349,11 @@ async function hbStart(){
     if(typeof Hyperbeam !== 'function'){ throw new Error('Hyperbeam not a function, typeof=' + typeof Hyperbeam); }
     hbClient = await Hyperbeam(hbContainer, j.embed_url, {
       timeout: 15000, // mang VN cham, cho lau hon default 2s
+      adminToken: j.admin_token || undefined, // thu gui admin token (debug 19/10)
       onDisconnect: function(ev){
-        var reason = (ev && ev.type) ? ev.type : 'unknown';
-        hbReport('ondisconnect', {name: 'disconnect', message: reason});
+        var reason;
+        try { reason = JSON.stringify(ev); } catch(e){ reason = String(ev); }
+        hbReport('ondisconnect2', {name: 'disconnect', message: reason});
         hbCleanup(false, reason);
       },
       onConnectionStateChange: function(ev){

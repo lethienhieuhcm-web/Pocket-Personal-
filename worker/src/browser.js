@@ -966,6 +966,7 @@ export async function handleHbSession(request, env, url) {
     return new Response(JSON.stringify({
       session_id: r.data.session_id,
       embed_url: r.data.embed_url,
+      admin_token: r.data.admin_token || null, // thu gui cho client (debug 19/10)
     }), { headers: { "Content-Type": "application/json" } });
   }
   if (request.method === "DELETE") {
