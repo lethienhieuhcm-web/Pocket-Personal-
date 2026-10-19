@@ -114,8 +114,13 @@ async function fetchViaRelay(env, targetHref, method, headers, bodyBuf, timeoutM
     stream: true,
   };
   const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), timeoutMs || 25000);
+  let timer = setTimeout(() => ctrl.abort(), timeoutMs || 25000);
   const done = () => clearTimeout(timer);
+  const poke = () => {
+    // Idle-timeout: co du lieu ve -> cho them (tai file cham khong chet oan)
+    clearTimeout(timer);
+    timer = setTimeout(() => { try { ctrl.abort(); } catch (e) {} }, timeoutMs || 25000);
+  };
   let res;
   try {
     res = await fetch(cfg.url, {
@@ -187,46 +192,47 @@ async function fetchViaRelay(env, targetHref, method, headers, bodyBuf, timeoutM
   for (const pair of head.headers) {
     try { rh.append(pair[0], pair[1]); } catch (e) { /* header lạ: bỏ qua */ }
   }
-  const stream = new ReadableStream({
-    async pull(controller) {
-      let line;
-      try {
-        line = await readLine();
-      } catch (e) {
-        done();
-        controller.error(e);
-        return;
+  // Stream NDJSON qua TransformStream (new ReadableStream() can
+  // streams_enable_constructors flag ma Worker chua bat -> dung TransformStream
+  // co san). Pump chay nen: doc tung dong tu relay, write chunk vao writable.
+  // Timer la idle-timeout: reset moi khi co chunk (tai file cham van khong chet).
+  const ts = new TransformStream();
+  const writer = ts.writable.getWriter();
+  const pump = (async () => {
+    try {
+      while (true) {
+        let line;
+        try {
+          line = await readLine();
+        } catch (e) {
+          throw e;
+        }
+        if (line === null) break;
+        if (!line.trim()) continue;
+        let msg;
+        try {
+          msg = JSON.parse(line);
+        } catch (e) {
+          throw new Error("relay bad chunk");
+        }
+        if (msg.done) break;
+        if (typeof msg.chunk_b64 === "string" && msg.chunk_b64) {
+          await writer.write(b64decodeToBuf(msg.chunk_b64));
+        }
+        poke(); // co du lieu -> reset idle timer
       }
-      if (line === null) {
-        done();
-        controller.close();
-        return;
-      }
-      if (!line.trim()) return;
-      let msg;
-      try {
-        msg = JSON.parse(line);
-      } catch (e) {
-        done();
-        controller.error(new Error("relay bad chunk"));
-        return;
-      }
-      if (msg.done) {
-        done();
-        controller.close();
-        return;
-      }
-      if (typeof msg.chunk_b64 === "string" && msg.chunk_b64) {
-        controller.enqueue(b64decodeToBuf(msg.chunk_b64));
-      }
-    },
-    cancel() {
       done();
-      try { reader.cancel(); } catch (e) {}
-      try { ctrl.abort(); } catch (e) {}
-    },
-  });
-  return new Response(stream, { status: head.status, headers: rh });
+      try { await writer.close(); } catch (e) {}
+    } catch (e) {
+      done();
+      try { await writer.abort(e); } catch (_) {}
+      try { reader.cancel(); } catch (_) {}
+      try { ctrl.abort(); } catch (_) {}
+    }
+  })();
+  // Huy pump khi consumer huy body (vd redirect): tranh treo connection.
+  // (TransformStream: writer.write se reject khi readable bi cancel -> pump tu dung.)
+  return new Response(ts.readable, { status: head.status, headers: rh });
 }
 
 // Dung Response tu dang JSON 1 cuc cua relay (fallback khi relay cu).
@@ -697,8 +703,7 @@ export async function handleBrowse(request, env, url) {
       }
     } catch (e) {
       clearTimeout(timer);
-      // DEBUG TAM THOI (revert sau khi tim ra loi facebook)
-      return errorPage("DEBUG-FB", String((e && e.message) || e) + " | " + String((e && e.stack) || "").slice(0, 200));
+      return errorPage("Không mở được trang", "Máy chủ không kết nối được tới địa chỉ này. Kiểm tra lại địa chỉ rồi thử lại.");
     }
     await storeCookies(env, user.email, current, upstream.headers);
     const st = upstream.status;
