@@ -978,3 +978,23 @@ export async function handleHbSession(request, env, url) {
   }
   return jerr("Method not allowed", 405);
 }
+
+// TEMP chan doan mang 19/10 - xoa sau
+export async function handleHbDiag(request, env, url) {
+  const html = `<!DOCTYPE html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Chẩn đoán kết nối</title><style>body{font-family:system-ui,sans-serif;max-width:600px;margin:20px auto;padding:0 16px}h1{font-size:20px}.row{padding:10px;border:1px solid #ddd;border-radius:8px;margin:8px 0}.ok{border-color:#4caf50;background:#f1f8e9}.fail{border-color:#f44336;background:#ffebee}.run{border-color:#ff9800;background:#fff8e1}button{padding:12px 24px;font-size:16px;border:0;border-radius:8px;background:#1a73e8;color:#fff;cursor:pointer}</style></head><body><h1>Chẩn đoán mạng (máy tính công ty)</h1><p>Bấm nút để kiểm tra. Chụp màn hình gửi lại.</p><button id="go">Bắt đầu kiểm tra</button><div id="out"></div><script>
+function row(n){var d=document.createElement('div');d.className='row run';d.textContent='⏳ '+n+'...';document.getElementById('out').appendChild(d);return d;}
+function done(el,ok,msg){el.className='row '+(ok?'ok':'fail');el.textContent=(ok?'✅ ':'❌ ')+msg;}
+document.getElementById('go').onclick=async function(){this.disabled=true;document.getElementById('out').innerHTML='';
+var r=row('1. Tải SDK từ unpkg.com');
+try{var s=await fetch('https://unpkg.com/@hyperbeam/web@0.0.39/dist/index.js',{method:'HEAD'});done(r,s.ok,'unpkg.com: '+(s.ok?'vào được':'lỗi '+s.status));}catch(e){done(r,false,'unpkg.com: BỊ CHẶN');}
+r=row('2. Kết nối API Hyperbeam');
+try{var s2=await fetch('https://engine.hyperbeam.com/v0/vm',{method:'GET'});done(r,true,'engine.hyperbeam.com: vào được');}catch(e){done(r,false,'engine.hyperbeam.com: BỊ CHẶN');}
+r=row('3. WebRTC');try{var pc=new RTCPeerConnection();done(r,true,'Trình duyệt hỗ trợ WebRTC');
+r=row('4. ICE (tường lửa UDP)');
+var got=false;pc.onicecandidate=function(ev){if(ev.candidate&&!got){got=true;done(r,true,'ICE chạy: '+ev.candidate.type);try{pc.close();}catch(e){}}};
+pc.createDataChannel('t');var o=await pc.createOffer();await pc.setLocalDescription(o);
+setTimeout(function(){if(!got){done(r,false,'ICE KHÔNG chạy — tường lửa chặn UDP/WebRTC');try{pc.close();}catch(e){}}},8000);
+}catch(e){done(r,false,'KHÔNG hỗ trợ WebRTC');}};
+<\/script></body></html>`;
+  return new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8" } });
+}
