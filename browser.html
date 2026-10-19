@@ -303,26 +303,6 @@ function hbCleanup(silent, reason){
   if(!silent) toast(t('hb_ended') + (reason ? ' (' + reason + ')' : ''));
 }
 
-function hbReport(step, err){
-  try{
-    var tok = getToken();
-    if(!tok) return;
-    var msg;
-    if(typeof err === 'string'){ msg = err; }
-    else if(err){ msg = String((err && err.stack) || (err && err.message) || err); }
-    else { msg = ''; }
-    fetch('/api/hb/debug', {
-      method: 'POST',
-      headers: {'Authorization':'Bearer '+tok, 'Content-Type':'application/json'},
-      body: JSON.stringify({
-        step: step,
-        name: err && err.name ? String(err.name) : '',
-        message: msg.slice(0, 500)
-      })
-    }).catch(function(){});
-  }catch(e){}
-}
-
 async function hbStart(){
   if(hbMode || hbStarting) return; // chong bam dup tao 2 session chong nhau
   hbStarting = true;
@@ -346,24 +326,12 @@ async function hbStart(){
     var j = await r.json();
     if(!j.embed_url || !j.session_id){ hideLoading(); hbCleanup(true); toast(t('hb_failed')); return; }
     hbSessionId = j.session_id;
-    hbReport('session_ok', null);
     var mod = await import('https://unpkg.com/@hyperbeam/web@latest/dist/index.js');
     var Hyperbeam = mod.default || mod.Hyperbeam;
-    hbReport('sdk_imported:' + (typeof Hyperbeam), null);
-    if(typeof Hyperbeam !== 'function'){ throw new Error('Hyperbeam not a function, typeof=' + typeof Hyperbeam); }
+    if(typeof Hyperbeam !== 'function'){ throw new Error('Hyperbeam not a function'); }
     hbClient = await Hyperbeam(hbContainer, j.embed_url, {
-      timeout: 15000, // mang VN cham, cho lau hon default 2s
-      adminToken: j.admin_token || undefined, // thu gui admin token (debug 19/10)
-      onDisconnect: function(ev){
-        var reason;
-        try { reason = JSON.stringify(ev); } catch(e){ reason = String(ev); }
-        if(reason === undefined || reason === null){ reason = String(ev); }
-        hbReport('ondisconnect3', reason);
-        hbCleanup(false, reason);
-      },
-      onConnectionStateChange: function(ev){
-        try{ console.log('[hb] conn:', ev && ev.state); }catch(e){}
-      }
+      timeout: 15000,
+      onDisconnect: function(){ hbCleanup(false); }
     });
     hbMode = true;
     hbStarting = false;
@@ -375,7 +343,6 @@ async function hbStart(){
     hostLine.textContent = new URL(href).hostname + ' · ' + t('mode_interactive');
     syncModeBtn();
   }catch(e){
-    hbReport('hbstart_catch', e);
     hideLoading(); hbCleanup(true); toast(t('hb_failed'));
   }
 }

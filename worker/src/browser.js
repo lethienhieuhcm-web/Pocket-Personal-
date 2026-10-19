@@ -958,15 +958,13 @@ export async function handleHbSession(request, env, url) {
     } catch (e) { /* giữ default */ }
     const r = await hbCall(env, "POST", "/v0/vm", {
       start_url: startUrl,
-      region: "AS", // test lai region (debug 19/10)
-      // TAM debug 19/10: bo timeout de test minimal nhu docs mau
+      region: "AS", // gần VN nhất (fix 19/10: KHONG truyen timeout custom vi gay rot ket noi)
     });
     if (r.err === "not_configured") return jerr("Interactive chưa cấu hình", 501);
     if (r.err) return jerr("Không tạo được phiên tương tác", 502);
     return new Response(JSON.stringify({
       session_id: r.data.session_id,
       embed_url: r.data.embed_url,
-      admin_token: r.data.admin_token || null, // thu gui cho client (debug 19/10)
     }), { headers: { "Content-Type": "application/json" } });
   }
   if (request.method === "DELETE") {
@@ -979,25 +977,4 @@ export async function handleHbSession(request, env, url) {
       { headers: { "Content-Type": "application/json" } });
   }
   return jerr("Method not allowed", 405);
-}
-
-// TEMP debug 19/10 — nhận lỗi client gửi về, lưu D1 để đọc. XÓA sau khi fix xong.
-export async function handleHbDebug(request, env, url) {
-  const sess = await resolveSession(request, env, url);
-  if (!sess) return jerr("Not logged in", 401);
-  let b = {};
-  try { b = await request.json(); } catch (e) { /* kệ */ }
-  const step = String(b.step || "").slice(0, 64);
-  const name = String(b.name || "").slice(0, 64);
-  const message = String(b.message || "").slice(0, 500);
-  try {
-    await env.DB.prepare(
-      "CREATE TABLE IF NOT EXISTS hb_debug (id INTEGER PRIMARY KEY AUTOINCREMENT, ts INTEGER, step TEXT, name TEXT, message TEXT)"
-    ).run();
-    await env.DB.prepare(
-      "INSERT INTO hb_debug (ts, step, name, message) VALUES (?, ?, ?, ?)"
-    ).bind(Date.now(), step, name, message).run();
-  } catch (e) { return jerr("db fail", 500); }
-  return new Response(JSON.stringify({ ok: true }),
-    { headers: { "Content-Type": "application/json" } });
 }

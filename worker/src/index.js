@@ -10,7 +10,7 @@ import {handleGetPlan, handleGetUsage, handleSetPlan} from './billing.js';
 import {handleDriveAuthUrl, handleDriveCallback, handleDriveStatus, handleDriveDisconnect, handleDriveMusic, handleDriveStream, handleDriveUpload} from './drive.js';
 import {handleDacMusic, handleDacStream, handleDacStreamTest, handleDacDriveToken, handleDacAudio, handleDacAudioSign, handleDacAudioToken, handleDacResolve, handleDacCopy, handleDacFolders, handleDacSync, handleDacSearch, handleDacLibrary, handleDacPlaylistList, handleDacPlaylistCreate, handleDacPlaylistDelete, handleDacPlaylistGet, handleDacPlaylistSetItems, handleDacAuthLogin, handleDacAuthRefresh, handleDacAuthLogout} from './dac.js';
 import {handleSpotifyAuthUrl, handleSpotifyCallback, handleSpotifyStatus, handleSpotifySearch} from './spotify.js';
-import {handleBrowse, handleBrowseWs, handleHbSession, handleHbDebug} from './browser.js';
+import {handleBrowse, handleBrowseWs, handleHbSession} from './browser.js';
 import { drizzle } from "drizzle-orm/d1";
 import { and, eq, lt, sql } from "drizzle-orm";
 import { rateLimits } from "./schema.js";
@@ -189,7 +189,6 @@ const ROUTES = [
   // --- Hyperbeam interactive tier (Henrry Chốt 19/10/2026) ---
   ['POST',   '/api/hb/session',      handleHbSession,        'custom'],
   ['DELETE', '/api/hb/session',      handleHbSession,        'custom'],
-  ['POST',   '/api/hb/debug',        handleHbDebug,          'custom'], // TEMP debug 19/10 - xoa sau khi xong
   // --- internal (VM crons / processor) ---
   ['POST',   '/api/internal/migrate-r2-d1', hMigrateR2ToD1, 'internal'],
   ['GET',    '/api/internal/stock-alerts-by-symbol', hAlertsBySymbol, 'internal'],
