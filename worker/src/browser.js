@@ -958,7 +958,8 @@ export async function handleHbSession(request, env, url) {
     } catch (e) { /* giữ default */ }
     const r = await hbCall(env, "POST", "/v0/vm", {
       start_url: startUrl,
-      // TAM debug 19/10: bo region+timeout de test minimal nhu docs mau
+      region: "AS", // test lai region (debug 19/10)
+      // TAM debug 19/10: bo timeout de test minimal nhu docs mau
     });
     if (r.err === "not_configured") return jerr("Interactive chưa cấu hình", 501);
     if (r.err) return jerr("Không tạo được phiên tương tác", 502);
