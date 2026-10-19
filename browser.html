@@ -332,7 +332,7 @@ async function hbStart(){
   var href = normalizeUrl(addrInput.value) || 'https://example.com';
   emptyBox.style.display = 'none';
   view.style.display = 'none';
-  hbWrap.style.display = '';
+  hbWrap.style.display = 'block'; // CSS mac dinh display:none -> phai set block, '' khong du
   try{ document.getElementById('loadingText').textContent = t('hb_creating'); }catch(e){}
   showLoading();
   try{
