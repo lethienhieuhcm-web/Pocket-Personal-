@@ -72,6 +72,15 @@ export const pins = sqliteTable("pins", {
   createdAt: integer("created_at").notNull(),
 });
 
+export const ruleAlerts = sqliteTable("rule_alerts", {
+  id: integer("id").primaryKey(),
+  email: text("email").notNull(),
+  symbol: text("symbol").notNull(),
+  type: text("type").notNull(),
+  threshold: real("threshold").notNull(),
+  createdAt: integer("created_at").notNull(),
+});
+
 export const portfolioTxns = sqliteTable("portfolio_txns", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   email: text("email").notNull(),
