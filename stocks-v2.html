@@ -325,7 +325,7 @@ async function loadMarket(){
     const j=await api("/indices");const rows=j.rows||[];
     $("idxRow").innerHTML=rows.map(r=>{const pc=r.pct_change,cls=pc>0?"up":pc<0?"down":"";
       return `<div class="idxcard"><div class="s">${esc(r.symbol)}</div><div class="p">${fmtN(r.close)}</div><div class="c ${cls}">${pc>0?"▲":pc<0?"▼":""} ${fmtPct(pc)}</div></div>`;}).join("")||'<div class="hint">Chưa có dữ liệu</div>';
-    if(j._prov){_lastMktSrc=j._prov.source;$("mktSrc").textContent=srcLabel(j._prov.source);}
+    if(j._prov){_lastMktSrc=j._prov.source;refreshSrc();}
   }catch(e){$("idxRow").innerHTML='<div class="hint">Lỗi tải chỉ số</div>';}
   try{
     const j=await api("/regime");
@@ -540,7 +540,7 @@ async function loadDetail(sym){
       h+=`<div class="bidask"><div class="ba"><div class="t">Mua 1/2/3</div><div class="pr up">${bp}</div></div><div class="ba"><div class="t">Bán 1/2/3</div><div class="pr down">${ap}</div></div></div>`;
     }
     $("dQuote").innerHTML=h;
-    if(q._prov)$("dSrc").textContent=srcLabel(q._prov.source);
+    if(q._prov){_lastDSrc=q._prov.source;refreshSrc();}
   }catch(e){$("dQuote").innerHTML='<div class="hint">Lỗi tải</div>';}
   loadFlow(sym);loadFund(sym);loadNews(sym);loadChart(sym);
 }
@@ -731,9 +731,10 @@ let curLang = (localStorage.getItem("elab_uiLang") || localStorage.getItem("stk_
 if(!["vi","en","zh","ko"].includes(curLang)) curLang = "vi";
 
 function refreshSrc(){
-  if(_lastMktSrc) $("mktSrc").textContent=srcLabel(_lastMktSrc);
-  else $("mktSrc").textContent=srcLabel("direct:vci");
-  if(_lastDSrc) $("dSrc").textContent=srcLabel(_lastDSrc);
+  const suf=verSuffix();
+  if(_lastMktSrc) $("mktSrc").textContent=srcLabel(_lastMktSrc)+suf;
+  else $("mktSrc").textContent=srcLabel("direct:vci")+suf;
+  if(_lastDSrc) $("dSrc").textContent=srcLabel(_lastDSrc)+suf;
 }
 function syncLangUI(){
   const labels = {vi:"VI",en:"EN",zh:"中文",ko:"한국어"};
@@ -869,6 +870,33 @@ function srcLabel(src){
   const s = (src||"").replace("direct:","").toUpperCase();
   const T = {vi:`Nguồn: ${s} trực tiếp`, en:`Source: ${s} live`, zh:`来源: ${s}直连`, ko:`출처: ${s} 직접`};
   return T[curLang] || T.vi;
+}
+
+// Poll /api/stock/version moi 5 phut (thiet ke goc cua endpoint): chi tai
+// lai du lieu khi `updated` doi. Nhan phien ban vnstock dang cap du lieu —
+// lai 4+5 thi hien ca hai (quy tac Henrry 2026-10-20).
+let _verKey=null, _verList=[];
+function verSuffix(){
+  return _verList.length ? " · vnstock "+_verList.join(" + ") : "";
+}
+async function pollVersion(){
+  try{
+    const v=await api("/version");
+    _verList=v.versions||[];
+    refreshSrc();
+    const key=(v.updated||"")+"|"+_verList.join(",");
+    if(_verKey && key!==_verKey){
+      const on=document.querySelector(".view.on");
+      if(on){
+        if(on.id==="v-market")loadMarket();
+        else if(on.id==="v-screen")loadScreener();
+        else if(on.id==="v-alert")loadAlerts();
+        else if(on.id==="v-mine")loadMine();
+        else if(on.id==="v-detail"&&typeof curSym!=="undefined"&&curSym)loadDetail(curSym);
+      }
+    }
+    _verKey=key;
+  }catch(e){}
 }
 
 function translatePh(){
@@ -1011,6 +1039,7 @@ if(!window._i18nObs){
   window._i18nObs.observe(document.body, {childList:true, subtree:true, characterData:true});
 }
 loadMarket();
+pollVersion(); setInterval(pollVersion, 5*60*1000);
 </script>
 <script src="/english/js/lang-dropdown.js?v=__BUILD__"></script>
 
