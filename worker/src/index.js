@@ -16,7 +16,7 @@ import { and, eq, lt, sql } from "drizzle-orm";
 import { rateLimits } from "./schema.js";
 import {getSession, getUser, OWNER_EMAIL} from './auth.js';
 import {jerr} from './utils.js';
-import {hStockVersion, hStockIndices, hStockRegime, hStockSignals, hStockQuote, hStockOhlcv, hStockSymbols, hStockScreener, hStockScreener2, hStockFundamentals, hStockNews, hStockMarketNews, hStockForeignFlow, hStockForeignHistory, hStockProprietaryFlow, hStockProprietaryHistory, hStockEvents, hStockCompanyProfile, hStockBacktest, hStockCompare, hWatchlistGet, hWatchlistAdd, hWatchlistDel, hPortfolio, hTxnAdd, hTxnDel, hTxnNote, hCostHistory, hAlertsGet, hAlertsAdd, hAlertsDel, hAlertsBySymbol, hTargetsGet, hTargetsSet, hTargetsDel, hPinStatus, hPinSet, hPinVerify, hPinDel, hMigrateR2ToD1, hStockPublish, hModalAlert, hStockReportData, hStockAlertDone, hStockTargetDone, hStockRisk, hRuleAlertsGet, hRuleAlertsAdd, hRuleAlertsDel} from './stock.js';
+import {hStockVersion, hStockIndices, hStockRegime, hStockSignals, hStockQuote, hStockOhlcv, hStockSymbols, hStockScreener, hStockScreener2, hStockFundamentals, hStockNews, hStockMarketNews, hStockForeignFlow, hStockForeignHistory, hStockProprietaryFlow, hStockProprietaryHistory, hStockEvents, hStockCompanyProfile, hStockBacktest, hStockCompare, hWatchlistGet, hWatchlistAdd, hWatchlistDel, hPortfolio, hTxnAdd, hTxnDel, hTxnNote, hCostHistory, hAlertsGet, hAlertsAdd, hAlertsDel, hAlertsBySymbol, hTargetsGet, hTargetsSet, hTargetsDel, hPinStatus, hPinSet, hPinVerify, hPinDel, hMigrateR2ToD1, hStockPublish, hModalAlert, hStockReportData, hStockAlertDone, hStockTargetDone, hStockRisk, hRuleAlertsGet, hRuleAlertsAdd, hRuleAlertsDel, hRuleAlertsInternal} from './stock.js';
 
 // Build ID - replaced with timestamp on every deploy (see cf_deploy.py)
 const BUILD_ID = "__BUILD__";
@@ -199,6 +199,7 @@ const ROUTES = [
   // --- internal (VM crons / processor) ---
   ['POST',   '/api/internal/migrate-r2-d1', hMigrateR2ToD1, 'internal'],
   ['GET',    '/api/internal/stock-alerts-by-symbol', hAlertsBySymbol, 'internal'],
+  ['GET',    '/api/internal/stock-rule-alerts', hRuleAlertsInternal, 'internal'],
   ['POST',   '/api/internal/stock-publish', hStockPublish,   'internal'],
   ['POST',   '/api/internal/modal-alert', hModalAlert,     'internal'],
   ['GET',    '/api/internal/stock-report-data', hStockReportData, 'internal'],
