@@ -1,6 +1,6 @@
 {
-  "build_id": "20261020093616",
-  "built_at": "2026-10-20T09:36:16.286973+00:00",
+  "build_id": "20261020100014",
+  "built_at": "2026-10-20T10:00:14.372698+00:00",
   "assets": {
     "design-system.css": "design-system.67bd4f89.css",
     "js/core/aiClient.js": "js/core/aiClient.7cbe9ad6.js",
@@ -22,8 +22,8 @@
     "js/features/scan.js": "js/features/scan.7e6ba5d7.js",
     "js/features/sentence.js": "js/features/sentence.e4904017.js",
     "js/features/settings.js": "js/features/settings.643b3b8e.js",
-    "js/features/stock-v2.js": "js/features/stock-v2.36a5e92a.js",
-    "js/features/stock.js": "js/features/stock.4c549db5.js",
+    "js/features/stock-v2.js": "js/features/stock-v2.e65ea982.js",
+    "js/features/stock.js": "js/features/stock.6a4af035.js",
     "js/features/tts.js": "js/features/tts.84914807.js",
     "js/features/vocab.js": "js/features/vocab.bfaf095b.js",
     "js/lang-dropdown.js": "js/lang-dropdown.b9f6c68d.js",
