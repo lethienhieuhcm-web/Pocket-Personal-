@@ -66,11 +66,6 @@ export const geminiQueue = sqliteTable("gemini_queue", {
   updatedAt: integer("updated_at").notNull(),
 });
 
-export const pins = sqliteTable("pins", {
-  email: text("email").primaryKey(),
-  pinHash: text("pin_hash").notNull(),
-  createdAt: integer("created_at").notNull(),
-});
 
 export const ruleAlerts = sqliteTable("rule_alerts", {
   id: integer("id").primaryKey(),
