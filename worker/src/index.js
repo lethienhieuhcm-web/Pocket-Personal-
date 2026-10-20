@@ -2,7 +2,6 @@ import {handleBookResult, handleBookUpload, handleBookList, handleBookGet, handl
 import {handleTTS, handleVoices, handleQuota, handleTranslate, handleDict, handleCloneVoice} from './content.js';
 import {handleCollectionsList, handleCollectionGet, handleAdminCollectionCreate, handleAdminCollectionDelete, handleAdminItemCreate, handleAdminItemDelete} from './collections.js';
 import {handleAIExplain, handleAIQuiz, handleByokProxy, handleAiRelay} from './ai.js';
-import {handleStockAgent, handleAgentStatus} from './stock_agent.js';
 import {handleVocabAdd, handleVocabDue, handleVocabReview} from './vocab.js';
 import {handleAnalytics, handleInsights, handleBankGet, handleBankPost, handleReadingsList, handleReadingsCreate, handleReadingGet, handleReadingDelete, handleReadingAudioPut, handleAdminUsers, handleAdminRole, handleAdminDelete} from './library.js';
 import {handleRegister, handleSendCode, handleVerifyCode, handleLogin, handleLogout, handleMe, handleGoogleLogin, handleGoogleCallback, handleGoogleIdToken, handleListSessions, handleRevokeSession, handleVerifyEmail, handleResendVerification, handleForgotPassword, handleResetPassword, handleResetPasswordPage } from './auth.js';
@@ -16,7 +15,7 @@ import { and, eq, lt, sql } from "drizzle-orm";
 import { rateLimits } from "./schema.js";
 import {getSession, getUser, OWNER_EMAIL} from './auth.js';
 import {jerr} from './utils.js';
-import {hStockVersion, hStockIndices, hStockRegime, hStockSignals, hStockQuote, hStockOhlcv, hStockSymbols, hStockScreener, hStockScreener2, hStockFundamentals, hStockStatements, hStockNews, hStockMarketNews, hStockForeignFlow, hStockForeignHistory, hStockProprietaryFlow, hStockProprietaryHistory, hStockEvents, hStockCompanyProfile, hStockBacktest, hStockCompare, hWatchlistGet, hWatchlistAdd, hWatchlistDel, hPortfolio, hTxnAdd, hTxnDel, hTxnNote, hCostHistory, hAlertsGet, hAlertsAdd, hAlertsDel, hTargetsGet, hTargetsSet, hTargetsDel, hMigrateR2ToD1, hStockPublish, hModalAlert, hStockReportData, hStockAlertDone, hStockTargetDone, hStockRisk, hStockStrategyReview, hRuleAlertsGet, hRuleAlertsAdd, hRuleAlertsDel, hRuleAlertsInternal} from './stock.js';
+import {hStockVersion, hStockIndices, hStockRegime, hStockSignals, hStockQuote, hStockOhlcv, hStockScreener, hStockFundamentals, hStockStatements, hStockNews, hStockMarketNews, hStockForeignFlow, hStockForeignHistory, hStockProprietaryFlow, hStockProprietaryHistory, hStockEvents, hStockCompanyProfile, hStockCompare, hWatchlistGet, hWatchlistAdd, hWatchlistDel, hPortfolio, hTxnAdd, hTxnDel, hTxnNote, hCostHistory, hTargetsGet, hTargetsSet, hTargetsDel, hStockPublish, hModalAlert, hStockReportData, hStockAlertDone, hStockTargetDone, hStockRisk, hStockStrategyReview, hRuleAlertsGet, hRuleAlertsAdd, hRuleAlertsDel, hRuleAlertsInternal} from './stock.js';
 
 // Build ID - replaced with timestamp on every deploy (see cf_deploy.py)
 const BUILD_ID = "__BUILD__";
@@ -150,9 +149,7 @@ const ROUTES = [
   ['GET',    '/api/stock/signals',   hStockSignals,          'user'],
   ['GET',    '/api/stock/quote',     hStockQuote,            'user'],
   ['GET',    '/api/stock/ohlcv',     hStockOhlcv,            'user'],
-  ['GET',    '/api/stock/symbols',   hStockSymbols,          'user'],
   ['GET',    '/api/stock/screener',  hStockScreener,         'user'],
-  ['GET',    '/api/stock/screener2', hStockScreener2,        'user'],
   ['GET',    '/api/stock/fundamentals', hStockFundamentals,  'user'],
   ['GET',    '/api/stock/statements', hStockStatements,  'user'],
   ['GET',    '/api/stock/news',      hStockNews,             'user'],
@@ -163,7 +160,6 @@ const ROUTES = [
   ['GET',    '/api/stock/proprietary-flow/history', hStockProprietaryHistory, 'user'],
   ['GET',    '/api/stock/events',    hStockEvents,           'user'],
   ['GET',    '/api/stock/company/profile', hStockCompanyProfile, 'user'],
-  ['GET',    '/api/stock/backtest',  hStockBacktest,         'user'],
   ['GET',    '/api/stock/compare',   hStockCompare,          'user'],
   ['GET',    '/api/stock/watchlist', hWatchlistGet,          'user'],
   ['GET',    '/api/stock/risk',      hStockRisk,             'user'],
@@ -178,11 +174,6 @@ const ROUTES = [
   ['DELETE', '/api/stock/portfolio/txn/*', hTxnDel,          'user'],
   ['PUT',    '/api/stock/portfolio/txn/*', hTxnNote,         'user'],
   ['GET',    '/api/stock/portfolio/cost_history', hCostHistory, 'user'],
-  ['GET',    '/api/stock/alerts',    hAlertsGet,             'user'],
-  ['POST',   '/api/stock/alerts',    hAlertsAdd,             'user'],
-  ['DELETE', '/api/stock/alerts/*',  hAlertsDel,             'user'],
-  ['POST',   '/api/stock/agent',    handleStockAgent,       'user'],
-  ['GET',    '/api/stock/agent/status', handleAgentStatus,   'user'],
   ['GET',    '/api/stock/targets',   hTargetsGet,            'user'],
   ['POST',   '/api/stock/targets',   hTargetsSet,            'user'],
   ['DELETE', '/api/stock/targets/*', hTargetsDel,            'user'],
@@ -195,7 +186,6 @@ const ROUTES = [
   ['DELETE', '/api/hb/session',      handleHbSession,        'custom'],
   ['GET',    '/hb-diag',             handleHbDiag,           'public'], // TEMP chan doan mang
   // --- internal (VM crons / processor) ---
-  ['POST',   '/api/internal/migrate-r2-d1', hMigrateR2ToD1, 'internal'],
   ['GET',    '/api/internal/stock-rule-alerts', hRuleAlertsInternal, 'internal'],
   ['POST',   '/api/internal/stock-publish', hStockPublish,   'internal'],
   ['POST',   '/api/internal/modal-alert', hModalAlert,     'internal'],

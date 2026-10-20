@@ -129,38 +129,6 @@ export function sScoreRows(rows, funds, closes){
   return rows;
 }
 
-export function sBacktest(closes, times, fast, slow){
-  const n = closes.length;
-  const sma = (i,p)=>{ let s=0; for(let k=i-p+1;k<=i;k++) s+=closes[k]; return s/p; };
-  let pos=0, entryPx=0, entryT="", capital=1;
-  const trades=[], equity=[], bhEquity=[];
-  const baseBh = closes[slow];
-  for(let i=slow;i<n;i++){
-    const f=sma(i,fast), s=sma(i,slow), pf=sma(i-1,fast), ps=sma(i-1,slow), px=closes[i];
-    if(pos===0 && pf<=ps && f>s){ pos=1; entryPx=px; entryT=times[i]; }
-    else if(pos===1 && pf>=ps && f<s){
-      const ret=(px-entryPx)/entryPx; capital*=(1+ret);
-      trades.push({in:entryT, in_px:Math.round(entryPx*100)/100, out:times[i], out_px:Math.round(px*100)/100, ret:Math.round(ret*10000)/100});
-      pos=0;
-    }
-    equity.push({t:times[i], v:Math.round(capital*(pos?px/entryPx:1)*10000)/10000});
-    bhEquity.push({t:times[i], v: baseBh? Math.round(px/baseBh*10000)/10000 : 1});
-  }
-  if(pos){
-    const ret=(closes[n-1]-entryPx)/entryPx; capital*=(1+ret);
-    trades.push({in:entryT, in_px:Math.round(entryPx*100)/100, out:times[n-1], out_px:Math.round(closes[n-1]*100)/100, ret:Math.round(ret*10000)/100, open:true});
-  }
-  const wins = trades.filter(t=>t.ret>0).length;
-  let peak=0, mdd=0;
-  for(const p of equity){ peak=Math.max(peak,p.v); mdd=Math.min(mdd,(p.v-peak)/(peak||1)*100); }
-  const bh = closes[slow] ? (closes[n-1]-closes[slow])/closes[slow]*100 : 0;
-  return {trades, equity, bh_equity:bhEquity,
-    stats:{trades:trades.length, winrate: trades.length? Math.round(wins/trades.length*1000)/10:0,
-      strategy_ret:Math.round((capital-1)*10000)/100, bh_ret:Math.round(bh*100)/100,
-      max_drawdown:Math.round(mdd*100)/100},
-    note:"Excluding fees and taxes."};
-}
-
 
 /* ---------- market (doc tu R2 snapshot, can login) ---------- */
 export async function hStockIndices(request, env){
@@ -219,7 +187,7 @@ export async function hStockVersion(request, env){
   return resp;
 }
 
-/* ---- Data accessors (extracted for stock_agent reuse) ---- */
+/* ---- Data accessors (dung chung trong stock.js) ---- */
 export async function getQuoteData(env, sym){
   sym = String(sym||"").toUpperCase();
   if(!sym) return null;
@@ -334,11 +302,6 @@ export async function hStockOhlcv(request, env){
   return sJson({symbol:sym, interval:iv, rows:d.rows.slice(-count), count:d.rows.length, updated:d.updated, indicators});
 }
 
-export async function hStockSymbols(request, env){
-  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
-  return cachedMarket(request, env, "market/symbols.json", 3600); // 1h cache (symbols rarely change)
-}
-
 export async function hStockScreener(request, env){
   const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
   const u = new URL(request.url);
@@ -348,6 +311,7 @@ export async function hStockScreener(request, env){
   const minP = parseFloat(u.searchParams.get("min_pct")), maxP = parseFloat(u.searchParams.get("max_pct"));
   const minV = parseFloat(u.searchParams.get("min_volume")), minVal = parseFloat(u.searchParams.get("min_value"));
   if(ex) rows = rows.filter(r=>(r.exchange||"").toUpperCase()===ex);
+  const baseRows = rows; // pool cham diem: chi loc san (nhu screener2 cu)
   if(!isNaN(minP)) rows = rows.filter(r=>r.pct_change!=null && r.pct_change>=minP);
   if(!isNaN(maxP)) rows = rows.filter(r=>r.pct_change!=null && r.pct_change<=maxP);
   if(!isNaN(minV)) rows = rows.filter(r=>(r.volume||0)>=minV);
@@ -372,49 +336,18 @@ export async function hStockScreener(request, env){
       if(q && q.foreign_buy_value!=null && q.foreign_sell_value!=null)
         r.foreign_net_value = q.foreign_buy_value - q.foreign_sell_value;
     }
+    // Score tong hop — gop tu /screener2 (route da xoá, dot A 20/10):
+    // loc penny (close >= 10 nghin dong), top 200 thanh khoan, sScoreRows.
+    const closes = {};
+    for(const k of Object.keys(bySym)) closes[k] = bySym[k].close;
+    let cand = baseRows.filter(r=>(r.close||0) >= 10);
+    cand = [...cand].sort((a,b)=>((b.value_vnd||0)-(a.value_vnd||0))).slice(0,200);
+    const scored = sScoreRows(cand.map(r=>Object.assign({},r)), funds, closes);
+    const scoreBy = {};
+    for(const r of scored) if(r.score!=null) scoreBy[r.symbol] = r.score;
+    for(const r of out) if(scoreBy[r.symbol]!=null) r.score = scoreBy[r.symbol];
   }catch(e){}
   return sJson({updated:d?d.updated:null, count:rows.length, rows:out});
-}
-
-export async function hStockScreener2(request, env){
-  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
-  const u = new URL(request.url);
-  const sc = await sGet(env, "market/screener.json");
-  const fd = await sGet(env, "market/fundamentals.json");
-  const q = await sGet(env, "market/quotes.json");
-  let rows = (sc && sc.rows) || [];
-  const funds = (fd && fd.by_symbol) || {};
-  const closes = {};
-  if(q && q.by_symbol) for(const k of Object.keys(q.by_symbol)) closes[k]=q.by_symbol[k].close;
-  const ex = (u.searchParams.get("exchange")||"").toUpperCase();
-  if(ex) rows = rows.filter(r=>(r.exchange||"").toUpperCase()===ex);
-  // Quality filter BEFORE scoring (2026-10-09 20:41): filter penny stocks early to reduce CPU.
-  // Scoring all 1149 rows then filtering caused 503 (CPU timeout).
-  // r.close is in thousands VND, so >=10 means >=10,000 VND.
-  const noQualityFilter = u.searchParams.get("all") === "1";
-  if(!noQualityFilter){
-    rows = rows.filter(r => (r.close||0) >= 10);
-  }
-  // Thorough fix (2026-10-09 20:43): only score top 200 by liquidity.
-  // Frontend shows max 30, scoring 1000+ rows exceeds Worker CPU limit → 503.
-  rows = [...rows].sort((a,b)=>((b.value_vnd||0)-(a.value_vnd||0))).slice(0,200);
-  rows = sScoreRows(rows.map(r=>Object.assign({},r)), funds, closes);
-  const minS = parseFloat(u.searchParams.get("min_score"));
-  if(!isNaN(minS)) rows = rows.filter(r=>r.score!=null && r.score>=minS);
-  // Filter no-PE after scoring (pe is calculated in sScoreRows)
-  if(!noQualityFilter){
-    rows = rows.filter(r => r.pe != null);
-  }
-  // Attach industry/roe/debt for frontend filters (cheap: only ~200 rows)
-  for(const r of rows){
-    const f = funds[r.symbol];
-    if(!f) continue;
-    if(f.industry) r.industry = f.industry;
-    if(f.roe != null) r.roe = f.roe;
-    if(f.debt_to_equity != null) r.debt_to_equity = f.debt_to_equity;
-  }
-  rows.sort((a,b)=>(b.score??-1)-(a.score??-1));
-  return sJson({updated:sc?sc.updated:null, count:rows.length, rows:rows.slice(0,500)});
 }
 
 export async function hStockFundamentals(request, env){
@@ -520,27 +453,6 @@ export async function hStockEvents(request, env){
   const sym = (new URL(request.url).searchParams.get("symbol")||"").toUpperCase();
   const d = await sGet(env, "market/events/"+sym+".json");
   return sJson(d || {symbol:sym, items:[], updated:null});
-}
-
-export async function hStockBacktest(request, env){
-  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
-  // Backtest là tính năng stocks_full, 10 lượt/ngày (gói nhadautu).
-  // Trước đây chỉ chặn gói free nên gói dilam (stocks_basic) lọt, và không đếm lượt.
-  const {checkFeature, incrUsage} = await import('./billing.js');
-  const chk = await checkFeature(request, env, 'stocks_backtest');
-  if(chk.err) return chk.err;
-  const u = new URL(request.url);
-  const sym = (u.searchParams.get("symbol")||"").toUpperCase();
-  if(!sym) return jerr("Symbol required", 400);
-  const fast = Math.max(2, Math.min(parseInt(u.searchParams.get("fast")||"20",10)||20, 200));
-  const slow = Math.max(fast+1, Math.min(parseInt(u.searchParams.get("slow")||"50",10)||50, 300));
-  const d = await sGet(env, "market/ohlcv/"+sym+".json");
-  if(!d || !d.rows.length) return jerr("No data for "+sym, 404);
-  const rows = d.rows.slice(-500);
-  const closes = rows.map(r=>r.c), times = rows.map(r=>r.t);
-  if(closes.length < slow+5) return jerr("Not enough data", 400);
-  try{ await incrUsage(env, s.email, 'backtest_count', 1); }catch(e){}
-  return sJson(Object.assign({symbol:sym, fast, slow}, sBacktest(closes, times, fast, slow)));
 }
 
 export async function hStockCompare(request, env){
@@ -822,48 +734,6 @@ export async function hCostHistory(request, env){
     series.push({time:r.t, avg:curAvg, close:r.c});
   }
   return sJson({symbol:sym, series, events:events.map(e=>({date:e[0], avg:e[1]}))});
-}
-
-export async function hAlertsGet(request, env){
-  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
-  return sJson(await uGet(env, s.email, "alerts", []));
-}
-
-export async function hAlertsAdd(request, env){
-  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
-  const b = await request.json().catch(()=>({}));
-  const sym = String(b.symbol||"").toUpperCase().trim();
-  const dir = String(b.direction||"").toUpperCase();
-  const price = parseFloat(b.price);
-  if(!/^[A-Z]{3,10}$/.test(sym)) return jerr("Invalid symbol", 400);
-  if(dir!=="ABOVE" && dir!=="BELOW") return jerr("direction must be ABOVE/BELOW", 400);
-  if(!(price>0)) return jerr("Price must be > 0", 400);
-  // Đếm số cảnh báo hiện có để checkFeature so với hạn mức gói (kind "cap").
-  // Trước đây không truyền usage nên gói nhadautu (20 cảnh báo) không bao giờ bị
-  // chặn, còn gói dilam (chỉ có stocks_basic) lọt qua dù alerts yêu cầu stocks_full.
-  // Check tay cũ ("Free limit: 3") là code chết: gói free không có app stocks.
-  let alCount = 0;
-  try{
-    const db = drizzle(env.DB);
-    const rows = await db.select({ c: sql`COUNT(*)` }).from(alerts).where(eq(alerts.email, s.email));
-    alCount = Number(rows[0]?.c ?? 0);
-  }catch(e){}
-  const {checkFeature} = await import('./billing.js');
-  const chk = await checkFeature(request, env, 'stocks_alert', {usage: {alerts_count: alCount}});
-  if(chk.err) return chk.err;
-  const id = await d1AlertAdd(env, s.email, sym, dir, price);
-  // Update index (keep for backward compat, will be removed)
-  await idxAlertsAdd(env, sym, {email: s.email, id, direction: dir, price});
-  return sJson({id});
-}
-
-export async function hAlertsDel(request, env){
-  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
-  const id = parseInt(new URL(request.url).pathname.split("/").pop(),10);
-  const symbol = await d1AlertDel(env, s.email, id);
-  // Update index
-  if(symbol) await idxAlertsDel(env, symbol, s.email, id);
-  return sJson({ok:true});
 }
 
 export async function hTargetsGet(request, env){
@@ -1155,78 +1025,6 @@ export async function hStockTargetDone(request, env){
 }
 
 // One-time migration: R2 -> D1 (protected by internal secret)
-export async function hMigrateR2ToD1(request, env){
-  const auth = request.headers.get("X-Internal-Secret");
-  if(auth !== env.STOCK_PUBLISH_SECRET) return jerr("Forbidden", 403);
-  if(!env.DB) return jerr("D1 not bound", 500);
-  
-  const stats = {users: 0, watchlist: 0, txns: 0, alerts: 0, targets: 0};
-  
-  // List all user emails from R2
-  const userEmails = new Set();
-  let cursor;
-  do{
-    const r = await env.DATA.list({prefix:"stock/users/", cursor});
-    for(const o of r.objects){
-      const parts = o.key.split("/");
-      if(parts.length>=3) userEmails.add(parts[2]);
-    }
-    cursor = r.truncated ? r.cursor : null;
-  }while(cursor);
-  
-  for(const email of userEmails){
-    stats.users++;
-    const [watchlist, portfolio, alerts, targets] = await Promise.all([
-      uGet(env, email, "watchlist", []),
-      uGet(env, email, "portfolio", {txns:[]}),
-      uGet(env, email, "alerts", []),
-      uGet(env, email, "targets", []),
-    ]);
-    const now = Date.now();
-    const db = drizzle(env.DB);
-    // Watchlist
-    for(const w of watchlist){
-      const sym = typeof w === 'string' ? w : (w.symbol || w);
-      if(!sym) continue;
-      await db.insert(watchlist).values({ email, symbol: sym.toUpperCase(), addedAt: now })
-        .onConflictDoNothing({ target: [watchlist.email, watchlist.symbol] });
-      stats.watchlist++;
-    }
-    // Portfolio txns
-    for(const t of (portfolio.txns || [])){
-      await db.insert(portfolioTxns).values({
-        email, symbol: t.symbol, side: t.side, price: t.price, qty: t.qty,
-        fee: t.fee||0, note: t.note||null, date: t.date, createdAt: now,
-      });
-      stats.txns++;
-    }
-    // Alerts
-    for(const a of alerts){
-      await db.insert(alerts).values({
-        email, symbol: a.symbol, direction: a.direction, price: a.price,
-        active: a.active?1:0, createdAt: now,
-      });
-      stats.alerts++;
-    }
-    // Targets
-    for(const t of targets){
-      await db.insert(targets).values({
-        email, symbol: t.symbol,
-        takeProfitPct: t.take_profit_pct||null, stopLossPct: t.stop_loss_pct||null,
-        tpDone: t.tp_done?1:0, slDone: t.sl_done?1:0,
-      }).onConflictDoUpdate({
-        target: [targets.email, targets.symbol],
-        set: {
-          takeProfitPct: t.take_profit_pct||null, stopLossPct: t.stop_loss_pct||null,
-          tpDone: t.tp_done?1:0, slDone: t.sl_done?1:0,
-        },
-      });
-      stats.targets++;
-    }
-  }
-  
-  return sJson({ok: true, stats});
-}
 
 /* ================= stockui Dot B: risk + rule-alerts (tuchu) ================= */
 /* Port risk_limits.py / trade_journal.py / risk_profile.py sang JS (D1/KV-backed). */
