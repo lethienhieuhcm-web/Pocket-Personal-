@@ -9,6 +9,14 @@ import { watchlist, portfolioTxns, alerts, targets, ruleAlerts } from "./schema.
    User data: stock/users/{email}/(watchlist|portfolio|alerts|targets).json
    Auth: dung session English Lab (getSession). Khong can JWT rieng. */
 
+/* CONG TAC CHE DO PHAT TRIEN — Henrry lenh 20/10/2026: trong giai doan
+   phat trien, TAT HET cong goi tra phi cua Stocks. true = bo qua moi
+   plan-gate ben duoi (logic goi van giu nguyen, chi khong chan).
+   Khi ra mat thuong mai: dat false TAI DAY (mot cho duy nhat) la toan
+   bo cong goi song lai. KHONG lien quan dang nhap/secret — bao mat
+   giu nguyen. */
+export const STOCK_DEV_OPEN_GATES = true;
+
 export async function sGet(env, key){
   try{ const o = await env.DATA.get("stock/"+key); return o ? await o.json() : null; }
   catch(e){ return null; }
@@ -304,7 +312,7 @@ export async function hStockOhlcv(request, env){
     try{
       const {getActivePlan, getUser} = await import('./auth.js');
       const usr = await getUser(env, s.email);
-      if(getActivePlan(usr).plan === 'free') return jerr("Premium feature: intraday charts. Upgrade to continue.", 402);
+      if(!STOCK_DEV_OPEN_GATES && getActivePlan(usr).plan === 'free') return jerr("Premium feature: intraday charts. Upgrade to continue.", 402);
     }catch(e){ if(e.status===402) throw e; }
   }
   let d;
@@ -889,7 +897,7 @@ export async function hTargetsSet(request, env){
   try{
     const {getActivePlan, getUser} = await import('./auth.js');
     const u = await getUser(env, s.email);
-    if(getActivePlan(u).plan === 'free'){
+    if(!STOCK_DEV_OPEN_GATES && getActivePlan(u).plan === 'free'){
       const db = drizzle(env.DB);
       const rows = await db.select({ c: sql`COUNT(*)` }).from(targets).where(eq(targets.email, s.email));
       if((rows[0]?.c ?? 0) >= 3) return jerr("Free limit: 3 targets. Upgrade for unlimited.", 402);
