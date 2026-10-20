@@ -858,19 +858,6 @@ export async function hAlertsDel(request, env){
   return sJson({ok:true});
 }
 
-// Internal: get all alerts for a symbol (for alert checker cron) - D1 version
-export async function hAlertsBySymbol(request, env){
-  // Require internal secret
-  const auth = request.headers.get("X-Internal-Secret");
-  if(auth !== env.STOCK_PUBLISH_SECRET) return jerr("Forbidden", 403);
-  const sym = new URL(request.url).searchParams.get("symbol");
-  if(!sym) return jerr("Missing symbol", 400);
-  const db = drizzle(env.DB);
-  const rows = await db.select({
-    email: alerts.email, id: alerts.id, direction: alerts.direction, price: alerts.price,
-  }).from(alerts).where(and(eq(alerts.symbol, sym.toUpperCase()), eq(alerts.active, 1)));
-  return sJson(rows);
-}
 export async function hTargetsGet(request, env){
   const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
   const tg = await uGet(env, s.email, "targets", []);
@@ -1150,9 +1137,12 @@ export async function hStockTargetDone(request, env){
   const symbol = String(b.symbol||"").toUpperCase();
   const field = b.field; // "tp_done" or "sl_done"
   if(!email || !symbol || (field!=="tp_done" && field!=="sl_done")) return jerr("Bad params", 400);
-  const tg = await uGet(env, email, "targets", []);
-  const t = tg.find(x=>x.symbol===symbol);
-  if(t){ t[field] = 1; await uPut(env, email, "targets", tg); }
+  // 2026-10-20: ghi thang D1 — targets song o D1 (cot tp_done/sl_done).
+  // Ban cu doc/ghi qua uGet/uPut (duong R2) nen co bao xong khong bao
+  // gio luu duoc vao noi targets that dang nam.
+  const db = drizzle(env.DB);
+  await db.update(targets).set(field === "tp_done" ? {tpDone: 1} : {slDone: 1})
+    .where(and(eq(targets.email, email), eq(targets.symbol, symbol)));
   return sJson({ok:true});
 }
 
