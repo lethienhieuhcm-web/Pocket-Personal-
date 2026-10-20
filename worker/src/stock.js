@@ -205,6 +205,13 @@ export async function getFundamentalsData(env, sym){
   return f ? Object.assign({symbol:sym}, f) : null;
 }
 
+export async function getStatementsData(env, sym){
+  sym = String(sym||"").toUpperCase();
+  if(!sym) return null;
+  const d = await sGet(env, "market/statements/"+sym+".json");
+  return d || null;
+}
+
 export async function getNewsData(env, sym, limit){
   sym = String(sym||"").toUpperCase();
   if(!sym) return {symbol:sym, items:[], updated:null};
@@ -365,6 +372,15 @@ export async function hStockFundamentals(request, env){
   const f = await getFundamentalsData(env, sym);
   if(!f) return jerr("No data for "+sym, 404);
   return sJson(f);
+}
+
+export async function hStockStatements(request, env){
+  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
+  const sym = (new URL(request.url).searchParams.get("symbol")||"").toUpperCase();
+  if(!sym) return jerr("Symbol required", 400);
+  const d = await getStatementsData(env, sym);
+  if(!d) return jerr("No statements for "+sym, 404);
+  return sJson(d);
 }
 
 export async function hStockNews(request, env){
@@ -938,6 +954,10 @@ export async function hStockPublish(request, env){
     await sPut(env, "market/news/"+sym+".json", doc({symbol:sym, items:body.news[sym]}));
     n++;
   }
+  if(body.statements) for(const sym of Object.keys(body.statements)){
+    await sPut(env, "market/statements/"+sym+".json", doc(body.statements[sym]));
+    n++;
+  }
   if(body.market_news) await put1("market_news", {items:body.market_news});
   if(body.regime) await put1("regime", body.regime);
   if(body.signals) await put1("signals", {signals:body.signals});
@@ -1289,7 +1309,12 @@ export async function hStockRisk(request, env){
   const q = await sGet(env, "market/quotes.json");
   const byQ = (q && q.by_symbol)||{};
   const calc = sCalcPositions(txns);
-  const MAXP=20, SLP=7, HEATW=15;
+  // Gioi han theo ho so rui ro cua user (risk_profile.goi_y_gioi_han);
+  // chua co ho so thi dung mac dinh cu (20% / 7%).
+  const stats0 = fifoStats(txns);
+  const prof0 = riskProfileAssess(stats0);
+  const lim0 = (prof0 && prof0.goi_y_gioi_han) || {};
+  const MAXP = lim0.max_position_pct || 20, SLP = lim0.stop_loss_pct || 7, HEATW = 15;
   const violations=[], valued=[];
   let nav=0;
   for(const sym of Object.keys(calc.pos)){
@@ -1304,7 +1329,7 @@ export async function hStockRisk(request, env){
     valued.push({symbol:sym,quantity:Math.round(p.qty*100)/100,avg_price:Math.round(cost/p.qty*100)/100,
       close,market_value:Math.round(mv),cost:Math.round(cost),pnl:Math.round(pnl),pnl_pct:Math.round(pnl_pct*100)/100});
   }
-  if(nav<=0) return sJson({violations, summary:{nav:0,positions:0,heat_pct:0,note:"NAV = 0, nhap danh muc de xem"}, positions:[], stats:fifoStats(txns), profile:riskProfileAssess(fifoStats(txns))});
+  if(nav<=0) return sJson({violations, summary:{nav:0,positions:0,heat_pct:0,note:"NAV = 0, nhap danh muc de xem"}, positions:[], stats:stats0, profile:prof0, limits:{max_position_pct:MAXP, stop_loss_pct:SLP, heat_pct:HEATW, source:"risk_profile"}});
   let heat=0;
   for(const v of valued){
     v.weight_pct=Math.round(v.market_value/nav*1e4)/100;
@@ -1316,14 +1341,101 @@ export async function hStockRisk(request, env){
   if(heatPct>HEATW) violations.push({type:"portfolio_heat",symbol:"",message:`Portfolio heat ${heatPct}% vuot nguong ${HEATW}% (tong lo ${Math.round(heat).toLocaleString("vi-VN")} dong)`,severity:"medium"});
   const order={high:0,medium:1,warn:2};
   violations.sort((a,b)=>(order[a.severity]??9)-(order[b.severity]??9));
-  const stats=fifoStats(txns);
+  const stats=stats0;
   return sJson({
     violations,
     summary:{nav:Math.round(nav),positions:valued.length,heat_pct:heatPct,n_violations:violations.length},
     positions:valued.sort((a,b)=>b.market_value-a.market_value),
     stats,
-    profile:riskProfileAssess(stats),
+    profile:prof0,
+    limits:{max_position_pct:MAXP, stop_loss_pct:SLP, heat_pct:HEATW, source:"risk_profile"},
   });
+}
+
+// ---- Strategy review (port strategy_review.py) ----
+// Backtest 2 chien luoc tren cac ma user tung giao dich/dang nam giu,
+// tong hop theo chien luoc + ket luan (giu / xem lai / dung) nhu mockup man 8.
+function smaArr(v, n){
+  const o = new Array(v.length).fill(null); let s = 0;
+  for(let i = 0; i < v.length; i++){
+    s += v[i]; if(i >= n) s -= v[i - n];
+    if(i >= n - 1) o[i] = s / n;
+  }
+  return o;
+}
+function rsiArr(c, n = 14){
+  const o = new Array(c.length).fill(null);
+  if(c.length < n + 1) return o;
+  let ag = 0, al = 0;
+  for(let i = 1; i <= n; i++){ const d = c[i] - c[i - 1]; ag += Math.max(d, 0); al += Math.max(-d, 0); }
+  ag /= n; al /= n;
+  for(let i = n; i < c.length; i++){
+    if(i > n){ const d = c[i] - c[i - 1]; ag = (ag * (n - 1) + Math.max(d, 0)) / n; al = (al * (n - 1) + Math.max(-d, 0)) / n; }
+    o[i] = al === 0 ? 100 : 100 - 100 / (1 + ag / al);
+  }
+  return o;
+}
+function stratTrades(closes, strategy){
+  const sig = new Array(closes.length).fill(0);
+  if(strategy === "ma_cross"){
+    const f = smaArr(closes, 10), s = smaArr(closes, 30);
+    for(let i = 1; i < closes.length; i++){
+      if(f[i] == null || s[i] == null) continue;
+      const pf = f[i - 1] != null ? f[i - 1] : f[i];
+      const ps = s[i - 1] != null ? s[i - 1] : s[i];
+      if(pf <= ps && f[i] > s[i]) sig[i] = 1;
+      else if(pf >= ps && f[i] < s[i]) sig[i] = -1;
+    }
+  }else{
+    const r = rsiArr(closes); let hold = false;
+    for(let i = 0; i < closes.length; i++){
+      if(r[i] == null) continue;
+      if(!hold && r[i] < 30){ sig[i] = 1; hold = true; }
+      else if(hold && r[i] > 70){ sig[i] = -1; hold = false; }
+    }
+  }
+  const rets = []; let buy = null;
+  for(let i = 0; i < closes.length; i++){
+    if(sig[i] === 1 && buy == null) buy = closes[i];
+    else if(sig[i] === -1 && buy != null){ rets.push((closes[i] - buy) / buy * 100); buy = null; }
+  }
+  if(buy != null) rets.push((closes[closes.length - 1] - buy) / buy * 100);
+  return rets;
+}
+
+// GET /api/stock/strategy_review — danh gia chien luoc tren danh muc cua user
+export async function hStockStrategyReview(request, env){
+  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
+  const pf = await uGet(env, s.email, "portfolio", {txns:[]});
+  const syms = [...new Set((pf.txns || []).map(t => t.symbol))].slice(0, 10);
+  if(!syms.length) return sJson({rows: [], symbols: 0, note: "Chua co giao dich/danh muc"});
+  const agg = {
+    ma_cross: {label: "Theo trend (MA 10/30)", rets: []},
+    rsi_reversal: {label: "Bắt đáy (RSI 30/70)", rets: []},
+  };
+  let used = 0;
+  for(const sym of syms){
+    const d = await sGet(env, "market/ohlcv/" + sym + ".json");
+    const rows = (d && d.rows) || [];
+    if(rows.length < 40) continue;
+    used++;
+    const closes = rows.map(r => r.c);
+    for(const k of Object.keys(agg)) agg[k].rets.push(...stratTrades(closes, k));
+  }
+  const out = [];
+  for(const k of Object.keys(agg)){
+    const rets = agg[k].rets;
+    const wins = rets.filter(x => x > 0);
+    const gw = wins.reduce((a, b) => a + b, 0);
+    const gl = -rets.filter(x => x <= 0).reduce((a, b) => a + b, 0);
+    const pf2 = gl > 0 ? Math.round(gw / gl * 100) / 100 : (gw > 0 ? null : 0);
+    const wr = rets.length ? Math.round(wins.length / rets.length * 1000) / 10 : 0;
+    let verdict = "no_data";
+    if(rets.length) verdict = (pf2 != null && pf2 >= 1.5 && wr >= 55) ? "giu" : (pf2 == null || pf2 >= 1) ? "xem_lai" : "dung";
+    out.push({strategy: k, label: agg[k].label, trades: rets.length,
+      win_rate_pct: wr, profit_factor: pf2, verdict});
+  }
+  return sJson({rows: out, symbols: used, note: "Backtest don gian, chua tru phi/thue — chi de so sanh tuong doi"});
 }
 
 // ---- Rule alerts (ff_buy / ff_sell / pf_buy / signal / price) ----
