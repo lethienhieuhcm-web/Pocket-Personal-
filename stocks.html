@@ -93,6 +93,8 @@ input,select{background:var(--pp-bg2);border:1px solid var(--pp-line);color:var(
 <div class="idx" id="idxRow"><div class="hint">Đang tải…</div></div>
 <div class="sec">Tăng mạnh nhất HOSE</div>
 <div class="card"><table><tr><th>Mã</th><th>Giá</th><th>+/−</th><th>NN ròng</th></tr><tbody id="topMovers"><tr><td colspan="4"><div class="hint">Đang tải…</div></td></tr></tbody></table></div>
+<div class="sec">Khối ngoại hôm nay</div>
+<div class="card" id="ffCard"><div class="hint">Đang tải…</div></div>
 <div class="hint" id="verLine" style="text-align:center;margin:14px 0 4px"></div>
 </div>
 
@@ -343,6 +345,44 @@ async function loadMarket(){
       const ff=r.foreign_net_value,ffc=ff>0?"up":ff<0?"down":"";
       return `<tr><td><b onclick="openSym('${esc(r.symbol)}')" style="cursor:pointer">${esc(r.symbol)}</b></td><td>${fmtN(r.close)}</td><td class="${cls}">${fmtPct(pc)}</td><td class="${ffc}">${fmtTy(ff)}</td></tr>`;}).join("")||'<tr><td colspan="4"><div class="hint">Chưa có dữ liệu</div></td></tr>';
   }catch(e){$("topMovers").innerHTML='<tr><td colspan="4"><div class="hint">Lỗi tải</div></td></tr>';}
+  loadFF();
+}
+
+// ---- Khoi ngoai hom nay (GET /foreign-flow): du lieu publish gom 30 ma
+// thanh khoan cao nhat -> tong ghi dung pham vi nay, khong goi la toan
+// thi truong. Top 5 mua rong / ban rong theo gia tri rong (mua - ban).
+const FF_I18N={
+  vi:{net:"Ròng 30 mã thanh khoản nhất",buy:"Mua",sell:"Bán",topBuy:"Mua ròng mạnh nhất",topSell:"Bán ròng mạnh nhất",empty:"Chưa có dữ liệu phiên này",ty:"tỷ",tr:"triệu"},
+  en:{net:"Net · 30 most liquid stocks",buy:"Buy",sell:"Sell",topBuy:"Top net buys",topSell:"Top net sells",empty:"No data for this session yet",ty:"B",tr:"M"},
+  zh:{net:"净额 · 30只最活跃股票",buy:"买入",sell:"卖出",topBuy:"净买入前五",topSell:"净卖出前五",empty:"本时段暂无数据",ty:"十亿",tr:"百万"},
+  ko:{net:"순매수 · 유동성 상위 30종목",buy:"매수",sell:"매도",topBuy:"순매수 상위",topSell:"순매도 상위",empty:"이번 세션 데이터 없음",ty:"십억",tr:"백만"},
+};
+function fmtTyF(v,L,signed){
+  const a=Math.abs(v), s=v<0?"−":(signed?"+":"");
+  if(a>=1e9) return s+(a/1e9).toFixed(1).replace(".",",")+" "+L.ty;
+  if(a>=1e6) return s+Math.round(a/1e6)+" "+L.tr;
+  return s+Math.round(a).toLocaleString("vi-VN")+" đ";
+}
+async function loadFF(){
+  try{ renderFF(await api("/foreign-flow")); }
+  catch(e){ /* giu nguyen khung, khong lam hong man thi truong */ }
+}
+function renderFF(j){
+  const card=$("ffCard"); if(!card) return;
+  const L=FF_I18N[curLang]||FF_I18N.vi;
+  const by=(j&&j.by_symbol)||{};
+  const rows=Object.keys(by).map(s=>{const d=by[s]||{};const bv=d.buy_value||0,sv=d.sell_value||0;return{s,bv,sv,net:bv-sv};});
+  if(!rows.length){ card.innerHTML=`<div class="hint">${L.empty}</div>`; return; }
+  const tot=rows.reduce((a,r)=>({bv:a.bv+r.bv,sv:a.sv+r.sv,net:a.net+r.net}),{bv:0,sv:0,net:0});
+  const cls=tot.net>0?"up":tot.net<0?"down":"";
+  const list=(arr)=>arr.map(r=>`<tr><td><a href="#" onclick="openSym('${r.s}');return false"><b>${r.s}</b></a></td><td class="${r.net>0?"up":"down"}" style="text-align:right">${fmtTyF(r.net,L,true)}</td></tr>`).join("");
+  const buy=rows.filter(r=>r.net>0).sort((a,b)=>b.net-a.net).slice(0,5);
+  const sell=rows.filter(r=>r.net<0).sort((a,b)=>a.net-b.net).slice(0,5);
+  card.innerHTML=
+    `<div style="display:flex;justify-content:space-between;padding:2px 0 8px"><span>${L.net}</span><b class="${cls}">${fmtTyF(tot.net,L,true)}</b></div>`+
+    `<div class="hint" style="padding-bottom:8px">${L.buy}: ${fmtTyF(tot.bv,L,false)} · ${L.sell}: ${fmtTyF(tot.sv,L,false)}</div>`+
+    (buy.length?`<div class="hint" style="padding:4px 0">${L.topBuy}</div><table>${list(buy)}</table>`:"")+
+    (sell.length?`<div class="hint" style="padding:8px 0 4px">${L.topSell}</div><table>${list(sell)}</table>`:"");
 }
 // ---- Màn 4 ----
 const patName={trend_crossover:"Trend Crossover",bollinger_squeeze:"Bollinger Squeeze",episodic_pivot:"Episodic Pivot",momentum_pullback:"Momentum Pullback"};
@@ -832,6 +872,7 @@ const I18N_FULL = {
 "Tín hiệu mới":["New signal","新信号","새 신호"],
 "Tính cỡ vị thế cho lệnh mới":["Calculate position size","计算新订单仓位","포지션 크기 계산"],
 "Tăng mạnh nhất HOSE":["Top gainers HOSE","HOSE 涨幅最大","HOSE 상승 상위"],
+"Khối ngoại hôm nay":["Foreign flow today","今日外资动向","오늘 외국인 동향"],
 "Tải CSV":["Download CSV","下载 CSV","CSV 다운로드"],
 "Tải Excel":["Download Excel","下载 Excel","Excel 다운로드"],
 "Tổng 20 phiên":["Total 20 sessions","20 日总计","20일 합계"],
