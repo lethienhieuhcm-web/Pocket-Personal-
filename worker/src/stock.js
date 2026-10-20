@@ -321,7 +321,26 @@ export async function hStockScreener(request, env){
   if(!isNaN(minVal)) rows = rows.filter(r=>(r.value_vnd||0)>=minVal);
   const sort = u.searchParams.get("sort")||"value_vnd", order = u.searchParams.get("order")||"desc";
   rows = [...rows].sort((a,b)=>{ const av=a[sort]??-1e18, bv=b[sort]??-1e18; return order==="asc"? av-bv : bv-av; });
-  return sJson({updated:d?d.updated:null, count:rows.length, rows:rows.slice(0,500)});
+  // Merge fundamentals (pe_ttm/pb/roe_ttm) + foreign net tu quotes vao tung row:
+  // truoc day frontend doc cac field nay tu /screener nhung khong ai ghi -> luon "—".
+  const out = rows.slice(0,500);
+  try{
+    const fd = await sGet(env, "market/fundamentals.json");
+    const qt = await sGet(env, "market/quotes.json");
+    const funds = (fd && fd.by_symbol) || {};
+    const bySym = (qt && qt.by_symbol) || {};
+    for(const r of out){
+      const f = funds[r.symbol], q = bySym[r.symbol];
+      if(f){
+        if(f.eps>0 && r.close) r.pe_ttm = Math.round(r.close*1000/f.eps*100)/100;
+        if(f.bvps>0 && r.close) r.pb = Math.round(r.close*1000/f.bvps*100)/100;
+        if(f.roe!=null) r.roe_ttm = f.roe;
+      }
+      if(q && q.foreign_buy_value!=null && q.foreign_sell_value!=null)
+        r.foreign_net_value = q.foreign_buy_value - q.foreign_sell_value;
+    }
+  }catch(e){}
+  return sJson({updated:d?d.updated:null, count:rows.length, rows:out});
 }
 
 export async function hStockScreener2(request, env){
@@ -371,6 +390,19 @@ export async function hStockFundamentals(request, env){
   if(!sym) return jerr("Symbol required", 400);
   const f = await getFundamentalsData(env, sym);
   if(!f) return jerr("No data for "+sym, 404);
+  // Frontend doc pe_ttm/pb/roe_ttm/roa_ttm/de_ratio — tinh/ghep tu eps/bvps/roe/roa/d2e
+  // + gia hien tai (truoc day khong ai ghi cac field nay -> man chi tiet toan "—").
+  try{
+    const q = await getQuoteData(env, sym);
+    const close = q && q.close;
+    if(close){
+      if(f.eps>0) f.pe_ttm = Math.round(close/f.eps*100)/100;
+      if(f.bvps>0) f.pb = Math.round(close/f.bvps*100)/100;
+    }
+  }catch(e){}
+  if(f.roe!=null) f.roe_ttm = f.roe;
+  if(f.roa!=null) f.roa_ttm = f.roa;
+  if(f.debt_to_equity!=null) f.de_ratio = f.debt_to_equity;
   return sJson(f);
 }
 
