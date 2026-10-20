@@ -93,6 +93,7 @@ input,select{background:var(--pp-bg2);border:1px solid var(--pp-line);color:var(
 <div class="idx" id="idxRow"><div class="hint">Đang tải…</div></div>
 <div class="sec">Tăng mạnh nhất HOSE</div>
 <div class="card"><table><tr><th>Mã</th><th>Giá</th><th>+/−</th><th>NN ròng</th></tr><tbody id="topMovers"><tr><td colspan="4"><div class="hint">Đang tải…</div></td></tr></tbody></table></div>
+<div class="hint" id="verLine" style="text-align:center;margin:14px 0 4px"></div>
 </div>
 
 <!-- ===== MÀN 4: Sàng lọc + Tín hiệu ===== -->
@@ -735,6 +736,7 @@ function refreshSrc(){
   if(_lastMktSrc) $("mktSrc").textContent=srcLabel(_lastMktSrc)+suf;
   else $("mktSrc").textContent=srcLabel("direct:vci")+suf;
   if(_lastDSrc) $("dSrc").textContent=srcLabel(_lastDSrc)+suf;
+  renderVerLine();
 }
 function syncLangUI(){
   const labels = {vi:"VI",en:"EN",zh:"中文",ko:"한국어"};
@@ -875,15 +877,25 @@ function srcLabel(src){
 // Poll /api/stock/version moi 5 phut (thiet ke goc cua endpoint): chi tai
 // lai du lieu khi `updated` doi. Nhan phien ban vnstock dang cap du lieu —
 // lai 4+5 thi hien ca hai (quy tac Henrry 2026-10-20).
-let _verKey=null, _verList=[];
+let _verKey=null, _verList=[], _verBuild=null, _verUpdated=null;
 function verSuffix(){
   return _verList.length ? " · vnstock "+_verList.join(" + ") : "";
+}
+const VER_I18N={vi:["Bản","Dữ liệu lúc"],en:["Build","Data at"],zh:["版本","数据时间"],ko:["빌드","데이터 시각"]};
+function renderVerLine(){
+  const el=$("verLine"); if(!el||!_verUpdated) return;
+  const w=VER_I18N[curLang]||VER_I18N.vi;
+  const t=new Date(_verUpdated);
+  const hh=String(t.getHours()).padStart(2,"0")+":"+String(t.getMinutes()).padStart(2,"0");
+  el.textContent=`${w[0]} ${_verBuild||"—"} · ${w[1]} ${hh}`;
 }
 async function pollVersion(){
   try{
     const v=await api("/version");
     _verList=v.versions||[];
-    refreshSrc();
+    _verBuild=v.build||null;
+    _verUpdated=v.updated||null;
+    refreshSrc(); renderVerLine();
     const key=(v.updated||"")+"|"+_verList.join(",");
     if(_verKey && key!==_verKey){
       const on=document.querySelector(".view.on");
