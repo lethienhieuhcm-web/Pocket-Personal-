@@ -2,7 +2,7 @@ import { jerr, sJson } from './utils.js';
 import { getSession } from './auth.js';
 import { drizzle } from "drizzle-orm/d1";
 import { eq, and, asc, sql } from "drizzle-orm";
-import { watchlist, portfolioTxns, alerts, targets, pins } from "./schema.js";
+import { watchlist, portfolioTxns, alerts, targets, pins, ruleAlerts } from "./schema.js";
 
 /* ================= STOCK (chung khoan VN, R2-backed) ================= */
 /* Market snapshots: stock/market/*.json — VM day len qua POST /api/internal/stock-publish
@@ -1327,11 +1327,16 @@ export async function hStockRisk(request, env){
 }
 
 // ---- Rule alerts (ff_buy / ff_sell / pf_buy / signal / price) ----
-// Luu per-user qua uPut/uGet; watchdog_live.py danh gia dinh ky.
+// D1 table rule_alerts (tranh bug D1-vs-R2: doc cu dung uPut(R2)/uGet(D1-fallback)
+// nen POST luu duoc ma GET khong thay). watchdog_live.py danh gia dinh ky.
 const RULE_TYPES=["ff_buy","ff_sell","pf_buy","pf_sell","signal","price"];
 export async function hRuleAlertsGet(request, env){
   const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
-  return sJson(await uGet(env, s.email, "rule_alerts", []));
+  const db = drizzle(env.DB);
+  const rows = await db.select().from(ruleAlerts)
+    .where(eq(ruleAlerts.email, s.email)).orderBy(asc(ruleAlerts.createdAt));
+  return sJson(rows.map(x=>({id:x.id, symbol:x.symbol, type:x.type, threshold:x.threshold,
+    created_at:new Date(x.createdAt).toISOString()})));
 }
 export async function hRuleAlertsAdd(request, env){
   const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
@@ -1342,16 +1347,30 @@ export async function hRuleAlertsAdd(request, env){
   if(!/^[A-Z]{3,10}$/.test(sym)) return jerr("Invalid symbol", 400);
   if(!RULE_TYPES.includes(type)) return jerr("Invalid type", 400);
   if(!(thr>0)) return jerr("Threshold must be > 0", 400);
-  const rules=await uGet(env, s.email, "rule_alerts", []);
-  if(rules.length>=50) return jerr("Too many alerts (max 50)", 400);
-  const r={id:Date.now(), symbol:sym, type, threshold:thr, created_at:new Date().toISOString()};
-  rules.push(r); await uPut(env, s.email, "rule_alerts", rules);
-  return sJson(r);
+  const db = drizzle(env.DB);
+  const cnt = await db.select({n: sql`count(*)`}).from(ruleAlerts)
+    .where(eq(ruleAlerts.email, s.email));
+  if((cnt[0]?.n||0) >= 50) return jerr("Too many alerts (max 50)", 400);
+  const ins = await db.insert(ruleAlerts).values({
+    email: s.email, symbol: sym, type, threshold: thr, createdAt: Date.now()}).returning({id: ruleAlerts.id});
+  return sJson({id: ins[0].id, symbol: sym, type, threshold: thr, created_at: new Date().toISOString()});
 }
 export async function hRuleAlertsDel(request, env){
   const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
   const id=parseInt(new URL(request.url).pathname.split("/").pop(),10);
-  let rules=await uGet(env, s.email, "rule_alerts", []);
-  rules=rules.filter(r=>r.id!==id); await uPut(env, s.email, "rule_alerts", rules);
+  const db = drizzle(env.DB);
+  await db.delete(ruleAlerts).where(and(eq(ruleAlerts.id, id), eq(ruleAlerts.email, s.email)));
   return sJson({ok:true});
+}
+
+// GET /api/internal/stock-rule-alerts?email=... — watchdog doc rules de danh gia
+export async function hRuleAlertsInternal(request, env){
+  const auth = request.headers.get("X-Internal-Secret");
+  if(auth !== env.STOCK_PUBLISH_SECRET) return jerr("Forbidden", 403);
+  const email = new URL(request.url).searchParams.get("email");
+  if(!email) return jerr("Missing email", 400);
+  const db = drizzle(env.DB);
+  const rows = await db.select().from(ruleAlerts)
+    .where(eq(ruleAlerts.email, email)).orderBy(asc(ruleAlerts.createdAt));
+  return sJson(rows.map(x=>({id:x.id, symbol:x.symbol, type:x.type, threshold:x.threshold})));
 }
