@@ -630,9 +630,14 @@ export async function hWatchlistAdd(request, env){
     const rows = await db.select({ c: sql`COUNT(*)` }).from(watchlist).where(eq(watchlist.email, s.email));
     wlCount = Number(rows[0]?.c ?? 0);
   }catch(e){}
-  const {checkFeature} = await import('./billing.js');
-  const chk = await checkFeature(request, env, 'watchlist_add', {usage: {watchlist_count: wlCount}});
-  if(chk.err) return chk.err;
+  // Cong goi thu 3 (qua billing checkFeature) — cung qua cong tac
+  // STOCK_DEV_OPEN_GATES nhu 2 cong trong stock.js (bo sung 20/10 khi
+  // lam Dot B: watchlist_add bi 402 voi tai khoan free).
+  if(!STOCK_DEV_OPEN_GATES){
+    const {checkFeature} = await import('./billing.js');
+    const chk = await checkFeature(request, env, 'watchlist_add', {usage: {watchlist_count: wlCount}});
+    if(chk.err) return chk.err;
+  }
   await d1WatchAdd(env, s.email, sym);
   return sJson({ok:true, watchlist: await uGet(env, s.email, "watchlist", [])});
 }
