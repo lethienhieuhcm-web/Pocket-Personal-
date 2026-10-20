@@ -103,6 +103,8 @@ input,select{background:var(--pp-bg2);border:1px solid var(--pp-line);color:var(
 <div class="hdr"><a href="/hub" class="pp-back" style="text-decoration:none;font-size:20px" title="Về Pocket Personal" aria-label="Về Pocket Personal">‹</a><h1><svg class="tic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg> Sàng lọc</h1><span class="src">Nguồn: tự tính</span></div>
 <div class="tabs main" id="screenTabs"></div>
 <div class="card"><table><tr><th>Mã</th><th>Trend</th><th>P/E</th><th>P/B</th><th>ROE</th></tr><tbody id="screenerBody"><tr><td colspan="5"><div class="hint">Đang tải…</div></td></tr></tbody></table></div>
+<div class="sec">So sánh biến động (%)</div>
+<div class="card"><div style="display:flex;gap:8px"><input id="cmpInp" placeholder="Tối đa 5 mã, cách nhau dấu phẩy — vd: FPT,HPG,VCB" style="flex:1;background:var(--pp-bg2);color:var(--pp-ink);border:1px solid var(--pp-line);border-radius:8px;padding:8px;font-size:13px;text-transform:uppercase"><button id="cmpBtn" style="padding:8px 14px;border-radius:8px;background:var(--pp-accent);color:#fff;border:none;font-size:13px;font-weight:600;cursor:pointer">So sánh</button></div><div id="cmpOut" style="margin-top:8px"></div></div>
 <div class="sec">⚡ Tín hiệu mới nhất</div>
 <div id="signalsList"><div class="hint">Đang tải…</div></div>
 </div>
@@ -160,6 +162,10 @@ input,select{background:var(--pp-bg2);border:1px solid var(--pp-line);color:var(
 <button id="pfPasteGo" style="width:100%;margin-top:8px;padding:9px;border-radius:8px;background:var(--pp-accent);color:#fff;border:none;font-size:13px;font-weight:600;cursor:pointer">Nhập danh mục</button>
 <div class="hint" id="pfImportMsg" style="padding-top:6px"></div>
 </div></div>
+<div class="sec">Mã theo dõi</div>
+<div class="card"><div id="wlList"><div class="hint">Đang tải…</div></div>
+<div style="display:flex;gap:8px;margin-top:10px"><input id="wlAddInp" placeholder="Nhập mã, vd: FPT" style="flex:1;background:var(--pp-bg2);color:var(--pp-ink);border:1px solid var(--pp-line);border-radius:8px;padding:8px;font-size:13px;text-transform:uppercase"><button id="wlAddBtn" style="padding:8px 14px;border-radius:8px;background:var(--pp-accent);color:#fff;border:none;font-size:13px;font-weight:600;cursor:pointer">Theo dõi</button></div>
+<div class="hint" id="wlMsg" style="padding-top:6px"></div></div>
 <div class="sec">Tổng quan rủi ro </div>
 <div class="card" id="pfRisk"><div class="hint">Nhập danh mục để xem.</div></div>
 <div class="sec">Vị thế</div>
@@ -225,7 +231,7 @@ input,select{background:var(--pp-bg2);border:1px solid var(--pp-line);color:var(
 
 <!-- ===== Chi tiết mã: MÀN 2/3/5 ===== -->
 <div class="view" id="v-detail">
-<div class="hdr"><button onclick="go('v-market')" style="background:none;border:none;color:var(--pp-mut);font-size:20px;cursor:pointer;padding:0 6px 0 0">‹</button><h1 id="dSym">—</h1><span class="src" id="dSrc">Nguồn: KBS trực tiếp</span></div>
+<div class="hdr"><button onclick="go('v-market')" style="background:none;border:none;color:var(--pp-mut);font-size:20px;cursor:pointer;padding:0 6px 0 0">‹</button><h1 id="dSym">—</h1><button id="dWatch" title="Theo dõi mã này" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--pp-mut);padding:0 4px">☆</button><span class="src" id="dSrc">Nguồn: KBS trực tiếp</span></div>
 <div class="tabs" id="dTabs">
 <div class="tab on" data-dt="ov">Tổng quan</div>
 <div class="tab" data-dt="flow">Dòng tiền</div>
@@ -236,6 +242,12 @@ input,select{background:var(--pp-bg2);border:1px solid var(--pp-line);color:var(
 <div class="card" id="dQuote"><div class="hint">Đang tải…</div></div>
 <div class="sec">Biểu đồ</div>
 <div class="card"><div class="iv" id="dIv"><button>15m</button><button>1H</button><button class="on">1D</button></div><div id="dChart" style="min-height:150px;margin-top:8px"><div class="hint">Đang tải…</div></div></div>
+<div class="sec">Chốt lời / Cắt lỗ (%)</div>
+<div class="card" id="dTarget"><div class="hint">Đang tải…</div></div>
+<div class="sec" id="dCostSec" style="display:none">Giá vốn của bạn vs thị trường</div>
+<div class="card" id="dCost" style="display:none"></div>
+<div class="sec">Sự kiện</div>
+<div class="card"><div id="dEvents"><div class="hint">Đang tải…</div></div></div>
 </div>
 <div id="dFlow" style="display:none">
 <div class="sec">Khối ngoại mua/bán ròng — 20 phiên (tỷ đồng)</div>
@@ -434,6 +446,7 @@ $("alAdd").onclick=async()=>{
 let _pfCache=null,_riskCache=null;
 const fmtD=n=>n==null?"—":Math.round(Number(n)).toLocaleString("vi-VN");
 async function loadMine(){
+  loadWatchlist();
   try{
     const pf=await api("/portfolio"); _pfCache=pf;
     const pos=pf.positions||[];
@@ -584,6 +597,7 @@ async function loadDetail(sym){
     if(q._prov){_lastDSrc=q._prov.source;refreshSrc();}
   }catch(e){$("dQuote").innerHTML='<div class="hint">Lỗi tải</div>';}
   loadFlow(sym);loadFund(sym);loadNews(sym);loadChart(sym);
+  loadEvents(sym);loadTarget(sym);loadCost(sym);wlLoad().then(paintWatchBtn);
 }
 document.querySelectorAll("#dTabs .tab").forEach(t=>t.onclick=()=>{
   document.querySelectorAll("#dTabs .tab").forEach(x=>x.classList.remove("on"));t.classList.add("on");
@@ -619,6 +633,142 @@ async function loadNews(sym){
     $("dNewsList").innerHTML=items.length?items.slice(0,15).map(n=>`<div style="padding:8px 0;border-bottom:1px solid var(--pp-line)"><a href="${esc(n.url||"#")}" target="_blank" rel="noopener" style="color:var(--pp-ink);text-decoration:none;font-size:13px;font-weight:600">${esc(n.title||"")}</a><div style="font-size:11px;color:var(--pp-mut);margin-top:2px">${esc((n.publish_time||"").slice(0,10))}</div></div>`).join(""):'<div class="hint">Chưa có tin</div>';
   }catch(e){ $("dNewsList").innerHTML='<div class="hint">Chưa có tin</div>'; }
 }
+// ===== Dot B (20/10): watchlist · targets · events · compare · cost history =====
+const B_I18N={
+vi:{noEv:"Chưa có sự kiện",tpPh:"Chốt lời % (vd 15)",slPh:"Cắt lỗ % (vd 5)",save:"Lưu mục tiêu",del:"Xoá",curNone:"Chưa đặt mục tiêu cho mã này.",saved:"Đã lưu mục tiêu.",wlEmpty:"Chưa theo dõi mã nào. Mở trang chi tiết một mã và bấm ☆, hoặc nhập mã ở ô dưới.",avgCost:"Giá vốn TB",mktClose:"Giá đóng cửa",cmpNeed:"Nhập ít nhất 2 mã để so sánh.",cmpErr:"Chưa có dữ liệu so sánh."},
+en:{noEv:"No events yet",tpPh:"Take profit % (e.g. 15)",slPh:"Stop loss % (e.g. 5)",save:"Save target",del:"Delete",curNone:"No target set for this symbol.",saved:"Target saved.",wlEmpty:"No symbols watched yet. Open a symbol and tap ☆, or type one below.",avgCost:"Avg cost",mktClose:"Close",cmpNeed:"Enter at least 2 symbols.",cmpErr:"No comparison data."},
+zh:{noEv:"暂无事件",tpPh:"止盈 % (如 15)",slPh:"止损 % (如 5)",save:"保存目标",del:"删除",curNone:"尚未为此股设置目标。",saved:"已保存目标。",wlEmpty:"尚未关注任何股票。打开个股页面点击 ☆,或在下方输入。",avgCost:"平均成本",mktClose:"收盘价",cmpNeed:"至少输入 2 只股票。",cmpErr:"暂无对比数据。"},
+ko:{noEv:"이벤트가 없습니다",tpPh:"익절 % (예: 15)",slPh:"손절 % (예: 5)",save:"목표 저장",del:"삭제",curNone:"이 종목에 설정된 목표가 없습니다.",saved:"목표가 저장되었습니다.",wlEmpty:"아직 관심 종목이 없습니다. 종목 상세에서 ☆를 누르거나 아래에 입력하세요.",avgCost:"평균 단가",mktClose:"종가",cmpNeed:"최소 2개 종목을 입력하세요.",cmpErr:"비교 데이터가 없습니다."}};
+function BL(){return B_I18N[curLang]||B_I18N.vi;}
+let WLSET=null;
+async function wlLoad(force){
+  if(WLSET&&!force)return WLSET;
+  try{const j=await api("/watchlist");WLSET=new Set((j||[]).map(x=>String(x).toUpperCase()));}
+  catch(e){WLSET=new Set();}
+  return WLSET;
+}
+function paintWatchBtn(){
+  const b=$("dWatch");if(!b)return;
+  const on=WLSET&&curSym&&WLSET.has(curSym);
+  b.textContent=on?"★":"☆";b.style.color=on?"#f59e0b":"var(--pp-mut)";
+}
+$("dWatch").onclick=async()=>{
+  if(!curSym)return;
+  await wlLoad();
+  try{
+    if(WLSET.has(curSym)){await apip("/watchlist/"+curSym,"DELETE");WLSET.delete(curSym);}
+    else{await apip("/watchlist","POST",{symbol:curSym});WLSET.add(curSym);}
+  }catch(e){}
+  paintWatchBtn();
+};
+async function loadEvents(sym){
+  const box=$("dEvents");box.innerHTML='<div class="hint">Đang tải…</div>';
+  try{
+    const j=await api("/events?symbol="+encodeURIComponent(sym));
+    const items=j.items||[];
+    box.innerHTML=items.length?items.slice(0,10).map(n=>`<div style="padding:7px 0;border-bottom:1px solid var(--pp-line)"><div style="font-size:13px;font-weight:600">${esc(n.title||n.name||"")}</div><div style="font-size:11px;color:var(--pp-mut);margin-top:2px">${esc(n.name||"")}${n.date?" · "+esc(String(n.date).slice(0,10)):""}${n.exright_date?" · Ex: "+esc(String(n.exright_date).slice(0,10)):""}</div></div>`).join(""):'<div class="hint">'+BL().noEv+'</div>';
+  }catch(e){box.innerHTML='<div class="hint">'+BL().noEv+'</div>';}
+}
+async function loadTarget(sym){
+  const box=$("dTarget");const L=BL();
+  try{
+    const list=await api("/targets");
+    const t=(list||[]).find(x=>x.symbol===sym);
+    const cur=t?((t.take_profit_pct!=null?("TP +"+t.take_profit_pct+"%"):"")+(t.take_profit_pct!=null&&t.stop_loss_pct!=null?" · ":"")+(t.stop_loss_pct!=null?("SL −"+t.stop_loss_pct+"%"):"")):L.curNone;
+    box.innerHTML=`<div class="row"><span class="k">${esc(cur)}</span>${t&&t.unrealized_pct!=null?`<span class="v ${t.unrealized_pct>0?"up":t.unrealized_pct<0?"down":""}">${t.unrealized_pct>0?"+":""}${t.unrealized_pct}%</span>`:""}</div>
+    <div style="display:flex;gap:8px;margin-top:8px">
+    <input id="tgTp" type="number" min="0" step="0.5" placeholder="${L.tpPh}" value="${t&&t.take_profit_pct!=null?t.take_profit_pct:""}" style="flex:1;background:var(--pp-bg2);color:var(--pp-ink);border:1px solid var(--pp-line);border-radius:8px;padding:8px;font-size:13px">
+    <input id="tgSl" type="number" min="0" step="0.5" placeholder="${L.slPh}" value="${t&&t.stop_loss_pct!=null?t.stop_loss_pct:""}" style="flex:1;background:var(--pp-bg2);color:var(--pp-ink);border:1px solid var(--pp-line);border-radius:8px;padding:8px;font-size:13px">
+    </div>
+    <div style="display:flex;gap:8px;margin-top:8px">
+    <button id="tgSave" style="flex:1;padding:9px;border-radius:8px;background:var(--pp-accent);color:#fff;border:none;font-size:13px;font-weight:600;cursor:pointer">${L.save}</button>
+    ${t?`<button id="tgDel" style="padding:9px 14px;border-radius:8px;background:var(--pp-bg2);color:var(--pp-ink);border:1px solid var(--pp-line);font-size:13px;cursor:pointer">${L.del}</button>`:""}
+    </div><div class="hint" id="tgMsg" style="padding-top:6px"></div>`;
+    $("tgSave").onclick=async()=>{
+      const tp=parseFloat($("tgTp").value),sl=parseFloat($("tgSl").value);
+      const body={symbol:sym};
+      if(!isNaN(tp))body.take_profit_pct=tp;
+      if(!isNaN(sl))body.stop_loss_pct=sl;
+      try{await apip("/targets","POST",body);$("tgMsg").textContent=L.saved;loadTarget(sym);}
+      catch(e){$("tgMsg").textContent="⚠ "+e.message;}
+    };
+    const del=$("tgDel");
+    if(del)del.onclick=async()=>{try{await apip("/targets/"+sym,"DELETE");loadTarget(sym);}catch(e){}};
+  }catch(e){box.innerHTML='<div class="hint">—</div>';}
+}
+function twoLineSvg(series){
+  const W=340,H=130;let hi=-1e18,lo=1e18;
+  for(const r of series){hi=Math.max(hi,r.avg,r.close);lo=Math.min(lo,r.avg,r.close);}
+  const pad=(hi-lo)*0.08||1;hi+=pad;lo-=pad;
+  const X=i=>series.length<2?0:i/(series.length-1)*W, Y=v=>H-(v-lo)/(hi-lo)*H;
+  const path=k=>series.map((r,i)=>(i?"L":"M")+X(i).toFixed(1)+","+Y(r[k]).toFixed(1)).join(" ");
+  let s=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block">`;
+  for(let i=1;i<4;i++){const y=(H*i/4).toFixed(1);s+=`<line x1="0" y1="${y}" x2="${W}" y2="${y}" stroke="rgba(140,140,140,.25)"/>`;}
+  s+=`<path d="${path("close")}" fill="none" stroke="#2563eb" stroke-width="1.6"/><path d="${path("avg")}" fill="none" stroke="#f59e0b" stroke-width="1.6" stroke-dasharray="5 3"/></svg>`;
+  return s;
+}
+async function loadCost(sym){
+  const sec=$("dCostSec"),box=$("dCost");
+  try{
+    const j=await api("/portfolio/cost_history?symbol="+encodeURIComponent(sym));
+    const s=j.series||[];
+    if(s.length<2){sec.style.display="none";box.style.display="none";return;}
+    sec.style.display="";box.style.display="";
+    box.innerHTML=twoLineSvg(s)+`<div style="font-size:11px;color:var(--pp-mut);margin-top:4px"><span style="color:#f59e0b">- - ${BL().avgCost}</span> · <span style="color:#2563eb">— ${BL().mktClose}</span> · ${esc(s[0].time)} → ${esc(s[s.length-1].time)}</div>`;
+  }catch(e){sec.style.display="none";box.style.display="none";}
+}
+async function loadWatchlist(){
+  const box=$("wlList");if(!box)return;
+  try{
+    const syms=await wlLoad(true);
+    const arr=[...syms];
+    if(!arr.length){box.innerHTML='<div class="hint">'+BL().wlEmpty+'</div>';return;}
+    const rows=await Promise.all(arr.map(async s=>{
+      try{const j=await api("/quote?symbol="+s);const q=j.quote||j;return{s,c:q.close,pc:q.pct_change};}
+      catch(e){return{s};}
+    }));
+    box.innerHTML=rows.map(r=>`<div class="row"><span class="k" style="font-weight:700;color:var(--pp-ink);cursor:pointer" onclick="openSym('${r.s}')">${r.s}</span><span class="v">${r.c!=null?fmtN(r.c):"—"}${r.pc!=null?` <span class="${r.pc>0?"up":r.pc<0?"down":""}">(${fmtPct(r.pc)})</span>`:""} <span style="color:var(--pp-mut);margin-left:8px;cursor:pointer" onclick="wlRemove('${r.s}')">✕</span></span></div>`).join("");
+  }catch(e){box.innerHTML='<div class="hint">—</div>';}
+}
+async function wlRemove(s){
+  try{await apip("/watchlist/"+s,"DELETE");if(WLSET)WLSET.delete(s);loadWatchlist();paintWatchBtn();}catch(e){}
+}
+$("wlAddBtn").onclick=async()=>{
+  const s=$("wlAddInp").value.trim().toUpperCase();
+  if(!s)return;
+  try{await apip("/watchlist","POST",{symbol:s});if(WLSET)WLSET.add(s);$("wlAddInp").value="";$("wlMsg").textContent="";loadWatchlist();paintWatchBtn();}
+  catch(e){$("wlMsg").textContent="⚠ "+e.message;}
+};
+const CMP_COLORS=["#2563eb","#dc2626","#16a34a","#f59e0b","#7c3aed"];
+async function doCompare(){
+  const inp=$("cmpInp").value.toUpperCase().split(",").map(x=>x.trim()).filter(Boolean).slice(0,5);
+  const out=$("cmpOut"),L=BL();
+  if(inp.length<2){out.innerHTML='<div class="hint">'+L.cmpNeed+'</div>';return;}
+  out.innerHTML='<div class="hint">Đang tải…</div>';
+  try{
+    const j=await api("/compare?symbols="+inp.join(",")+"&count=120");
+    const series=j.series||{},syms=Object.keys(series);
+    if(!syms.length){out.innerHTML='<div class="hint">'+L.cmpErr+'</div>';return;}
+    const all=syms.flatMap(s=>series[s].map(p=>p.v));
+    let hi=Math.max(...all,1),lo=Math.min(...all,-1);const pad=(hi-lo)*0.1||1;hi+=pad;lo-=pad;
+    const W=340,H=150,maxLen=Math.max(...syms.map(s=>series[s].length));
+    const Y=v=>H-(v-lo)/(hi-lo)*H;
+    let svg=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block"><line x1="0" y1="${Y(0).toFixed(1)}" x2="${W}" y2="${Y(0).toFixed(1)}" stroke="rgba(140,140,140,.4)"/>`;
+    syms.forEach((s,si)=>{
+      const pts=series[s];
+      const d=pts.map((p,i)=>(i?"L":"M")+(maxLen<2?0:i/(maxLen-1)*W).toFixed(1)+","+Y(p.v).toFixed(1)).join(" ");
+      svg+=`<path d="${d}" fill="none" stroke="${CMP_COLORS[si%5]}" stroke-width="1.6"/>`;
+    });
+    svg+="</svg>";
+    const legend=syms.map((s,si)=>{
+      const pts=series[s],last=pts[pts.length-1];
+      return `<span style="color:${CMP_COLORS[si%5]};font-weight:700">${esc(s)}</span> <span class="${last.v>0?"up":last.v<0?"down":""}">${last.v>0?"+":""}${Number(last.v.toFixed(2))}%</span>`;
+    }).join(" · ");
+    const s0=series[syms[0]];
+    out.innerHTML=svg+`<div style="font-size:12px;margin-top:4px">${legend}</div><div style="font-size:11px;color:var(--pp-mut)">${esc(s0[0].t)} → ${esc(s0[s0.length-1].t)}</div>`;
+  }catch(e){out.innerHTML='<div class="hint">'+L.cmpErr+'</div>';}
+}
+$("cmpBtn").onclick=doCompare;
 // ---- Bieu do nen (SVG nhe, du lieu /ohlcv) ----
 let _chartSym="";
 function chartSvg(rows){
@@ -873,6 +1023,13 @@ const I18N_FULL = {
 "Tính cỡ vị thế cho lệnh mới":["Calculate position size","计算新订单仓位","포지션 크기 계산"],
 "Tăng mạnh nhất HOSE":["Top gainers HOSE","HOSE 涨幅最大","HOSE 상승 상위"],
 "Khối ngoại hôm nay":["Foreign flow today","今日外资动向","오늘 외국인 동향"],
+"Mã theo dõi":["Watchlist","自选股","관심 종목"],
+"Theo dõi":["Watch","关注","관심 추가"],
+"Chốt lời / Cắt lỗ (%)":["Take profit / Stop loss (%)","止盈 / 止损 (%)","익절 / 손절 (%)"],
+"Sự kiện":["Events","公司事件","이벤트"],
+"So sánh biến động (%)":["Compare performance (%)","涨跌幅对比 (%)","변동률 비교 (%)"],
+"So sánh":["Compare","对比","비교"],
+"Giá vốn của bạn vs thị trường":["Your cost vs market","您的成本 vs 市场","내 평균단가 vs 시장가"],
 "Tải CSV":["Download CSV","下载 CSV","CSV 다운로드"],
 "Tải Excel":["Download Excel","下载 Excel","Excel 다운로드"],
 "Tổng 20 phiên":["Total 20 sessions","20 日总计","20일 합계"],
