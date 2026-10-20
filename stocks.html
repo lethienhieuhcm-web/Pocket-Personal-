@@ -336,7 +336,7 @@ async function loadMarket(){
       _regime=j; renderRegime();}
   }catch(e){}
   try{
-    const j=await api("/screener?sort=pct_change&order=desc");
+    const j=await api("/screener?sort=pct_change&order=desc&exchange=HOSE&min_value=1000000000");
     const rows=(j.rows||[]).filter(r=>r.pct_change!=null).slice(0,8);
     $("topMovers").innerHTML=rows.map(r=>{const pc=r.pct_change,cls=pc>0?"up":pc<0?"down":"";
       const ff=r.foreign_net_value,ffc=ff>0?"up":ff<0?"down":"";
@@ -350,7 +350,7 @@ async function loadScreener(){
   try{
     const j=await api("/screener");const rows=j.rows||[];
     $("screenerBody").innerHTML=rows.slice(0,30).map(r=>{
-      const tr=r.trend_template===true?'<span class="up">✓ Đạt</span>':r.trend_template===false?'<span class="down">✗ Chưa</span>':"—";
+      const tr=(r.trend_template===null||r.trend_template===undefined)?"—":(r.trend_template?'<span class="up">✓ Đạt</span>':'<span class="down">✗ Chưa</span>');
       return `<tr><td><b onclick="openSym('${esc(r.symbol)}')" style="cursor:pointer">${esc(r.symbol)}</b></td><td>${tr}</td><td>${r.pe_ttm!=null?Number(r.pe_ttm).toFixed(1):"—"}</td><td>${r.pb!=null?Number(r.pb).toFixed(1):"—"}</td><td>${r.roe_ttm!=null?'<span class="up">'+Number(r.roe_ttm).toFixed(1)+"%</span>":"—"}</td></tr>`;}).join("")||'<tr><td colspan="5"><div class="hint">Chưa có dữ liệu</div></td></tr>';
   }catch(e){}
   try{
@@ -568,9 +568,67 @@ async function loadFund(sym){
     const row=(k,v,cls)=>`<div class="row"><span class="k">${k}</span><span class="v ${cls||""}">${v}</span></div>`;
     $("dRatios").innerHTML=row("P/E",f.pe_ttm!=null?Number(f.pe_ttm).toFixed(1):"—")+row("P/B",f.pb!=null?Number(f.pb).toFixed(1):"—")+row("ROE",f.roe_ttm!=null?Number(f.roe_ttm).toFixed(1)+"%":"—","up")+row("ROA",f.roa_ttm!=null?Number(f.roa_ttm).toFixed(1)+"%":"—")+row("Nợ / Vốn chủ",f.de_ratio!=null?Number(f.de_ratio).toFixed(2):"—");
   }catch(e){}
+  loadFs(sym);
 }
-$("dlXls").onclick=()=>alert("Sắp có — đang xây dựng.");
-$("dlCsv").onclick=()=>alert("Sắp có — đang xây dựng.");
+// ---- BCTC: bang theo loai (IS=KQKD, BS=CDKT, CF=LCTT) + tai CSV/Excel ----
+let _fsData=null, _fsType="IS", _fsSym="";
+const FS_TNAME={IS:"KQKD",BS:"CDKT",CF:"LCTT"};
+function fsRawVal(r,p){ const v=r.v?r.v[p]:null; if(v==null) return null; return /EARNINGS_PER_SHARE/.test(r.id)?v:v/1e9; }
+function fmtFsVal(r,p){ const v=fsRawVal(r,p); return v==null?"—":Number(v).toLocaleString("vi-VN",{maximumFractionDigits:2}); }
+async function loadFs(sym){
+  _fsSym=sym; _fsData=null;
+  try{
+    _fsData=await api("/statements?symbol="+encodeURIComponent(sym));
+    renderFs();
+  }catch(e){
+    $("dFsTbl").innerHTML='<div class="hint">Chưa có dữ liệu báo cáo</div>';
+  }
+}
+function renderFs(){
+  if(!_fsData) return;
+  const rows=(_fsData.types&&_fsData.types[_fsType])||[];
+  const periods=_fsData.periods||[];
+  if(!rows.length){ $("dFsTbl").innerHTML='<div class="hint">Chưa có dữ liệu báo cáo</div>'; return; }
+  let h='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px"><tr><th style="text-align:left;padding:4px 2px"></th>'+periods.map(p=>`<th style="text-align:right;padding:4px 2px;white-space:nowrap">${esc(p)}</th>`).join("")+'</tr>';
+  for(const r of rows){
+    h+=`<tr><td style="padding:4px 2px;color:var(--pp-mut)">${esc(r.name||r.id)}</td>`+periods.map(p=>`<td style="text-align:right;padding:4px 2px;white-space:nowrap">${fmtFsVal(r,p)}</td>`).join("")+'</tr>';
+  }
+  $("dFsTbl").innerHTML=h+'</table></div>';
+}
+document.querySelectorAll("#dFs button").forEach((b,i)=>{
+  b.onclick=()=>{
+    document.querySelectorAll("#dFs button").forEach(x=>x.classList.remove("on"));
+    b.classList.add("on");
+    _fsType=["IS","BS","CF"][i];
+    renderFs();
+  };
+});
+function dlBlob(content, filename, mime){
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(new Blob([content],{type:mime}));
+  a.download=filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 4000);
+}
+$("dlCsv").onclick=()=>{
+  if(!_fsData) return;
+  const rows=(_fsData.types&&_fsData.types[_fsType])||[];
+  const periods=_fsData.periods||[];
+  if(!rows.length) return;
+  const q=v=>'"'+String(v??"").replace(/"/g,'""')+'"';
+  const lines=[[T("Chỉ tiêu"),...periods].map(q).join(";")];
+  for(const r of rows) lines.push([r.name||r.id, ...periods.map(p=>{const v=fsRawVal(r,p); return v==null?"":v;})].map(q).join(";"));
+  dlBlob("\ufeff"+lines.join("\r\n"), `${_fsSym}_${FS_TNAME[_fsType]}.csv`, "text/csv;charset=utf-8");
+};
+$("dlXls").onclick=()=>{
+  if(!_fsData) return;
+  const rows=(_fsData.types&&_fsData.types[_fsType])||[];
+  const periods=_fsData.periods||[];
+  if(!rows.length) return;
+  let h='<html xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="UTF-8"></head><body><table border="1"><tr><th>'+esc(T("Chỉ tiêu"))+'</th>'+periods.map(p=>`<th>${esc(p)}</th>`).join("")+'</tr>';
+  for(const r of rows) h+='<tr><td>'+esc(r.name||r.id)+'</td>'+periods.map(p=>{const v=fsRawVal(r,p); return '<td>'+(v==null?"":v)+'</td>';}).join("")+'</tr>';
+  dlBlob(h+'</table></body></html>', `${_fsSym}_${FS_TNAME[_fsType]}.xls`, "application/vnd.ms-excel");
+};
 
 // ---- AI Chat ----
 function chatAdd(who,text){
@@ -591,7 +649,7 @@ async function chatAsk(){
       ans=`<b>${esc(sym)}</b>: ${fmtN(qq.close)} (${fmtPct(qq.pct_change)})`;
       if(qq.foreign_buy_value!=null)ans+=`<br>NN mua/bán: ${fmtTy(qq.foreign_buy_value)} / ${fmtTy(qq.foreign_sell_value)}`;
     }else if(/sàng lọc|trend/i.test(q)){
-      const j=await api("/screener");const rows=(j.rows||[]).filter(r=>r.trend_template===true).slice(0,5);
+      const j=await api("/screener");const rows=(j.rows||[]).filter(r=>!!r.trend_template).slice(0,5);
       ans="Mã đạt Trend Template: "+rows.map(r=>`<b style="cursor:pointer" onclick="openSym('${esc(r.symbol)}')">${esc(r.symbol)}</b>`).join(", ");
     }else if(/tín hiệu|signal/i.test(q)){
       const j=await api("/signals");const sigs=j.signals||[];
@@ -662,6 +720,8 @@ const I18N_FULL = {
 "Chiến lược":["Strategy","策略","전략"],
 "Chưa có cảnh báo — thêm mới ở dưới.":["No alerts yet — add below.","暂无提醒 — 在下方添加。","알림이 없습니다 — 아래에서 추가하세요."],
 "Chưa có dữ liệu":["No data","暂无数据","데이터 없음"],
+"Chưa có dữ liệu báo cáo":["No financial statements yet","暂无财报数据","재무제표 데이터 없음"],
+"Chỉ tiêu":["Indicator","指标","지표"],
 "Chỉ số":["Indices","指数","지수"],
 "Chỉ số tự tính (TTM)":["Self-computed ratios (TTM)","自算指标 (TTM)","자체 계산 지표 (TTM)"],
 "Chụp ảnh":["Photo","拍照","사진"],
