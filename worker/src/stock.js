@@ -860,6 +860,35 @@ export async function hStockPublish(request, env){
       n++;
     }
   }
+  // Batch history upload cho backfill tu doanh (doi xung foreign)
+  if(body.proprietary_flow_history_batch){
+    for(const sym of Object.keys(body.proprietary_flow_history_batch)){
+      const days = body.proprietary_flow_history_batch[sym];
+      if(!Array.isArray(days) || !days.length) continue;
+      const hkey = "market/proprietary_flow_history/"+sym+".json";
+      const h = await sGet(env, hkey) || {rows:[]};
+      const rows = h.rows || [];
+      const byDate = {};
+      for(const r of rows) if(r.trade_date) byDate[r.trade_date] = r;
+      for(const d of days){
+        if(!d.trade_date) continue;
+        byDate[d.trade_date] = {
+          trade_date:d.trade_date,
+          buy_volume:d.buy_volume??null,
+          sell_volume:d.sell_volume??null,
+          net_volume:d.net_volume??null,
+          buy_value_vnd:d.buy_value_vnd??null,
+          sell_value_vnd:d.sell_value_vnd??null,
+          net_value_vnd:d.net_value_vnd??null
+        };
+      }
+      const merged = Object.values(byDate);
+      merged.sort((a,b)=>(a.trade_date||"").localeCompare(b.trade_date||""));
+      const trimmed = merged.slice(-500);
+      await sPut(env, hkey, doc({symbol:sym, rows:trimmed}));
+      n++;
+    }
+  }
   if(body.foreign_flow){
     await put1("foreign_flow", {by_symbol:body.foreign_flow});
     // Append lich su foreign flow theo tung ma
