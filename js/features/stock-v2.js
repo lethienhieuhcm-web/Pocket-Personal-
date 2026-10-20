@@ -9,7 +9,7 @@ import { initByok } from '../shared/byok.js';
 const I18N = {
 vi:{
 login_required:"Đăng nhập để xem chứng khoán.",no_data_updating:"Dữ liệu đang cập nhật. Vui lòng đợi.",
-updated:"Cập nhật: ",dataSrc:"Nguồn: ",error:"Lỗi",loading:"Đang tải…",watching:"✓ Đang theo dõi",watch:"+ Theo dõi",
+updated:"Cập nhật: ",dataSrc:"Nguồn: ",build:"Bản ",error:"Lỗi",loading:"Đang tải…",watching:"✓ Đang theo dõi",watch:"+ Theo dõi",
 unwatched:"Đã bỏ theo dõi",watched:"Đã thêm vào theo dõi",chart_fail:"Không tải được biểu đồ.",
 loading_news:"Đang tải tin tức…",no_news:"Chưa có tin tức.",loading_events:"Đang tải sự kiện…",no_events:"Chưa có sự kiện.",
 ex_date:"Ngày GDKHQ",ratio:"Tỷ lệ",per_share:"/cổ phiếu",
@@ -46,7 +46,7 @@ byok_err_unreachable:"Không lấy được danh sách model. Hãy nhập tên m
 agent_too_long:"Tin nhắn quá dài (tối đa 1000 ký tự)",agent_waiting:"Đang xử lý"},
 en:{
 login_required:"Log in to view stocks.",no_data_updating:"Data is being updated. Please wait.",
-updated:"Updated: ",dataSrc:"Source: ",error:"Error",loading:"Loading…",watching:"✓ Following",watch:"+ Follow",
+updated:"Updated: ",dataSrc:"Source: ",build:"Build ",error:"Error",loading:"Loading…",watching:"✓ Following",watch:"+ Follow",
 unwatched:"Unfollowed",watched:"Added to watchlist",chart_fail:"Chart could not be loaded.",
 loading_news:"Loading news…",no_news:"No news yet.",loading_events:"Loading events…",no_events:"No events yet.",
 ex_date:"Ex-date",ratio:"Ratio",per_share:"/share",
@@ -83,7 +83,7 @@ byok_err_unreachable:"Could not fetch model list. Please enter the model name ma
 agent_too_long:"Message too long (max 1000 chars)",agent_waiting:"Processing"},
 zh:{
 login_required:"登录后查看股票。",no_data_updating:"数据正在更新，请稍候。",
-updated:"更新时间：",dataSrc:"数据源：",error:"错误",loading:"加载中…",watching:"✓ 已关注",watch:"+ 关注",
+updated:"更新时间：",dataSrc:"数据源：",build:"版本 ",error:"错误",loading:"加载中…",watching:"✓ 已关注",watch:"+ 关注",
 unwatched:"已取消关注",watched:"已加入关注",chart_fail:"图表加载失败。",
 loading_news:"正在加载新闻…",no_news:"暂无新闻。",loading_events:"正在加载事件…",no_events:"暂无事件。",
 ex_date:"除权日",ratio:"比例",per_share:"/股",
@@ -120,7 +120,7 @@ byok_err_unreachable:"无法获取模型列表。请在下方手动输入模型�
 agent_too_long:"消息太长（最多1000个字符）",agent_waiting:"处理中"},
 ko:{
 login_required:"로그인 후 주식을 확인하세요。",no_data_updating:"데이터를 업데이트 중입니다. 잠시만 기다려 주세요.",
-updated:"업데이트: ",dataSrc:"데이터 출처: ",error:"오류",loading:"불러오는 중…",watching:"✓ 팔로우 중",watch:"+ 팔로우",
+updated:"업데이트: ",dataSrc:"데이터 출처: ",build:"빌드 ",error:"오류",loading:"불러오는 중…",watching:"✓ 팔로우 중",watch:"+ 팔로우",
 unwatched:"팔로우를 해제했습니다",watched:"관심 목록에 추가했습니다",chart_fail:"차트를 불러오지 못했습니다.",
 loading_news:"뉴스를 불러오는 중…",no_news:"아직 뉴스가 없습니다.",loading_events:"이벤트를 불러오는 중…",no_events:"아직 이벤트가 없습니다.",
 ex_date:"배당락일",ratio:"비율",per_share:"/주",
@@ -185,11 +185,12 @@ const srcLabel = pv => {
 // Poll /api/stock/version moi 5 phut (thiet ke goc cua endpoint): chi tai
 // lai khi `updated` doi. versions = cac ban vnstock dang cap du lieu cho
 // toan app — lai 4+5 thi hien ca hai (quy tac Henrry 2026-10-20).
-let _verKey = null, _verVers = [];
+let _verKey = null, _verVers = [], _verBuild = null;
 async function pollStockVersion(){
   try{
     const v = await sApi("/version");
     _verVers = v.versions||[];
+    _verBuild = v.build||null;
     const key = (v.updated||"")+"|"+_verVers.join(",");
     if(_verKey && key!==_verKey){ renderStockTab(); }
     else if(!_verKey && stkTab==="market"){ renderIndices(); }
@@ -365,7 +366,7 @@ async function renderIndices(){
     // Nhan nguon du lieu (hoc tu vnstock 5: provenance). _prov co tu worker sau build 20261018084500.
     const gen = _verVers.length ? "vnstock "+_verVers.join(" + ") : srcLabel(j._prov && j._prov.source);
     const srcEl = $("stkSrc");
-    if(srcEl) srcEl.textContent = (gen ? t("dataSrc")+gen : "") + (upd ? " · "+upd.toLocaleString(LOCALES[LANG]||"en-US") : "");
+    if(srcEl) srcEl.textContent = (gen ? t("dataSrc")+gen : "") + (upd ? " · "+upd.toLocaleString(LOCALES[LANG]||"en-US") : "") + (_verBuild ? " · "+t("build")+_verBuild : "");
   }catch(e){ box.innerHTML = '<div class="hint">'+t("error")+": "+esc(e.message)+'</div>'; }
 }
 
