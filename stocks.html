@@ -635,10 +635,10 @@ async function loadNews(sym){
 }
 // ===== Dot B (20/10): watchlist · targets · events · compare · cost history =====
 const B_I18N={
-vi:{noEv:"Chưa có sự kiện",tpPh:"Chốt lời % (vd 15)",slPh:"Cắt lỗ % (vd 5)",save:"Lưu mục tiêu",del:"Xoá",curNone:"Chưa đặt mục tiêu cho mã này.",saved:"Đã lưu mục tiêu.",wlEmpty:"Chưa theo dõi mã nào. Mở trang chi tiết một mã và bấm ☆, hoặc nhập mã ở ô dưới.",avgCost:"Giá vốn TB",mktClose:"Giá đóng cửa",cmpNeed:"Nhập ít nhất 2 mã để so sánh.",cmpErr:"Chưa có dữ liệu so sánh."},
-en:{noEv:"No events yet",tpPh:"Take profit % (e.g. 15)",slPh:"Stop loss % (e.g. 5)",save:"Save target",del:"Delete",curNone:"No target set for this symbol.",saved:"Target saved.",wlEmpty:"No symbols watched yet. Open a symbol and tap ☆, or type one below.",avgCost:"Avg cost",mktClose:"Close",cmpNeed:"Enter at least 2 symbols.",cmpErr:"No comparison data."},
-zh:{noEv:"暂无事件",tpPh:"止盈 % (如 15)",slPh:"止损 % (如 5)",save:"保存目标",del:"删除",curNone:"尚未为此股设置目标。",saved:"已保存目标。",wlEmpty:"尚未关注任何股票。打开个股页面点击 ☆,或在下方输入。",avgCost:"平均成本",mktClose:"收盘价",cmpNeed:"至少输入 2 只股票。",cmpErr:"暂无对比数据。"},
-ko:{noEv:"이벤트가 없습니다",tpPh:"익절 % (예: 15)",slPh:"손절 % (예: 5)",save:"목표 저장",del:"삭제",curNone:"이 종목에 설정된 목표가 없습니다.",saved:"목표가 저장되었습니다.",wlEmpty:"아직 관심 종목이 없습니다. 종목 상세에서 ☆를 누르거나 아래에 입력하세요.",avgCost:"평균 단가",mktClose:"종가",cmpNeed:"최소 2개 종목을 입력하세요.",cmpErr:"비교 데이터가 없습니다."}};
+vi:{noEv:"Chưa có sự kiện",evAll:"Tất cả",evCorp:"Doanh nghiệp",evIns:"Nội bộ",evMore:"Xem thêm",evPay:"Chi trả",tpPh:"Chốt lời % (vd 15)",slPh:"Cắt lỗ % (vd 5)",save:"Lưu mục tiêu",del:"Xoá",curNone:"Chưa đặt mục tiêu cho mã này.",saved:"Đã lưu mục tiêu.",wlEmpty:"Chưa theo dõi mã nào. Mở trang chi tiết một mã và bấm ☆, hoặc nhập mã ở ô dưới.",avgCost:"Giá vốn TB",mktClose:"Giá đóng cửa",cmpNeed:"Nhập ít nhất 2 mã để so sánh.",cmpErr:"Chưa có dữ liệu so sánh."},
+en:{noEv:"No events yet",evAll:"All",evCorp:"Corporate",evIns:"Insider",evMore:"Show more",evPay:"Payout",tpPh:"Take profit % (e.g. 15)",slPh:"Stop loss % (e.g. 5)",save:"Save target",del:"Delete",curNone:"No target set for this symbol.",saved:"Target saved.",wlEmpty:"No symbols watched yet. Open a symbol and tap ☆, or type one below.",avgCost:"Avg cost",mktClose:"Close",cmpNeed:"Enter at least 2 symbols.",cmpErr:"No comparison data."},
+zh:{noEv:"暂无事件",evAll:"全部",evCorp:"公司",evIns:"内部交易",evMore:"查看更多",evPay:"派付",tpPh:"止盈 % (如 15)",slPh:"止损 % (如 5)",save:"保存目标",del:"删除",curNone:"尚未为此股设置目标。",saved:"已保存目标。",wlEmpty:"尚未关注任何股票。打开个股页面点击 ☆,或在下方输入。",avgCost:"平均成本",mktClose:"收盘价",cmpNeed:"至少输入 2 只股票。",cmpErr:"暂无对比数据。"},
+ko:{noEv:"이벤트가 없습니다",evAll:"전체",evCorp:"기업",evIns:"내부자",evMore:"더 보기",evPay:"지급",tpPh:"익절 % (예: 15)",slPh:"손절 % (예: 5)",save:"목표 저장",del:"삭제",curNone:"이 종목에 설정된 목표가 없습니다.",saved:"목표가 저장되었습니다.",wlEmpty:"아직 관심 종목이 없습니다. 종목 상세에서 ☆를 누르거나 아래에 입력하세요.",avgCost:"평균 단가",mktClose:"종가",cmpNeed:"최소 2개 종목을 입력하세요.",cmpErr:"비교 데이터가 없습니다."}};
 function BL(){return B_I18N[curLang]||B_I18N.vi;}
 let WLSET=null;
 async function wlLoad(force){
@@ -661,12 +661,41 @@ $("dWatch").onclick=async()=>{
   }catch(e){}
   paintWatchBtn();
 };
+let EVST={items:[],f:"all",n:10};
+function evIsIns(n){return String(n.name||"").indexOf("Giao dịch nội bộ")===0;}
+function evFiltered(){
+  if(EVST.f==="corp")return EVST.items.filter(x=>!evIsIns(x));
+  if(EVST.f==="ins")return EVST.items.filter(x=>evIsIns(x));
+  return EVST.items;
+}
+function paintEvents(){
+  const box=$("dEvents");const L=BL();
+  const all=EVST.items;
+  const nCorp=all.filter(x=>!evIsIns(x)).length;
+  const nIns=all.length-nCorp;
+  const list=evFiltered();
+  const chip=(k,lb,cnt)=>`<button data-evf="${k}" style="padding:5px 11px;border-radius:99px;border:1px solid ${EVST.f===k?"var(--pp-accent)":"var(--pp-line)"};background:${EVST.f===k?"var(--pp-accent)":"var(--pp-bg2)"};color:${EVST.f===k?"#fff":"var(--pp-ink)"};font-size:12px;font-weight:600;cursor:pointer">${lb} · ${cnt}</button>`;
+  let h=`<div style="display:flex;gap:6px;flex-wrap:wrap;margin:2px 0 4px">${chip("all",L.evAll,all.length)}${chip("corp",L.evCorp,nCorp)}${chip("ins",L.evIns,nIns)}</div>`;
+  if(!list.length){box.innerHTML=h+'<div class="hint">'+L.noEv+'</div>';}
+  else{
+    h+=list.slice(0,EVST.n).map(n=>{
+      const pay=n.payout_date&&/^\d{4}-\d{2}-\d{2}/.test(String(n.payout_date))?String(n.payout_date).slice(0,10):"";
+      return `<div style="padding:7px 0;border-bottom:1px solid var(--pp-line)"><div style="font-size:13px;font-weight:600">${esc(n.title||n.name||"")}</div><div style="font-size:11px;color:var(--pp-mut);margin-top:2px">${esc(n.name||"")}${n.date?" · "+esc(String(n.date).slice(0,10)):""}${n.exright_date?" · Ex: "+esc(String(n.exright_date).slice(0,10)):""}${pay?" · "+L.evPay+": "+pay:""}</div></div>`;
+    }).join("");
+    if(list.length>EVST.n)h+=`<button id="evMore" style="width:100%;margin-top:8px;padding:8px;border-radius:8px;background:var(--pp-bg2);color:var(--pp-ink);border:1px solid var(--pp-line);font-size:12px;font-weight:600;cursor:pointer">${L.evMore} (${Math.min(EVST.n,list.length)}/${list.length})</button>`;
+    box.innerHTML=h;
+  }
+  box.querySelectorAll("[data-evf]").forEach(b=>{b.onclick=()=>{EVST.f=b.getAttribute("data-evf");EVST.n=10;paintEvents();};});
+  const m=$("evMore");if(m)m.onclick=()=>{EVST.n+=20;paintEvents();};
+}
 async function loadEvents(sym){
   const box=$("dEvents");box.innerHTML='<div class="hint">Đang tải…</div>';
+  EVST={items:[],f:"all",n:10};
   try{
     const j=await api("/events?symbol="+encodeURIComponent(sym));
-    const items=j.items||[];
-    box.innerHTML=items.length?items.slice(0,10).map(n=>`<div style="padding:7px 0;border-bottom:1px solid var(--pp-line)"><div style="font-size:13px;font-weight:600">${esc(n.title||n.name||"")}</div><div style="font-size:11px;color:var(--pp-mut);margin-top:2px">${esc(n.name||"")}${n.date?" · "+esc(String(n.date).slice(0,10)):""}${n.exright_date?" · Ex: "+esc(String(n.exright_date).slice(0,10)):""}</div></div>`).join(""):'<div class="hint">'+BL().noEv+'</div>';
+    EVST.items=j.items||[];
+    if(!EVST.items.length){box.innerHTML='<div class="hint">'+BL().noEv+'</div>';return;}
+    paintEvents();
   }catch(e){box.innerHTML='<div class="hint">'+BL().noEv+'</div>';}
 }
 async function loadTarget(sym){
