@@ -178,8 +178,31 @@ export async function hStockVersion(request, env){
   const cacheKey = new Request(request.url, {method: "GET"});
   let resp = await cache.match(cacheKey);
   if(resp) return resp;
-  const d = await sGet(env, "market/indices.json");
-  resp = new Response(JSON.stringify({updated: (d && d.updated) || null}), {
+  // Gom _prov tu cac bo du lieu chinh: frontend poll 5 phut, chi tai lai
+  // khi `updated` doi; `versions` = cac ban vnstock dang cap du lieu
+  // (giai doan lai 4+5 thi ca hai — quy tac Henrry 2026-10-20).
+  const files = ["indices", "quotes", "screener", "fundamentals", "regime",
+                 "ohlcv/FPT", "company_profile/FPT", "statements/FPT"];
+  const bySource = {};
+  let updated = null;
+  for(const f of files){
+    const d = await sGet(env, "market/"+f+".json").catch(()=>null);
+    if(!d) continue;
+    if(d.updated && (!updated || d.updated > updated)) updated = d.updated;
+    const p = d._prov;
+    if(p && p.source){
+      const cur = bySource[p.source] || {source: p.source, retrieved_at: p.retrieved_at || null, datasets: []};
+      if(p.retrieved_at && (!cur.retrieved_at || p.retrieved_at > cur.retrieved_at)) cur.retrieved_at = p.retrieved_at;
+      cur.datasets.push(f);
+      bySource[p.source] = cur;
+    }
+  }
+  const sources = Object.values(bySource).sort((a,b)=>String(b.retrieved_at||"").localeCompare(String(a.retrieved_at||"")));
+  const versions = [...new Set(sources.flatMap(x=>{
+    const m = String(x.source).match(/vnstock(\d+)/g) || [];
+    return m.map(t=>t.replace("vnstock",""));
+  }))].sort();
+  resp = new Response(JSON.stringify({updated, sources, versions}), {
     headers: { "Content-Type": "application/json", "Cache-Control": "public, max-age=60" }
   });
   await cache.put(cacheKey, resp.clone());
@@ -194,7 +217,7 @@ export async function getQuoteData(env, sym){
   const q = d && d.by_symbol ? d.by_symbol[sym] : null;
   if(!q) return null;
   // Include data timestamp so AI can state which trading session the data is from
-  return Object.assign({symbol:sym, data_updated:d.updated||null}, q);
+  return Object.assign({symbol:sym, data_updated:d.updated||null, _prov:d._prov||null}, q);
 }
 
 export async function getFundamentalsData(env, sym){
