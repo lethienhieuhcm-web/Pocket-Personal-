@@ -157,7 +157,7 @@ byok_err_unreachable:"모델 목록을 가져올 수 없습니다. 아래에 모
 agent_too_long:"메시지가 너무 깁니다 (최대 1000자)",agent_waiting:"처리 중"}
 };
 let LANG = "vi";
-try{ const v = localStorage.getItem("elab_uiLang"); if(v) LANG = JSON.parse(v); }catch(e){}
+try{ const v = localStorage.getItem("elab_uiLang"); if(v) LANG = v.replace(/"/g,""); }catch(e){}
 const LOCALES = {vi:"vi-VN", en:"en-US", zh:"zh-CN", ko:"ko-KR"};
 function t(key){ return (I18N[LANG]&&I18N[LANG][key]) || I18N.en[key] || key; }
 
@@ -172,6 +172,15 @@ async function sApi(path, opts={}){
 const fmtN = n => n==null ? "—" : Number(n).toLocaleString("en-US");
 const fmtPct = p => p==null ? "—" : (p>0?"+":"")+Number(p).toFixed(2)+"%";
 const pcCls = p => p>0?"up":p<0?"dn":"";
+// Nhan nguon du lieu than thien: "direct:vci"/"direct:kbs" -> "trực tiếp",
+// "vnstock/4.0.9" -> "vnstock 4". Khong lo ten ky thuat ra UI.
+const srcLabel = pv => {
+  if(!pv) return "vnstock";
+  const vm = /vnstock[\/_]?(\d)/i.exec(pv);
+  if(vm) return "vnstock "+vm[1];
+  if(pv.indexOf("direct:")===0) return "trực tiếp";
+  return pv;
+};
 
 export function bindStock(){
   const inp = $("stkSearch");
@@ -233,10 +242,15 @@ export function bindStock(){
       $("fadOv").style.display = ft==="ov"?"":"none";
       $("fadNews").style.display = ft==="news"?"":"none";
       $("fadFund").style.display = ft==="fund"?"":"none";
+      $("fadFlow").style.display = ft==="flow"?"":"none";
       $("fadBt").style.display = ft==="bt"?"":"none";
       if(curSymbol && (ft==="news"||ft==="fund") && !loadedTabs[curSymbol].tabs){
         loadedTabs[curSymbol].tabs = true;
         loadNewsEvents(curSymbol);
+      }
+      if(curSymbol && ft==="flow" && !loadedTabs[curSymbol].flow){
+        loadedTabs[curSymbol].flow = true;
+        loadFlow(curSymbol);
       }
       if(ft==="ov" && curSymbol) loadChart(curSymbol, curIv);
     };
@@ -300,11 +314,13 @@ export function refreshMarketOnPush(){
 
 function renderStockTab(){
   document.querySelectorAll(".stktab").forEach(b=> b.classList.toggle("active", b.dataset.t===stkTab));
-  ["market","watch","port","alert","agent"].forEach(n=>{
+  ["market","watch","port","alert","agent","screen","signals"].forEach(n=>{
     const el = $("stkTab"+n[0].toUpperCase()+n.slice(1));
     if(el) el.style.display = n===stkTab ? "" : "none";
   });
-  if(stkTab==="market"){ renderIndices(); renderScreener(); renderTopMovers(); renderMarketNews(); }
+  if(stkTab==="market"){ renderIndices(); renderRegime(); renderScreener(); renderTopMovers(); renderMarketNews(); }
+  if(stkTab==="screen"){ renderScreenTab(); }
+  if(stkTab==="signals"){ renderSignalsTab(); }
   if(stkTab==="watch") renderWatchlist();
   if(stkTab==="port") renderPortfolio();
   if(stkTab==="alert"){ renderAlerts(); renderTargets(); }
@@ -331,13 +347,71 @@ async function renderIndices(){
     }).join("");
     const upd = j.updated ? new Date(j.updated) : null;
     // Nhan nguon du lieu (hoc tu vnstock 5: provenance). _prov co tu worker sau build 20261018084500.
-    const pv = j._prov && j._prov.source;
-    // Trich major version: "vnstock/4.0.9" -> "vnstock 4", "vnstock4" -> "vnstock 4"
-    let gen = pv || "";
-    const vm = pv && /vnstock[\/_]?(\d)/i.exec(pv);
-    if (vm) gen = "vnstock " + vm[1];
+    const gen = srcLabel(j._prov && j._prov.source);
     $("stkUpd").textContent = (upd ? t("updated")+upd.toLocaleString(LOCALES[LANG]||"en-US") : "") + (gen ? " · "+t("dataSrc")+gen : "");
   }catch(e){ box.innerHTML = '<div class="hint">'+t("error")+": "+esc(e.message)+'</div>'; }
+}
+
+// --- Tu chu: market regime banner (backend scripts/market_regime.py)
+async function renderRegime(){
+  const card = $("stkRegimeCard"), box = $("stkRegime");
+  if(!card || !box) return;
+  try{
+    const j = await sApi("/regime");
+    if(!j.regime){ card.style.display = "none"; return; }
+    const b = j.breadth || {};
+    const nn = j.foreign_net_vnd != null
+      ? (j.foreign_net_vnd >= 0 ? "+" : "") + (j.foreign_net_vnd/1e9).toFixed(0) + " tỷ"
+      : "—";
+    const nnCls = (j.foreign_net_vnd||0) >= 0 ? "up" : "down";
+    box.innerHTML =
+      '<div style="display:flex;gap:10px;align-items:center">'
+      + '<div style="font-size:28px">'+esc(j.emoji||"")+'</div>'
+      + '<div><div style="font-weight:700">'+esc(j.desc||j.regime)+'</div>'
+      + '<div class="hint">Breadth: '+(b.up||0)+' tăng / '+(b.down||0)+' giảm'
+      + ' · VNINDEX '+(j.above_ma50?"trên":"dưới")+' MA50'
+      + ' · NN <span class="'+nnCls+'">'+esc(nn)+'</span></div></div></div>';
+    card.style.display = "";
+  }catch(e){ card.style.display = "none"; }
+}
+
+// --- Tu chu: tab Sang loc + Tin hieu (Dot 1)
+async function renderScreenTab(){
+  const box = $("stkScreen"); if(!box) return;
+  try{
+    const j = await sApi("/screener");
+    const rows = j.rows||[];
+    if(!rows.length){ box.innerHTML = '<div class="hint">Chưa có dữ liệu</div>'; return; }
+    box.innerHTML = '<div style="overflow-x:auto"><table style="width:100%;font-size:12px">'
+      + '<tr><th>Mã</th><th>Giá</th><th>+/−</th><th>Trend</th></tr>'
+      + rows.slice(0,50).map(r=>{
+          const pc = r.pct_change, cls = pc>0?"up":pc<0?"down":"";
+          const tr = r.trend_template===true ? '<span class="up">✓</span>'
+                   : r.trend_template===false ? '<span class="down">✗</span>' : "—";
+          return '<tr><td><b class="symlink" data-sym="'+esc(r.symbol)+'">'+esc(r.symbol)+'</b></td>'
+            + '<td>'+(r.close??"—")+'</td><td class="'+cls+'">'+fmtPct(pc)+'</td><td>'+tr+'</td></tr>';
+        }).join("") + '</table></div>';
+    $("stkScreenUpd").textContent = (j.updated ? t("updated")+new Date(j.updated).toLocaleString() : "") + " · Nguồn: tự tính";
+    box.querySelectorAll(".symlink").forEach(a=> a.onclick = ()=>openSymbol(a.dataset.sym));
+  }catch(e){ box.innerHTML = '<div class="hint">Lỗi tải dữ liệu</div>'; }
+}
+async function renderSignalsTab(){
+  const box = $("stkSignals"); if(!box) return;
+  const patName = {trend_crossover:"Trend Crossover", bollinger_squeeze:"Bollinger Squeeze",
+    episodic_pivot:"Episodic Pivot", momentum_pullback:"Momentum Pullback"};
+  try{
+    const j = await sApi("/signals");
+    const sigs = j.signals||[];
+    if(!sigs.length){ box.innerHTML = '<div class="hint">Hôm nay chưa có tín hiệu mới</div>'; }
+    else box.innerHTML = sigs.map(s=>
+      '<div class="frow" style="gap:10px;padding:8px 0;border-bottom:1px solid var(--pp-border)">'
+      + '<b class="symlink" data-sym="'+esc(s.symbol)+'">'+esc(s.symbol)+'</b>'
+      + '<div><div style="font-weight:600;font-size:13px">'+esc(patName[s.pattern]||s.pattern)+'</div>'
+      + '<div class="hint">'+esc(s.desc||"")+' · '+esc((s.time||"").slice(0,16))+'</div></div></div>'
+    ).join("");
+    $("stkSignalsUpd").textContent = (j.updated ? t("updated")+new Date(j.updated).toLocaleString() : "") + " · Nguồn: tự tính";
+    box.querySelectorAll(".symlink").forEach(a=> a.onclick = ()=>openSymbol(a.dataset.sym));
+  }catch(e){ box.innerHTML = '<div class="hint">Lỗi tải dữ liệu</div>'; }
 }
 
 async function stockSearch(q){
@@ -383,7 +457,7 @@ export async function openSymbol(sym){
     $("stkSearch").value = sym;
     // reset fad tabs to overview
     document.querySelectorAll("[data-ft]").forEach(x=>x.classList.toggle("active", x.dataset.ft==="ov"));
-    ["fadOv","fadNews","fadFund","fadBt"].forEach((id,i)=>{ $(id).style.display = i===0?"":"none"; });
+    ["fadOv","fadNews","fadFund","fadFlow","fadBt"].forEach((id,i)=>{ $(id).style.display = i===0?"":"none"; });
     getEx(sym).then(ex=>{ $("stkDetailEx").textContent = "("+ex+")"; });
     await loadSymHead(sym);
     await loadChart(sym, curIv);
@@ -401,6 +475,24 @@ async function loadSymHead(sym){
     $("stkChg").textContent = `${chg} (${fmtPct(pc)})`;
     $("stkChg").className = "fadchg "+cls;
     $("stkTime").textContent = new Date().toLocaleTimeString(LOCALES[LANG]||"en-US",{timeZone:"Asia/Ho_Chi_Minh",hour12:false})+" | "+t("vn_time");
+    // --- Tu chu: bang gia live (bid/ask + NN hom nay)
+    try{
+      const lb = $("stkLiveBox"), lx = $("stkLive");
+      if(lb && lx){
+        const bid = q.bid||[], ask = q.ask||[];
+        const fB = q.foreign_buy_value??q.foreign_buy_volume, fS = q.foreign_sell_value??q.foreign_sell_volume;
+        const hasBA = (bid.length||ask.length);
+        if(hasBA || fB!=null){
+          const bTxt = bid.slice(0,3).map(b=>Array.isArray(b)?b[0]:b).filter(x=>x!=null).join(" / ")||"—";
+          const aTxt = ask.slice(0,3).map(a=>Array.isArray(a)?a[0]:a).filter(x=>x!=null).join(" / ")||"—";
+          lx.innerHTML = '<div class="frow" style="gap:12px;font-size:12px;flex-wrap:wrap">'
+            + (hasBA?'<span>Mua: <b class="up">'+esc(bTxt)+'</b></span><span>Bán: <b class="down">'+esc(aTxt)+'</b></span>':"")
+            + (fB!=null?'<span>NN mua: <b class="up">'+esc(String(fB))+'</b> · NN bán: <b class="down">'+esc(String(fS??"—"))+'</b></span>':"")
+            + '</div><div class="hint" style="margin-top:4px">Nguồn: '+srcLabel(q._prov&&q._prov.source)+'</div>';
+          lb.style.display = "";
+        } else lb.style.display = "none";
+      }
+    }catch(e){}
     let inWl = false;
     try{ const wl = await sApi("/watchlist"); inWl = wl.includes(sym); }catch(e){}
     const wbtn = $("wlToggle2");
@@ -430,6 +522,52 @@ function smaArr(vals, n){
   return out;
 }
 
+async function loadNewsEvents(sym){
+// --- Tu chu: tab Dong tien (foreign + proprietary history)
+async function loadFlow(sym){
+  const fbox = $("stkFlowForeign"), pbox = $("stkFlowProp");
+  const fmtT = v => v==null ? "—" : (v>=0?"+":"")+(v/1e9).toFixed(1)+" tỷ";
+  if(fbox){
+    try{
+      const j = await sApi("/foreign-flow/history?symbol="+encodeURIComponent(sym)+"&limit=20");
+      const rows = j.rows||[];
+      if(!rows.length){ fbox.innerHTML = '<div class="hint">Chưa có dữ liệu</div>'; }
+      else{
+        const maxV = Math.max(...rows.map(r=>Math.abs(r.net_value_est||0)), 1);
+        fbox.innerHTML = rows.map(r=>{
+          const v = r.net_value_est||0, h = Math.max(4, Math.abs(v)/maxV*60);
+          const cls = v>=0 ? "up" : "down";
+          return '<div class="frow" style="gap:8px;align-items:center;font-size:12px">'
+            + '<span class="hint" style="width:52px">'+esc((r.trade_date||"").slice(5))+'</span>'
+            + '<div style="flex:1;background:var(--pp-card,#1a2030);border-radius:4px;height:14px;position:relative">'
+            + '<div class="'+cls+'" style="height:14px;border-radius:4px;width:'+h+'%"></div></div>'
+            + '<span class="'+cls+'" style="width:70px;text-align:right">'+fmtT(v)+'</span></div>';
+        }).join("");
+        const tot = rows.reduce((a,r)=>a+(r.net_value_est||0),0);
+        fbox.innerHTML += '<div class="hint" style="margin-top:6px">Tổng 20 phiên: <b class="'+(tot>=0?"up":"down")+'">'+fmtT(tot)+'</b></div>';
+      }
+    }catch(e){ fbox.innerHTML = '<div class="hint">Lỗi tải dữ liệu</div>'; }
+  }
+  if(pbox){
+    try{
+      const j = await sApi("/proprietary-flow/history?symbol="+encodeURIComponent(sym)+"&limit=20");
+      const rows = j.rows||j.items||[];
+      if(!rows.length){ pbox.innerHTML = '<div class="hint">Chưa có dữ liệu</div>'; }
+      else{
+        const maxV = Math.max(...rows.map(r=>Math.abs(r.net_value||r.net||0)), 1);
+        pbox.innerHTML = rows.map(r=>{
+          const v = r.net_value??r.net??0, h = Math.max(4, Math.abs(v)/maxV*60);
+          const cls = v>=0 ? "up" : "down";
+          return '<div class="frow" style="gap:8px;align-items:center;font-size:12px">'
+            + '<span class="hint" style="width:52px">'+esc((r.trade_date||r.date||"").slice(5))+'</span>'
+            + '<div style="flex:1;background:var(--pp-card,#1a2030);border-radius:4px;height:14px;position:relative">'
+            + '<div class="'+cls+'" style="height:14px;border-radius:4px;width:'+h+'%"></div></div>'
+            + '<span class="'+cls+'" style="width:70px;text-align:right">'+fmtT(v)+'</span></div>';
+        }).join("");
+      }
+    }catch(e){ pbox.innerHTML = '<div class="hint">Lỗi tải dữ liệu</div>'; }
+  }
+}
 async function loadNewsEvents(sym){
   // news
   const nbox = $("stkNews");
