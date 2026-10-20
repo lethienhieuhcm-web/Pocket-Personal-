@@ -378,7 +378,7 @@ async function loadMine(){
     $("riskProfile").innerHTML=pr.profile?`<div class="row"><span class="k">Hồ sơ</span><span class="v" style="font-size:15px">${esc(PROF_LBL[pr.profile]||pr.profile)} · ${pr.score}/100</span></div><div class="hint" style="padding:6px 0">${esc(pr.mo_ta||"")}</div>${(pr.ly_do||[]).map(x=>`<div class="hint" style="padding:2px 0">• ${esc(x)}</div>`).join("")}${pr.goi_y_gioi_han?`<div class="row" style="margin-top:6px"><span class="k">Giới hạn gợi ý</span><span class="v">Mã ≤ ${pr.goi_y_gioi_han.max_position_pct}% · Cắt lỗ ${pr.goi_y_gioi_han.stop_loss_pct}%</span></div><div class="hint" style="padding:2px 0">${esc(pr.goi_y_gioi_han.note||"")}</div>`:""}`:'<div class="hint">Chưa đủ dữ liệu.</div>';
     const vs=rk.violations||[];
     $("riskWatch").innerHTML=vs.length?vs.map(v=>`<div class="card" style="margin-bottom:8px;border-left:3px solid ${v.severity==="high"?"var(--pp-danger)":v.severity==="medium"?"#f0b429":"var(--pp-mut)"}"><div style="font-size:13px">${esc(v.message)}</div></div>`).join(""):'<div class="card"><div class="hint">Không có cảnh báo rủi ro. Danh mục đang trong giới hạn an toàn.</div></div>';
-  }catch(e){$("jStats").innerHTML='<div class="hint">Lỗi tải rủi ro.</div>';}
+  }catch(e){$("jStats").innerHTML='<div class="hint">Lỗi tải rủi ro (cần đăng nhập).</div>';$("riskProfile").innerHTML='<div class="hint">Đăng nhập để xem hồ sơ rủi ro.</div>';$("riskWatch").innerHTML='<div class="hint">Đăng nhập để xem cảnh báo rủi ro.</div>';}
 }
 // Import: parse bảng (port portfolio_parse.py: doan cot + parse so Viet)
 function pfNorm(s){return String(s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").trim();}
