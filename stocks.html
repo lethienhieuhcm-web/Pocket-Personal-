@@ -232,7 +232,7 @@ input,select{background:var(--pp-bg2);border:1px solid var(--pp-line);color:var(
 <div id="dOv">
 <div class="card" id="dQuote"><div class="hint">Đang tải…</div></div>
 <div class="sec">Biểu đồ</div>
-<div class="card"><div class="iv" id="dIv"><button>1m</button><button class="on">5m</button><button>15m</button><button>1H</button><button>1D</button><button>1W</button><button>1M</button></div><div id="dChart" style="height:150px;margin-top:8px"><div class="hint">Đang tải…</div></div></div>
+<div class="card"><div class="iv" id="dIv"><button>15m</button><button>1H</button><button class="on">1D</button></div><div id="dChart" style="min-height:150px;margin-top:8px"><div class="hint">Đang tải…</div></div></div>
 </div>
 <div id="dFlow" style="display:none">
 <div class="sec">Khối ngoại mua/bán ròng — 20 phiên (tỷ đồng)</div>
@@ -542,25 +542,77 @@ async function loadDetail(sym){
     $("dQuote").innerHTML=h;
     if(q._prov)$("dSrc").textContent=srcLabel(q._prov.source);
   }catch(e){$("dQuote").innerHTML='<div class="hint">Lỗi tải</div>';}
-  loadFlow(sym);loadFund(sym);
+  loadFlow(sym);loadFund(sym);loadNews(sym);loadChart(sym);
 }
 document.querySelectorAll("#dTabs .tab").forEach(t=>t.onclick=()=>{
   document.querySelectorAll("#dTabs .tab").forEach(x=>x.classList.remove("on"));t.classList.add("on");
   ["dOv","dFlow","dNews","dFund"].forEach(k=>$(k).style.display="none");
   $("d"+t.dataset.dt[0].toUpperCase()+t.dataset.dt.slice(1)).style.display="";
 });
+function renderFlowBars(rows, valKey, barId, lblId, sumId){
+  const vals=rows.map(r=>r[valKey]||0);
+  const max=Math.max(...vals.map(v=>Math.abs(v)),1);
+  $(barId).innerHTML=rows.map(r=>{const v=r[valKey]||0;return `<div class="bar ${v>=0?"p":"n"}" style="height:${Math.max(4,Math.abs(v)/max*100)}%"></div>`;}).join("");
+  $(lblId).innerHTML=rows.map((r,i)=>`<span>${i===0||i===rows.length-1?esc((r.trade_date||"").slice(5)):""}</span>`).join("");
+  const sum=vals.reduce((a,v)=>a+v,0);
+  $(sumId).innerHTML=`<span class="${sum>=0?"up":"down"}">${fmtTy(sum)} (${sum>=0?"mua":"bán"} ròng)</span>`;
+}
 async function loadFlow(sym){
+  // Endpoint dung: /foreign-flow/history (rows moi nhat truoc, field net_value_est).
+  // Ban cu goi /foreign_flow (404) + doc net_value/date -> chet im lang.
   try{
-    const j=await api("/foreign_flow?symbol="+encodeURIComponent(sym));
-    const rows=(j.rows||[]).slice(-20);
-    if(!rows.length)return;
-    const max=Math.max(...rows.map(r=>Math.abs(r.net_value||0)),1);
-    $("dFf").innerHTML=rows.map(r=>{const v=r.net_value||0;return `<div class="bar ${v>=0?"p":"n"}" style="height:${Math.max(4,Math.abs(v)/max*100)}%"></div>`;}).join("");
-    $("dFfLbl").innerHTML=rows.map((r,i)=>`<span>${i===0||i===rows.length-1?esc((r.date||"").slice(5)):""}</span>`).join("");
-    const sum=rows.reduce((a,r)=>a+(r.net_value||0),0);
-    $("dFfSum").innerHTML=`<span class="${sum>=0?"up":"down"}">${fmtTy(sum)} (${sum>=0?"mua":"bán"} ròng)</span>`;
+    const j=await api("/foreign-flow/history?symbol="+encodeURIComponent(sym)+"&limit=20");
+    const rows=(j.rows||[]).slice(0,20).reverse();
+    if(rows.length) renderFlowBars(rows, "net_value_est", "dFf", "dFfLbl", "dFfSum");
+  }catch(e){}
+  try{
+    const j=await api("/proprietary-flow/history?symbol="+encodeURIComponent(sym)+"&limit=20");
+    const rows=(j.rows||[]).slice(0,20).reverse();
+    if(rows.length) renderFlowBars(rows, "net_value_vnd", "dPf", "dPfLbl", "dPfSum");
   }catch(e){}
 }
+async function loadNews(sym){
+  try{
+    const j=await api("/news?symbol="+encodeURIComponent(sym));
+    const items=j.items||[];
+    $("dNewsList").innerHTML=items.length?items.slice(0,15).map(n=>`<div style="padding:8px 0;border-bottom:1px solid var(--pp-line)"><a href="${esc(n.url||"#")}" target="_blank" rel="noopener" style="color:var(--pp-ink);text-decoration:none;font-size:13px;font-weight:600">${esc(n.title||"")}</a><div style="font-size:11px;color:var(--pp-mut);margin-top:2px">${esc((n.publish_time||"").slice(0,10))}</div></div>`).join(""):'<div class="hint">Chưa có tin</div>';
+  }catch(e){ $("dNewsList").innerHTML='<div class="hint">Chưa có tin</div>'; }
+}
+// ---- Bieu do nen (SVG nhe, du lieu /ohlcv) ----
+let _chartSym="";
+function chartSvg(rows){
+  const W=340,H=150,volH=26,priceH=H-volH-2;
+  let hi=-1e18,lo=1e18,vmax=0;
+  for(const r of rows){hi=Math.max(hi,r.h);lo=Math.min(lo,r.l);vmax=Math.max(vmax,r.v||0);}
+  const rawHi=hi,rawLo=lo,pad=(hi-lo)*0.06||1; hi+=pad; lo-=pad;
+  const xw=W/rows.length, Y=v=>priceH-(v-lo)/(hi-lo)*priceH;
+  let s=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block">`;
+  for(let i=1;i<4;i++){const y=(priceH*i/4).toFixed(1); s+=`<line x1="0" y1="${y}" x2="${W}" y2="${y}" stroke="rgba(140,140,140,.25)" stroke-width="1"/>`;}
+  rows.forEach((r,i)=>{
+    const x=i*xw+xw/2, up=r.c>=r.o, col=up?"#16a34a":"#dc2626";
+    s+=`<line x1="${x.toFixed(1)}" y1="${Y(r.h).toFixed(1)}" x2="${x.toFixed(1)}" y2="${Y(r.l).toFixed(1)}" stroke="${col}" stroke-width="1"/>`;
+    const yO=Y(r.o),yC=Y(r.c);
+    s+=`<rect x="${(i*xw+1).toFixed(1)}" y="${Math.min(yO,yC).toFixed(1)}" width="${Math.max(2,xw-2).toFixed(1)}" height="${Math.max(1,Math.abs(yC-yO)).toFixed(1)}" fill="${col}"/>`;
+    const vh=vmax?(r.v||0)/vmax*volH:0;
+    s+=`<rect x="${(i*xw+1).toFixed(1)}" y="${(H-vh).toFixed(1)}" width="${Math.max(2,xw-2).toFixed(1)}" height="${vh.toFixed(1)}" fill="${col}" opacity=".5"/>`;
+  });
+  s+=`<text x="2" y="10" font-size="8" fill="var(--pp-mut)">${fmtN(rawHi*1000)}</text><text x="2" y="${priceH}" font-size="8" fill="var(--pp-mut)">${fmtN(rawLo*1000)}</text>`;
+  return s+"</svg>"+`<div style="font-size:11px;color:var(--pp-mut);margin-top:4px">${esc(rows[0].t)} → ${esc(rows[rows.length-1].t)}</div>`;
+}
+async function loadChart(sym, iv){
+  _chartSym=sym; iv=iv||"1D";
+  document.querySelectorAll("#dIv button").forEach(b=>b.classList.toggle("on", b.textContent===iv));
+  const box=$("dChart"); box.innerHTML='<div class="hint">Đang tải…</div>';
+  try{
+    const j=await api("/ohlcv?symbol="+encodeURIComponent(sym)+"&count=90&interval="+iv);
+    const rows=(j.rows||[]).slice(-60);
+    if(rows.length<2){ box.innerHTML='<div class="hint">Chưa có dữ liệu biểu đồ</div>'; return; }
+    box.innerHTML=chartSvg(rows);
+  }catch(e){
+    box.innerHTML='<div class="hint">'+(String(e.message)==="402"?"Biểu đồ trong phiên cần gói trả phí":"Lỗi tải biểu đồ")+'</div>';
+  }
+}
+document.querySelectorAll("#dIv button").forEach(b=>b.onclick=()=>{ if(_chartSym) loadChart(_chartSym, b.textContent); });
 async function loadFund(sym){
   try{
     const j=await api("/fundamentals?symbol="+encodeURIComponent(sym));
@@ -721,6 +773,10 @@ const I18N_FULL = {
 "Chưa có cảnh báo — thêm mới ở dưới.":["No alerts yet — add below.","暂无提醒 — 在下方添加。","알림이 없습니다 — 아래에서 추가하세요."],
 "Chưa có dữ liệu":["No data","暂无数据","데이터 없음"],
 "Chưa có dữ liệu báo cáo":["No financial statements yet","暂无财报数据","재무제표 데이터 없음"],
+"Chưa có tin":["No news yet","暂无新闻","뉴스 없음"],
+"Chưa có dữ liệu biểu đồ":["No chart data","暂无图表数据","차트 데이터 없음"],
+"Biểu đồ trong phiên cần gói trả phí":["Intraday charts need a paid plan","盘中图表需要付费套餐","장중 차트는 유료 플랜 필요"],
+"Lỗi tải biểu đồ":["Chart load error","图表加载失败","차트 로드 오류"],
 "Chỉ tiêu":["Indicator","指标","지표"],
 "Chỉ số":["Indices","指数","지수"],
 "Chỉ số tự tính (TTM)":["Self-computed ratios (TTM)","自算指标 (TTM)","자체 계산 지표 (TTM)"],
