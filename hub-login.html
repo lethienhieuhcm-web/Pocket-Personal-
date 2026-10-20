@@ -228,10 +228,10 @@ err_google:"Google 로그인을 현재 사용할 수 없습니다",err_failed:"�
 err_login:"로그인 실패",err_send:"코드 전송 실패",err_code_invalid:"코드가 올바르지 않습니다",err_register:"가입 실패"}
 };
 let LANG = "vi";
-try{ const v = localStorage.getItem("elab_uiLang"); if(v) LANG = JSON.parse(v); }catch(e){}
+try{ const v = localStorage.getItem("elab_uiLang"); if(v) LANG = v.replace(/"/g,""); }catch(e){}
 function applyLang(l){
   LANG = l;
-  try{ localStorage.setItem("elab_uiLang", JSON.stringify(l)); }catch(e){}
+  try{ localStorage.setItem("elab_uiLang", l); }catch(e){}
   document.documentElement.lang = l;
   const t = I18N[l] || I18N.en;
   document.title = t.doc_title;

@@ -258,7 +258,7 @@ d_english:"영어 학습: 읽기, 사전, 문장 은행",d_stocks:"베트남 주
 d_chess:"AI와 체스",d_music:"음악, 플레이리스트",d_voice:"베트남어/영어 텍스트 음성 변환",d_browser:"프록시로 웹 탐색",d_talk:"AI와 대화",upgrade:"업그레이드",d_upgrade:"요금제 및 결제 보기",admin:"관리",d_admin:"시스템 관리",update_available:"새 버전 있음",update_btn:"업데이트",update_later:"나중에",
 }};
 function applyHubLang(l){
-  try{ localStorage.setItem("elab_uiLang", JSON.stringify(l)); }catch(e){}
+  try{ localStorage.setItem("elab_uiLang", l); }catch(e){}
   document.documentElement.lang = l;
   document.querySelectorAll("[data-i18n]").forEach(el=>{
     const k = el.dataset.i18n;
@@ -274,7 +274,7 @@ function applyHubLang(l){
 }
 // Expose for lang-dropdown.js
 window.__elabSetLang = applyHubLang;
-(function(){ try{ const v = localStorage.getItem("elab_uiLang"); applyHubLang(v?JSON.parse(v):"vi"); }catch(e){ applyHubLang("vi"); } })();
+(function(){ try{ const v = (localStorage.getItem("elab_uiLang")||"").replace(/"/g,""); applyHubLang(["vi","en","zh","ko"].includes(v)?v:"vi"); }catch(e){ applyHubLang("vi"); } })();
 </script>
 <script src="/english/js/lang-dropdown.js?v=__BUILD__"></script>
 
