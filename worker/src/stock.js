@@ -2,7 +2,7 @@ import { jerr, sJson } from './utils.js';
 import { getSession } from './auth.js';
 import { drizzle } from "drizzle-orm/d1";
 import { eq, and, asc, sql } from "drizzle-orm";
-import { watchlist, portfolioTxns, alerts, targets, pins, ruleAlerts } from "./schema.js";
+import { watchlist, portfolioTxns, alerts, targets, ruleAlerts } from "./schema.js";
 
 /* ================= STOCK (chung khoan VN, R2-backed) ================= */
 /* Market snapshots: stock/market/*.json — VM day len qua POST /api/internal/stock-publish
@@ -895,63 +895,6 @@ export async function hTargetsDel(request, env){
 }
 
 
-/* ---------- PIN lock (UI-only, 4-6 digits, SHA-256 hash) ---------- */
-export async function sha256hex(str){
-  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode("stockpin:"+str));
-  return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,"0")).join("");
-}
-
-export async function d1PinGet(env, email){
-  const db = drizzle(env.DB);
-  const rows = await db.select({ pinHash: pins.pinHash }).from(pins).where(eq(pins.email, email)).limit(1);
-  return rows[0] ? rows[0].pinHash : null;
-}
-export async function d1PinSet(env, email, hash){
-  const db = drizzle(env.DB);
-  await db.insert(pins).values({ email, pinHash: hash, createdAt: Date.now() })
-    .onConflictDoUpdate({ target: pins.email, set: { pinHash: hash, createdAt: Date.now() } });
-}
-export async function d1PinDel(env, email){
-  const db = drizzle(env.DB);
-  await db.delete(pins).where(eq(pins.email, email));
-}
-
-export async function hPinStatus(request, env){
-  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
-  const h = await d1PinGet(env, s.email);
-  return sJson({has_pin: !!h});
-}
-
-export async function hPinSet(request, env){
-  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
-  const b = await request.json().catch(()=>({}));
-  const pin = String(b.pin||"");
-  if(!/^\d{4,6}$/.test(pin)) return jerr("PIN must be 4-6 digits", 400);
-  const curHash = await d1PinGet(env, s.email);
-  if(curHash){
-    const oldPin = String(b.old_pin||"");
-    if(await sha256hex(oldPin)!==curHash) return jerr("Current PIN incorrect", 403);
-  }
-  await d1PinSet(env, s.email, await sha256hex(pin));
-  return sJson({ok:true});
-}
-
-export async function hPinVerify(request, env){
-  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
-  const b = await request.json().catch(()=>({}));
-  const curHash = await d1PinGet(env, s.email);
-  if(!curHash) return sJson({ok:true}); // no PIN set
-  const ok = await sha256hex(String(b.pin||""))===curHash;
-  return sJson({ok});
-}
-
-export async function hPinDel(request, env){
-  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
-  await d1PinDel(env, s.email);
-  return sJson({ok:true});
-}
-
-
 /* ---------- VM day snapshot len (secret, khong can session) ---------- */
 export async function hStockPublish(request, env){
   const got = request.headers.get("X-Publish-Secret") || "";
@@ -1194,7 +1137,7 @@ export async function hMigrateR2ToD1(request, env){
   if(auth !== env.STOCK_PUBLISH_SECRET) return jerr("Forbidden", 403);
   if(!env.DB) return jerr("D1 not bound", 500);
   
-  const stats = {users: 0, watchlist: 0, txns: 0, alerts: 0, targets: 0, pins: 0};
+  const stats = {users: 0, watchlist: 0, txns: 0, alerts: 0, targets: 0};
   
   // List all user emails from R2
   const userEmails = new Set();
@@ -1216,9 +1159,6 @@ export async function hMigrateR2ToD1(request, env){
       uGet(env, email, "alerts", []),
       uGet(env, email, "targets", []),
     ]);
-    // Check pin
-    const pinData = await sGet(env, "users/"+email+"/pin.json").catch(()=>null);
-    
     const now = Date.now();
     const db = drizzle(env.DB);
     // Watchlist
@@ -1259,12 +1199,6 @@ export async function hMigrateR2ToD1(request, env){
         },
       });
       stats.targets++;
-    }
-    // Pin
-    if(pinData && pinData.pin_hash){
-      await db.insert(pins).values({ email, pinHash: pinData.pin_hash, createdAt: now })
-        .onConflictDoUpdate({ target: pins.email, set: { pinHash: pinData.pin_hash, createdAt: now } });
-      stats.pins++;
     }
   }
   
