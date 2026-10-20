@@ -172,6 +172,8 @@ export async function hStockSignals(request, env){
 
 // Lightweight version check for polling (edge-cached 60s)
 // Frontend polls this every 5 min; refreshes market data only when version changes
+const STOCK_BUILD_ID = "__BUILD__"; // cf_deploy thay bang ma ban dung cua lan deploy
+
 export async function hStockVersion(request, env){
   const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
   const cache = caches.default;
@@ -202,7 +204,7 @@ export async function hStockVersion(request, env){
     const m = String(x.source).match(/vnstock(\d+)/g) || [];
     return m.map(t=>t.replace("vnstock",""));
   }))].sort();
-  resp = new Response(JSON.stringify({updated, sources, versions}), {
+  resp = new Response(JSON.stringify({build: STOCK_BUILD_ID, updated, sources, versions}), {
     headers: { "Content-Type": "application/json", "Cache-Control": "public, max-age=60" }
   });
   await cache.put(cacheKey, resp.clone());
