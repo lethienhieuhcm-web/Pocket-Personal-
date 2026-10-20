@@ -1,0 +1,1759 @@
+// js/features/stock.js — Vietnam stocks (R2-backed via worker /api/stock/*).
+import { $, esc, toast } from '../core/dom.js';
+import { state } from '../core/state.js';
+import { apiCall } from '../core/api.js';
+import { getUserKey, saveUserKey, deleteUserKey, getUserModel, saveUserModel, getBaseUrl, saveBaseUrl, getResponseLength, saveResponseLength, getAppEndpoint, saveAppEndpoint, deleteAppEndpoint, getAppModel, saveAppModel, deleteAppModel, getEffectiveEndpoint, getEffectiveModel, isAppCustom, proxyModels, proxyChat } from '../core/aiClient.js';
+import { initByok } from '../shared/byok.js';
+
+/* ---------- i18n (VI/EN/中文/한국어) ---------- */
+const I18N = {
+vi:{
+login_required:"Đăng nhập để xem chứng khoán.",no_data_updating:"Dữ liệu đang cập nhật. Vui lòng đợi.",
+updated:"Cập nhật: ",dataSrc:"Nguồn: ",error:"Lỗi",loading:"Đang tải…",watching:"✓ Đang theo dõi",watch:"+ Theo dõi",
+unwatched:"Đã bỏ theo dõi",watched:"Đã thêm vào theo dõi",chart_fail:"Không tải được biểu đồ.",
+loading_news:"Đang tải tin tức…",no_news:"Chưa có tin tức.",loading_events:"Đang tải sự kiện…",no_events:"Chưa có sự kiện.",
+ex_date:"Ngày GDKHQ",ratio:"Tỷ lệ",per_share:"/cổ phiếu",
+ref_price:"Tham chiếu",open_price:"Mở cửa",high_price:"Cao nhất",low_price:"Thấp nhất",volume:"Khối lượng",value:"Giá trị",billion:"tỷ",
+loading_screener:"Đang tải bộ lọc…",no_data:"Chưa có dữ liệu.",top_movers:"Top tăng / giảm",top_gainers:"Tăng mạnh",top_losers:"Giảm mạnh",market_news:"Tin thị trường",foreign_h:"Khối ngoại",foreign_buy:"Mua",foreign_sell:"Bán",foreign_net:"Ròng",prop_h:"Tự doanh",prop_buy:"Mua",prop_sell:"Bán",prop_net:"Ròng",prop_netval:"GT ròng",prop_date:"Ngày GD",export_csv:"Xuất CSV",
+th_symbol:"Mã",th_score:"Điểm",th_price:"Giá",th_pct:"%",th_pe:"P/E",th_qty:"SL",th_avg_cost:"Giá vốn",th_pl:"Lãi/Lỗ",th_date:"Ngày",th_side:"Mua/Bán",
+select_symbol_first:"Chọn một mã trước",calculating:"Đang tính…",
+bt_strategy:"Chiến lược",bt_buyhold:"Mua & giữ",bt_trades_winrate:"Số lệnh / Tỷ lệ thắng",bt_maxdd:"Lỗ tối đa",
+wl_empty:"Chưa theo dõi mã nào. Thêm từ tab Thị trường.",added:"Đã thêm ",
+pf_total_value:"Tổng giá trị",pf_unrealized:"Lãi/lỗ chưa chốt",pf_realized:"Đã chốt",
+pf_no_positions:"Chưa có vị thế. Thêm giao dịch ở form bên dưới.",
+buy:"Mua",sell:"Bán",no_txns:"Chưa có giao dịch.",del_txn_q:"Xoá giao dịch này?",
+confirm_yes:"Xác nhận",cancel:"Huỷ",save:"Lưu",note_ph:"Ghi chú…",note_updated:"Đã cập nhật ghi chú",
+txn_fill:"Nhập mã, giá, số lượng, ngày",txn_saved_fee:"Đã lưu (phí {fee})",no_data2:"Không có dữ liệu",
+series_market:"Thị trường",series_avgcost:"Giá vốn TB",
+tp_label:"Chốt lời %",sl_label:"Cắt lỗ %",target_set:"Đã đặt mục tiêu cho ",
+premium_locked:"Tính năng này hiện chưa khả dụng.",
+cmp_hint:"Nhập các mã, ví dụ HPG,VCB",downloaded:"Đã tải ",
+no_alerts:"Chưa có cảnh báo.",th_condition:"Điều kiện",
+alert_fill:"Nhập mã và giá",alert_added:"Đã thêm cảnh báo",
+no_targets:"Chưa có mục tiêu. Đặt từ tab Danh mục.",
+th_tp:"Chốt lời",th_sl:"Cắt lỗ",
+ind_on:"✓ Chỉ báo",ind_off:"Chỉ báo",vn_time:"Việt Nam (GMT+7)",
+all_ind:"Tất cả ngành",show_penny:"Hiện penny",
+preset_value:"Giá trị",preset_momentum:"Tăng mạnh",preset_quality:"Chất lượng",
+preset_basic:"Cơ bản",preset_full:"Full",
+indtab_price:"Giá",indtab_label:"Chỉ báo:",
+byok_saved:"Đã lưu khóa",byok_test_ok:"Khóa hoạt động!",byok_test_fail:"Khóa lỗi: ",byok_deleted:"Đã xoá khóa",
+byok_model_select:"Chọn model...",byok_rlen:"Độ dài trả lời",byok_model_custom:"Nhập tay...",byok_model_custom_ph:"Gõ tên model...",byok_custom:"Cài đặt riêng cho app này",byok_shared_hint:"Đang dùng chung với Talk và English Lab",byok_custom_hint:"Đang dùng riêng cho Stocks, không ảnh hưởng app khác",
+suggest_q1:"Giá VCB hôm nay?",suggest_q2:"So sánh VCB và BID",suggest_q3:"VCB có đắt không?",suggest_q4:"Tin mới về VCB?",
+byok_err_invalid_key:"Key không đúng",byok_err_forbidden:"Key bị từ chối",byok_err_no_model:"Không tìm thấy model",
+byok_err_network:"Lỗi mạng",byok_err_network_blocked:"Không kết nối được Google API. Kiểm tra firewall/antivirus, thử mạng khác, hoặc tắt VPN.",byok_err_empty:"Chưa nhập key",
+byok_err_unreachable:"Không lấy được danh sách model. Hãy nhập tên model thủ công ở ô bên dưới.",
+agent_too_long:"Tin nhắn quá dài (tối đa 1000 ký tự)",agent_waiting:"Đang xử lý"},
+en:{
+login_required:"Log in to view stocks.",no_data_updating:"Data is being updated. Please wait.",
+updated:"Updated: ",dataSrc:"Source: ",error:"Error",loading:"Loading…",watching:"✓ Following",watch:"+ Follow",
+unwatched:"Unfollowed",watched:"Added to watchlist",chart_fail:"Chart could not be loaded.",
+loading_news:"Loading news…",no_news:"No news yet.",loading_events:"Loading events…",no_events:"No events yet.",
+ex_date:"Ex-date",ratio:"Ratio",per_share:"/share",
+ref_price:"Reference",open_price:"Open",high_price:"High",low_price:"Low",volume:"Volume",value:"Value",billion:"B",
+loading_screener:"Loading screener…",no_data:"No data yet.",top_movers:"Top gainers / losers",top_gainers:"Top gainers",top_losers:"Top losers",market_news:"Market news",foreign_h:"Foreign Flow",foreign_buy:"Buy",foreign_sell:"Sell",foreign_net:"Net",prop_h:"Proprietary",prop_buy:"Buy",prop_sell:"Sell",prop_net:"Net",prop_netval:"Net value",prop_date:"Trade date",export_csv:"Export CSV",
+th_symbol:"Symbol",th_score:"Score",th_price:"Price",th_pct:"%",th_pe:"P/E",th_qty:"Qty",th_avg_cost:"Avg cost",th_pl:"P&L",th_date:"Date",th_side:"Side",
+select_symbol_first:"Select a symbol first",calculating:"Calculating…",
+bt_strategy:"Strategy",bt_buyhold:"Buy & hold",bt_trades_winrate:"Trades / Winrate",bt_maxdd:"Max drawdown",
+wl_empty:"Not following any symbols. Add from the Market tab.",added:"Added ",
+pf_total_value:"Total value",pf_unrealized:"Unrealized P&L",pf_realized:"Realized",
+pf_no_positions:"No positions. Add a transaction in the form below.",
+buy:"Buy",sell:"Sell",no_txns:"No transactions.",del_txn_q:"Delete this transaction?",
+confirm_yes:"Confirm",cancel:"Cancel",save:"Save",note_ph:"Note…",note_updated:"Note updated",
+txn_fill:"Fill in symbol, price, qty, date",txn_saved_fee:"Saved (fee {fee})",no_data2:"No data",
+series_market:"Market",series_avgcost:"Avg cost",
+tp_label:"Take profit %",sl_label:"Stop loss %",target_set:"Target set for ",
+premium_locked:"This feature is not available right now.",
+cmp_hint:"Enter symbols, e.g. HPG,VCB",downloaded:"Downloaded ",
+no_alerts:"No alerts.",th_condition:"Condition",
+alert_fill:"Fill in symbol and price",alert_added:"Alert added",
+no_targets:"No targets. Set them from the Portfolio tab.",
+th_tp:"Take profit",th_sl:"Stop loss",
+ind_on:"✓ Indicators",ind_off:"Indicators",vn_time:"Vietnam (GMT+7)",
+all_ind:"All sectors",show_penny:"Show penny",
+preset_value:"Value",preset_momentum:"Top gainers",preset_quality:"Quality",
+preset_basic:"Basic",preset_full:"Full",
+indtab_price:"Price",indtab_label:"Indicators:",
+byok_saved:"Key saved",byok_test_ok:"Key works!",byok_test_fail:"Key failed: ",byok_deleted:"Key deleted",
+byok_model_select:"Select model...",byok_rlen:"Response length",byok_model_custom:"Enter manually...",byok_model_custom_ph:"Type model name...",byok_custom:"Custom settings for this app",byok_shared_hint:"Shared with Talk and English Lab",byok_custom_hint:"Using custom settings for Stocks, other apps unaffected",
+suggest_q1:"VCB price today?",suggest_q2:"Compare VCB and BID",suggest_q3:"Is VCB expensive?",suggest_q4:"Latest VCB news?",
+byok_err_invalid_key:"Invalid key",byok_err_forbidden:"Key rejected",byok_err_no_model:"No model found",
+byok_err_network:"Network error",byok_err_network_blocked:"Cannot reach Google API. Check firewall/antivirus, try another network, or disable VPN.",byok_err_empty:"No key entered",
+byok_err_unreachable:"Could not fetch model list. Please enter the model name manually below.",
+agent_too_long:"Message too long (max 1000 chars)",agent_waiting:"Processing"},
+zh:{
+login_required:"登录后查看股票。",no_data_updating:"数据正在更新，请稍候。",
+updated:"更新时间：",dataSrc:"数据源：",error:"错误",loading:"加载中…",watching:"✓ 已关注",watch:"+ 关注",
+unwatched:"已取消关注",watched:"已加入关注",chart_fail:"图表加载失败。",
+loading_news:"正在加载新闻…",no_news:"暂无新闻。",loading_events:"正在加载事件…",no_events:"暂无事件。",
+ex_date:"除权日",ratio:"比例",per_share:"/股",
+ref_price:"参考价",open_price:"开盘",high_price:"最高",low_price:"最低",volume:"成交量",value:"成交额",billion:"十亿",
+loading_screener:"正在加载筛选器…",no_data:"暂无数据。",top_movers:"涨跌榜",top_gainers:"涨幅榜",top_losers:"跌幅榜",market_news:"市场新闻",foreign_h:"外资",foreign_buy:"买入",foreign_sell:"卖出",foreign_net:"净",prop_h:"自营",prop_buy:"买入",prop_sell:"卖出",prop_net:"净",prop_netval:"净值",prop_date:"交易日",export_csv:"导出CSV",
+th_symbol:"代码",th_score:"评分",th_price:"价格",th_pct:"%",th_pe:"市盈率",th_qty:"数量",th_avg_cost:"平均成本",th_pl:"盈亏",th_date:"日期",th_side:"方向",
+select_symbol_first:"请先选择一只股票",calculating:"计算中…",
+bt_strategy:"策略",bt_buyhold:"买入持有",bt_trades_winrate:"交易次数 / 胜率",bt_maxdd:"最大回撤",
+wl_empty:"尚未关注任何股票，请从市场页添加。",added:"已添加 ",
+pf_total_value:"总市值",pf_unrealized:"浮动盈亏",pf_realized:"已实现盈亏",
+pf_no_positions:"暂无持仓，请在下方表单添加交易。",
+buy:"买入",sell:"卖出",no_txns:"暂无交易记录。",del_txn_q:"删除这笔交易？",
+confirm_yes:"确认",cancel:"取消",save:"保存",note_ph:"备注…",note_updated:"备注已更新",
+txn_fill:"请填写代码、价格、数量、日期",txn_saved_fee:"已保存（手续费 {fee}）",no_data2:"无数据",
+series_market:"市场价",series_avgcost:"平均成本",
+tp_label:"止盈 %",sl_label:"止损 %",target_set:"已为 ",
+premium_locked:"该功能目前不可用。",
+cmp_hint:"输入代码，例如 HPG,VCB",downloaded:"已下载 ",
+no_alerts:"暂无提醒。",th_condition:"条件",
+alert_fill:"请填写代码和价格",alert_added:"提醒已添加",
+no_targets:"暂无目标，请从投资组合页设置。",
+th_tp:"止盈",th_sl:"止损",
+ind_on:"✓ 指标",ind_off:"指标",vn_time:"越南 (GMT+7)",
+all_ind:"所有行业",show_penny:"显示仙股",
+preset_value:"价值",preset_momentum:"涨幅榜",preset_quality:"优质",
+preset_basic:"基础",preset_full:"全部",
+indtab_price:"价格",indtab_label:"指标：",
+byok_saved:"已保存密钥",byok_test_ok:"密钥有效!",byok_test_fail:"密钥失败: ",byok_deleted:"已删除密钥",
+byok_model_select:"选择模型...",byok_rlen:"回答长度",byok_model_custom:"手动输入...",byok_model_custom_ph:"输入模型名称...",byok_custom:"此应用的自定义设置",byok_shared_hint:"与 Talk 和 English Lab 共享",byok_custom_hint:"Stocks 使用自定义设置，不影响其他应用",
+suggest_q1:"VCB今日价格？",suggest_q2:"比较VCB和BID",suggest_q3:"VCB贵吗？",suggest_q4:"VCB最新消息？",
+byok_err_invalid_key:"密钥无效",byok_err_forbidden:"密钥被拒绝",byok_err_no_model:"未找到模型",
+byok_err_network:"网络错误",byok_err_network_blocked:"无法连接Google API。请检查防火墙/杀毒软件，尝试其他网络，或关闭VPN。",byok_err_empty:"未输入密钥",
+byok_err_unreachable:"无法获取模型列表。请在下方手动输入模型名称。",
+agent_too_long:"消息太长（最多1000个字符）",agent_waiting:"处理中"},
+ko:{
+login_required:"로그인 후 주식을 확인하세요。",no_data_updating:"데이터를 업데이트 중입니다. 잠시만 기다려 주세요.",
+updated:"업데이트: ",dataSrc:"데이터 출처: ",error:"오류",loading:"불러오는 중…",watching:"✓ 팔로우 중",watch:"+ 팔로우",
+unwatched:"팔로우를 해제했습니다",watched:"관심 목록에 추가했습니다",chart_fail:"차트를 불러오지 못했습니다.",
+loading_news:"뉴스를 불러오는 중…",no_news:"아직 뉴스가 없습니다.",loading_events:"이벤트를 불러오는 중…",no_events:"아직 이벤트가 없습니다.",
+ex_date:"배당락일",ratio:"비율",per_share:"/주",
+ref_price:"기준가",open_price:"시가",high_price:"고가",low_price:"저가",volume:"거래량",value:"거래대금",billion:"십억",
+loading_screener:"스크리너를 불러오는 중…",no_data:"아직 데이터가 없습니다.",top_movers:"상승/하락 Top",top_gainers:"급등",top_losers:"급락",market_news:"시장 뉴스",foreign_h:"외국인",foreign_buy:"매수",foreign_sell:"매도",foreign_net:"순",prop_h:"자기매매",prop_buy:"매수",prop_sell:"매도",prop_net:"순",prop_netval:"순액",prop_date:"거래일",export_csv:"CSV 내보내기",
+th_symbol:"종목",th_score:"점수",th_price:"가격",th_pct:"%",th_pe:"PER",th_qty:"수량",th_avg_cost:"평균 단가",th_pl:"손익",th_date:"날짜",th_side:"구분",
+select_symbol_first:"먼저 종목을 선택하세요",calculating:"계산 중…",
+bt_strategy:"전략",bt_buyhold:"바이앤홀드",bt_trades_winrate:"거래 수 / 승률",bt_maxdd:"최대 낙폭",
+wl_empty:"팔로우 중인 종목이 없습니다. 시장 탭에서 추가하세요.",added:"추가됨: ",
+pf_total_value:"총 평가금액",pf_unrealized:"평가손익",pf_realized:"실현손익",
+pf_no_positions:"보유 종목이 없습니다. 아래 양식에서 거래를 추가하세요.",
+buy:"매수",sell:"매도",no_txns:"거래 내역이 없습니다.",del_txn_q:"이 거래를 삭제하시겠습니까?",
+confirm_yes:"확인",cancel:"취소",save:"저장",note_ph:"메모…",note_updated:"메모가 업데이트되었습니다",
+txn_fill:"종목, 가격, 수량, 날짜를 입력하세요",txn_saved_fee:"저장됨 (수수료 {fee})",no_data2:"데이터 없음",
+series_market:"시장가",series_avgcost:"평균 단가",
+tp_label:"익절 %",sl_label:"손절 %",target_set:"목표가 설정됨: ",
+premium_locked:"이 기능은 현재 사용할 수 없습니다.",
+cmp_hint:"종목을 입력하세요 (예: HPG,VCB)",downloaded:"다운로드됨: ",
+no_alerts:"알림이 없습니다.",th_condition:"조건",
+alert_fill:"종목과 가격을 입력하세요",alert_added:"알림이 추가되었습니다",
+no_targets:"목표가가 없습니다. 포트폴리오 탭에서 설정하세요.",
+th_tp:"익절",th_sl:"손절",
+ind_on:"✓ 지표",ind_off:"지표",vn_time:"베트남 (GMT+7)",
+all_ind:"모든 업종",show_penny:"페니주 표시",
+preset_value:"가치",preset_momentum:"상승률",preset_quality:"우량",
+preset_basic:"기본",preset_full:"전체",
+indtab_price:"가격",indtab_label:"지표:",
+byok_saved:"키 저장됨",byok_test_ok:"키가 작동합니다!",byok_test_fail:"키 실패: ",byok_deleted:"키 삭제됨",
+byok_model_select:"모델 선택...",byok_rlen:"답변 길이",byok_model_custom:"직접 입력...",byok_model_custom_ph:"모델 이름 입력...",byok_custom:"이 앱의 사용자 설정",byok_shared_hint:"Talk 및 English Lab과 공유",byok_custom_hint:"Stocks에 사용자 설정 사용 중, 다른 앱에 영향 없음",
+suggest_q1:"오늘 VCB 가격?",suggest_q2:"VCB와 BID 비교",suggest_q3:"VCB가 비싼가요?",suggest_q4:"VCB 최신 뉴스?",
+byok_err_invalid_key:"키가 유효하지 않음",byok_err_forbidden:"키 거부됨",byok_err_no_model:"모델을 찾을 수 없음",
+byok_err_network:"네트워크 오류",byok_err_network_blocked:"Google API에 연결할 수 없습니다. 방화벽/백신을 확인하고, 다른 네트워크를 시도하거나 VPN을 끄세요.",byok_err_empty:"키를 입력하지 않음",
+byok_err_unreachable:"모델 목록을 가져올 수 없습니다. 아래에 모델 이름을 수동으로 입력하세요.",
+agent_too_long:"메시지가 너무 깁니다 (최대 1000자)",agent_waiting:"처리 중"}
+};
+let LANG = "vi";
+try{ const v = localStorage.getItem("elab_uiLang"); if(v) LANG = v.replace(/"/g,""); }catch(e){}
+const LOCALES = {vi:"vi-VN", en:"en-US", zh:"zh-CN", ko:"ko-KR"};
+function t(key){ return (I18N[LANG]&&I18N[LANG][key]) || I18N.en[key] || key; }
+
+let chart = null;
+let curSymbol = null;
+let stkTab = "market";
+
+async function sApi(path, opts={}){
+  if(!state.authToken){ throw new Error("Login required"); }
+  return apiCall("/api/stock"+path, opts);
+}
+const fmtN = n => n==null ? "—" : Number(n).toLocaleString("en-US");
+const fmtPct = p => p==null ? "—" : (p>0?"+":"")+Number(p).toFixed(2)+"%";
+const pcCls = p => p>0?"up":p<0?"dn":"";
+// Nhan nguon du lieu than thien: "direct:vci"/"direct:kbs" -> "trực tiếp",
+// "vnstock/4.0.9" -> "vnstock 4". Khong lo ten ky thuat ra UI.
+const srcLabel = pv => {
+  if(!pv) return "vnstock";
+  const vm = /vnstock[\/_]?(\d)/i.exec(pv);
+  if(vm) return "vnstock "+vm[1];
+  if(pv.indexOf("direct:")===0) return "trực tiếp";
+  return pv;
+};
+
+export function bindStock(){
+  const inp = $("stkSearch");
+  if(inp){
+    let timer = null;
+    inp.addEventListener("input", ()=>{
+      clearTimeout(timer);
+      timer = setTimeout(()=>stockSearch(inp.value.trim().toUpperCase()), 300);
+    });
+    inp.addEventListener("keydown", e=>{
+      if(e.key==="Enter"){ const v=inp.value.trim().toUpperCase(); if(v) openSymbol(v); }
+    });
+  }
+  const btn = $("stkSearchBtn");
+  if(btn) btn.onclick = ()=>{ const v=$("stkSearch").value.trim().toUpperCase(); if(v) openSymbol(v); };
+  // sub-tabs
+  document.querySelectorAll(".stktab").forEach(b=>{
+    b.onclick = ()=>{ stkTab = b.dataset.t; renderStockTab(); };
+  });
+  // top movers exchange filter
+  const tex = $("topEx");
+  if(tex) tex.addEventListener("change", renderTopMovers);
+  // watchlist add
+  const wbtn = $("wlAddBtn");
+  if(wbtn) wbtn.onclick = addWatchlist;
+  // txn form
+  const tbtn = $("txnAddBtn");
+  if(tbtn) tbtn.onclick = addTxn;
+  // alert form
+  const abtn = $("alAddBtn");
+  if(abtn) abtn.onclick = addAlert;
+  // backtest
+  const bbtn = $("btRunBtn");
+  if(bbtn) bbtn.onclick = runBacktest;
+  // compare (premium)
+  const cbtn = $("cmpBtn");
+  if(cbtn) cbtn.onclick = async ()=>{
+    if(await isFreeUser()){ showUpgradeToast(); return; }
+    runCompare();
+  };
+  // export (premium)
+  const epbtn = $("expPosBtn");
+  if(epbtn) epbtn.onclick = async ()=>{ if(await isFreeUser()){ showUpgradeToast(); return; } exportCSV("positions"); };
+  const etbtn = $("expTxnBtn");
+  if(etbtn) etbtn.onclick = async ()=>{ if(await isFreeUser()){ showUpgradeToast(); return; } exportCSV("transactions"); };
+  // interval buttons
+  document.querySelectorAll("[data-iv]").forEach(b=>{
+    b.onclick = ()=>{
+      document.querySelectorAll("[data-iv]").forEach(x=>x.classList.toggle("active", x===b));
+      curIv = b.dataset.iv;
+      if(curSymbol) loadChart(curSymbol, curIv);
+    };
+  });
+  // FireAnt-style detail tabs
+  document.querySelectorAll("[data-ft]").forEach(b=>{
+    b.onclick = ()=>{
+      document.querySelectorAll("[data-ft]").forEach(x=>x.classList.toggle("active", x===b));
+      const ft = b.dataset.ft;
+      $("fadOv").style.display = ft==="ov"?"":"none";
+      $("fadNews").style.display = ft==="news"?"":"none";
+      $("fadFund").style.display = ft==="fund"?"":"none";
+      $("fadFlow").style.display = ft==="flow"?"":"none";
+      $("fadBt").style.display = ft==="bt"?"":"none";
+      if(curSymbol && (ft==="news"||ft==="fund") && !loadedTabs[curSymbol].tabs){
+        loadedTabs[curSymbol].tabs = true;
+        loadNewsEvents(curSymbol);
+      }
+      if(curSymbol && ft==="flow" && !loadedTabs[curSymbol].flow){
+        loadedTabs[curSymbol].flow = true;
+        loadFlow(curSymbol);
+      }
+      if(ft==="ov" && curSymbol) loadChart(curSymbol, curIv);
+    };
+  });
+  // back button
+  const bk = $("stkBack");
+  if(bk) bk.onclick = ()=>{ $("stkDetail").style.display = "none"; curSymbol = null; };
+  // indicator mode toggle
+  const itg = $("indToggle");
+  if(itg) itg.onclick = ()=>{
+    indMode = !indMode;
+    itg.classList.toggle("primary", indMode);
+    itg.textContent = indMode ? t("ind_on") : t("ind_off");
+    if(curSymbol) loadChart(curSymbol, curIv);
+  };
+  // alert button in detail -> alerts tab with symbol prefilled
+  const agb = $("alGoBtn");
+  if(agb) agb.onclick = ()=>{
+    stkTab = "alert"; renderStockTab();
+    setTimeout(()=>{ const i=$("alSym"); if(i && curSymbol) i.value = curSymbol; }, 60);
+  };
+  // screener filter — auto-filter on change (2026-10-09: no button press needed)
+  const sbtn = $("scrBtn");
+  if(sbtn) sbtn.onclick = renderScreener;
+  for(const id of ["scrEx","scrInd"]){
+    const el = $(id);
+    if(el) el.addEventListener("change", renderScreener);
+  }
+  for(const id of ["scrMinPct","scrMinScore"]){
+    const el = $(id);
+    if(el) el.addEventListener("change", renderScreener);
+  }
+  // Preset buttons (2026-10-09): one-tap filter templates
+  document.querySelectorAll("[data-preset]").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      const p = btn.getAttribute("data-preset");
+      // Toggle: click again to clear
+      window._stkPreset = (window._stkPreset===p) ? "" : p;
+      document.querySelectorAll("[data-preset]").forEach(b=>
+        b.classList.toggle("primary", b.getAttribute("data-preset")===window._stkPreset));
+      renderScreener();
+    });
+  });
+}
+
+export async function renderStock(){
+  if(!state.authToken){
+    $("stkMain").innerHTML = '<div class="hint">'+t("login_required")+'</div>';
+    return;
+  }
+  renderStockTab();
+}
+
+// Called when Ably push "market update" arrives: refresh market tab silently
+export function refreshMarketOnPush(){
+  if(stkTab==="market" && state.authToken){
+    renderIndices();
+    renderScreener();
+  }
+}
+
+function renderStockTab(){
+  document.querySelectorAll(".stktab").forEach(b=> b.classList.toggle("active", b.dataset.t===stkTab));
+  ["market","watch","port","alert","agent","screen","signals"].forEach(n=>{
+    const el = $("stkTab"+n[0].toUpperCase()+n.slice(1));
+    if(el) el.style.display = n===stkTab ? "" : "none";
+  });
+  if(stkTab==="market"){ renderIndices(); renderRegime(); renderScreener(); renderTopMovers(); renderMarketNews(); }
+  if(stkTab==="screen"){ renderScreenTab(); }
+  if(stkTab==="signals"){ renderSignalsTab(); }
+  if(stkTab==="watch") renderWatchlist();
+  if(stkTab==="port") renderPortfolio();
+  if(stkTab==="alert"){ renderAlerts(); renderTargets(); }
+  if(stkTab==="agent") initAgentChat();
+}
+
+/* ---------- market ---------- */
+async function renderIndices(){
+  const box = $("stkIndices");
+  if(!box) return;
+  box.innerHTML = '<div style="display:flex;gap:8px;flex-wrap:wrap">'
+    + '<div class="pp-skeleton" style="width:110px;height:66px"></div>'
+    + '<div class="pp-skeleton" style="width:110px;height:66px"></div>'
+    + '<div class="pp-skeleton" style="width:110px;height:66px"></div></div>';
+  try{
+    const j = await sApi("/indices");
+    if(!j.rows.length){ box.innerHTML = '<div class="hint">'+t("no_data_updating")+'</div>'; return; }
+    box.innerHTML = j.rows.map(r=>{
+      const pc = r.pct_change, cls = pc>0?"up":pc<0?"down":"";
+      const arrow = pc>0?"▲":pc<0?"▼":"—";
+      return `<div class="idxcard"><div class="s">${esc(r.symbol)}</div>`
+        + `<div class="p">${r.close!=null?fmtN(r.close):"—"}</div>`
+        + `<div class="c ${cls}">${arrow} ${fmtPct(pc)}</div></div>`;
+    }).join("");
+    const upd = j.updated ? new Date(j.updated) : null;
+    // Nhan nguon du lieu (hoc tu vnstock 5: provenance). _prov co tu worker sau build 20261018084500.
+    const gen = srcLabel(j._prov && j._prov.source);
+    const srcEl = $("stkSrc");
+    if(srcEl) srcEl.textContent = (gen ? t("dataSrc")+gen : "") + (upd ? " · "+upd.toLocaleString(LOCALES[LANG]||"en-US") : "");
+  }catch(e){ box.innerHTML = '<div class="hint">'+t("error")+": "+esc(e.message)+'</div>'; }
+}
+
+// --- Tu chu: market regime banner (backend scripts/market_regime.py)
+async function renderRegime(){
+  const card = $("stkRegimeCard"), box = $("stkRegime");
+  if(!card || !box) return;
+  try{
+    const j = await sApi("/regime");
+    if(!j.regime){ card.style.display = "none"; return; }
+    const b = j.breadth || {};
+    const nn = j.foreign_net_vnd != null
+      ? (j.foreign_net_vnd >= 0 ? "+" : "") + (j.foreign_net_vnd/1e9).toFixed(0) + " tỷ"
+      : "—";
+    const nnCls = (j.foreign_net_vnd||0) >= 0 ? "up" : "down";
+    box.innerHTML =
+      '<div class="t">'+esc(j.emoji||"")+' '+esc(j.regime||"")+' — '+esc(j.desc||"")+'</div>'
+      + '<div class="d">Breadth: '+(b.up||0)+' tăng / '+(b.down||0)+' giảm'
+      + ' · VNINDEX '+(j.above_ma50?"trên":"dưới")+' MA50'
+      + ' · NN <span class="'+nnCls+'">'+esc(nn)+'</span></div>';
+    card.style.display = "";
+  }catch(e){ card.style.display = "none"; }
+}
+
+// --- Tu chu: tab Sang loc + Tin hieu (Dot 1)
+async function renderScreenTab(){
+  const box = $("stkScreen"); if(!box) return;
+  try{
+    const j = await sApi("/screener");
+    const rows = j.rows||[];
+    if(!rows.length){ box.innerHTML = '<div class="hint">Chưa có dữ liệu</div>'; return; }
+    box.innerHTML = '<div style="overflow-x:auto"><table style="width:100%;font-size:12px">'
+      + '<tr><th>Mã</th><th>Giá</th><th>+/−</th><th>Trend</th></tr>'
+      + rows.slice(0,50).map(r=>{
+          const pc = r.pct_change, cls = pc>0?"up":pc<0?"down":"";
+          const tr = r.trend_template===true ? '<span class="up">✓</span>'
+                   : r.trend_template===false ? '<span class="down">✗</span>' : "—";
+          return '<tr><td><b class="symlink" data-sym="'+esc(r.symbol)+'">'+esc(r.symbol)+'</b></td>'
+            + '<td>'+(r.close??"—")+'</td><td class="'+cls+'">'+fmtPct(pc)+'</td><td>'+tr+'</td></tr>';
+        }).join("") + '</table></div>';
+    $("stkScreenUpd").textContent = (j.updated ? t("updated")+new Date(j.updated).toLocaleString() : "") + " · Nguồn: tự tính";
+    box.querySelectorAll(".symlink").forEach(a=> a.onclick = ()=>openSymbol(a.dataset.sym));
+  }catch(e){ box.innerHTML = '<div class="hint">Lỗi tải dữ liệu</div>'; }
+}
+async function renderSignalsTab(){
+  const box = $("stkSignals"); if(!box) return;
+  const patName = {trend_crossover:"Trend Crossover", bollinger_squeeze:"Bollinger Squeeze",
+    episodic_pivot:"Episodic Pivot", momentum_pullback:"Momentum Pullback"};
+  try{
+    const j = await sApi("/signals");
+    const sigs = j.signals||[];
+    if(!sigs.length){ box.innerHTML = '<div class="hint">Hôm nay chưa có tín hiệu mới</div>'; }
+    else box.innerHTML = sigs.map(s=>
+      '<div class="frow" style="gap:10px;padding:8px 0;border-bottom:1px solid var(--pp-border)">'
+      + '<b class="symlink" data-sym="'+esc(s.symbol)+'">'+esc(s.symbol)+'</b>'
+      + '<div><div style="font-weight:600;font-size:13px">'+esc(patName[s.pattern]||s.pattern)+'</div>'
+      + '<div class="hint">'+esc(s.desc||"")+' · '+esc((s.time||"").slice(0,16))+'</div></div></div>'
+    ).join("");
+    $("stkSignalsUpd").textContent = (j.updated ? t("updated")+new Date(j.updated).toLocaleString() : "") + " · Nguồn: tự tính";
+    box.querySelectorAll(".symlink").forEach(a=> a.onclick = ()=>openSymbol(a.dataset.sym));
+  }catch(e){ box.innerHTML = '<div class="hint">Lỗi tải dữ liệu</div>'; }
+}
+
+async function stockSearch(q){
+  const box = $("stkSearchRes");
+  if(!box || !q){ if(box) box.innerHTML=""; return; }
+  try{
+    const j = await sApi("/symbols");
+    const rows = (j.rows||[]).filter(r=>r.symbol.includes(q)).slice(0,8);
+    box.innerHTML = rows.map(r=>
+      `<div class="stkres" data-sym="${esc(r.symbol)}"><b>${esc(r.symbol)}</b> <span class="hint">${esc(r.exchange||"")}</span></div>`
+    ).join("");
+    box.querySelectorAll(".stkres").forEach(d=> d.onclick = ()=>openSymbol(d.dataset.sym));
+  }catch(e){ /* silent */ }
+}
+
+let curIv = "1D";
+let indMode = false; // false: MA+Volume (FireAnt default) · true: RSI/MACD/Bollinger
+let exMap = null; // symbol -> exchange cache
+let loadedTabs = {}; // sym -> {news:bool}
+
+async function getEx(sym){
+  if(!exMap){
+    try{
+      const j = await sApi("/symbols");
+      exMap = {};
+      (j.rows||[]).forEach(r=>{ exMap[r.symbol]=r.exchange; });
+    }catch(e){ exMap = {}; }
+  }
+  return exMap[sym]||"";
+}
+
+export async function openSymbol(sym){
+  curSymbol = sym;
+  curIv = "1D"; indMode = false;
+  loadedTabs[sym] = {};
+  // switch to market tab to show detail
+  stkTab = "market"; renderStockTab();
+  setTimeout(async ()=>{
+    $("stkDetail").style.display = "";
+    $("stkDetailSym").textContent = sym;
+    $("stkDetailEx").textContent = "";
+    $("stkSearchRes").innerHTML = "";
+    $("stkSearch").value = sym;
+    // reset fad tabs to overview
+    document.querySelectorAll("[data-ft]").forEach(x=>x.classList.toggle("active", x.dataset.ft==="ov"));
+    ["fadOv","fadNews","fadFund","fadFlow","fadBt"].forEach((id,i)=>{ $(id).style.display = i===0?"":"none"; });
+    getEx(sym).then(ex=>{ $("stkDetailEx").textContent = "("+ex+")"; });
+    await loadSymHead(sym);
+    await loadChart(sym, curIv);
+    $("stkDetail").scrollIntoView({block:"start"});
+  }, 50);
+}
+
+async function loadSymHead(sym){
+  try{
+    const q = await sApi("/quote?symbol="+encodeURIComponent(sym));
+    const pc = q.pct_change, cls = pcCls(pc);
+    const chg = (q.change!=null?q.change:"—");
+    $("stkPx").textContent = q.close??"—";
+    $("stkPx").className = "fadpx "+cls;
+    $("stkChg").textContent = `${chg} (${fmtPct(pc)})`;
+    $("stkChg").className = "fadchg "+cls;
+    $("stkTime").textContent = new Date().toLocaleTimeString(LOCALES[LANG]||"en-US",{timeZone:"Asia/Ho_Chi_Minh",hour12:false})+" | "+t("vn_time");
+    // --- Tu chu: bang gia live (bid/ask + NN hom nay)
+    try{
+      const lb = $("stkLiveBox"), lx = $("stkLive");
+      if(lb && lx){
+        const bid = q.bid||[], ask = q.ask||[];
+        const fB = q.foreign_buy_value??q.foreign_buy_volume, fS = q.foreign_sell_value??q.foreign_sell_volume;
+        const hasBA = (bid.length||ask.length);
+        if(hasBA || fB!=null){
+          const bTxt = bid.slice(0,3).map(b=>Array.isArray(b)?b[0]:b).filter(x=>x!=null).join(" / ")||"—";
+          const aTxt = ask.slice(0,3).map(a=>Array.isArray(a)?a[0]:a).filter(x=>x!=null).join(" / ")||"—";
+          lx.innerHTML = '<div class="frow" style="gap:12px;font-size:12px;flex-wrap:wrap">'
+            + (hasBA?'<span>Mua: <b class="up">'+esc(bTxt)+'</b></span><span>Bán: <b class="down">'+esc(aTxt)+'</b></span>':"")
+            + (fB!=null?'<span>NN mua: <b class="up">'+esc(String(fB))+'</b> · NN bán: <b class="down">'+esc(String(fS??"—"))+'</b></span>':"")
+            + '</div><div class="hint" style="margin-top:4px">Nguồn: '+srcLabel(q._prov&&q._prov.source)+'</div>';
+          lb.style.display = "";
+        } else lb.style.display = "none";
+      }
+    }catch(e){}
+    let inWl = false;
+    try{ const wl = await sApi("/watchlist"); inWl = wl.includes(sym); }catch(e){}
+    const wbtn = $("wlToggle2");
+    wbtn.textContent = inWl?t("watching"):t("watch");
+    wbtn.onclick = async ()=>{
+      try{
+        if(inWl){ await sApi("/watchlist/"+sym, {method:"DELETE"}); toast(t("unwatched")); }
+        else{ await sApi("/watchlist", {method:"POST", body:JSON.stringify({symbol:sym})}); toast(t("watched")); }
+        loadSymHead(sym);
+      }catch(e){ toast(t("error")+": "+e.message); }
+    };
+  }catch(e){
+    $("stkPx").textContent = "—";
+    $("stkChg").textContent = esc(e.message);
+  }
+}
+
+// simple moving average over numeric array (null until warm)
+function smaArr(vals, n){
+  const out = new Array(vals.length).fill(null);
+  let sum = 0;
+  for(let i=0;i<vals.length;i++){
+    sum += vals[i];
+    if(i>=n) sum -= vals[i-n];
+    if(i>=n-1) out[i] = sum/n;
+  }
+  return out;
+}
+
+async function loadNewsEvents(sym){
+// --- Tu chu: tab Dong tien (foreign + proprietary history)
+async function loadFlow(sym){
+  const fbox = $("stkFlowForeign"), pbox = $("stkFlowProp");
+  const fmtT = v => v==null ? "—" : (v>=0?"+":"")+(v/1e9).toFixed(1)+" tỷ";
+  if(fbox){
+    try{
+      const j = await sApi("/foreign-flow/history?symbol="+encodeURIComponent(sym)+"&limit=20");
+      const rows = j.rows||[];
+      if(!rows.length){ fbox.innerHTML = '<div class="hint">Chưa có dữ liệu</div>'; }
+      else{
+        const maxV = Math.max(...rows.map(r=>Math.abs(r.net_value_est||0)), 1);
+        fbox.innerHTML = rows.map(r=>{
+          const v = r.net_value_est||0, h = Math.max(4, Math.abs(v)/maxV*60);
+          const cls = v>=0 ? "up" : "down";
+          return '<div class="frow" style="gap:8px;align-items:center;font-size:12px">'
+            + '<span class="hint" style="width:52px">'+esc((r.trade_date||"").slice(5))+'</span>'
+            + '<div style="flex:1;background:var(--pp-card,#1a2030);border-radius:4px;height:14px;position:relative">'
+            + '<div class="'+cls+'" style="height:14px;border-radius:4px;width:'+h+'%"></div></div>'
+            + '<span class="'+cls+'" style="width:70px;text-align:right">'+fmtT(v)+'</span></div>';
+        }).join("");
+        const tot = rows.reduce((a,r)=>a+(r.net_value_est||0),0);
+        fbox.innerHTML += '<div class="hint" style="margin-top:6px">Tổng 20 phiên: <b class="'+(tot>=0?"up":"down")+'">'+fmtT(tot)+'</b></div>';
+      }
+    }catch(e){ fbox.innerHTML = '<div class="hint">Lỗi tải dữ liệu</div>'; }
+  }
+  if(pbox){
+    try{
+      const j = await sApi("/proprietary-flow/history?symbol="+encodeURIComponent(sym)+"&limit=20");
+      const rows = j.rows||j.items||[];
+      if(!rows.length){ pbox.innerHTML = '<div class="hint">Chưa có dữ liệu</div>'; }
+      else{
+        const maxV = Math.max(...rows.map(r=>Math.abs(r.net_value||r.net||0)), 1);
+        pbox.innerHTML = rows.map(r=>{
+          const v = r.net_value??r.net??0, h = Math.max(4, Math.abs(v)/maxV*60);
+          const cls = v>=0 ? "up" : "down";
+          return '<div class="frow" style="gap:8px;align-items:center;font-size:12px">'
+            + '<span class="hint" style="width:52px">'+esc((r.trade_date||r.date||"").slice(5))+'</span>'
+            + '<div style="flex:1;background:var(--pp-card,#1a2030);border-radius:4px;height:14px;position:relative">'
+            + '<div class="'+cls+'" style="height:14px;border-radius:4px;width:'+h+'%"></div></div>'
+            + '<span class="'+cls+'" style="width:70px;text-align:right">'+fmtT(v)+'</span></div>';
+        }).join("");
+      }
+    }catch(e){ pbox.innerHTML = '<div class="hint">Lỗi tải dữ liệu</div>'; }
+  }
+}
+async function loadNewsEvents(sym){
+  // news
+  const nbox = $("stkNews");
+  if(nbox){
+    nbox.innerHTML = '<div class="hint">'+t("loading_news")+'</div>';
+    try{
+      const j = await sApi("/news?symbol="+encodeURIComponent(sym));
+      const items = j.items||[];
+      nbox.innerHTML = items.length ? items.slice(0,8).map(n=>
+        `<div class="stknews"><a href="${esc(n.url||"#")}" target="_blank" rel="noopener"><b>${esc(n.title||"")}</b></a><div class="hint">${esc(n.publish_time||"")}</div></div>`
+      ).join("") : '<div class="hint">'+t("no_news")+'</div>';
+    }catch(e){ nbox.innerHTML = '<div class="hint">—</div>'; }
+  }
+  // events
+  const ebox = $("stkEvents");
+  if(ebox){
+    ebox.innerHTML = '<div class="hint">'+t("loading_events")+'</div>';
+    try{
+      const j = await sApi("/events?symbol="+encodeURIComponent(sym));
+      const items = j.items||[];
+      nbox && (nbox.innerHTML = nbox.innerHTML); // no-op
+      ebox.innerHTML = items.length ? items.slice(0,10).map(ev=>
+        `<div class="stkev"><b>${esc(ev.name||"")}</b><div>${esc(ev.title||"")}</div><div class="hint">${t("ex_date")}: ${esc(ev.exright_date||ev.date||"—")}${ev.value_per_share?` · ${esc(String(ev.value_per_share))}${t("per_share")}`:""}${ev.exercise_ratio?` · ${t("ratio")} ${esc(ev.exercise_ratio)}`:""}</div></div>`
+      ).join("") : '<div class="hint">'+t("no_events")+'</div>';
+    }catch(e){ ebox.innerHTML = '<div class="hint">—</div>'; }
+  }
+  // fundamentals
+  const fbox = $("stkFund");
+  if(fbox){
+    try{
+      const f = await sApi("/fundamentals?symbol="+encodeURIComponent(sym));
+      const q = await sApi("/quote?symbol="+encodeURIComponent(sym)).catch(()=>({}));
+      const close = q.close;
+      const pe = (close && f.eps>0) ? (close*1000/f.eps).toFixed(2) : "—";
+      const pb = (close && f.bvps>0) ? (close*1000/f.bvps).toFixed(2) : "—";
+      // Health scores (tu chu: Altman Z + Piotroski F)
+      const az = f.altman_z;
+      const azCls = az==null?"":az>2.99?"up":az>1.81?"":"dn";
+      const pf = f.piotroski;
+      const pfCls = pf==null?"":pf>=8?"up":pf<=2?"dn":"";
+      fbox.innerHTML = `<div class="stkfund"><span>P/E <b>${pe}</b></span><span>P/B <b>${pb}</b></span><span>ROE <b>${f.roe??"—"}%</b></span><span>ROA <b>${f.roa??"—"}%</b></span><span>EPS <b>${fmtN(f.eps)}</b></span><span>Altman Z <b class="${azCls}">${az??"—"}</b></span><span>Piotroski <b class="${pfCls}">${pf??"—"}/9</b></span><span>Sector <b>${esc(f.industry||"—")}</b></span></div>`;
+    }catch(e){ fbox.innerHTML = '<div class="hint">—</div>'; }
+  }
+  // foreign flow tu chu (khoi ngoai mua/ban)
+  const ffbox = $("stkForeignFlow");
+  if(ffbox){
+    try{
+      const q2 = q||{};
+      const fb = q2.foreign_buy_volume, fs = q2.foreign_sell_volume;
+      const fmtV = v=>v==null?"—":Number(v).toLocaleString("vi-VN");
+      let h = "";
+      if(fb!=null && fs!=null){
+        const net = fb - fs;
+        const netCls = net>0?"up":net<0?"dn":"";
+        h += `<div class="stkfund"><span>${t("foreign_buy")} <b class="up">${fmtV(fb)}</b></span><span>${t("foreign_sell")} <b class="dn">${fmtV(fs)}</b></span><span>${t("foreign_net")} <b class="${netCls}">${net>0?"+":""}${fmtV(net)}</b></span></div>`;
+      }
+      // Lich su khoi ngoai
+      h += `<div style="margin-top:8px"><div class="row" style="gap:8px;margin-bottom:6px;align-items:center">`
+        + `<select id="ffHistRange" class="gptInput" style="width:auto"><option value="30">30 phiên</option><option value="90">3 tháng</option><option value="250">1 năm</option><option value="500">Tất cả</option></select>`
+        + `<button id="ffHistExport" class="btnSm">${t("export_csv")||"Xuất CSV"}</button></div>`
+        + `<div id="ffHistTbl"><div class="hint">${t("loading")}</div></div></div>`;
+      ffbox.innerHTML = h || '<div class="hint">—</div>';
+      const loadFHist = async (limit)=>{
+        const tbl = $("ffHistTbl");
+        if(!tbl) return;
+        try{
+          const hj = await sApi("/foreign-flow/history?symbol="+encodeURIComponent(sym)+"&limit="+limit);
+          const rows = hj.rows||[];
+          if(!rows.length){ tbl.innerHTML = '<div class="hint">'+t("no_data")+'</div>'; return; }
+          tbl.innerHTML = `<table class="stktbl"><tr><th>${t("th_date")}</th><th>${t("foreign_buy")}</th><th>${t("foreign_sell")}</th><th>${t("foreign_net")}</th></tr>`
+            + rows.map(r=>{
+              const nc = r.net_volume>0?"up":r.net_volume<0?"dn":"";
+              return `<tr><td>${esc(r.trade_date||"")}</td><td>${fmtV(r.buy_volume)}</td><td>${fmtV(r.sell_volume)}</td><td class="${nc}">${r.net_volume>0?"+":""}${fmtV(r.net_volume)}</td></tr>`;
+            }).join("") + `</table>`;
+          tbl._rows = rows;
+        }catch(e){ tbl.innerHTML = '<div class="hint">—</div>'; }
+      };
+      const frange = $("ffHistRange");
+      if(frange){ frange.onchange = ()=>loadFHist(frange.value); loadFHist(30); }
+      const fexp = $("ffHistExport");
+      if(fexp){
+        fexp.onclick = ()=>{
+          const tbl = $("ffHistTbl");
+          const rows = (tbl && tbl._rows) || [];
+          if(!rows.length){ toast(t("no_data")); return; }
+          const csv = "Ngay,Mua_KL,Ban_KL,Rong_KL\n"
+            + rows.map(r=>[r.trade_date, r.buy_volume, r.sell_volume, r.net_volume].join(",")).join("\n");
+          const blob = new Blob(["\ufeff"+csv], {type:"text/csv;charset=utf-8"});
+          const a = document.createElement("a");
+          a.href = URL.createObjectURL(blob);
+          a.download = "khoingoai_"+sym+".csv";
+          a.click();
+          URL.revokeObjectURL(a.href);
+        };
+      }
+    }catch(e){ ffbox.innerHTML = '<div class="hint">—</div>'; }
+  }
+  // proprietary flow tu chu (tu doanh CTCK, data EOD tu PDF HOSE)
+  const pfbox = $("stkPropFlow");
+  if(pfbox){
+    pfbox.innerHTML = '<div class="hint">'+t("loading")+'</div>';
+    try{
+      const pf = await sApi("/proprietary-flow");
+      const d = (pf.by_symbol||{})[sym];
+      const fmtV = v=>v==null?"—":Number(v).toLocaleString("vi-VN");
+      const fmtT = v=>v==null?"—":(v/1e9).toFixed(2)+" tỷ";
+      let h = "";
+      if(d && d.buy_volume!=null){
+        const net = d.net_volume;
+        const netCls = net>0?"up":net<0?"dn":"";
+        h += `<div class="stkfund"><span>${t("prop_buy")} <b class="up">${fmtV(d.buy_volume)}</b></span><span>${t("prop_sell")} <b class="dn">${fmtV(d.sell_volume)}</b></span><span>${t("prop_net")} <b class="${netCls}">${net>0?"+":""}${fmtV(net)}</b></span><span>${t("prop_netval")} <b class="${netCls}">${fmtT(d.net_value_vnd)}</b></span></div><div class="hint">${t("prop_date")}: ${esc(d.trade_date||"—")}</div>`;
+      }
+      // Lich su 30 phien + xuat file
+      h += `<div style="margin-top:8px"><div class="row" style="gap:8px;margin-bottom:6px;align-items:center">`
+        + `<select id="pfHistRange" class="gptInput" style="width:auto"><option value="30">30 phiên</option><option value="90">3 tháng</option><option value="250">1 năm</option><option value="500">Tất cả</option></select>`
+        + `<button id="pfHistExport" class="btnSm">${t("export_csv")||"Xuất CSV"}</button></div>`
+        + `<div id="pfHistTbl"><div class="hint">${t("loading")}</div></div></div>`;
+      pfbox.innerHTML = h || '<div class="hint">—</div>';
+      // Load lich su
+      const loadHist = async (limit)=>{
+        const tbl = $("pfHistTbl");
+        if(!tbl) return;
+        try{
+          const hj = await sApi("/proprietary-flow/history?symbol="+encodeURIComponent(sym)+"&limit="+limit);
+          const rows = hj.rows||[];
+          if(!rows.length){ tbl.innerHTML = '<div class="hint">'+t("no_data")+'</div>'; return; }
+          tbl.innerHTML = `<table class="stktbl"><tr><th>${t("th_date")}</th><th>${t("prop_buy")}</th><th>${t("prop_sell")}</th><th>${t("prop_net")}</th><th>${t("prop_netval")}</th></tr>`
+            + rows.map(r=>{
+              const nc = r.net_volume>0?"up":r.net_volume<0?"dn":"";
+              return `<tr><td>${esc(r.trade_date||"")}</td><td>${fmtV(r.buy_volume)}</td><td>${fmtV(r.sell_volume)}</td><td class="${nc}">${r.net_volume>0?"+":""}${fmtV(r.net_volume)}</td><td class="${nc}">${fmtT(r.net_value_vnd)}</td></tr>`;
+            }).join("") + `</table>`;
+          // Luu rows de xuat file
+          tbl._rows = rows;
+        }catch(e){ tbl.innerHTML = '<div class="hint">—</div>'; }
+      };
+      const rangeSel = $("pfHistRange");
+      if(rangeSel){
+        rangeSel.onchange = ()=>loadHist(rangeSel.value);
+        loadHist(30);
+      }
+      const expBtn = $("pfHistExport");
+      if(expBtn){
+        expBtn.onclick = ()=>{
+          const tbl = $("pfHistTbl");
+          const rows = (tbl && tbl._rows) || [];
+          if(!rows.length){ toast(t("no_data")); return; }
+          const csv = "Ngay,Mua_KL,Ban_KL,Rong_KL,Mua_GT_VND,Ban_GT_VND,Rong_GT_VND\n"
+            + rows.map(r=>[r.trade_date, r.buy_volume, r.sell_volume, r.net_volume,
+              r.buy_value_vnd, r.sell_value_vnd, r.net_value_vnd].join(",")).join("\n");
+          const blob = new Blob(["\ufeff"+csv], {type:"text/csv;charset=utf-8"});
+          const a = document.createElement("a");
+          a.href = URL.createObjectURL(blob);
+          a.download = "tudoanh_"+sym+".csv";
+          a.click();
+          URL.revokeObjectURL(a.href);
+        };
+      }
+    }catch(e){ pfbox.innerHTML = '<div class="hint">—</div>'; }
+  }
+  // company profile (ho so: lanh dao, cong ty con, so huu...)
+  const pbox = $("stkProfile");
+  if(pbox){
+    pbox.innerHTML = '<div class="hint">'+t("loading")+'</div>';
+    try{
+      const p = await sApi("/company/profile?symbol="+encodeURIComponent(sym));
+      let h = "";
+      const off = p.officers||[];
+      if(off.length) h += `<div style="margin-bottom:8px"><b>${t("officers_h")}</b>`+
+        off.slice(0,5).map(o=>`<div class="hint">${esc(o.name||"")} — ${esc(o.position||"")}${o.rate?` (${(o.rate*100).toFixed(1)}%)`:""}</div>`).join("")+`</div>`;
+      const own = p.ownership||[];
+      if(own.length) h += `<div style="margin-bottom:8px"><b>${t("ownership_h")}</b>`+
+        own.slice(0,5).map(o=>`<div class="hint">${esc(o.owner_type||"")}: ${(o.ownership_percentage??"—")}%</div>`).join("")+`</div>`;
+      const sub = p.subsidiaries||[];
+      if(sub.length) h += `<div style="margin-bottom:8px"><b>${t("subs_h")} (${sub.length})</b>`+
+        sub.slice(0,5).map(s=>`<div class="hint">${esc(s.name||s.symbol||"")}</div>`).join("")+`</div>`;
+      pbox.innerHTML = h || '<div class="hint">—</div>';
+    }catch(e){ pbox.innerHTML = '<div class="hint">—</div>'; }
+  }
+}
+
+async function loadChart(sym, interval="1D"){
+  const el = $("stkChart");
+  if(typeof LightweightCharts==="undefined"){
+    el.innerHTML = '<div class="hint">'+t("chart_fail")+'</div>';
+    return;
+  }
+  // Race guard (2026-10-09): ignore stale responses when user taps rapidly
+  const reqSym = sym, reqIv = interval;
+  el.innerHTML = '<div class="pp-skeleton" style="height:300px;border-radius:12px"></div>';
+  try{
+    const isIntraday = interval!=="1D";
+    const count = isIntraday ? 80 : 300;
+    const j = await sApi("/ohlcv?symbol="+encodeURIComponent(sym)+"&count="+count+"&interval="+interval);
+    // Drop stale: user switched symbol/interval while loading
+    if(curSymbol!==reqSym || curIv!==reqIv) return;
+    el.innerHTML = "";
+    el.style.position = "relative";
+    const dark = document.body.classList.contains("dark");
+    chart = LightweightCharts.createChart(el, {
+      layout:{background:{color: dark?"#1a1a1a":"#ffffff"}, textColor: dark?"#d4d4d4":"#333"},
+      width: el.clientWidth, height: 300,
+      timeScale:{timeVisible:isIntraday},
+    });
+    const cs = chart.addSeries(LightweightCharts.CandlestickSeries, {
+      upColor:"#26a69a", downColor:"#ef5350",
+      wickUpColor:"#26a69a", wickDownColor:"#ef5350", borderVisible:false,
+    });
+    const rows = j.rows||[];
+    const disp = rows.slice(-120);
+    const candleData = disp.map(r=>{
+      let t = r.t;
+      if(isIntraday && t.includes("T")){
+        t = Math.floor(new Date(t).getTime()/1000);
+      }
+      return {time:t, open:r.o, high:r.h, low:r.l, close:r.c};
+    });
+    cs.setData(candleData);
+    const closes = disp.map(r=>r.c), vols = disp.map(r=>r.v||0);
+    const mkLine = (data,color,opts={})=>{
+      const s = chart.addSeries(LightweightCharts.LineSeries, Object.assign({
+        color, lineWidth:1, priceLineVisible:false, lastValueVisible:false,
+        crosshairMarkerVisible:false,
+      }, opts));
+      s.setData(data);
+      return s;
+    };
+    const lineData = (arr)=>candleData.map((p,i)=>({time:p.time, value:arr[i]})).filter(p=>p.value!=null);
+
+    const hasIndData = !isIntraday && j.indicators && j.indicators.length;
+    const indByT = {};
+    if(hasIndData) j.indicators.forEach(r=>{ indByT[r.t]=r; });
+    const val = (t,k)=>{ const r=indByT[t]; const v=r?r[k]:null; return v==null?null:v; };
+
+    if(!isIntraday && indMode && j.indicators && j.indicators.length){
+      // ---- indicator mode: Bollinger + RSI + MACD ----
+      const indByT = {};
+      j.indicators.forEach(r=>{ indByT[r.t]=r; });
+      const val = (t,k)=>{ const r=indByT[t]; const v=r?r[k]:null; return v==null?null:v; };
+      mkLine(candleData.filter(p=>val(p.time,"bb_up")!=null).map(p=>({time:p.time, value:val(p.time,"bb_up")})), "#2962FF");
+      mkLine(candleData.filter(p=>val(p.time,"bb_mid")!=null).map(p=>({time:p.time, value:val(p.time,"bb_mid")})), "#9E9E9E", {lineStyle:2});
+      mkLine(candleData.filter(p=>val(p.time,"bb_lo")!=null).map(p=>({time:p.time, value:val(p.time,"bb_lo")})), "#2962FF");
+      chart.priceScale("rsi").applyOptions({scaleMargins:{top:0.85, bottom:0.02}});
+      const rsiS = mkLine(candleData.filter(p=>val(p.time,"rsi")!=null).map(p=>({time:p.time, value:val(p.time,"rsi")})), "#7B1FA2", {priceScaleId:"rsi"});
+      rsiS.createPriceLine({price:70, color:"#ef5350", lineWidth:1, lineStyle:2, axisLabelVisible:false, title:""});
+      rsiS.createPriceLine({price:30, color:"#26a69a", lineWidth:1, lineStyle:2, axisLabelVisible:false, title:""});
+      chart.priceScale("macd").applyOptions({scaleMargins:{top:0.68, bottom:0.18}});
+      const hist = chart.addSeries(LightweightCharts.HistogramSeries, {
+        priceScaleId:"macd",
+        priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false,
+      });
+      hist.setData(candleData.filter(p=>val(p.time,"macd_hist")!=null).map(p=>{
+        const v = val(p.time,"macd_hist");
+        return {time:p.time, value:v, color: v>=0 ? "#26a69a" : "#ef5350"};
+      }));
+      mkLine(candleData.filter(p=>val(p.time,"macd")!=null).map(p=>({time:p.time, value:val(p.time,"macd")})), "#2962FF", {priceScaleId:"macd"});
+      mkLine(candleData.filter(p=>val(p.time,"macd_sig")!=null).map(p=>({time:p.time, value:val(p.time,"macd_sig")})), "#FF6D00", {priceScaleId:"macd"});
+      chart.priceScale("right").applyOptions({scaleMargins:{top:0.05, bottom:0.35}});
+      const lg = document.createElement("div");
+      lg.style.cssText = "position:absolute;top:6px;left:8px;font-size:11px;font-weight:700;pointer-events:none";
+      lg.innerHTML = '<span style="color:#7B1FA2">RSI 14</span> · <span style="color:#2962FF">MACD</span> · <span style="color:#FF6D00">Signal</span> · <span style="color:#2962FF">BB(20,2)</span>';
+      el.appendChild(lg);
+    } else {
+      // ---- FireAnt default: MA10/MA50 + volume ----
+      const ma10 = smaArr(closes, 10), ma50 = smaArr(closes, 50);
+      mkLine(lineData(ma10), "#26a69a");
+      mkLine(lineData(ma50), "#FF9800");
+      const volS = chart.addSeries(LightweightCharts.HistogramSeries, {
+        priceScaleId:"vol",
+        priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false,
+      });
+      volS.setData(disp.map((r,i)=>{
+        const up = r.c>=r.o;
+        return {time:candleData[i].time, value:r.v||0, color: up?"rgba(38,166,154,.55)":"rgba(239,83,80,.55)"};
+      }));
+      chart.priceScale("right").applyOptions({scaleMargins:{top:0.05, bottom:0.30}});
+      chart.priceScale("vol").applyOptions({scaleMargins:{top:0.78, bottom:0.02}});
+      const lg = document.createElement("div");
+      lg.style.cssText = "position:absolute;top:6px;left:8px;font-size:11px;font-weight:700;pointer-events:none";
+      const ma10v = ma10[ma10.length-1], ma50v = ma50[ma50.length-1];
+      lg.innerHTML = `<span style="color:#26a69a">MA10:${ma10v!=null?ma10v.toFixed(2):"—"}</span> <span style="color:#FF9800">MA50:${ma50v!=null?ma50v.toFixed(2):"—"}</span>`;
+      el.appendChild(lg);
+    }
+    chart.timeScale().fitContent();
+    renderPerfStats(rows, isIntraday);
+  }catch(e){ el.innerHTML = '<div class="hint">'+esc(e.message)+'</div>'; }
+}
+
+function renderPerfStats(rows, isIntraday){
+  // performance strip (1D only): 1D/1W/1M/3M/6M/1Y
+  const pbox = $("stkPerf");
+  if(!isIntraday && rows.length>=6){
+    const periods = [["1D",1],["1W",5],["1M",22],["3M",66],["6M",132],["1Y",250]];
+    const last = rows[rows.length-1].c;
+    pbox.innerHTML = periods.map(([lb,back])=>{
+      let v = "—", cls = "";
+      if(rows.length>back && rows[rows.length-1-back].c){
+        const ref = rows[rows.length-1-back].c;
+        const pct = (last-ref)/ref*100;
+        v = fmtPct(pct); cls = pcCls(pct);
+      }
+      return `<div class="pcell"><div class="pl">${lb}</div><div class="pv ${cls}">${v}</div></div>`;
+    }).join("");
+  } else { pbox.innerHTML = ""; }
+  // stats grid
+  const sbox = $("stkStats");
+  const last = rows[rows.length-1], prev = rows[rows.length-2];
+  if(!last){ sbox.innerHTML = ""; return; }
+  const val = last.v*last.c/1e9;
+  const cell = (l,v,c="")=>`<div class="scell"><span class="sl">${l}</span><span class="sv ${c}">${v}</span></div>`;
+  sbox.innerHTML =
+    cell(t("ref_price"), prev?prev.c.toFixed(2):"—")+
+    cell(t("open_price"), last.o.toFixed(2))+
+    cell(t("high_price"), last.h.toFixed(2), "up")+
+    cell(t("low_price"), last.l.toFixed(2), "dn")+
+    cell(t("volume"), fmtN(last.v))+
+    cell(t("value"), val.toFixed(2)+" "+t("billion"));
+}
+
+async function renderScreener(){
+  const box = $("stkScreener");
+  if(!box) return;
+  box.innerHTML = '<div class="hint">'+t("loading_screener")+'</div>';
+  try{
+    const ex = $("scrEx") ? $("scrEx").value : "";
+    const ind = $("scrInd") ? $("scrInd").value : "";
+    const minPct = $("scrMinPct") ? $("scrMinPct").value : "";
+    const minScore = $("scrMinScore") ? $("scrMinScore").value : "";
+    let url = "/screener2?";
+    if(ex) url += "exchange="+encodeURIComponent(ex)+"&";
+    if(minPct!=="") url += "min_score=0&"; // screener2 doesn't have min_pct, filter client-side
+    if(minScore!=="") url += "min_score="+encodeURIComponent(minScore)+"&";
+    const j = await sApi(url);
+    let rows = j.rows||[];
+    // Industry filter client-side (2026-10-09: backend URL param caused 503)
+    if(ind) rows = rows.filter(r=>(r.industry||"")===ind);
+    // Preset filters (2026-10-09): one-tap templates like TradingView
+    const preset = window._stkPreset || "";
+    if(preset==="value") rows = rows.filter(r=>r.pe!=null && r.pe<15 && r.roe!=null && r.roe>15);
+    else if(preset==="momentum") rows = [...rows].sort((a,b)=>(b.pct_change??-999)-(a.pct_change??-999));
+    else if(preset==="quality") rows = rows.filter(r=>r.roe!=null && r.roe>15 && r.debt_to_equity!=null && r.debt_to_equity<1);
+    if(minPct!==""){
+      const mp = parseFloat(minPct);
+      rows = rows.filter(r=>r.pct_change!=null && r.pct_change>=mp);
+    }
+    if(!rows.length){ box.innerHTML = '<div class="hint">'+t("no_data")+'</div>'; return; }
+    const top = rows.slice(0,30);
+    box.innerHTML = `<table class="stktbl"><tr><th>${t("th_symbol")}</th><th>${t("th_score")}</th><th>${t("th_price")}</th><th>${t("th_pct")}</th><th>${t("th_pe")}</th></tr>` +
+      top.map(r=>{
+        const pc=r.pct_change, cls=pcCls(pc);
+        return `<tr data-sym="${esc(r.symbol)}"><td><b>${esc(r.symbol)}</b></td><td>${r.score??"—"}</td><td>${r.close??"—"}</td><td class="${cls}">${fmtPct(pc)}</td><td>${r.pe??"—"}</td></tr>`;
+      }).join("") + `</table>`;
+    box.querySelectorAll("tr[data-sym]").forEach(tr=> tr.onclick = ()=>openSymbol(tr.dataset.sym));
+  }catch(e){ box.innerHTML = '<div class="hint">'+t("error")+": "+esc(e.message)+'</div>'; }
+}
+
+/* ---------- market news (hoc FireAnt MarketNews) ---------- */
+async function renderMarketNews(){
+  const box = $("stkMarketNews");
+  if(!box) return;
+  box.innerHTML = '<div class="hint">'+t("loading_news")+'</div>';
+  try{
+    const j = await sApi("/news/market");
+    const items = j.items||[];
+    box.innerHTML = items.length ? items.slice(0,15).map(n=>
+      `<div class="stknews"><a href="${esc(n.url||"#")}" target="_blank" rel="noopener"><b>${esc(n.title||"")}</b></a><div class="hint">${esc(n.symbol||"")} · ${esc(n.publish_time||"")}</div></div>`
+    ).join("") : '<div class="hint">'+t("no_news")+'</div>';
+  }catch(e){ box.innerHTML = '<div class="hint">—</div>'; }
+}
+
+/* ---------- top movers (hoc FireAnt TopSymbols) ---------- */
+async function renderTopMovers(){
+  const box = $("stkTopMovers");
+  if(!box) return;
+  box.innerHTML = '<tr><td colspan="4"><div class="hint">'+t("loading")+'</div></td></tr>';
+  try{
+    const url = "/screener?sort=pct_change&min_value=1000000000&order=desc";
+    const j = await sApi(url);
+    const rows = (j.rows||[]).filter(r=>r.pct_change!=null).slice(0,10);
+    if(!rows.length){ box.innerHTML = '<tr><td colspan="4"><div class="hint">'+t("no_data")+'</div></td></tr>'; return; }
+    box.innerHTML = rows.map(r=>{
+      const pc=r.pct_change, cls=pc>0?"up":pc<0?"down":"";
+      return `<tr data-sym="${esc(r.symbol)}"><td><b>${esc(r.symbol)}</b></td>`
+        + `<td>${r.close!=null?fmtN(r.close):"—"}</td>`
+        + `<td class="${cls}">${fmtPct(pc)}</td><td>—</td></tr>`;
+    }).join("");
+    box.querySelectorAll("tr[data-sym]").forEach(tr=>tr.onclick=()=>openSymbol(tr.dataset.sym));
+  }catch(e){
+    box.innerHTML = '<tr><td colspan="4"><div class="hint">'+t("error")+": "+esc(e.message)+'</div></td></tr>';
+  }
+}
+
+/* ---------- backtest ---------- */
+export async function runBacktest(){
+  const sym = curSymbol;
+  if(!sym){ toast(t("select_symbol_first")); return; }
+  const fast = parseInt($("btFast").value)||20;
+  const slow = parseInt($("btSlow").value)||50;
+  const box = $("btResult");
+  box.innerHTML = '<div class="hint">'+t("calculating")+'</div>';
+  try{
+    const j = await sApi(`/backtest?symbol=${encodeURIComponent(sym)}&fast=${fast}&slow=${slow}`);
+    const s = j.stats;
+    const cls = pcCls(s.strategy_ret>0?1:s.strategy_ret<0?-1:0);
+    box.innerHTML = `<div class="stkidx"><div class="stkidx-sym">${t("bt_strategy")}</div><div class="stkidx-px ${cls}">${s.strategy_ret>0?"+":""}${s.strategy_ret}%</div></div>
+      <div class="stkidx"><div class="stkidx-sym">${t("bt_buyhold")}</div><div class="stkidx-px">${s.bh_ret>0?"+":""}${s.bh_ret}%</div></div>
+      <div class="stkidx"><div class="stkidx-sym">${t("bt_trades_winrate")}</div><div class="stkidx-px">${s.trades} / ${s.winrate}%</div></div>
+      <div class="stkidx"><div class="stkidx-sym">${t("bt_maxdd")}</div><div class="stkidx-px dn">${s.max_drawdown}%</div></div>
+      <div class="hint" style="margin-top:8px">${esc(j.note||"")}</div>
+      <div id="btChart" style="width:100%;height:220px;margin-top:8px"></div>`;
+    // chart
+    const el = $("btChart");
+    if(typeof LightweightCharts!=="undefined" && j.equity.length){
+      const dark = document.body.classList.contains("dark");
+      const ch = LightweightCharts.createChart(el, {
+        layout:{background:{color: dark?"#1a1a1a":"#ffffff"}, textColor: dark?"#d4d4d4":"#333"},
+        width: el.clientWidth, height: 220,
+      });
+      const s1 = ch.addSeries(LightweightCharts.LineSeries, {color:"#26a69a", lineWidth:2, title:t("bt_strategy")});
+      s1.setData(j.equity.map(p=>({time:p.t, value:p.v})));
+      const s2 = ch.addSeries(LightweightCharts.LineSeries, {color:"#888", lineWidth:1, lineStyle:2, title:t("bt_buyhold")});
+      s2.setData(j.bh_equity.map(p=>({time:p.t, value:p.v})));
+      ch.timeScale().fitContent();
+    }
+  }catch(e){ box.innerHTML = '<div class="hint">'+t("error")+": "+esc(e.message)+'</div>'; }
+}
+
+/* ---------- watchlist ---------- */
+async function renderWatchlist(){
+  const box = $("wlList");
+  box.innerHTML = '<div class="hint">'+t("loading")+'</div>';
+  try{
+    const wl = await sApi("/watchlist");
+    if(!wl.length){ box.innerHTML = '<div class="hint">'+t("wl_empty")+'</div>'; return; }
+    const q = await sApi("/screener").catch(()=>({rows:[]}));
+    const bySym = {};
+    (q.rows||[]).forEach(r=> bySym[r.symbol]=r);
+    box.innerHTML = `<table class="stktbl"><tr><th>${t("th_symbol")}</th><th>${t("th_price")}</th><th>${t("th_pct")}</th><th></th></tr>` +
+      wl.map(sym=>{
+        const r = bySym[sym]||{};
+        const pc = r.pct_change, cls = pcCls(pc);
+        return `<tr><td data-sym="${esc(sym)}" style="cursor:pointer"><b>${esc(sym)}</b></td><td>${r.close??"—"}</td><td class="${cls}">${fmtPct(pc)}</td><td><button class="btn ghost" data-del="${esc(sym)}" style="padding:4px 8px">✕</button></td></tr>`;
+      }).join("") + `</table>`;
+    box.querySelectorAll("[data-sym]").forEach(td=> td.onclick = ()=>openSymbol(td.dataset.sym));
+    box.querySelectorAll("[data-del]").forEach(b=> b.onclick = async (e)=>{
+      e.stopPropagation();
+      await sApi("/watchlist/"+b.dataset.del, {method:"DELETE"});
+      renderWatchlist();
+    });
+  }catch(e){ box.innerHTML = '<div class="hint">'+t("error")+": "+esc(e.message)+'</div>'; }
+}
+
+async function addWatchlist(){
+  const inp = $("wlAddSym");
+  const sym = inp.value.trim().toUpperCase();
+  if(!sym) return;
+  try{
+    await sApi("/watchlist", {method:"POST", body:JSON.stringify({symbol:sym})});
+    inp.value = "";
+    toast(t("added")+sym);
+    renderWatchlist();
+  }catch(e){ toast(t("error")+": "+e.message); }
+}
+
+
+// Two-step inline delete confirm (no popup): first click arms, second click deletes.
+function armDelBtn(b){
+  b.dataset.armed = "1";
+  b.dataset.orig = b.innerHTML;
+  b.innerHTML = esc(t("confirm_yes")) + "?";
+  b.classList.remove("ghost"); b.classList.add("primary");
+  const c = document.createElement("button");
+  c.className = "btn ghost"; c.style.cssText = "padding:4px 8px;margin-left:4px";
+  c.textContent = "\u2715";
+  c.setAttribute("aria-label", t("cancel"));
+  c.onclick = (e)=>{ e.stopPropagation(); disarmDelBtn(b); };
+  b.after(c);
+  b._cancelBtn = c;
+  b._outside = (e)=>{ if(e.target!==b && e.target!==c) disarmDelBtn(b); };
+  document.addEventListener("click", b._outside, {capture:true, once:true});
+  b._armTimer = setTimeout(()=>disarmDelBtn(b), 5000);
+}
+function disarmDelBtn(b){
+  if(!b || !b.dataset.armed) return;
+  delete b.dataset.armed;
+  clearTimeout(b._armTimer);
+  if(b._outside) document.removeEventListener("click", b._outside, {capture:true});
+  b.innerHTML = b.dataset.orig || "\u2715";
+  b.classList.add("ghost"); b.classList.remove("primary");
+  if(b._cancelBtn){ b._cancelBtn.remove(); delete b._cancelBtn; }
+}
+
+/* ---------- portfolio ---------- */
+async function renderPortfolio(){
+  const box = $("pfPos");
+  box.innerHTML = '<div class="hint">'+t("loading")+'</div>';
+  try{
+    const j = await sApi("/portfolio");
+    // summary cards
+    const sum = $("pfSum");
+    if(sum){
+      const un = j.total_unrealized, cls = pcCls(un>0?1:un<0?-1:0);
+      sum.innerHTML = `<div class="stkidx"><div class="stkidx-sym">${t("pf_total_value")}</div><div class="stkidx-px">${fmtN(j.total_market_value)}</div></div>
+        <div class="stkidx"><div class="stkidx-sym">${t("pf_unrealized")}</div><div class="stkidx-px ${cls}">${un>0?"+":""}${fmtN(un)}</div></div>
+        <div class="stkidx"><div class="stkidx-sym">${t("pf_realized")}</div><div class="stkidx-px">${fmtN(j.total_realized)}</div></div>`;
+    }
+    // positions
+    if(!j.positions.length){
+      box.innerHTML = '<div class="hint">'+t("pf_no_positions")+'</div>';
+    }else{
+      box.innerHTML = `<table class="stktbl"><tr><th>${t("th_symbol")}</th><th>${t("th_qty")}</th><th>${t("th_avg_cost")}</th><th>${t("th_price")}</th><th>${t("th_pl")}</th><th></th></tr>` +
+        j.positions.map(p=>{
+          const un=p.unrealized, cls=pcCls(un>0?1:un<0?-1:0);
+          return `<tr><td><b>${esc(p.symbol)}</b><div class="hint">${p.allocation??"—"}%</div></td><td>${fmtN(p.qty)}</td><td>${fmtN(p.avg_cost)}</td><td>${fmtN(p.current)}</td><td class="${cls}">${un>0?"+":""}${fmtN(un)}<div class="hint">${fmtPct(p.unrealized_pct)}</div></td><td><button class="btn ghost" data-cost="${esc(p.symbol)}" style="padding:4px 8px">Cost</button> <button class="btn ghost" data-tp="${esc(p.symbol)}" style="padding:4px 8px">TP/SL</button></td></tr>`;
+        }).join("") + `</table>`;
+      box.querySelectorAll("[data-cost]").forEach(b=> b.onclick = ()=>showCostChart(b.dataset.cost));
+      box.querySelectorAll("[data-tp]").forEach(b=> b.onclick = ()=>setTarget(b.dataset.tp));
+    }
+    // history
+    const hbox = $("pfHist");
+    const txns = [...(j.txns||[])].reverse().slice(0,30);
+    hbox.innerHTML = txns.length ? `<table class="stktbl"><tr><th>${t("th_date")}</th><th>${t("th_symbol")}</th><th>${t("th_side")}</th><th>${t("th_price")}</th><th>${t("th_qty")}</th><th></th></tr>` +
+      txns.map(txn=>`<tr><td>${esc(txn.date)}</td><td><b>${esc(txn.symbol)}</b>${txn.note?`<div class="hint">${esc(txn.note)}</div>`:""}</td><td>${txn.side==="BUY"?'<span class="up">'+t("buy")+'</span>':'<span class="dn">'+t("sell")+'</span>'}</td><td>${fmtN(txn.price)}</td><td>${fmtN(txn.qty)}</td><td><button class="btn ghost" data-tnote="${txn.id}" title="Edit note" style="padding:4px 8px">Edit</button> <button class="btn ghost" data-tdel="${txn.id}" style="padding:4px 8px">✕</button></td></tr>`).join("")+`</table>`
+      : '<div class="hint">'+t("no_txns")+'</div>';
+    hbox.querySelectorAll("[data-tdel]").forEach(b=> b.onclick = async (ev)=>{
+      ev.stopPropagation();
+      if(b.dataset.armed){
+        // second click within 5s -> do the delete
+        disarmDelBtn(b);
+        try{
+          await sApi("/portfolio/txn/"+b.dataset.tdel, {method:"DELETE"});
+          renderPortfolio();
+        }catch(e){ toast(t("error")+": "+e.message); }
+        return;
+      }
+      armDelBtn(b);
+    });
+    hbox.querySelectorAll("[data-tnote]").forEach(b=> b.onclick = ()=>{
+      const tr = b.closest("tr");
+      const symCell = tr.children[1];
+      if(symCell.querySelector("[data-noteedit]")) return; // already editing
+      const noteDiv = symCell.querySelector(".hint");
+      const hasNote = !!noteDiv;
+      const oldNote = hasNote ? noteDiv.textContent : "";
+      const wrap = document.createElement("div");
+      wrap.setAttribute("data-noteedit","");
+      wrap.style.cssText = "margin-top:4px;display:flex;gap:4px";
+      wrap.innerHTML = `<input type="text" class="gptInput" maxlength="500" value="${esc(oldNote)}" placeholder="${esc(t("note_ph"))}" style="flex:1;min-width:0">` +
+        `<button class="btn primary" data-nsave style="padding:4px 10px;white-space:nowrap">${esc(t("save"))}</button>` +
+        `<button class="btn ghost" data-ncancel style="padding:4px 8px" aria-label="${esc(t("cancel"))}">✕</button>`;
+      if(hasNote) noteDiv.replaceWith(wrap); else symCell.appendChild(wrap);
+      const inp = wrap.querySelector("input");
+      inp.focus(); inp.select();
+      wrap.querySelector("[data-ncancel]").onclick = ()=>renderPortfolio();
+      wrap.querySelector("[data-nsave]").onclick = async ()=>{
+        try{
+          await sApi("/portfolio/txn/"+b.dataset.tnote, {method:"PUT", body:JSON.stringify({note:inp.value.slice(0,500)})});
+          toast(t("note_updated"));
+          renderPortfolio();
+        }catch(e){ toast(t("error")+": "+e.message); }
+      };
+      inp.onkeydown = (e)=>{
+        if(e.key==="Enter") wrap.querySelector("[data-nsave]").click();
+        if(e.key==="Escape") renderPortfolio();
+      };
+    });
+  }catch(e){ box.innerHTML = '<div class="hint">'+t("error")+": "+esc(e.message)+'</div>'; }
+}
+
+async function addTxn(){
+  const sym = $("txnSym").value.trim().toUpperCase();
+  const side = $("txnSide").value;
+  const price = parseFloat($("txnPrice").value);
+  const qty = parseFloat($("txnQty").value);
+  const date = $("txnDate").value;
+  const note = $("txnNote").value.trim();
+  if(!sym || !(price>0) || !(qty>0) || !date){ toast(t("txn_fill")); return; }
+  try{
+    const r = await sApi("/portfolio/txn", {method:"POST", body:JSON.stringify({symbol:sym, side, price, qty, date, note})});
+    toast(t("txn_saved_fee").replace("{fee}", fmtN(r.fee)));
+    $("txnSym").value=""; $("txnPrice").value=""; $("txnQty").value=""; $("txnNote").value="";
+    renderPortfolio();
+  }catch(e){ toast(t("error")+": "+e.message); }
+}
+
+async function showCostChart(sym){
+  try{
+    const j = await sApi("/portfolio/cost_history?symbol="+encodeURIComponent(sym));
+    if(!j.series.length){ toast(t("no_data2")); return; }
+    const el = $("pfCostChart");
+    el.style.display = "";
+    el.innerHTML = "";
+    if(typeof LightweightCharts==="undefined"){ el.innerHTML = '<div class="hint">'+t("chart_fail")+'</div>'; return; }
+    const dark = document.body.classList.contains("dark");
+    const ch = LightweightCharts.createChart(el, {
+      layout:{background:{color: dark?"#1a1a1a":"#ffffff"}, textColor: dark?"#d4d4d4":"#333"},
+      width: el.clientWidth, height: 220,
+    });
+    const mkt = ch.addSeries(LightweightCharts.LineSeries, {color:"#26a69a", lineWidth:2, title:t("series_market")});
+    mkt.setData(j.series.map(p=>({time:p.time, value:p.close})));
+    const avg = ch.addSeries(LightweightCharts.LineSeries, {color:"#f0b429", lineWidth:2, lineStyle:2, title:t("series_avgcost")});
+    avg.setData(j.series.map(p=>({time:p.time, value:p.avg})));
+    ch.timeScale().fitContent();
+    el.scrollIntoView({block:"nearest"});
+  }catch(e){ toast(t("error")+": "+e.message); }
+}
+
+async function setTarget(sym){
+  const box = $("pfPos");
+  const old = $("tpForm");
+  if(old) old.remove();
+  // prefill with existing targets if any
+  let tpVal = "", slVal = "";
+  try{
+    const tg = await sApi("/targets");
+    const cur = (tg||[]).find(x=>x.symbol===sym);
+    if(cur){
+      if(cur.take_profit_pct!=null) tpVal = cur.take_profit_pct;
+      if(cur.stop_loss_pct!=null) slVal = cur.stop_loss_pct;
+    }
+  }catch(e){}
+  const form = document.createElement("div");
+  form.id = "tpForm";
+  form.className = "card";
+  form.style.cssText = "margin-top:8px;padding:12px";
+  form.innerHTML =
+    `<div style="font-weight:700;margin-bottom:8px">${esc(sym)}</div>` +
+    `<div style="display:flex;gap:8px;flex-wrap:wrap">` +
+    `<label style="flex:1;min-width:120px"><div class="hint">${esc(t("tp_label"))}</div><input type="number" step="any" class="gptInput" data-tpval value="${esc(String(tpVal))}" style="width:100%"></label>` +
+    `<label style="flex:1;min-width:120px"><div class="hint">${esc(t("sl_label"))}</div><input type="number" step="any" class="gptInput" data-slval value="${esc(String(slVal))}" style="width:100%"></label>` +
+    `</div>` +
+    `<div style="display:flex;gap:8px;margin-top:10px">` +
+    `<button class="btn primary" data-tpsave>${esc(t("save"))}</button>` +
+    `<button class="btn ghost" data-tpcancel>${esc(t("cancel"))}</button>` +
+    `</div>`;
+  box.after(form);
+  const tpInp = form.querySelector("[data-tpval]");
+  tpInp.focus();
+  form.querySelector("[data-tpcancel]").onclick = ()=>form.remove();
+  form.querySelector("[data-tpsave]").onclick = async ()=>{
+    const tp = tpInp.value.trim(), sl = form.querySelector("[data-slval]").value.trim();
+    if(tp==="" && sl===""){ form.remove(); return; }
+    try{
+      await sApi("/targets", {method:"POST", body:JSON.stringify({
+        symbol:sym,
+        take_profit_pct: tp===""?null:parseFloat(tp),
+        stop_loss_pct: sl===""?null:parseFloat(sl),
+      })});
+      toast(t("target_set")+sym);
+      form.remove();
+      try{ renderTargets(); }catch(e){}
+    }catch(e){ toast(t("error")+": "+e.message); }
+  };
+}
+
+// Check if current user is on free plan
+let _cachedPlan = null;
+async function isFreeUser(){
+  try{
+    if(_cachedPlan) return _cachedPlan === "free";
+    const token = localStorage.getItem("elab_authToken");
+    if(!token) return true;
+    const r = await fetch("/api/user/plan", {headers:{"Authorization":"Bearer "+token}});
+    if(!r.ok) return true;
+    const j = await r.json();
+    _cachedPlan = j.plan || "free";
+    return _cachedPlan === "free";
+  }catch(e){ return true; }
+}
+function showUpgradeToast(){
+  toast(t("premium_locked"));
+  setTimeout(()=>{ window.location.href = "/upgrade"; }, 1500);
+}
+/* ---------- compare ---------- */
+export async function runCompare(){
+  const input = $("cmpSyms").value.trim().toUpperCase();
+  if(!input){ toast(t("cmp_hint")); return; }
+  const syms = input.split(",").map(s=>s.trim()).filter(Boolean).slice(0,5);
+  const el = $("cmpChart");
+  el.innerHTML = '<div class="hint">'+t("loading")+'</div>';
+  try{
+    const j = await sApi("/compare?symbols="+encodeURIComponent(syms.join(","))+"&count=120");
+    const series = j.series||{};
+    const keys = Object.keys(series);
+    if(!keys.length){ el.innerHTML = '<div class="hint">'+t("no_data")+'</div>'; return; }
+    el.innerHTML = "";
+    if(typeof LightweightCharts==="undefined"){ el.innerHTML = '<div class="hint">'+t("chart_fail")+'</div>'; return; }
+    const dark = document.body.classList.contains("dark");
+    const ch = LightweightCharts.createChart(el, {
+      layout:{background:{color: dark?"#1a1a1a":"#ffffff"}, textColor: dark?"#d4d4d4":"#333"},
+      width: el.clientWidth, height: 280,
+    });
+    const colors = ["#26a69a","#ef5350","#2962ff","#ff9800","#9c27b0"];
+    keys.forEach((sym, i)=>{
+      const ls = ch.addSeries(LightweightCharts.LineSeries, {color:colors[i%colors.length], lineWidth:2, title:sym});
+      ls.setData(series[sym].map(p=>({time:p.t, value:p.v})));
+    });
+    ch.timeScale().fitContent();
+  }catch(e){ el.innerHTML = '<div class="hint">'+t("error")+": "+esc(e.message)+'</div>'; }
+}
+
+/* ---------- export CSV ---------- */
+async function exportCSV(kind){
+  try{
+    const j = await sApi("/portfolio");
+    let csv, filename;
+    if(kind==="positions"){
+      const rows = j.positions||[];
+      csv = "Symbol,Qty,Avg Cost,Current Price,Market Value,Unrealized P&L,Unrealized %,Allocation %,Realized P&L\n" +
+        rows.map(p=>[p.symbol,p.qty,p.avg_cost,p.current,p.market_value,p.unrealized,p.unrealized_pct,p.allocation,p.realized].join(",")).join("\n");
+      filename = "positions.csv";
+    }else{
+      const rows = j.txns||[];
+      csv = "ID,Date,Symbol,Side,Price,Qty,Fee,Note\n" +
+        rows.map(r=>[r.id,r.date,r.symbol,r.side,r.price,r.qty,r.fee,'"'+(r.note||"").replace(/"/g,'""')+'"'].join(",")).join("\n");
+      filename = "transactions.csv";
+    }
+    const blob = new Blob(["\ufeff"+csv], {type:"text/csv;charset=utf-8"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    toast(t("downloaded")+filename);
+  }catch(e){ toast(t("error")+": "+e.message); }
+}
+
+/* ---------- alerts & targets ---------- */
+async function renderAlerts(){
+  const box = $("alList");
+  box.innerHTML = '<div class="hint">'+t("loading")+'</div>';
+  try{
+    const al = await sApi("/alerts");
+    box.innerHTML = al.length ? `<table class="stktbl"><tr><th>${t("th_symbol")}</th><th>${t("th_condition")}</th><th></th></tr>` +
+      al.map(a=>`<tr><td><b>${esc(a.symbol)}</b></td><td>${a.direction==="ABOVE"?"≥":"≤"} ${fmtN(a.price)}</td><td><button class="btn ghost" data-adel="${a.id}" style="padding:4px 8px">✕</button></td></tr>`).join("")+`</table>`
+      : '<div class="hint">'+t("no_alerts")+'</div>';
+    box.querySelectorAll("[data-adel]").forEach(b=> b.onclick = async ()=>{
+      await sApi("/alerts/"+b.dataset.adel, {method:"DELETE"});
+      renderAlerts();
+    });
+  }catch(e){ box.innerHTML = '<div class="hint">'+t("error")+": "+esc(e.message)+'</div>'; }
+}
+
+async function addAlert(){
+  const btn = $("alAddBtn") || document.querySelector('[onclick="addAlert"]');
+  const sym = $("alSym").value.trim().toUpperCase();
+  const dir = $("alDir").value;
+  const price = parseFloat($("alPrice").value);
+  if(!sym || !(price>0)){ toast(t("alert_fill")); return; }
+  // 8b 2026-10-12 BUG-8: disable nút khi đang gửi — tránh double-click race
+  if(btn) btn.disabled = true;
+  try{
+    await sApi("/alerts", {method:"POST", body:JSON.stringify({symbol:sym, direction:dir, price})});
+    $("alSym").value=""; $("alPrice").value="";
+    toast(t("alert_added"));
+    await renderAlerts();
+  }catch(e){ toast(t("error")+": "+e.message); }
+  finally{ if(btn) btn.disabled = false; }
+}
+
+async function renderTargets(){
+  const box = $("tgList");
+  box.innerHTML = '<div class="hint">'+t("loading")+'</div>';
+  try{
+    const tg = await sApi("/targets");
+    box.innerHTML = tg.length ? `<table class="stktbl"><tr><th>${t("th_symbol")}</th><th>${t("th_tp")}</th><th>${t("th_sl")}</th><th>${t("th_pl")}</th><th></th></tr>` +
+      tg.map(g=>{
+        const un = g.unrealized_pct, cls = pcCls(un>0?1:un<0?-1:0);
+        return `<tr><td><b>${esc(g.symbol)}</b></td><td>${g.take_profit_pct??"—"}%</td><td>${g.stop_loss_pct??"—"}%</td><td class="${cls}">${fmtPct(un)}</td><td><button class="btn ghost" data-tgdel="${esc(g.symbol)}" style="padding:4px 8px">✕</button></td></tr>`;
+      }).join("")+`</table>`
+      : '<div class="hint">'+t("no_targets")+'</div>';
+    box.querySelectorAll("[data-tgdel]").forEach(b=> b.onclick = async ()=>{
+      await sApi("/targets/"+b.dataset.tgdel, {method:"DELETE"});
+      renderTargets();
+    });
+  }catch(e){ box.innerHTML = '<div class="hint">'+t("error")+": "+esc(e.message)+'</div>'; }
+}
+
+/* ---------- language switch (called from stocks.html applyLang) ---------- */
+export function setStockLang(l){
+  LANG = l;
+  try{ renderStockTab(); }catch(e){}
+  const itg = $("indToggle");
+  if(itg) itg.textContent = indMode ? t("ind_on") : t("ind_off");
+  if(curSymbol){
+    const d = $("stkDetail");
+    if(d && d.style.display!=="none"){
+      loadSymHead(curSymbol);
+      if(loadedTabs[curSymbol] && loadedTabs[curSymbol].tabs) loadNewsEvents(curSymbol);
+    }
+  }
+}
+
+/* ---------- AI agent chat (BYOK Phase 1.5) ---------- */
+// Y chang file đính kèm: qua relay bằng key của user trước (không gọi provider
+// trực tiếp — non-streaming), lỗi thì fallback về server.
+// 8b 2026-10-12: hỗ trợ hội thoại nhiều turn — history là [{role:'user'|'model', text}].
+async function chatWithFallback(message, history, onToken){
+  const key = await getUserKey();
+  if(key){
+    try{
+      // 8b: Context injection kiểu Perplexity — nhét dữ liệu thật vào prompt.
+      // Mức 3 + 3 hướng: giá + định giá + xu hướng + tin + tín hiệu kỹ thuật.
+      // Hướng A: detect intent → điều chỉnh prompt. Hướng C: so sánh nhiều mã.
+      let context = "";
+      const symbols = detectSymbols(message);
+      const intent = detectIntent(message, symbols);
+      const enrichments = await Promise.all(
+        symbols.slice(0, 3).map(sym => enrichSymbol(sym))
+      );
+      // Hướng C: nếu so sánh 2+ mã → build bảng so sánh
+      const valid = enrichments.filter(Boolean);
+      if(intent === "compare" && valid.length >= 2){
+        context = buildCompareTable(symbols.slice(0, 3), enrichments);
+      }else{
+        for(const e of valid){
+          if(e.text) context += e.text;
+        }
+      }
+      const prompt = buildPrompt(intent, context, message);
+      // Build messages[]: lịch sử cũ + tin mới (đã enrich context).
+      const messages = (history || []).concat([{ role: "user", text: prompt }]);
+      // 8b 2026-10-12: dùng base_url + key + model do user cấu hình (không hardcode Gemini).
+      // Fallback chain: User Endpoint → Server.
+      // 8b 2026-10-12: dùng endpoint/model hiệu dụng của app 'stocks' (riêng hoặc dùng chung).
+      const base = await getEffectiveEndpoint('stocks').catch(()=>null);
+      const model = await getEffectiveModel('stocks').catch(()=>null);
+      try {
+        // 8b: y chang file — độ dài trả lời do user chọn (dùng chung với Talk/English Lab).
+        const rlen = await getResponseLength().catch(()=>2048);
+        // tốc T2: có onToken thì stream chữ chảy dần qua relay, không thì buffered như cũ.
+        const reply = await proxyChat({ baseUrl: base, key, model, messages, maxTokens: rlen,
+          onToken: (typeof onToken === "function" ? onToken : undefined) });
+        return { reply, via: "proxy" };
+      } catch (proxyErr) {
+        // 8b 2026-10-13: giữ lỗi proxy để báo đúng khi server fallback cũng lỗi.
+        // (Trước đây nuốt lỗi → user thấy "Gemini API error" dù đang dùng endpoint khác.)
+        return { reply: null, via: "server", proxyErr, proxyBase: base, proxyModel: model };
+      }
+    }catch(e){
+      // Key không có hoặc lỗi khác → fallback to server below
+    }
+  }
+  return { reply: null, via: "server" };
+}
+
+// Hướng A: Detect ý định từ câu hỏi (kiểu ChatGPT hiểu context).
+// Trả về: valuation | explain | advice | compare | price
+function detectIntent(message, symbols){
+  const m = message.toLowerCase();
+  if(symbols.length >= 2 && /so s[aá]nh|vs\.?|v\.s\.?|kh[aá]c nhau/.test(m)) return "compare";
+  if(/đắt|rẻ|định giá|pe\b|p\/e|p\/b/.test(m)) return "valuation";
+  if(/tại sao|vì sao|sao (tăng|giảm|đỏ|xanh)|lý do|nguyên nhân/.test(m)) return "explain";
+  if(/nên mua|nên bán|có nên|khuyên|khuyến nghị/.test(m)) return "advice";
+  return "price";
+}
+
+// Build prompt theo intent — mỗi intent có hướng dẫn riêng cho AI.
+function buildPrompt(intent, context, message){
+  let role = "Bạn là trợ lý chứng khoán Việt Nam. Trả lời ngắn gọn, chính xác bằng tiếng Việt. ";
+  if(intent === "valuation"){
+    role += "Tập trung phân tích định giá: P/E, P/B có cao hay thấp, so với mặt bằng chung. ";
+  }else if(intent === "explain"){
+    role += "Giải thích biến động giá dựa trên dữ liệu: xu hướng, tin tức, tín hiệu kỹ thuật. ";
+  }else if(intent === "advice"){
+    role += "Đây KHÔNG phải lời khuyên đầu tư. Chỉ trình bày dữ liệu khách quan: định giá, xu hướng, tín hiệu kỹ thuật để user tự quyết định. ";
+  }else if(intent === "compare"){
+    role += "So sánh các mã theo bảng dữ liệu: chỉ rõ mã nào định giá rẻ hơn, xu hướng tốt hơn. Trình bày dạng bảng gọn. ";
+  }else{
+    role += "Đây không phải lời khuyên đầu tư. ";
+  }
+  return role + (context ? "\n\nDữ liệu thị trường hiện tại:" + context : "") +
+    "\n\nCâu hỏi: " + message;
+}
+
+// Hướng C: Build bảng so sánh từ enrichments (mỗi mã 1 dòng, các chỉ sốalign).
+function buildCompareTable(symbols, enrichments){
+  // Parse lại từng enrichment để lấy số liệu thô — dùng raw data từ enrichRaw
+  let tbl = "\nBảng so sánh:";
+  const rows = [];
+  for(let i = 0; i < symbols.length; i++){
+    const raw = enrichments[i] && enrichments[i].raw;
+    if(!raw || raw.close == null) continue;
+    rows.push({
+      sym: symbols[i],
+      close: raw.close,
+      pct: raw.pct_change,
+      pe: raw.pe, pb: raw.pb,
+      trend: raw.trend, rsi: raw.rsiSignal,
+    });
+  }
+  for(const r of rows){
+    tbl += `\n- ${r.sym}: giá ${r.close} (${r.pct != null ? (r.pct > 0 ? "+" : "") + r.pct.toFixed(2) + "%" : "—"})` +
+      `, P/E ${r.pe ?? "—"}, P/B ${r.pb ?? "—"}` +
+      (r.trend ? `, ${r.trend}` : "") + (r.rsi ? `, ${r.rsi}` : "");
+  }
+  return tbl;
+}
+
+// 8b Mức 3: Lấy đầy đủ dữ liệu cho 1 mã — quote + fundamentals + ohlcv + news.
+// Chạy song song, lỗi từng phần không chặn phần khác, không bao giờ throw.
+// Hướng B: thêm tín hiệu kỹ thuật (RSI, Bollinger, MA) từ indicators thật.
+// Trả về {text, raw} — raw để build bảng so sánh (Hướng C).
+async function enrichSymbol(sym){
+  const enc = encodeURIComponent(sym);
+  // 4 API độc lập → Promise.all, mỗi cái tự catch để không gãy cả cụm
+  const [q, f, o, n] = await Promise.all([
+    sApi("/quote?symbol=" + enc).catch(()=>null),
+    sApi("/fundamentals?symbol=" + enc).catch(()=>null),
+    sApi("/ohlcv?symbol=" + enc + "&count=60").catch(()=>null),
+    sApi("/news?symbol=" + enc).catch(()=>null),
+  ]);
+  if(!q || q.close == null) return null; // không có giá thì bỏ qua mã này
+  const raw = { close: q.close, pct_change: q.pct_change, pe: null, pb: null, trend: null, rsiSignal: null };
+  let ctx = `\n- ${sym}: giá ${q.close}, thay đổi ${q.change ?? "—"} (${q.pct_change != null ? q.pct_change.toFixed(2) + "%" : "—"}), khối lượng ${q.volume ?? "—"}`;
+  if(q.high != null || q.low != null){
+    ctx += `, cao ${q.high ?? "—"}/thấp ${q.low ?? "—"}`;
+  }
+  // Định giá từ fundamentals thật
+  if(f && (f.pe != null || f.pb != null)){
+    const parts = [];
+    if(f.pe != null){ parts.push(`P/E ${f.pe}`); raw.pe = f.pe; }
+    if(f.pb != null){ parts.push(`P/B ${f.pb}`); raw.pb = f.pb; }
+    if(f.roe != null) parts.push(`ROE ${f.roe}%`);
+    if(parts.length) ctx += `\n  Định giá: ${parts.join(", ")}`;
+  }
+  // Xu hướng từ OHLCV thật (đếm phiên tăng/giảm liên tiếp)
+  const trend = calcTrend(o);
+  if(trend){ ctx += `\n  Xu hướng: ${trend}`; raw.trend = trend; }
+  // Hướng B: Tín hiệu kỹ thuật từ indicators thật (RSI, Bollinger, MA)
+  const signals = calcTechSignals(o, q.close);
+  if(signals.length){
+    ctx += `\n  Kỹ thuật: ${signals.join(", ")}`;
+    raw.rsiSignal = signals.find(s => s.includes("RSI")) || null;
+  }
+  // Tin mới nhất (chỉ lấy 1 tin, không bịa)
+  if(n && n.items && n.items.length && n.items[0].title){
+    ctx += `\n  Tin mới: "${n.items[0].title}"`;
+  }
+  return { text: ctx, raw };
+}
+
+// Hướng B: Tính tín hiệu kỹ thuật từ indicators + OHLCV thật.
+// Không bịa: chỉ dùng số có thật, thiếu thì bỏ qua.
+function calcTechSignals(ohlcv, close){
+  const signals = [];
+  try{
+    const rows = ohlcv && ohlcv.rows;
+    const inds = ohlcv && ohlcv.indicators;
+    if(!rows || !rows.length) return signals;
+    // RSI từ indicators
+    if(inds && inds.length){
+      const last = inds[inds.length - 1];
+      if(last.rsi != null){
+        const r = Number(last.rsi);
+        if(r >= 70) signals.push(`RSI ${r.toFixed(0)} (quá mua)`);
+        else if(r <= 30) signals.push(`RSI ${r.toFixed(0)} (quá bán)`);
+        else signals.push(`RSI ${r.toFixed(0)}`);
+      }
+      // Bollinger Bands
+      if(last.bb_up != null && last.bb_lo != null && close != null){
+        if(close > last.bb_up) signals.push("vượt dải Bollinger trên");
+        else if(close < last.bb_lo) signals.push("thủng dải Bollinger dưới");
+      }
+    }
+    // MA50 tính từ closes thật (SMA đơn giản)
+    if(rows.length >= 50){
+      const closes = rows.slice(-50).map(r => r.close).filter(c => c != null);
+      if(closes.length >= 50 && close != null){
+        const ma50 = closes.reduce((a, b) => a + b, 0) / closes.length;
+        signals.push(close > ma50 ? "trên MA50" : "dưới MA50");
+      }
+    }
+  }catch(e){ /* bỏ qua, không chặn */ }
+  return signals;
+}
+
+// Tính xu hướng từ OHLCV: đếm số phiên tăng/giảm liên tiếp gần nhất.
+// rows: [{time, close, ...}], mới nhất ở cuối. Trả về null nếu không đủ dữ liệu.
+function calcTrend(ohlcv){
+  try{
+    const rows = ohlcv && ohlcv.rows;
+    if(!rows || rows.length < 2) return null;
+    let up = 0, down = 0;
+    for(let i = rows.length - 1; i > 0; i--){
+      const c = rows[i].close, p = rows[i-1].close;
+      if(c == null || p == null) break;
+      if(c > p){ if(down > 0) break; up++; }
+      else if(c < p){ if(up > 0) break; down++; }
+      else break; // đi ngang thì dừng đếm
+    }
+    if(up >= 2) return `tăng ${up} phiên liên tiếp`;
+    if(down >= 2) return `giảm ${down} phiên liên tiếp`;
+    if(up === 1) return "tăng phiên gần nhất";
+    if(down === 1) return "giảm phiên gần nhất";
+    return null;
+  }catch(e){ return null; }
+}
+
+// Tách mã chứng khoán từ câu hỏi (mã VN thường 3 ký tự hoa: HPG, VCB, VIC...)
+function detectSymbols(text){
+  const matches = text.toUpperCase().match(/\b[A-Z]{3}\b/g) || [];
+  // Loại từ thông dụng không phải mã CK
+  const stopwords = new Set(["CHO", "BAO", "NHI", "GIA", "HAY", "LA", "CAI", "VND", "USD"]);
+  return [...new Set(matches.filter(m => !stopwords.has(m)))];
+}
+
+let agentBound = false;
+let lastAgentSend = 0;
+const AGENT_THROTTLE_MS = 2000;
+
+/* ---------- BYOK UI for Stocks — dùng shared module (Gốc G1, 2026-10-12) ---------- */
+function initStkByok(){
+  // Gốc: gọi module dùng chung, không còn code trùng lặp
+  initByok({ prefix: 'stk', app: 'stocks', t: t });
+}
+
+function initAgentChat(){
+  if(agentBound) return;
+  agentBound = true;
+  initStkByok();
+  const input = $("agentInput");
+  const btn = $("agentSendBtn");
+  const msgs = $("agentMsgs");
+  if(!input || !btn || !msgs) return;
+  // 8b 2026-10-12 (Phase 1.5): lịch sử hội thoại cho multi-turn (giữ 10 turn gần nhất).
+  const agentHistory = [];
+
+  function addMsg(text, isUser){
+    const div = document.createElement("div");
+    div.style.cssText = isUser
+      ? "align-self:flex-end;background:var(--pp-accent);color:#fff;padding:8px 12px;border-radius:16px 16px 4px 16px;max-width:80%;word-wrap:break-word"
+      : "align-self:flex-start;background:var(--pp-bg2);padding:8px 12px;border-radius:16px 16px 16px 4px;max-width:80%;word-wrap:break-word;white-space:pre-wrap";
+    div.textContent = text;
+    msgs.appendChild(div);
+    msgs.scrollTop = msgs.scrollHeight;
+    // Ẩn gợi ý sau khi có tin nhắn đầu tiên
+    const sug = $("agentSuggest");
+    if(sug) sug.style.display = "none";
+  }
+
+  // Phase 1: Gợi ý câu hỏi mẫu kiểu Perplexity — chip ngang, bấm để gửi ngay.
+  function renderSuggest(){
+    const sug = $("agentSuggest");
+    if(!sug) return;
+    // Chỉ hiện khi chưa có tin nhắn nào
+    if(msgs.children.length > 0){ sug.style.display = "none"; return; }
+    sug.style.display = "flex";
+    sug.innerHTML = "";
+    ["suggest_q1","suggest_q2","suggest_q3","suggest_q4"].forEach(k => {
+      const txt = t(k);
+      if(!txt || txt === k) return; // bỏ qua key thiếu
+      const chip = document.createElement("button");
+      chip.type = "button";
+      chip.textContent = txt;
+      chip.style.cssText = "flex:0 0 auto;padding:8px 14px;border-radius:20px;border:1px solid var(--pp-border);background:var(--pp-bg2);color:var(--pp-text);font-size:13px;cursor:pointer;white-space:nowrap";
+      chip.onclick = () => {
+        input.value = txt;
+        send();
+      };
+      sug.appendChild(chip);
+    });
+    // Re-render khi đổi ngôn ngữ
+    if(!sug.dataset.i18nBound){
+      sug.dataset.i18nBound = "1";
+      document.addEventListener("langchange", renderSuggest);
+    }
+  }
+
+  async function send(){
+    const now = Date.now();
+    if(now - lastAgentSend < AGENT_THROTTLE_MS) return;
+    lastAgentSend = now;
+    const text = input.value.trim();
+    if(!text) return;
+    if(text.length > 1000){ addMsg(t("agent_too_long") || "Message too long", false); return; }
+    input.value = "";
+    input.disabled = true;
+    btn.disabled = true;
+    addMsg(text, true);
+    const waitingText = t("agent_waiting") || "Processing";
+    addMsg(waitingText + "...", false);
+    const loading = msgs.lastChild;
+    const startTime = Date.now();
+    // Update elapsed time every 2s so user knows it's working
+    const elapsedTimer = setInterval(() => {
+      const secs = Math.floor((Date.now() - startTime) / 1000);
+      if(loading && loading.isConnected){
+        loading.textContent = waitingText + "... (" + secs + "s)";
+      }
+    }, 2000);
+    try{
+      // tốc T2: stream chữ chảy dần vào chính bubble "Processing..." (thay vì chờ full).
+      // Chưa có chữ nào (buffered/fallback) → giữ nguyên hành vi cũ.
+      let streamed = false;
+      const fb = await chatWithFallback(text, agentHistory, function(chunk){
+        if(!streamed){
+          streamed = true;
+          clearInterval(elapsedTimer);
+          loading.textContent = "";
+        }
+        loading.textContent += chunk;
+        msgs.scrollTop = msgs.scrollHeight;
+      });
+      if((fb.via === "proxy" || fb.via === "modal") && fb.reply){
+        if(streamed){
+          // Đã chảy chữ trong bubble — chốt text cuối (đúng cả khi stream đứt giữa chừng).
+          loading.textContent = fb.reply;
+        }else{
+          clearInterval(elapsedTimer);
+          loading.remove();
+          addMsg(fb.reply, false);
+        }
+        // Lưu turn vào history (giữ tối đa 10 turn = 20 messages).
+        agentHistory.push({ role: "user", text: text }, { role: "model", text: fb.reply });
+        while(agentHistory.length > 20) agentHistory.splice(0, 2);
+      } else if (fb.proxyErr) {
+        // 8b 2026-10-13: user đã cấu hình endpoint riêng mà nó lỗi → báo lỗi đó,
+        // không fallback sang server (tránh "Gemini API error" gây nhầm lẫn).
+        clearInterval(elapsedTimer);
+        loading.remove();
+        const pe = fb.proxyErr;
+        const pmsg = (pe.detail || pe.message || "").toString().slice(0, 200);
+        const pname = fb.proxyModel || fb.proxyBase || "endpoint riêng";
+        addMsg((t("ai_custom_err") || "Lỗi endpoint riêng") + " (" + pname + "): " + pmsg, false);
+      } else {
+      // Async job pattern: POST returns immediately with requestId,
+      // then poll status every 2s (Canva/Midjourney style).
+      // Avoids holding one HTTP connection for 60s+ (mobile browsers kill it).
+      const r = await sApi("/agent", {
+        method: "POST",
+        body: JSON.stringify({message: text})
+      });
+      if(!r.requestId){
+        clearInterval(elapsedTimer);
+        loading.remove();
+        addMsg((r.error || r.reply || t("error") || "Error"), false);
+      } else {
+        // Poll for result
+        const maxPolls = 90; // 90 x 2s = 3 min max
+        let done = false;
+        for(let i = 0; i < maxPolls && !done; i++){
+          await new Promise(res => setTimeout(res, 2000));
+          try{
+            const s = await sApi("/agent/status?id=" + encodeURIComponent(r.requestId));
+            if(s.status === "done"){
+              clearInterval(elapsedTimer);
+              loading.remove();
+              addMsg(s.reply || "", false);
+              done = true;
+            } else if(s.status === "error"){
+              clearInterval(elapsedTimer);
+              loading.remove();
+              addMsg((s.error || t("error") || "Error"), false);
+              done = true;
+            }
+            // else "queued"/"processing": keep polling
+          }catch(pe){
+            // Single poll failed — keep trying unless it's the last attempt
+            if(i === maxPolls - 1){
+              clearInterval(elapsedTimer);
+              loading.remove();
+              addMsg(t("error")+": "+pe.message, false);
+              done = true;
+            }
+          }
+        }
+        if(!done){
+          clearInterval(elapsedTimer);
+          loading.remove();
+          addMsg(t("error")+": timeout", false);
+        }
+      }
+      } // end else (server fallback)
+    }catch(e){
+      clearInterval(elapsedTimer);
+      loading.remove();
+      addMsg(t("error")+": "+e.message, false);
+    }
+    input.disabled = false;
+    btn.disabled = false;
+    input.focus();
+  }
+
+  btn.addEventListener("click", send);
+  input.addEventListener("keydown", e=>{
+    if(e.key==="Enter" && !e.shiftKey){ e.preventDefault(); send(); }
+  });
+  renderSuggest();
+}
+// force rehash 20261009
