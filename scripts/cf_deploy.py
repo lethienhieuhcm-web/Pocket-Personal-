@@ -36,7 +36,12 @@ except ImportError:
 
 API = "https://api.cloudflare.com/client/v4"
 ACCOUNT = "25b2327e932d26e5487c2ba8ad058932"
-WORKER = "fancy-wood-2b3c"
+# Moi truong deploy (2026-10-20, stockui Dot C): mac dinh production nhu cu.
+# Staging: CF_WORKER_NAME=fancy-wood-2b3c-staging CF_D1_ID=<staging uuid>
+#          CF_VERIFY_HOST=staging.lethanhdong.one CF_PURGE=0 CF_DRIFT=0
+WORKER = os.environ.get("CF_WORKER_NAME", "fancy-wood-2b3c")
+D1_ID = os.environ.get("CF_D1_ID", "e856db4d-1ee1-42fd-9c1d-1807ca31afb5")
+VERIFY_HOST = os.environ.get("CF_VERIFY_HOST", "lethanhdong.one")
 def _detect_src():
     """Find the english-lab checkout: CF_DEPLOY_SRC (CI) -> scripts/.. (repo)
     -> /home/hatch/workspace/english-lab (VM)."""
@@ -355,6 +360,16 @@ def main():
         manifest["/stocks/index.html"] = {"hash": sh, "size": len(sdata)}
         contents[sh] = ("stocks.html", sdata)
         print(f"stocks: standalone app at /stocks/")
+    # Staging: stockui v2 (UI moi theo mockup, de review truoc khi thay production)
+    stocks_v2 = os.path.join(SRC, "stocks-v2.html")
+    if os.path.exists(stocks_v2):
+        v2data = open(stocks_v2, "rb").read()
+        v2data = apply_hashed_assets_to_html(v2data, asset_hash_map, build_id)
+        v2h = hashlib.sha256(v2data).hexdigest()[:32]
+        manifest["/stocks-v2/"] = {"hash": v2h, "size": len(v2data)}
+        manifest["/stocks-v2/index.html"] = {"hash": v2h, "size": len(v2data)}
+        contents[v2h] = ("stocks-v2.html", v2data)
+        print(f"stocks-v2: staging UI at /stocks-v2/")
     # Chess + Music: standalone apps served from repo HTML (single source of truth)
     for _app, _file in (("chess", "chess.html"), ("music", "music.html")):
         _p = os.path.join(SRC, _file)
@@ -506,7 +521,7 @@ def main():
             {"type": "r2_bucket", "name": "DATA", "bucket_name": "english-lab-data"},
             {"type": "r2_bucket", "name": "AUTHDB", "bucket_name": "english-lab-auth"},
             {"type": "r2_bucket", "name": "DACMUSIC", "bucket_name": "dac-music"},
-            {"type": "d1", "name": "DB", "id": "e856db4d-1ee1-42fd-9c1d-1807ca31afb5"},
+            {"type": "d1", "name": "DB", "id": D1_ID},
         ],
     }
     b2 = "----cfdeploy5678"
@@ -536,10 +551,12 @@ def main():
         print("DEPLOY OK")
         # Purge Cloudflare edge cache so HTML/JS updates go live immediately
         # (Zone ID for lethanhdong.one; requires Cache Purge permission)
-        try:
-            purge_cache()
-        except Exception as e:
-            print(f"Cache purge failed (non-fatal): {e}")
+        # Staging: CF_PURGE=0 (tranh purge ca production - cung zone)
+        if os.environ.get("CF_PURGE", "1") != "0":
+            try:
+                purge_cache()
+            except Exception as e:
+                print(f"Cache purge failed (non-fatal): {e}")
         # 8b + big tech (K8s/Vercel): verify live worker version matches.
         # Never trust "API success" — poll until X-Build-Id matches or fail.
         if not verify_live_build(build_id):
@@ -551,7 +568,8 @@ def main():
         # VM->GitHub (sửa local, deploy, quên upload) mà rule không thấy được.
         # Check đúng chỗ: ngay sau deploy, khi local chính là production.
         try:
-            check_worker_repo_drift()
+            if os.environ.get("CF_DRIFT", "1") != "0":
+                check_worker_repo_drift()
         except Exception as e:
             print(f"Repo drift check skipped (non-fatal): {e}")
     else:
@@ -649,7 +667,7 @@ def verify_live_build(build_id, timeout=60):
     """
     import time
     import urllib.request
-    url = "https://lethanhdong.one/policy"
+    url = f"https://{VERIFY_HOST}/policy"
     deadline = time.time() + timeout
     while time.time() < deadline:
         try:
