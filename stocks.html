@@ -67,10 +67,26 @@ input,select{background:var(--pp-bg2);border:1px solid var(--pp-line);color:var(
 </style>
 </head>
 <body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="i-globe" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></symbol>
+<symbol id="i-chevron-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></symbol>
+</defs></svg>
 
 <!-- ===== MÀN 1: Thị trường ===== -->
 <div class="view on" id="v-market">
-<div class="hdr"><a href="/hub" class="pp-back" style="text-decoration:none;font-size:20px" title="Về Pocket Personal" aria-label="Về Pocket Personal">‹</a><h1><svg class="tic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg> Thị trường</h1><button id="langQuick" onclick="cycleLang()" style="background:none;border:none;color:var(--pp-mut);font-size:14px;font-weight:600;cursor:pointer;padding:8px" title="Đổi ngôn ngữ">VI</button><span class="src" id="mktSrc">Nguồn: VCI trực tiếp</span></div>
+<div class="hdr"><a href="/hub" class="pp-back" style="text-decoration:none;font-size:20px" title="Về Pocket Personal" aria-label="Về Pocket Personal">‹</a><h1><svg class="tic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg> Thị trường</h1><div class="pp-langdrop" id="langDrop">
+  <button class="pp-langdrop-btn" aria-label="Language">
+    <svg class="ic"><use href="#i-globe"/></svg>
+    <span class="pp-langdrop-cur">VI</span>
+    <svg class="chev"><use href="#i-chevron-down"/></svg>
+  </button>
+  <div class="pp-langdrop-menu" role="listbox">
+    <button class="pp-langdrop-item" data-lang="vi"><span class="code">VI</span><span class="name">Tiếng Việt</span></button>
+    <button class="pp-langdrop-item" data-lang="en"><span class="code">EN</span><span class="name">English</span></button>
+    <button class="pp-langdrop-item" data-lang="zh"><span class="code">中文</span><span class="name">中文</span></button>
+    <button class="pp-langdrop-item" data-lang="ko"><span class="code">한국어</span><span class="name">한국어</span></button>
+  </div>
+</div><span class="src" id="mktSrc">Nguồn: VCI trực tiếp</span></div>
 <div class="regime" id="regimeBox" style="display:none"><div class="t" id="regimeT"></div><div class="d" id="regimeD"></div></div>
 <div class="tabs main" id="mainTabs"></div>
 <div class="sec">Chỉ số</div>
@@ -129,13 +145,12 @@ input,select{background:var(--pp-bg2);border:1px solid var(--pp-line);color:var(
 <!-- ===== MÀN 7: Danh mục ===== -->
 <div class="card" style="border-style:dashed;text-align:center;padding:16px">
 <div style="font-size:12px;font-weight:700">Nhập danh mục </div>
-<div style="font-size:12px;color:var(--pp-mut);margin-top:6px">Chụp ảnh sao kê · Tải Excel · Dán bảng</div>
+<div style="font-size:12px;color:var(--pp-mut);margin-top:6px">Tải Excel/CSV · Dán bảng</div>
 <div style="display:flex;gap:8px;margin-top:10px">
-<button style="flex:1;padding:8px;border-radius:8px;background:var(--pp-bg2);color:var(--pp-ink);border:1px solid var(--pp-line);font-size:12px;cursor:pointer" onclick="alert('Sắp có')">Chụp ảnh</button>
-<button style="flex:1;padding:8px;border-radius:8px;background:var(--pp-bg2);color:var(--pp-ink);border:1px solid var(--pp-line);font-size:12px;cursor:pointer" onclick="document.getElementById('pfFile').click()">Excel</button>
+<button style="flex:1;padding:8px;border-radius:8px;background:var(--pp-bg2);color:var(--pp-ink);border:1px solid var(--pp-line);font-size:12px;cursor:pointer" onclick="document.getElementById('pfFile').click()">Excel / CSV</button>
 <button style="flex:1;padding:8px;border-radius:8px;background:var(--pp-bg2);color:var(--pp-ink);border:1px solid var(--pp-line);font-size:12px;cursor:pointer" id="pfPasteBtn">Dán</button>
 </div>
-<input type="file" id="pfFile" accept=".csv,.tsv,.txt" style="display:none">
+<input type="file" id="pfFile" accept=".csv,.tsv,.txt,.xlsx,.xls" style="display:none">
 <div id="pfPasteBox" style="display:none;margin-top:10px;text-align:left">
 <div class="hint" style="padding:0 0 6px">Dán bảng sao kê (cột: Mã · Số lượng · Giá vốn). Mỗi dòng 1 mã, phân cách bằng Tab/dấu phẩy/chấm phẩy.</div>
 <textarea id="pfPasteTxt" rows="5" style="width:100%;box-sizing:border-box;background:var(--pp-bg2);color:var(--pp-ink);border:1px solid var(--pp-line);border-radius:8px;padding:8px;font-size:12px" placeholder="FPT	1000	120000"></textarea>
@@ -282,6 +297,29 @@ document.querySelectorAll("#mineTabs .tab").forEach(t=>t.onclick=()=>{
   $("m"+t.dataset.mt[0].toUpperCase()+t.dataset.mt.slice(1)).style.display="";
 });
 // ---- Màn 1 ----
+// i18n banner regime: backend tra CODE (TANG_NONG/TICH_LUY/GIAM/PHAN_PHOI) + desc
+// tieng Viet lam fallback; frontend dich theo bang nay (chuoi dong nen translateDOM
+// khong bat duoc — phai render rieng va render lai moi khi doi ngon ngu).
+const REGIME_I18N = {
+  TANG_NONG:{vi:["Tăng nóng","lan tỏa tốt, khối ngoại mua ròng"],en:["Overheating","broad-based gains, foreign net buying"],zh:["过热","普涨，外资净买入"],ko:["과열","광범위한 상승, 외국인 순매수"]},
+  TICH_LUY:{vi:["Tích lũy","trên MA50, thị trường đang gom hàng"],en:["Accumulation","above MA50, market accumulating"],zh:["积累","在 MA50 上方，市场正在吸筹"],ko:["매집","MA50 위, 시장이 물량을 모으는 중"]},
+  GIAM:{vi:["Giảm","dưới MA50, số mã giảm áp đảo"],en:["Downtrend","below MA50, decliners dominate"],zh:["下跌","在 MA50 下方，下跌股占优"],ko:["하락","MA50 아래, 하락 종목 우세"]},
+  PHAN_PHOI:{vi:["Phân phối","giằng co, cần thận trọng"],en:["Distribution","choppy, stay cautious"],zh:["派发","震荡，谨慎操作"],ko:["분배","횡보 중, 신중히 대응"]}
+};
+const BREADTH_I18N = {vi:["tăng","giảm","trên","dưới"],en:["up","down","above","below"],zh:["涨","跌","上方","下方"],ko:["상승","하락","위","아래"]};
+let _regime = null;
+function renderRegime(){
+  if(!_regime) return;
+  const j = _regime, b = j.breadth || {};
+  const r = REGIME_I18N[j.regime];
+  const pair = r ? (r[curLang] || r.vi) : null;
+  const nm = pair ? pair[0] : j.regime;
+  const ds = pair ? pair[1] : (j.desc || "");
+  const w = BREADTH_I18N[curLang] || BREADTH_I18N.vi;
+  $("regimeT").textContent = `${j.emoji || ""} ${nm} — ${ds}`;
+  $("regimeD").textContent = `Breadth: ${b.up || 0} ${w[0]} / ${b.down || 0} ${w[1]} · VNINDEX ${j.above_ma50 ? w[2] : w[3]} MA50`;
+}
+
 async function loadMarket(){
   try{
     const j=await api("/indices");const rows=j.rows||[];
@@ -295,8 +333,7 @@ async function loadMarket(){
       if(j.regime==="PHAN_PHOI"||j.regime==="GIAM")box.classList.add("danger");
       else if(j.regime==="TANG_NONG")box.classList.add("warn");
       const b=j.breadth||{};
-      $("regimeT").textContent=`${j.emoji||""} ${j.regime} — ${j.desc||""}`;
-      $("regimeD").textContent=`Breadth: ${b.up||0} tăng / ${b.down||0} giảm · VNINDEX ${j.above_ma50?"trên":"dưới"} MA50`;}
+      _regime=j; renderRegime();}
   }catch(e){}
   try{
     const j=await api("/screener?sort=pct_change&order=desc");
@@ -372,7 +409,12 @@ async function loadMine(){
     const rk=await api("/risk"); _riskCache=rk;
     const st=rk.stats||{};
     $("jStats").innerHTML=st.trades?`<div class="row"><span class="k">Số vòng đã chốt</span><span class="v">${st.trades} (${st.wins||0} thắng / ${st.losses||0} thua)</span></div><div class="row"><span class="k">Win rate</span><span class="v">${st.win_rate_pct}%</span></div><div class="row"><span class="k">Tổng P/L đã chốt</span><span class="v ${st.total_pnl>0?"up":st.total_pnl<0?"down":""}">${st.total_pnl>0?"+":""}${fmtD(st.total_pnl)} đ</span></div><div class="row"><span class="k">Lãi TB / Lỗ TB</span><span class="v">${fmtD(st.avg_win)} / ${fmtD(st.avg_loss)} đ</span></div><div class="row"><span class="k">Profit factor</span><span class="v">${st.profit_factor!=null?st.profit_factor:"—"}</span></div>`:'<div class="hint">Chưa có vòng giao dịch nào đã chốt.</div>';
-    $("jStrat").innerHTML="";
+    try{
+      const sr=await api("/strategy_review");
+      const srows=sr.rows||[];
+      const VD={giu:"🟢 Giữ",xem_lai:"🟡 Xem lại",dung:"🔴 Dừng"};
+      $("jStrat").innerHTML=srows.length?srows.map(r=>`<tr><td><b>${esc(r.label)}</b></td><td>${r.trades}</td><td class="${r.win_rate_pct>=50?"up":"down"}">${r.win_rate_pct}%</td><td class="${r.profit_factor==null||r.profit_factor>=1?"up":"down"}">${r.profit_factor!=null?String(r.profit_factor).replace(".",","):"—"}</td><td>${VD[r.verdict]||"—"}</td></tr>`).join(""):'<tr><td colspan="5"><div class="hint">Chưa đủ dữ liệu để đánh giá chiến lược.</div></td></tr>';
+    }catch(e){$("jStrat").innerHTML='<tr><td colspan="5"><div class="hint">Lỗi tải đánh giá chiến lược.</div></td></tr>';}
     const pr=rk.profile||{};
     const PROF_LBL={than_trong:"Thận trọng",can_bang:"Cân bằng",tang_truong:"Tăng trưởng",mao_hiem:"Mạo hiểm"};
     $("riskProfile").innerHTML=pr.profile?`<div class="row"><span class="k">Hồ sơ</span><span class="v" style="font-size:15px">${esc(PROF_LBL[pr.profile]||pr.profile)} · ${pr.score}/100</span></div><div class="hint" style="padding:6px 0">${esc(pr.mo_ta||"")}</div>${(pr.ly_do||[]).map(x=>`<div class="hint" style="padding:2px 0">• ${esc(x)}</div>`).join("")}${pr.goi_y_gioi_han?`<div class="row" style="margin-top:6px"><span class="k">Giới hạn gợi ý</span><span class="v">Mã ≤ ${pr.goi_y_gioi_han.max_position_pct}% · Cắt lỗ ${pr.goi_y_gioi_han.stop_loss_pct}%</span></div><div class="hint" style="padding:2px 0">${esc(pr.goi_y_gioi_han.note||"")}</div>`:""}`:'<div class="hint">Chưa đủ dữ liệu.</div>';
@@ -389,23 +431,28 @@ function pfNum(s){
   else if(s.includes(".")){const p=s.split(".");if(p.length>1&&p.slice(1).every(x=>x.length===3))s=s.replace(/\./g,"");}
   const v=parseFloat(s.replace(/[^\d.\-]/g,""));return isNaN(v)?null:v;
 }
-function pfParseTable(text){
-  const lines=String(text||"").split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
-  if(!lines.length)return[];
-  const delim=lines[0].includes("\t")?"\t":(lines[0].includes(";")?";":",");
-  const rows=lines.map(l=>l.split(delim).map(c=>c.trim()));
+function pfParseRows(rows){
+  rows=(rows||[]).map(r=>(r||[]).map(c=>String(c==null?"":c).trim()));
+  if(!rows.length)return[];
   const COLS={symbol:["ma ck","ma","symbol","ticker","stock","chung khoan"],quantity:["so luong","kl","quantity","qty","volume","so du"],avg_price:["gia von","gia tb","gia mua","avg","average price","cost","gia goc","don gia"]};
-  const head=rows[0].map(pfNorm); const idx={};
+  const head=rows[0].map(pfNorm); let idx={};
   for(const f of Object.keys(COLS))for(let i=0;i<head.length;i++){if(COLS[f].some(k=>head[i].includes(k))){idx[f]=i;break;}}
   let data=rows;
   if(idx.symbol!=null)data=rows.slice(1); else idx={symbol:0,quantity:1,avg_price:2};
   const out=[];
   for(const r of data){
+    if(pfNorm(r[idx.symbol]).startsWith("tong"))continue;
     const sym=String(r[idx.symbol]||"").toUpperCase().replace(/[^A-Z0-9]/g,"");
     const qty=pfNum(r[idx.quantity]), price=pfNum(r[idx.avg_price]);
     if(/^[A-Z]{3,10}$/.test(sym)&&qty>0&&price>0)out.push({symbol:sym,quantity:qty,avg_price:price});
   }
   return out;
+}
+function pfParseTable(text){
+  const lines=String(text||"").split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+  if(!lines.length)return[];
+  const delim=lines[0].includes("\t")?"\t":(lines[0].includes(";")?";":",");
+  return pfParseRows(lines.map(l=>l.split(delim)));
 }
 async function pfImportRows(rows,msgEl){
   if(!rows.length){msgEl.textContent="Không đọc được dòng nào hợp lệ (cần cột Mã · Số lượng · Giá vốn).";return;}
@@ -420,10 +467,35 @@ async function pfImportRows(rows,msgEl){
 }
 $("pfPasteBtn").onclick=()=>{const b=$("pfPasteBox");b.style.display=b.style.display==="none"?"":"none";};
 $("pfPasteGo").onclick=()=>pfImportRows(pfParseTable($("pfPasteTxt").value),$("pfImportMsg"));
+let _xlsxP=null;
+function pfLoadXlsx(){
+  if(window.XLSX)return Promise.resolve();
+  if(_xlsxP)return _xlsxP;
+  _xlsxP=new Promise((res,rej)=>{
+    const sc=document.createElement("script");
+    sc.src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js";
+    sc.onload=()=>res(); sc.onerror=()=>rej(new Error("xlsx load fail"));
+    document.head.appendChild(sc);
+  });
+  return _xlsxP;
+}
 $("pfFile").onchange=async e=>{
   const f=e.target.files&&e.target.files[0]; if(!f)return;
-  const txt=await f.text();
-  $("pfPasteBox").style.display=""; pfImportRows(pfParseTable(txt),$("pfImportMsg"));
+  const msg=$("pfImportMsg"); $("pfPasteBox").style.display="";
+  try{
+    if(/\.xlsx?$/i.test(f.name||"")){
+      msg.textContent="Đang đọc file Excel…";
+      await pfLoadXlsx();
+      const buf=await f.arrayBuffer();
+      const wb=XLSX.read(buf,{type:"array"});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:""});
+      pfImportRows(pfParseRows(rows),msg);
+    }else{
+      pfImportRows(pfParseTable(await f.text()),msg);
+    }
+  }catch(err){msg.textContent="Không đọc được file. Thử lại với file .xlsx hoặc dán bảng.";}
+  e.target.value="";
 };
 $("posSizeBtn").onclick=()=>{const b=$("posSizeBox");b.style.display=b.style.display==="none"?"":"none";};
 $("psGo").onclick=()=>{
@@ -545,27 +617,40 @@ const LANGS = {
   zh: {market:"市场",screen:"筛选",alert:"提醒",mine:"我的",indices:"指数",gainers:"HOSE涨幅榜",send:"发送",askPh:"询问股票…"},
   ko: {market:"시장",screen:"스크리너",alert:"알림",mine:"내 정보",indices:"지수",gainers:"HOSE 상승 상위",send:"보내기",askPh:"주식에 대해 질문…"}
 };
-let curLang = localStorage.getItem("stk_lang") || "vi";
+let curLang = (localStorage.getItem("elab_uiLang") || localStorage.getItem("stk_lang") || "vi").replace(/"/g, "");
+if(!["vi","en","zh","ko"].includes(curLang)) curLang = "vi";
 
 function refreshSrc(){
   if(_lastMktSrc) $("mktSrc").textContent=srcLabel(_lastMktSrc);
   else $("mktSrc").textContent=srcLabel("direct:vci");
   if(_lastDSrc) $("dSrc").textContent=srcLabel(_lastDSrc);
 }
-function cycleLang(){
-  const order = ["vi","en","zh","ko"];
+function syncLangUI(){
   const labels = {vi:"VI",en:"EN",zh:"中文",ko:"한국어"};
-  curLang = order[(order.indexOf(curLang)+1)%4];
-  localStorage.setItem("stk_lang", curLang);
+  document.querySelectorAll(".pp-langdrop").forEach(d=>{
+    const c = d.querySelector(".pp-langdrop-cur"); if(c) c.textContent = labels[curLang]||"VI";
+    d.querySelectorAll(".pp-langdrop-item").forEach(it=>it.classList.toggle("active", it.dataset.lang===curLang));
+  });
+}
+// Diem doi ngon ngu DUY NHAT (hub chuan): lang-dropdown.js goi window.__elabSetLang,
+// #langPick trong Cai dat cung di qua day. Key chuan "elab_uiLang" (dung chung toan he),
+// "stk_lang" chi ghi them de tuong thich nguoc.
+function setStkLang(l){
+  if(!LANGS[l]) l = "vi";
+  curLang = l;
+  try{ localStorage.setItem("elab_uiLang", l); }catch(e){}
+  localStorage.setItem("stk_lang", l);
   const L = LANGS[curLang];
   NAVLBL["v-market"] = L.market; NAVLBL["v-screen"] = L.screen;
   NAVLBL["v-alert"] = L.alert; NAVLBL["v-mine"] = L.mine;
   ["mainTabs","screenTabs","alertTabs","mineMainTabs","chatTabs"].forEach(e=>{if($(e))buildNav(e, document.querySelector(".view.on")?.id || "v-market");});
-  if($("langQuick")) $("langQuick").textContent = labels[curLang];
+  syncLangUI();
   applyLang();
   translateDOM();
   refreshSrc();
+  renderRegime();
 }
+window.__elabSetLang = setStkLang;
 
 const I18N_FULL = {
 "(tỷ đồng)":["(B VND)","(十亿越盾)","(10억 동)"],
@@ -580,7 +665,7 @@ const I18N_FULL = {
 "Chỉ số":["Indices","指数","지수"],
 "Chỉ số tự tính (TTM)":["Self-computed ratios (TTM)","自算指标 (TTM)","자체 계산 지표 (TTM)"],
 "Chụp ảnh":["Photo","拍照","사진"],
-"Chụp ảnh sao kê · Tải Excel · Dán bảng":["Photo statement · Upload Excel · Paste table","拍照对账单 · 上传 Excel · 粘贴表格","사진 명세서 · Excel 업로드 · 표 붙여넣기"],
+"Tải Excel/CSV · Dán bảng":["Upload Excel/CSV · Paste table","上传 Excel/CSV · 粘贴表格","Excel/CSV 업로드 · 표 붙여넣기"],
 "Cài đặt":["Settings","设置","설정"],
 "CĐKT":["Balance sheet","资产负债表","대차대조표"],
 "Cơ bản":["Fundamentals","基本面","기본정보"],
@@ -682,7 +767,6 @@ function translateAria(){
   const T = {vi:["Về Pocket Personal","Đổi ngôn ngữ"], en:["Back to Pocket Personal","Change language"], zh:["返回 Pocket Personal","切换语言"], ko:["Pocket Personal으로 돌아가기","언어 변경"]};
   const t = T[curLang] || T.vi;
   document.querySelectorAll(".pp-back").forEach(b=>{b.setAttribute("aria-label",t[0]);b.setAttribute("title",t[0]);});
-  const lb = document.getElementById("langQuick"); if(lb){ lb.setAttribute("aria-label",t[1]); lb.setAttribute("title",t[1]); }
 }
 function translateTitle(){
   const titles = {vi:"Chứng khoán — Pocket Personal", en:"Stocks — Pocket Personal", zh:"股票 — Pocket Personal", ko:"주식 — Pocket Personal"};
@@ -726,23 +810,10 @@ function applyLang(){
   if($("chatSend")) $("chatSend").textContent = L.send;
   if($("chatIn")) $("chatIn").placeholder = L.askPh;
   localStorage.setItem("stk_lang", curLang);
-  const langLbl={vi:"VI",en:"EN",zh:"中文",ko:"한국어"};
-  if($("langQuick")) $("langQuick").textContent = langLbl[curLang]||"VI";
+  try{ localStorage.setItem("elab_uiLang", curLang); }catch(e){}
+  syncLangUI();
 }
-document.querySelectorAll("#langPick button").forEach(b=>b.onclick=()=>{
-  curLang = b.dataset.lang;
-  localStorage.setItem("stk_lang", curLang);
-  // Nav nhãn đổi theo ngôn ngữ đã chọn khi build lại
-  const L = LANGS[curLang];
-  NAVLBL["v-market"] = L.market;
-  NAVLBL["v-screen"] = L.screen;
-  NAVLBL["v-alert"] = L.alert;
-  NAVLBL["v-mine"] = L.mine;
-  ["mainTabs","screenTabs","alertTabs","mineMainTabs","chatTabs"].forEach(e=>{if($(e))buildNav(e, document.querySelector(".view.on")?.id || "v-market");});
-  applyLang();
-  refreshSrc();
-  translateDOM();
-});
+document.querySelectorAll("#langPick button").forEach(b=>b.onclick=()=>setStkLang(b.dataset.lang));
 
 
 // ---- BYOK: khóa AI dùng chung IndexedDB pp_ai ----
@@ -825,6 +896,7 @@ if(!window._i18nObs){
 }
 loadMarket();
 </script>
+<script src="/english/js/lang-dropdown.js?v=__BUILD__"></script>
 
 <button id="aiFab" onclick="openChat()" style="position:fixed;right:16px;bottom:24px;width:52px;height:52px;border-radius:50%;background:var(--pp-accent);color:#fff;border:none;font-size:20px;box-shadow:0 4px 16px rgba(0,0,0,.5);cursor:pointer;z-index:200"><svg class="tic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></button>
 </body>
