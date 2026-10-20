@@ -182,7 +182,23 @@ const srcLabel = pv => {
   return pv;
 };
 
+// Poll /api/stock/version moi 5 phut (thiet ke goc cua endpoint): chi tai
+// lai khi `updated` doi. versions = cac ban vnstock dang cap du lieu cho
+// toan app — lai 4+5 thi hien ca hai (quy tac Henrry 2026-10-20).
+let _verKey = null, _verVers = [];
+async function pollStockVersion(){
+  try{
+    const v = await sApi("/version");
+    _verVers = v.versions||[];
+    const key = (v.updated||"")+"|"+_verVers.join(",");
+    if(_verKey && key!==_verKey){ renderStockTab(); }
+    else if(!_verKey && stkTab==="market"){ renderIndices(); }
+    _verKey = key;
+  }catch(e){}
+}
+
 export function bindStock(){
+  if(!window._stkVerTimer){ window._stkVerTimer = setInterval(pollStockVersion, 5*60*1000); pollStockVersion(); }
   const inp = $("stkSearch");
   if(inp){
     let timer = null;
@@ -347,7 +363,7 @@ async function renderIndices(){
     }).join("");
     const upd = j.updated ? new Date(j.updated) : null;
     // Nhan nguon du lieu (hoc tu vnstock 5: provenance). _prov co tu worker sau build 20261018084500.
-    const gen = srcLabel(j._prov && j._prov.source);
+    const gen = _verVers.length ? "vnstock "+_verVers.join(" + ") : srcLabel(j._prov && j._prov.source);
     $("stkUpd").textContent = (upd ? t("updated")+upd.toLocaleString(LOCALES[LANG]||"en-US") : "") + (gen ? " · "+t("dataSrc")+gen : "");
   }catch(e){ box.innerHTML = '<div class="hint">'+t("error")+": "+esc(e.message)+'</div>'; }
 }
