@@ -13,7 +13,7 @@
 // D1 (pocket-personal): 9 email-keyed tables — see D1_USER_TABLES.
 
 export const D1_USER_TABLES = [
-  'watchlist', 'portfolio_txns', 'alerts', 'targets', 'pins',
+  'watchlist', 'portfolio_txns', 'alerts', 'targets',
   'usage_daily', 'subscriptions', 'drive_tokens', 'spotify_tokens',
 ];
 
