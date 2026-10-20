@@ -16,7 +16,7 @@ import { and, eq, lt, sql } from "drizzle-orm";
 import { rateLimits } from "./schema.js";
 import {getSession, getUser, OWNER_EMAIL} from './auth.js';
 import {jerr} from './utils.js';
-import {hStockVersion, hStockIndices, hStockRegime, hStockSignals, hStockQuote, hStockOhlcv, hStockSymbols, hStockScreener, hStockScreener2, hStockFundamentals, hStockNews, hStockMarketNews, hStockForeignFlow, hStockForeignHistory, hStockProprietaryFlow, hStockProprietaryHistory, hStockEvents, hStockCompanyProfile, hStockBacktest, hStockCompare, hWatchlistGet, hWatchlistAdd, hWatchlistDel, hPortfolio, hTxnAdd, hTxnDel, hTxnNote, hCostHistory, hAlertsGet, hAlertsAdd, hAlertsDel, hAlertsBySymbol, hTargetsGet, hTargetsSet, hTargetsDel, hPinStatus, hPinSet, hPinVerify, hPinDel, hMigrateR2ToD1, hStockPublish, hModalAlert, hStockReportData, hStockAlertDone, hStockTargetDone, hStockRisk, hRuleAlertsGet, hRuleAlertsAdd, hRuleAlertsDel, hRuleAlertsInternal} from './stock.js';
+import {hStockVersion, hStockIndices, hStockRegime, hStockSignals, hStockQuote, hStockOhlcv, hStockSymbols, hStockScreener, hStockScreener2, hStockFundamentals, hStockStatements, hStockNews, hStockMarketNews, hStockForeignFlow, hStockForeignHistory, hStockProprietaryFlow, hStockProprietaryHistory, hStockEvents, hStockCompanyProfile, hStockBacktest, hStockCompare, hWatchlistGet, hWatchlistAdd, hWatchlistDel, hPortfolio, hTxnAdd, hTxnDel, hTxnNote, hCostHistory, hAlertsGet, hAlertsAdd, hAlertsDel, hAlertsBySymbol, hTargetsGet, hTargetsSet, hTargetsDel, hPinStatus, hPinSet, hPinVerify, hPinDel, hMigrateR2ToD1, hStockPublish, hModalAlert, hStockReportData, hStockAlertDone, hStockTargetDone, hStockRisk, hStockStrategyReview, hRuleAlertsGet, hRuleAlertsAdd, hRuleAlertsDel, hRuleAlertsInternal} from './stock.js';
 
 // Build ID - replaced with timestamp on every deploy (see cf_deploy.py)
 const BUILD_ID = "__BUILD__";
@@ -154,6 +154,7 @@ const ROUTES = [
   ['GET',    '/api/stock/screener',  hStockScreener,         'user'],
   ['GET',    '/api/stock/screener2', hStockScreener2,        'user'],
   ['GET',    '/api/stock/fundamentals', hStockFundamentals,  'user'],
+  ['GET',    '/api/stock/statements', hStockStatements,  'user'],
   ['GET',    '/api/stock/news',      hStockNews,             'user'],
   ['GET',    '/api/stock/news/market', hStockMarketNews,      'user'],
   ['GET',    '/api/stock/foreign-flow', hStockForeignFlow,    'user'],
@@ -166,6 +167,7 @@ const ROUTES = [
   ['GET',    '/api/stock/compare',   hStockCompare,          'user'],
   ['GET',    '/api/stock/watchlist', hWatchlistGet,          'user'],
   ['GET',    '/api/stock/risk',      hStockRisk,             'user'],
+  ['GET',    '/api/stock/strategy_review', hStockStrategyReview, 'user'],
   ['GET',    '/api/stock/rule-alerts', hRuleAlertsGet,       'user'],
   ['POST',   '/api/stock/rule-alerts', hRuleAlertsAdd,       'user'],
   ['DELETE', '/api/stock/rule-alerts/*', hRuleAlertsDel,     'user'],
