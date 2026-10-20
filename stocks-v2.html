@@ -104,7 +104,7 @@ input,select{background:var(--pp-bg2);border:1px solid var(--pp-line);color:var(
 <div class="tabs main" id="screenTabs"></div>
 <div class="card"><table><tr><th>Mã</th><th>Trend</th><th>P/E</th><th>P/B</th><th>ROE</th></tr><tbody id="screenerBody"><tr><td colspan="5"><div class="hint">Đang tải…</div></td></tr></tbody></table></div>
 <div class="sec">So sánh biến động (%)</div>
-<div class="card"><div style="display:flex;gap:8px"><input id="cmpInp" placeholder="Tối đa 5 mã, cách nhau dấu phẩy — vd: FPT,HPG,VCB" style="flex:1;background:var(--pp-bg2);color:var(--pp-ink);border:1px solid var(--pp-line);border-radius:8px;padding:8px;font-size:13px;text-transform:uppercase"><button id="cmpBtn" style="padding:8px 14px;border-radius:8px;background:var(--pp-accent);color:#fff;border:none;font-size:13px;font-weight:600;cursor:pointer">So sánh</button></div><div id="cmpOut" style="margin-top:8px"></div></div>
+<div class="card"><div style="display:flex;gap:8px"><input id="cmpInp" placeholder="Tối đa 5 mã, cách nhau dấu phẩy — vd: FPT,HPG,VCB" style="flex:1;background:var(--pp-bg2);color:var(--pp-ink);border:1px solid var(--pp-line);border-radius:8px;padding:8px;font-size:13px;text-transform:uppercase"><button id="cmpBtn" style="padding:8px 14px;border-radius:8px;background:var(--pp-accent);color:#fff;border:none;font-size:13px;font-weight:600;cursor:pointer">So sánh</button></div><div class="iv" id="cmpIv" style="margin-top:8px"><button data-cnt="22">1T</button><button data-cnt="66">3T</button><button class="on" data-cnt="120">6T</button><button data-cnt="250">1N</button><button data-cnt="500">2N</button></div><div id="cmpOut" style="margin-top:8px"></div></div>
 <div class="sec">⚡ Tín hiệu mới nhất</div>
 <div id="signalsList"><div class="hint">Đang tải…</div></div>
 </div>
@@ -740,13 +740,19 @@ $("wlAddBtn").onclick=async()=>{
   catch(e){$("wlMsg").textContent="⚠ "+e.message;}
 };
 const CMP_COLORS=["#2563eb","#dc2626","#16a34a","#f59e0b","#7c3aed"];
+let CMP_CNT=120;
+document.querySelectorAll("#cmpIv button").forEach(b=>b.onclick=()=>{
+  document.querySelectorAll("#cmpIv button").forEach(x=>x.classList.remove("on"));
+  b.classList.add("on");CMP_CNT=parseInt(b.dataset.cnt,10)||120;
+  if($("cmpInp").value.trim())doCompare();
+});
 async function doCompare(){
   const inp=$("cmpInp").value.toUpperCase().split(",").map(x=>x.trim()).filter(Boolean).slice(0,5);
   const out=$("cmpOut"),L=BL();
   if(inp.length<2){out.innerHTML='<div class="hint">'+L.cmpNeed+'</div>';return;}
   out.innerHTML='<div class="hint">Đang tải…</div>';
   try{
-    const j=await api("/compare?symbols="+inp.join(",")+"&count=120");
+    const j=await api("/compare?symbols="+inp.join(",")+"&count="+CMP_CNT);
     const series=j.series||{},syms=Object.keys(series);
     if(!syms.length){out.innerHTML='<div class="hint">'+L.cmpErr+'</div>';return;}
     const all=syms.flatMap(s=>series[s].map(p=>p.v));
