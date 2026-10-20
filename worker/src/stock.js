@@ -160,6 +160,16 @@ export async function hStockIndices(request, env){
   return cachedMarket(request, env, "market/indices.json", 300);
 }
 
+// Tu chu: market regime (scripts/market_regime.py) + signals (scripts/signal_detector.py)
+export async function hStockRegime(request, env){
+  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
+  return cachedMarket(request, env, "market/regime.json", 300);
+}
+export async function hStockSignals(request, env){
+  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
+  return cachedMarket(request, env, "market/signals.json", 300);
+}
+
 // Lightweight version check for polling (edge-cached 60s)
 // Frontend polls this every 5 min; refreshes market data only when version changes
 export async function hStockVersion(request, env){
@@ -929,6 +939,8 @@ export async function hStockPublish(request, env){
     n++;
   }
   if(body.market_news) await put1("market_news", {items:body.market_news});
+  if(body.regime) await put1("regime", body.regime);
+  if(body.signals) await put1("signals", {signals:body.signals});
   // Batch history upload cho backfill (nhanh hon nhieu so voi tung ngay)
   if(body.foreign_flow_history_batch){
     for(const sym of Object.keys(body.foreign_flow_history_batch)){
@@ -1205,4 +1217,141 @@ export async function hMigrateR2ToD1(request, env){
   }
   
   return sJson({ok: true, stats});
+}
+
+/* ================= stockui Dot B: risk + rule-alerts (tuchu) ================= */
+/* Port risk_limits.py / trade_journal.py / risk_profile.py sang JS (D1/KV-backed). */
+
+// FIFO stats — port trade_journal.get_closed_pnl + get_stats
+function fifoStats(txns){
+  const sorted = [...(txns||[])].sort((a,b)=> a.date<b.date?-1:a.date>b.date?1:(a.id||0)-(b.id||0));
+  const lots = {}; const closed = [];
+  for(const t of sorted){
+    const sym = String(t.symbol||"").toUpperCase(); if(!sym) continue;
+    lots[sym] = lots[sym]||[];
+    if(t.side==="BUY"){ lots[sym].push({qty:t.qty, price:t.price}); }
+    else{
+      let need=t.qty, buyCost=0, buyQty=0;
+      while(need>0 && lots[sym].length){
+        const lot=lots[sym][0]; const take=Math.min(lot.qty,need);
+        buyCost+=take*lot.price; buyQty+=take; lot.qty-=take; need-=take;
+        if(lot.qty<=0) lots[sym].shift();
+      }
+      if(buyQty>0){
+        const fee=t.fee||0; const pnl=buyQty*t.price-fee-buyCost;
+        closed.push({symbol:sym, quantity:buyQty, buy_price:Math.round(buyCost/buyQty*100)/100,
+          sell_price:t.price, sell_date:t.date, pnl:Math.round(pnl), pnl_pct:Math.round(pnl/buyCost*1e4)/100});
+      }
+    }
+  }
+  if(!closed.length) return {trades:0, note:"chua co vong chot"};
+  const wins=closed.filter(c=>c.pnl>0), losses=closed.filter(c=>c.pnl<=0);
+  const gw=wins.reduce((a,c)=>a+c.pnl,0), gl=-losses.reduce((a,c)=>a+c.pnl,0);
+  return {
+    trades: closed.length, wins: wins.length, losses: losses.length,
+    win_rate_pct: Math.round(wins.length/closed.length*1e3)/10,
+    total_pnl: Math.round(closed.reduce((a,c)=>a+c.pnl,0)),
+    avg_win: wins.length?Math.round(gw/wins.length):0,
+    avg_loss: losses.length?Math.round(gl/losses.length):0,
+    profit_factor: gl>0?Math.round(gw/gl*100)/100:null,
+  };
+}
+
+// Risk profile — port risk_profile.assess (chi dung trade_stats, khong co cau hoi)
+function riskProfileAssess(tradeStats){
+  let score=50; const reasons=[];
+  if(tradeStats && (tradeStats.trades||0)>=5){
+    const wr=tradeStats.win_rate_pct||50, pf=tradeStats.profit_factor||1.0;
+    const adj=(wr-50)*0.3+(Math.min(pf,3.0)-1.0)*10;
+    score+=adj*0.4;
+    reasons.push(`lich su ${tradeStats.trades} vong: win rate ${wr}%, PF ${pf} -> ${adj>=0?"+":""}${adj.toFixed(1)}d`);
+  }else reasons.push("chua du lich su (<5 vong), dung muc mac dinh");
+  score=Math.max(0,Math.min(100,Math.round(score*10)/10));
+  const lim={
+    than_trong:{max_position_pct:10,stop_loss_pct:5,note:"Cat lo som, khong tap trung"},
+    can_bang:{max_position_pct:15,stop_loss_pct:7,note:"Can bang giua giu va cat"},
+    tang_truong:{max_position_pct:20,stop_loss_pct:10,note:"Cho room bien dong rong hon"},
+    mao_hiem:{max_position_pct:25,stop_loss_pct:12,note:"Gioi han van can, tranh all-in"},
+  };
+  let profile, desc;
+  if(score<30){profile="than_trong";desc="Uu tien bao toan von. Phu hop: trai phieu, bluechip co tuc cao, ty trong co phieu thap.";}
+  else if(score<55){profile="can_bang";desc="Chap nhan bien dong vua phai. Phu hop: bluechip + midcap, ty trong co phieu 40-60%.";}
+  else if(score<75){profile="tang_truong";desc="Huong toi tang truong dai han. Phu hop: co phieu tang truong, ty trong cao, chiu duoc drawdown 20-30%.";}
+  else{profile="mao_hiem";desc="Tim loi nhuan cao, chiu rui ro lon. Phu hop: penny/midcap bien dong, margin co kiem soat.";}
+  return {profile, score, mo_ta:desc, ly_do:reasons, goi_y_gioi_han:lim[profile]};
+}
+
+// GET /api/stock/risk — port risk_limits.check_limits
+export async function hStockRisk(request, env){
+  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
+  const pf = await uGet(env, s.email, "portfolio", {txns:[]});
+  const txns = pf.txns||[];
+  const q = await sGet(env, "market/quotes.json");
+  const byQ = (q && q.by_symbol)||{};
+  const calc = sCalcPositions(txns);
+  const MAXP=20, SLP=7, HEATW=15;
+  const violations=[], valued=[];
+  let nav=0;
+  for(const sym of Object.keys(calc.pos)){
+    const p=calc.pos[sym]; if(!p.qty || p.qty<=1e-9) continue;
+    const qq=byQ[sym]||{}; const close=qq.close;
+    if(!(close>0)||!p.qty){
+      violations.push({type:"no_price",symbol:sym,message:`${sym}: khong co gia hien tai, bo qua`,severity:"warn"});
+      continue;
+    }
+    const mv=p.qty*close, cost=p.cost, pnl=mv-cost, pnl_pct=cost?(pnl/cost*100):0;
+    nav+=mv;
+    valued.push({symbol:sym,quantity:Math.round(p.qty*100)/100,avg_price:Math.round(cost/p.qty*100)/100,
+      close,market_value:Math.round(mv),cost:Math.round(cost),pnl:Math.round(pnl),pnl_pct:Math.round(pnl_pct*100)/100});
+  }
+  if(nav<=0) return sJson({violations, summary:{nav:0,positions:0,heat_pct:0,note:"NAV = 0, nhap danh muc de xem"}, positions:[], stats:fifoStats(txns), profile:riskProfileAssess(fifoStats(txns))});
+  let heat=0;
+  for(const v of valued){
+    v.weight_pct=Math.round(v.market_value/nav*1e4)/100;
+    if(v.weight_pct>MAXP) violations.push({type:"position_size",symbol:v.symbol,message:`${v.symbol}: ty trong ${v.weight_pct}% vuot gioi han ${MAXP}%`,severity:"high"});
+    if(v.pnl_pct<=-SLP) violations.push({type:"stop_loss",symbol:v.symbol,message:`${v.symbol}: lo ${v.pnl_pct}% (von ${v.avg_price.toLocaleString("vi-VN")} -> ${v.close.toLocaleString("vi-VN")}), cham nguong ${SLP}%`,severity:"high"});
+    if(v.pnl<0) heat+=-v.pnl;
+  }
+  const heatPct=Math.round(heat/nav*1e4)/100;
+  if(heatPct>HEATW) violations.push({type:"portfolio_heat",symbol:"",message:`Portfolio heat ${heatPct}% vuot nguong ${HEATW}% (tong lo ${Math.round(heat).toLocaleString("vi-VN")} dong)`,severity:"medium"});
+  const order={high:0,medium:1,warn:2};
+  violations.sort((a,b)=>(order[a.severity]??9)-(order[b.severity]??9));
+  const stats=fifoStats(txns);
+  return sJson({
+    violations,
+    summary:{nav:Math.round(nav),positions:valued.length,heat_pct:heatPct,n_violations:violations.length},
+    positions:valued.sort((a,b)=>b.market_value-a.market_value),
+    stats,
+    profile:riskProfileAssess(stats),
+  });
+}
+
+// ---- Rule alerts (ff_buy / ff_sell / pf_buy / signal / price) ----
+// Luu per-user qua uPut/uGet; watchdog_live.py danh gia dinh ky.
+const RULE_TYPES=["ff_buy","ff_sell","pf_buy","pf_sell","signal","price"];
+export async function hRuleAlertsGet(request, env){
+  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
+  return sJson(await uGet(env, s.email, "rule_alerts", []));
+}
+export async function hRuleAlertsAdd(request, env){
+  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
+  const b = await request.json().catch(()=>({}));
+  const sym=String(b.symbol||"").toUpperCase().trim();
+  const type=String(b.type||"").trim();
+  const thr=parseFloat(b.threshold);
+  if(!/^[A-Z]{3,10}$/.test(sym)) return jerr("Invalid symbol", 400);
+  if(!RULE_TYPES.includes(type)) return jerr("Invalid type", 400);
+  if(!(thr>0)) return jerr("Threshold must be > 0", 400);
+  const rules=await uGet(env, s.email, "rule_alerts", []);
+  if(rules.length>=50) return jerr("Too many alerts (max 50)", 400);
+  const r={id:Date.now(), symbol:sym, type, threshold:thr, created_at:new Date().toISOString()};
+  rules.push(r); await uPut(env, s.email, "rule_alerts", rules);
+  return sJson(r);
+}
+export async function hRuleAlertsDel(request, env){
+  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
+  const id=parseInt(new URL(request.url).pathname.split("/").pop(),10);
+  let rules=await uGet(env, s.email, "rule_alerts", []);
+  rules=rules.filter(r=>r.id!==id); await uPut(env, s.email, "rule_alerts", rules);
+  return sJson({ok:true});
 }

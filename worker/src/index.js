@@ -16,7 +16,7 @@ import { and, eq, lt, sql } from "drizzle-orm";
 import { rateLimits } from "./schema.js";
 import {getSession, getUser, OWNER_EMAIL} from './auth.js';
 import {jerr} from './utils.js';
-import {hStockVersion, hStockIndices, hStockQuote, hStockOhlcv, hStockSymbols, hStockScreener, hStockScreener2, hStockFundamentals, hStockNews, hStockMarketNews, hStockForeignFlow, hStockForeignHistory, hStockProprietaryFlow, hStockProprietaryHistory, hStockEvents, hStockCompanyProfile, hStockBacktest, hStockCompare, hWatchlistGet, hWatchlistAdd, hWatchlistDel, hPortfolio, hTxnAdd, hTxnDel, hTxnNote, hCostHistory, hAlertsGet, hAlertsAdd, hAlertsDel, hAlertsBySymbol, hTargetsGet, hTargetsSet, hTargetsDel, hPinStatus, hPinSet, hPinVerify, hPinDel, hMigrateR2ToD1, hStockPublish, hModalAlert, hStockReportData, hStockAlertDone, hStockTargetDone} from './stock.js';
+import {hStockVersion, hStockIndices, hStockRegime, hStockSignals, hStockQuote, hStockOhlcv, hStockSymbols, hStockScreener, hStockScreener2, hStockFundamentals, hStockNews, hStockMarketNews, hStockForeignFlow, hStockForeignHistory, hStockProprietaryFlow, hStockProprietaryHistory, hStockEvents, hStockCompanyProfile, hStockBacktest, hStockCompare, hWatchlistGet, hWatchlistAdd, hWatchlistDel, hPortfolio, hTxnAdd, hTxnDel, hTxnNote, hCostHistory, hAlertsGet, hAlertsAdd, hAlertsDel, hAlertsBySymbol, hTargetsGet, hTargetsSet, hTargetsDel, hPinStatus, hPinSet, hPinVerify, hPinDel, hMigrateR2ToD1, hStockPublish, hModalAlert, hStockReportData, hStockAlertDone, hStockTargetDone, hStockRisk, hRuleAlertsGet, hRuleAlertsAdd, hRuleAlertsDel} from './stock.js';
 
 // Build ID - replaced with timestamp on every deploy (see cf_deploy.py)
 const BUILD_ID = "__BUILD__";
@@ -146,6 +146,8 @@ const ROUTES = [
   // --- stock ---
   ['GET',    '/api/stock/version',   hStockVersion,          'user'],
   ['GET',    '/api/stock/indices',   hStockIndices,          'user'],
+  ['GET',    '/api/stock/regime',    hStockRegime,           'user'],
+  ['GET',    '/api/stock/signals',   hStockSignals,          'user'],
   ['GET',    '/api/stock/quote',     hStockQuote,            'user'],
   ['GET',    '/api/stock/ohlcv',     hStockOhlcv,            'user'],
   ['GET',    '/api/stock/symbols',   hStockSymbols,          'user'],
@@ -163,6 +165,10 @@ const ROUTES = [
   ['GET',    '/api/stock/backtest',  hStockBacktest,         'user'],
   ['GET',    '/api/stock/compare',   hStockCompare,          'user'],
   ['GET',    '/api/stock/watchlist', hWatchlistGet,          'user'],
+  ['GET',    '/api/stock/risk',      hStockRisk,             'user'],
+  ['GET',    '/api/stock/rule-alerts', hRuleAlertsGet,       'user'],
+  ['POST',   '/api/stock/rule-alerts', hRuleAlertsAdd,       'user'],
+  ['DELETE', '/api/stock/rule-alerts/*', hRuleAlertsDel,     'user'],
   ['POST',   '/api/stock/watchlist', hWatchlistAdd,          'user'],
   ['DELETE', '/api/stock/watchlist/*', hWatchlistDel,        'user'],
   ['GET',    '/api/stock/portfolio', hPortfolio,             'user'],
