@@ -362,6 +362,11 @@ export async function hStockFundamentals(request, env){
     const q = await getQuoteData(env, sym);
     const close = q && q.close;
     if(close){
+      // Don vi (do that 22/10/2026): quotes.json close la DONG
+      // (FPT 57400), eps/bvps cung la dong/co phieu -> P/E, P/B
+      // chia truc tiep, KHONG *1000. Chi screener.json moi co
+      // close bang NGHIN dong (FPT 57,4) nen o handler screener
+      // moi can *1000. Dung tron 2 nguon nay se lech 1000 lan.
       if(f.eps>0) f.pe_ttm = Math.round(close/f.eps*100)/100;
       if(f.bvps>0) f.pb = Math.round(close/f.bvps*100)/100;
     }
