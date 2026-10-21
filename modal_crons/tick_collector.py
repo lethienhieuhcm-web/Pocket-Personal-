@@ -219,18 +219,24 @@ def _mqtt_parse_publish(msg):
 class MqttWs:
     """MQTT tren WS: tu reconnect + subscribe lai + PINGREQ 25s."""
 
-    def __init__(self, url, user, pw, topics, on_msg, subprotocol="mqtt"):
+    def __init__(self, url, user, pw, topics, on_msg, subprotocol="mqtt",
+                 origin=None):
         self.url, self.user, self.pw = url, user, pw
         self.topics, self.on_msg = topics, on_msg
         self.subprotocol = subprotocol
+        self.origin = origin
         self.last_msg = 0.0
         self.msgs = 0
         self.connected = False
+        self.last_error = ""
         self._stop = False
 
     async def run(self):
         from websockets.asyncio.client import connect
         backoff = 2
+        headers = {"User-Agent": "Mozilla/5.0"}
+        if self.origin:
+            headers["Origin"] = self.origin
         while not self._stop:
             try:
                 cid = "tick-" + "".join(
@@ -238,6 +244,7 @@ class MqttWs:
                 async with connect(
                         self.url, subprotocols=[self.subprotocol],
                         open_timeout=20, ping_interval=None,
+                        additional_headers=headers,
                         max_size=8 * 1024 * 1024) as ws:
                     await ws.send(_mqtt_connect(cid, self.user, self.pw))
                     msg = await asyncio.wait_for(ws.recv(), 20)
@@ -267,8 +274,9 @@ class MqttWs:
                             self.on_msg(topic, payload)
             except Exception as e:  # noqa: BLE001
                 self.connected = False
+                self.last_error = f"{type(e).__name__}: {str(e)[:120]}"
                 print(f"[mqtt {self.url.split('/')[2]}] loi: "
-                      f"{type(e).__name__}: {str(e)[:120]}", flush=True)
+                      f"{self.last_error}", flush=True)
                 if self._stop:
                     break
                 await asyncio.sleep(backoff)
@@ -367,7 +375,8 @@ class SsiAdapter:
             topics += [f"s/{s}/MAIN", f"l/{s}/MAIN"]
         topics += ["pe", "i/VNINDEX", "i/VN30"]
         ep, user, pw = ssi_config()
-        self.client = MqttWs(ep, user, pw, topics, self._on_msg)
+        self.client = MqttWs(ep, user, pw, topics, self._on_msg,
+                             origin="https://fiintrade.ssi.com.vn")
 
     @property
     def last_msg(self):
@@ -434,7 +443,8 @@ class DnseAdapter:
         # entrade/entrade: tai khoan cong khai trong bundle DNSE
         self.client = MqttWs(
             "wss://datafeed-krx.dnse.com.vn/wss",
-            "entrade", "entrade", topics, self._on_msg)
+            "entrade", "entrade", topics, self._on_msg,
+            origin="https://banggia.dnse.com.vn")
 
     @property
     def last_msg(self):
@@ -724,7 +734,7 @@ def publish(payload, source):
     req.add_header("X-Publish-Secret", secret)
     req.add_header("X-Internal-Secret", secret)
     req.add_header("User-Agent", "Mozilla/5.0")
-    with urllib.request.urlopen(req, timeout=30) as r:
+    with urllib.request.urlopen(req, timeout=120) as r:
         return json.loads(r.read().decode())
 
 
@@ -827,6 +837,12 @@ async def _collect(max_minutes=0):
                 "active_source": adapter.name,
                 "active_since": datetime.fromtimestamp(
                     active_since, ICT).isoformat(),
+                "adapter_connected": getattr(
+                    getattr(adapter, "client", None), "connected",
+                    None),
+                "adapter_last_error": getattr(
+                    getattr(adapter, "client", None), "last_error",
+                    None),
                 "msgs_active_source": adapter.msgs,
                 "matches_aggregated": agg.matches,
                 "symbols_with_candles": len(agg.candles),
@@ -840,19 +856,24 @@ async def _collect(max_minutes=0):
             try:
                 intra = agg.build_intraday(sorted(agg.dirty))
                 agg.dirty.clear()
-                payload = {"tick_shadow": {"status": status,
-                                           "foreign":
-                                           agg.build_foreign()}}
+                # Chunk 10 khoa/luot nhu cac publisher san co +
+                # publish chay trong thread rieng de khong chan
+                # vong lap su kien (loi 21/10: chunk 40 + urllib
+                # dong bo lam timeout va dong bang ca luyen tick).
                 keys = list(intra.keys())
-                for i in range(0, max(len(keys), 1), 40):
-                    chunk = {k: intra[k]
-                             for k in keys[i:i + 40]}
-                    p = {"tick_shadow": dict(payload["tick_shadow"])}
-                    if chunk:
-                        p["tick_shadow"]["intraday"] = chunk
-                    if i > 0:
+                chunks = [keys[i:i + 10]
+                          for i in range(0, len(keys), 10)] or [[]]
+                for ci, ckeys in enumerate(chunks):
+                    chunk = {k: intra[k] for k in ckeys}
+                    if ci == 0:
+                        p = {"tick_shadow": {
+                            "status": status,
+                            "foreign": agg.build_foreign()}}
+                        if chunk:
+                            p["tick_shadow"]["intraday"] = chunk
+                    else:
                         p = {"tick_shadow": {"intraday": chunk}}
-                    publish(p, adapter.name)
+                    await asyncio.to_thread(publish, p, adapter.name)
                 publishes += 1
             except Exception as e:  # noqa: BLE001
                 print(f"[tick] publish loi: {str(e)[:150]}",
