@@ -108,8 +108,12 @@ input,select{background:var(--pp-bg2);border:1px solid var(--pp-line);color:var(
 <div class="card"><table><tr><th>Mã</th><th>Giá</th><th>+/−</th><th>NN ròng</th></tr><tbody id="topMovers"><tr><td colspan="4"><div class="hint">Đang tải…</div></td></tr></tbody></table></div>
 <div class="sec">Khối ngoại hôm nay</div>
 <div class="card" id="ffCard"><div class="hint">Đang tải…</div></div>
+<div class="sec">Tự doanh hôm nay</div>
+<div class="card" id="pfCard"><div class="hint">Đang tải…</div></div>
 <div class="sec">Vĩ mô</div>
 <div id="macroWrap"><div class="hint">Đang tải…</div></div>
+<div class="sec">Tin thị trường</div>
+<div class="card" id="mnCard"><div class="hint">Đang tải…</div></div>
 <div class="hint" id="verLine" style="text-align:center;margin:14px 0 4px"></div>
 </div>
 
@@ -252,6 +256,7 @@ input,select{background:var(--pp-bg2);border:1px solid var(--pp-line);color:var(
 <div class="tab" data-dt="flow">Dòng tiền</div>
 <div class="tab" data-dt="news">Tin tức</div>
 <div class="tab" data-dt="fund">Cơ bản</div>
+<div class="tab" data-dt="prof">Hồ sơ</div>
 </div>
 <div id="dOv">
 <div class="card" id="dQuote"><div class="hint">Đang tải…</div></div>
@@ -281,6 +286,7 @@ input,select{background:var(--pp-bg2);border:1px solid var(--pp-line);color:var(
 <button style="flex:1;padding:9px;border-radius:8px;background:var(--pp-bg2);color:var(--pp-ink);border:1px solid var(--pp-line);font-size:12px;cursor:pointer" id="dlCsv">Tải CSV</button>
 </div></div>
 </div>
+<div id="dProf" style="display:none"></div>
 </div>
 
 <script>
@@ -374,7 +380,9 @@ async function loadMarket(){
       return `<tr><td><b onclick="openSym('${esc(r.symbol)}')" style="cursor:pointer">${esc(r.symbol)}</b></td><td>${fmtN(r.close)}</td><td class="${cls}">${fmtPct(pc)}</td><td class="${ffc}">${fmtTy(ff)}</td></tr>`;}).join("")||'<tr><td colspan="4"><div class="hint">Chưa có dữ liệu</div></td></tr>';
   }catch(e){$("topMovers").innerHTML='<tr><td colspan="4"><div class="hint">Lỗi tải</div></td></tr>';}
   loadFF();
+  loadPF();
   loadMacro();
+  loadMN();
 }
 
 // ---- Khoi ngoai hom nay (GET /foreign-flow): du lieu publish gom 30 ma
@@ -412,6 +420,49 @@ function renderFF(j){
     `<div class="hint" style="padding-bottom:8px">${L.buy}: ${fmtTyF(tot.bv,L,false)} · ${L.sell}: ${fmtTyF(tot.sv,L,false)}</div>`+
     (buy.length?`<div class="hint" style="padding:4px 0">${L.topBuy}</div><table>${list(buy)}</table>`:"")+
     (sell.length?`<div class="hint" style="padding:8px 0 4px">${L.topSell}</div><table>${list(sell)}</table>`:"");
+}
+// ---- Tu doanh hom nay (GET /proprietary-flow): cung khuon the Khoi
+// ngoai, truong gia tri *_value_vnd; pham vi = cac ma co giao dich
+// tu doanh trong phien (dem dong tai cho, khong tu nhan toan thi
+// truong neu thieu).
+const PF_I18N={
+  vi:{net:"Ròng",syms:"mã có giao dịch",buy:"Mua",sell:"Bán",topBuy:"Mua ròng mạnh nhất",topSell:"Bán ròng mạnh nhất",empty:"Chưa có dữ liệu phiên này"},
+  en:{net:"Net",syms:"symbols traded",buy:"Buy",sell:"Sell",topBuy:"Top net buys",topSell:"Top net sells",empty:"No data for this session yet"},
+  zh:{net:"净额",syms:"只有交易的股票",buy:"买入",sell:"卖出",topBuy:"净买入前五",topSell:"净卖出前五",empty:"本时段暂无数据"},
+  ko:{net:"순매수",syms:"거래 종목",buy:"매수",sell:"매도",topBuy:"순매수 상위",topSell:"순매도 상위",empty:"이번 세션 데이터 없음"},
+};
+async function loadPF(){
+  try{ renderPF(await api("/proprietary-flow")); }
+  catch(e){ /* giu nguyen khung */ }
+}
+function renderPF(j){
+  const card=$("pfCard"); if(!card) return;
+  const L=PF_I18N[curLang]||PF_I18N.vi;
+  const F=FF_I18N[curLang]||FF_I18N.vi;
+  const by=(j&&j.by_symbol)||{};
+  const rows=Object.keys(by).map(s=>{const d=by[s]||{};const bv=d.buy_value_vnd||0,sv=d.sell_value_vnd||0;return{s,bv,sv,net:bv-sv};});
+  if(!rows.length){ card.innerHTML=`<div class="hint">${L.empty}</div>`; return; }
+  const tot=rows.reduce((a,r)=>({bv:a.bv+r.bv,sv:a.sv+r.sv,net:a.net+r.net}),{bv:0,sv:0,net:0});
+  const cls=tot.net>0?"up":tot.net<0?"down":"";
+  const list=(arr)=>arr.map(r=>`<tr><td><a href="#" onclick="openSym('${r.s}');return false"><b>${r.s}</b></a></td><td class="${r.net>0?"up":"down"}" style="text-align:right">${fmtTyF(r.net,F,true)}</td></tr>`).join("");
+  const buy=rows.filter(r=>r.net>0).sort((a,b)=>b.net-a.net).slice(0,5);
+  const sell=rows.filter(r=>r.net<0).sort((a,b)=>a.net-b.net).slice(0,5);
+  card.innerHTML=
+    `<div style="display:flex;justify-content:space-between;padding:2px 0 8px"><span>${L.net} · ${rows.length} ${L.syms}</span><b class="${cls}">${fmtTyF(tot.net,F,true)}</b></div>`+
+    `<div class="hint" style="padding-bottom:8px">${L.buy}: ${fmtTyF(tot.bv,F,false)} · ${L.sell}: ${fmtTyF(tot.sv,F,false)}</div>`+
+    (buy.length?`<div class="hint" style="padding:4px 0">${L.topBuy}</div><table>${list(buy)}</table>`:"")+
+    (sell.length?`<div class="hint" style="padding:8px 0 4px">${L.topSell}</div><table>${list(sell)}</table>`:"");
+}
+// ---- Tin thi truong (GET /news/market) ----
+async function loadMN(){
+  try{ renderMN(await api("/news/market")); }
+  catch(e){ /* giu nguyen khung */ }
+}
+function renderMN(j){
+  const card=$("mnCard"); if(!card) return;
+  const items=(j&&j.items)||[];
+  if(!items.length){ card.innerHTML='<div class="hint">Chưa có tin</div>'; return; }
+  card.innerHTML=items.slice(0,10).map(n=>`<div style="padding:8px 0;border-bottom:1px solid var(--pp-line)"><a href="${esc(n.url||"#")}" target="_blank" rel="noopener" style="color:var(--pp-ink);text-decoration:none;font-size:14px;font-weight:600">${esc(n.title||"")}</a><div style="font-size:12px;color:var(--pp-mut);margin-top:2px">${n.symbol?esc(n.symbol)+" · ":""}${esc((n.publish_time||"").slice(0,10))}</div></div>`).join("");
 }
 // ---- Vi mo (Tier 2-1): GET /macro (overview + spark) va /macro/history
 // khi mo chi tiet. Nguon chinh thong: NHNN, Vietcombank, SJC, NY Fed,
@@ -762,7 +813,7 @@ function openSym(sym){
   $("dSym").innerHTML=esc(sym)+' <span style="font-size:12px;color:var(--pp-mut)">HOSE</span>';
   document.querySelectorAll("#dTabs .tab").forEach(x=>x.classList.remove("on"));
   document.querySelector("#dTabs .tab").classList.add("on");
-  ["dOv","dFlow","dNews","dFund"].forEach((k,i)=>$(k).style.display=i===0?"":"none");
+  ["dOv","dFlow","dNews","dFund","dProf"].forEach((k,i)=>$(k).style.display=i===0?"":"none");
   loadDetail(sym);
 }
 async function loadDetail(sym){
@@ -784,11 +835,11 @@ async function loadDetail(sym){
     if(q._prov){_lastDSrc=q._prov.source;refreshSrc();}
   }catch(e){$("dQuote").innerHTML='<div class="hint">Lỗi tải</div>';}
   loadFlow(sym);loadFund(sym);loadNews(sym);loadChart(sym);
-  loadEvents(sym);loadTarget(sym);loadCost(sym);wlLoad().then(paintWatchBtn);
+  loadEvents(sym);loadProfile(sym);loadTarget(sym);loadCost(sym);wlLoad().then(paintWatchBtn);
 }
 document.querySelectorAll("#dTabs .tab").forEach(t=>t.onclick=()=>{
   document.querySelectorAll("#dTabs .tab").forEach(x=>x.classList.remove("on"));t.classList.add("on");
-  ["dOv","dFlow","dNews","dFund"].forEach(k=>$(k).style.display="none");
+  ["dOv","dFlow","dNews","dFund","dProf"].forEach(k=>$(k).style.display="none");
   $("d"+t.dataset.dt[0].toUpperCase()+t.dataset.dt.slice(1)).style.display="";
 });
 function renderFlowBars(rows, valKey, barId, lblId, sumId){
@@ -874,6 +925,40 @@ function paintEvents(){
   }
   box.querySelectorAll("[data-evf]").forEach(b=>{b.onclick=()=>{EVST.f=b.getAttribute("data-evf");EVST.n=10;paintEvents();};});
   const m=$("evMore");if(m)m.onclick=()=>{EVST.n+=20;paintEvents();};
+}
+// ---- Ho so cong ty (GET /company/profile): co dong lon, lanh dao,
+// cong ty con/lien ket, von dieu le, co cau so huu.
+const PROF_I18N={
+  vi:{holders:"Cổ đông lớn",officers:"Ban lãnh đạo",subs:"Công ty con / liên kết",capital:"Vốn điều lệ",own:"Cơ cấu sở hữu",shares:"CP",empty:"Chưa có dữ liệu hồ sơ",ty:"tỷ"},
+  en:{holders:"Major shareholders",officers:"Management",subs:"Subsidiaries / affiliates",capital:"Charter capital",own:"Ownership structure",shares:"shares",empty:"No profile data yet",ty:"B"},
+  zh:{holders:"主要股东",officers:"管理层",subs:"子公司 / 关联公司",capital:"注册资本",own:"股权结构",shares:"股",empty:"暂无档案数据",ty:"十亿"},
+  ko:{holders:"주요 주주",officers:"경영진",subs:"자회사 / 관계사",capital:"자본금",own:"지분 구조",shares:"주",empty:"프로필 데이터 없음",ty:"십억"},
+};
+async function loadProfile(sym){
+  const box=$("dProf"); if(!box) return;
+  box.innerHTML='<div class="card"><div class="hint">Đang tải…</div></div>';
+  try{
+    const j=await api("/company/profile?symbol="+encodeURIComponent(sym));
+    renderProfile(j);
+  }catch(e){ box.innerHTML='<div class="card"><div class="hint">Lỗi tải</div></div>'; }
+}
+function renderProfile(j){
+  const box=$("dProf"); if(!box) return;
+  const L=PROF_I18N[curLang]||PROF_I18N.vi;
+  const pct=v=>v==null?"—":Number(v).toFixed(2).replace(".",",")+"%";
+  const pctF=v=>v==null?"—":pct(v<=1?v*100:v);
+  let h="";
+  const sh=(j.shareholders||[]).slice().sort((a,b)=>(b.shares_owned||0)-(a.shares_owned||0)).slice(0,10);
+  if(sh.length) h+=`<div class="sec">${L.holders}</div><div class="card"><table>${sh.map(r=>`<tr><td>${esc(r.name||"")}</td><td style="text-align:right">${fmtN(r.shares_owned)} ${L.shares}</td><td style="text-align:right">${pct(r.ownership_percentage)}</td></tr>`).join("")}</table></div>`;
+  const of=j.officers||[];
+  if(of.length) h+=`<div class="sec">${L.officers}</div><div class="card"><table>${of.map(r=>`<tr><td>${esc(r.name||"")}</td><td style="text-align:right;color:var(--pp-mut)">${esc(r.position||"")}</td><td style="text-align:right">${r.total_shares?fmtN(r.total_shares)+" "+L.shares:"—"}</td></tr>`).join("")}</table></div>`;
+  const sb=j.subsidiaries||[];
+  if(sb.length) h+=`<div class="sec">${L.subs}</div><div class="card"><table>${sb.map(r=>`<tr><td>${esc(r.name||"")}${r.sub_symbol?' <span style="color:var(--pp-mut)">('+esc(r.sub_symbol)+")</span>":""}</td><td style="text-align:right">${pctF(r.rate)}</td></tr>`).join("")}</table></div>`;
+  const ow=(j.ownership||[]).filter(r=>r&&(r.name||r.shareholder_type||r.type)&&(r.percentage!=null||r.rate!=null));
+  if(ow.length) h+=`<div class="sec">${L.own}</div><div class="card"><table>${ow.map(r=>`<tr><td>${esc(r.name||r.shareholder_type||r.type||"")}</td><td style="text-align:right">${pctF(r.percentage!=null?r.percentage:r.rate)}</td></tr>`).join("")}</table></div>`;
+  const ch=(j.capital_history||[]).slice(0,5);
+  if(ch.length) h+=`<div class="sec">${L.capital}</div><div class="card"><table>${ch.map(r=>`<tr><td>${esc(r.date||"")}</td><td style="text-align:right">${r.charter_capital?(Number(r.charter_capital)/1e9).toLocaleString("vi-VN",{maximumFractionDigits:0})+" "+L.ty:"—"}</td></tr>`).join("")}</table></div>`;
+  box.innerHTML=h||`<div class="card"><div class="hint">${L.empty}</div></div>`;
 }
 async function loadEvents(sym){
   const box=$("dEvents");box.innerHTML='<div class="hint">Đang tải…</div>';
@@ -1247,6 +1332,9 @@ const I18N_FULL = {
 "Tính cỡ vị thế cho lệnh mới":["Calculate position size","计算新订单仓位","포지션 크기 계산"],
 "Tăng mạnh nhất HOSE":["Top gainers HOSE","HOSE 涨幅最大","HOSE 상승 상위"],
 "Khối ngoại hôm nay":["Foreign flow today","今日外资动向","오늘 외국인 동향"],
+"Tự doanh hôm nay":["Proprietary flow today","今日自营动向","오늘 자전 동향"],
+"Tin thị trường":["Market news","市场新闻","시장 뉴스"],
+"Hồ sơ":["Profile","公司档案","회사 프로필"],
 "Vĩ mô":["Macro","宏观经济","거시경제"],
 "Mã theo dõi":["Watchlist","自选股","관심 종목"],
 "Theo dõi":["Watch","关注","관심 추가"],
