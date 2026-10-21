@@ -243,7 +243,10 @@ function applyLang(l){
     const v = t[el.dataset.i18nPh];
     if(v !== undefined) el.placeholder = v;
   });
-  ["vi","en","zh","ko"].forEach(x=>document.getElementById("lang"+x[0].toUpperCase()+x[1]).classList.toggle("on", l===x));
+  // Trang dung dropdown ngon ngu dung chung (pp-langdrop):
+  // lang-dropdown.js tu dong bo nhan + muc active; o day khong con
+  // nut pill langVi/langEn/... (dong dong bo pill cu gay loi null
+  // lam hong ca luong tu chuyen hub khi da dang nhap - da xoa).
   document.getElementById("title").textContent = isReg ? t.title_register : t.title_login;
 }
 // Expose for lang-dropdown.js
