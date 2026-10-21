@@ -21,12 +21,12 @@ body{font-family:var(--pp-font);background:var(--pp-bg);color:var(--pp-ink);max-
 .tabs{display:flex;gap:6px;padding:10px 16px;overflow-x:auto}
 .tab{font-size:12px;padding:7px 12px;border-radius:20px;background:var(--pp-card);color:var(--pp-mut);white-space:nowrap;border:1px solid var(--pp-line);cursor:pointer}
 .tabs.main{overflow:hidden}
-.tabs.main .tab{flex:1;display:flex;align-items:center;justify-content:center;padding:8px 4px;font-size:12px;min-height:44px;line-height:1.2;gap:4px}
+.tabs.main .tab{flex:1;display:flex;align-items:center;justify-content:center;padding:8px 4px;font-size:12px;min-height:44px;line-height:1.25;gap:4px}
 .tab.on{background:var(--pp-accent);color:#fff;border-color:var(--pp-accent)}
 .idx{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:4px 16px}
 .idxcard{min-width:0;background:var(--pp-card);border:1px solid var(--pp-line);border-radius:10px;padding:10px}
 .idxcard .s{font-size:12px;color:var(--pp-mut)}
-.idxcard .p{font-size:16px;font-weight:700;margin:2px 0}
+.idxcard .p{font-size:17px;font-weight:700;margin:2px 0}
 .idxcard .c{font-size:12px}
 .up{color:var(--pp-accent)}.down{color:var(--pp-danger)}
 .sec{padding:14px 16px 4px;font-size:14px;font-weight:700;color:var(--pp-ink)}
@@ -36,10 +36,10 @@ body{font-family:var(--pp-font);background:var(--pp-bg);color:var(--pp-ink);max-
 .ss-row{display:flex;align-items:baseline;gap:8px;padding:10px 12px;cursor:pointer}
 .ss-row:hover,.ss-row.on{background:rgba(127,127,127,.14)}
 .ss-sym{font-weight:700;font-size:14px}
-.ss-ex{font-size:10px;color:var(--pp-mut);border:1px solid var(--pp-line);padding:1px 5px;border-radius:6px;white-space:nowrap}
+.ss-ex{font-size:12px;color:var(--pp-mut);border:1px solid var(--pp-line);padding:1px 5px;border-radius:6px;white-space:nowrap}
 .ss-name{color:var(--pp-mut);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
 .ss-px{font-size:12px;white-space:nowrap}
-.ss-none{padding:10px 12px;color:var(--pp-mut);font-size:13px}
+.ss-none{padding:10px 12px;color:var(--pp-mut);font-size:14px}
 
 .card{margin:8px 16px;background:var(--pp-card);border:1px solid var(--pp-line);border-radius:16px;padding:14px;box-shadow:var(--pp-shadow)}
 .row{display:flex;justify-content:space-between;align-items:center;font-size:14px;padding:8px 0;border-bottom:1px solid var(--pp-line)}
@@ -119,7 +119,7 @@ input,select{background:var(--pp-bg2);border:1px solid var(--pp-line);color:var(
 <div class="tabs main" id="screenTabs"></div>
 <div class="card"><table><tr><th>Mã</th><th>Trend</th><th>P/E</th><th>P/B</th><th>ROE</th></tr><tbody id="screenerBody"><tr><td colspan="5"><div class="hint">Đang tải…</div></td></tr></tbody></table></div>
 <div class="sec">So sánh biến động (%)</div>
-<div class="card"><div style="display:flex;gap:8px"><input id="cmpInp" placeholder="Tối đa 5 mã, cách nhau dấu phẩy — vd: FPT,HPG,VCB" style="flex:1;background:var(--pp-bg2);color:var(--pp-ink);border:1px solid var(--pp-line);border-radius:8px;padding:8px;font-size:13px;text-transform:uppercase"><button id="cmpBtn" style="padding:8px 14px;border-radius:8px;background:var(--pp-accent);color:#fff;border:none;font-size:13px;font-weight:600;cursor:pointer">So sánh</button></div><div class="iv" id="cmpIv" style="margin-top:8px"><button data-cnt="22">1T</button><button data-cnt="66">3T</button><button class="on" data-cnt="120">6T</button><button data-cnt="250">1N</button><button data-cnt="500">2N</button></div><div id="cmpOut" style="margin-top:8px"></div></div>
+<div class="card"><div style="display:flex;gap:8px"><input id="cmpInp" placeholder="Tối đa 5 mã, cách nhau dấu phẩy — vd: FPT,HPG,VCB" style="flex:1;background:var(--pp-bg2);color:var(--pp-ink);border:1px solid var(--pp-line);border-radius:8px;padding:8px;font-size:14px;text-transform:uppercase"><button id="cmpBtn" style="padding:8px 14px;border-radius:8px;background:var(--pp-accent);color:#fff;border:none;font-size:14px;font-weight:600;cursor:pointer">So sánh</button></div><div class="iv" id="cmpIv" style="margin-top:8px"><button data-cnt="22">1T</button><button data-cnt="66">3T</button><button class="on" data-cnt="120">6T</button><button data-cnt="250">1N</button><button data-cnt="500">2N</button></div><div id="cmpOut" style="margin-top:8px"></div></div>
 <div class="sec">⚡ Tín hiệu mới nhất</div>
 <div id="signalsList"><div class="hint">Đang tải…</div></div>
 </div>
@@ -174,12 +174,12 @@ input,select{background:var(--pp-bg2);border:1px solid var(--pp-line);color:var(
 <div id="pfPasteBox" style="display:none;margin-top:10px;text-align:left">
 <div class="hint" style="padding:0 0 6px">Dán bảng sao kê (cột: Mã · Số lượng · Giá vốn). Mỗi dòng 1 mã, phân cách bằng Tab/dấu phẩy/chấm phẩy.</div>
 <textarea id="pfPasteTxt" rows="5" style="width:100%;box-sizing:border-box;background:var(--pp-bg2);color:var(--pp-ink);border:1px solid var(--pp-line);border-radius:8px;padding:8px;font-size:12px" placeholder="FPT	1000	120000"></textarea>
-<button id="pfPasteGo" style="width:100%;margin-top:8px;padding:9px;border-radius:8px;background:var(--pp-accent);color:#fff;border:none;font-size:13px;font-weight:600;cursor:pointer">Nhập danh mục</button>
+<button id="pfPasteGo" style="width:100%;margin-top:8px;padding:9px;border-radius:8px;background:var(--pp-accent);color:#fff;border:none;font-size:14px;font-weight:600;cursor:pointer">Nhập danh mục</button>
 <div class="hint" id="pfImportMsg" style="padding-top:6px"></div>
 </div></div>
 <div class="sec">Mã theo dõi</div>
 <div class="card"><div id="wlList"><div class="hint">Đang tải…</div></div>
-<div style="display:flex;gap:8px;margin-top:10px"><input id="wlAddInp" placeholder="Nhập mã, vd: FPT" style="flex:1;background:var(--pp-bg2);color:var(--pp-ink);border:1px solid var(--pp-line);border-radius:8px;padding:8px;font-size:13px;text-transform:uppercase"><button id="wlAddBtn" style="padding:8px 14px;border-radius:8px;background:var(--pp-accent);color:#fff;border:none;font-size:13px;font-weight:600;cursor:pointer">Theo dõi</button></div>
+<div style="display:flex;gap:8px;margin-top:10px"><input id="wlAddInp" placeholder="Nhập mã, vd: FPT" style="flex:1;background:var(--pp-bg2);color:var(--pp-ink);border:1px solid var(--pp-line);border-radius:8px;padding:8px;font-size:14px;text-transform:uppercase"><button id="wlAddBtn" style="padding:8px 14px;border-radius:8px;background:var(--pp-accent);color:#fff;border:none;font-size:14px;font-weight:600;cursor:pointer">Theo dõi</button></div>
 <div class="hint" id="wlMsg" style="padding-top:6px"></div></div>
 <div class="sec">Tổng quan rủi ro </div>
 <div class="card" id="pfRisk"><div class="hint">Nhập danh mục để xem.</div></div>
@@ -191,7 +191,7 @@ input,select{background:var(--pp-bg2);border:1px solid var(--pp-line);color:var(
 <div class="row"><span class="k">% rủi ro / lệnh</span><span><input id="psRisk" type="number" value="1" step="0.1" style="width:130px"></span></div>
 <div class="row"><span class="k">Giá vào (đ)</span><span><input id="psEntry" type="number" placeholder="100000" style="width:130px"></span></div>
 <div class="row"><span class="k">Giá cắt lỗ (đ)</span><span><input id="psStop" type="number" placeholder="93000" style="width:130px"></span></div>
-<button id="psGo" style="width:100%;margin-top:8px;padding:9px;border-radius:8px;background:var(--pp-accent);color:#fff;border:none;font-size:13px;font-weight:600;cursor:pointer">Tính</button>
+<button id="psGo" style="width:100%;margin-top:8px;padding:9px;border-radius:8px;background:var(--pp-accent);color:#fff;border:none;font-size:14px;font-weight:600;cursor:pointer">Tính</button>
 <div id="psOut" style="margin-top:8px"></div>
 </div></div>
 </div>
@@ -417,10 +417,10 @@ function renderFF(j){
 // khi mo chi tiet. Nguon chinh thong: NHNN, Vietcombank, SJC, NY Fed,
 // Bo Tai chinh My — nhan nguon hien duoi moi the.
 const MAC_I18N={
-  vi:{src:"Nguồn",fxC:"Tỷ giá trung tâm USD/VND",fxV:"Tỷ giá Vietcombank",gold:"Vàng SJC",fed:"Lãi suất FED (EFFR)",ust:"Lợi suất TP Mỹ 10Y",pol:"Lãi suất điều hành NHNN",tgt:"Mục tiêu",refi:"Tái cấp vốn",redisc:"Tái chiết khấu",dep:"Huy động bình quân",buy:"Mua",sell:"Bán",buyTr:"Mua CK",usdSell:"USD bán",from:"Hiệu lực",dec:"theo",perL:"tr ₫/lượng",empty:"Chưa có dữ liệu vĩ mô"},
-  en:{src:"Source",fxC:"SBV central rate USD/VND",fxV:"Vietcombank FX",gold:"SJC gold",fed:"Fed funds rate (EFFR)",ust:"US Treasury 10Y",pol:"SBV policy rates",tgt:"Target",refi:"Refinancing",redisc:"Rediscount",dep:"Avg deposit rate",buy:"Buy",sell:"Sell",buyTr:"Buy (transfer)",usdSell:"USD sell",from:"Effective",dec:"per",perL:"M ₫/tael",empty:"No macro data yet"},
-  zh:{src:"来源",fxC:"央行中心汇率 USD/VND",fxV:"Vietcombank 汇率",gold:"SJC 黄金",fed:"美联储利率 (EFFR)",ust:"美国10年期国债收益率",pol:"央行政策利率",tgt:"目标",refi:"再融资",redisc:"再贴现",dep:"平均存款利率",buy:"买入",sell:"卖出",buyTr:"买入(转账)",usdSell:"美元卖出",from:"生效",dec:"依据",perL:"百万₫/两",empty:"暂无宏观数据"},
-  ko:{src:"출처",fxC:"중앙환율 USD/VND",fxV:"Vietcombank 환율",gold:"SJC 금",fed:"연준 금리 (EFFR)",ust:"미국 국채 10년",pol:"중앙은행 정책금리",tgt:"목표",refi:"재융자",redisc:"재할인",dep:"평균 예금금리",buy:"매수",sell:"매도",buyTr:"매수(송금)",usdSell:"USD 매도",from:"시행",dec:"근거",perL:"백만₫/량",empty:"거시 데이터 없음"},
+  vi:{src:"Nguồn",fxC:"Tỷ giá trung tâm USD/VND",fxV:"Tỷ giá Vietcombank",gold:"Vàng SJC",fed:"Lãi suất FED (EFFR)",omo:"Thị trường mở OMO (NHNN)",omoUnit:"tỷ ₫",omoNone:"Không có trúng thầu",omoDay:"ngày",ust:"Lợi suất TP Mỹ 10Y",pol:"Lãi suất điều hành NHNN",tgt:"Mục tiêu",refi:"Tái cấp vốn",redisc:"Tái chiết khấu",dep:"Huy động bình quân",buy:"Mua",sell:"Bán",buyTr:"Mua CK",usdSell:"USD bán",from:"Hiệu lực",dec:"theo",perL:"tr ₫/lượng",empty:"Chưa có dữ liệu vĩ mô"},
+  en:{src:"Source",fxC:"SBV central rate USD/VND",fxV:"Vietcombank FX",gold:"SJC gold",fed:"Fed funds rate (EFFR)",omo:"Open market ops (SBV)",omoUnit:"₫bn",omoNone:"No winning bids",omoDay:"d",ust:"US Treasury 10Y",pol:"SBV policy rates",tgt:"Target",refi:"Refinancing",redisc:"Rediscount",dep:"Avg deposit rate",buy:"Buy",sell:"Sell",buyTr:"Buy (transfer)",usdSell:"USD sell",from:"Effective",dec:"per",perL:"M ₫/tael",empty:"No macro data yet"},
+  zh:{src:"来源",fxC:"央行中心汇率 USD/VND",fxV:"Vietcombank 汇率",gold:"SJC 黄金",fed:"美联储利率 (EFFR)",omo:"公开市场操作 (央行)",omoUnit:"十亿₫",omoNone:"无中标",omoDay:"天",ust:"美国10年期国债收益率",pol:"央行政策利率",tgt:"目标",refi:"再融资",redisc:"再贴现",dep:"平均存款利率",buy:"买入",sell:"卖出",buyTr:"买入(转账)",usdSell:"美元卖出",from:"生效",dec:"依据",perL:"百万₫/两",empty:"暂无宏观数据"},
+  ko:{src:"출처",fxC:"중앙환율 USD/VND",fxV:"Vietcombank 환율",gold:"SJC 금",fed:"연준 금리 (EFFR)",omo:"공개시장운영 (중앙은행)",omoUnit:"십억₫",omoNone:"낙찰 없음",omoDay:"일",ust:"미국 국채 10년",pol:"중앙은행 정책금리",tgt:"목표",refi:"재융자",redisc:"재할인",dep:"평균 예금금리",buy:"매수",sell:"매도",buyTr:"매수(송금)",usdSell:"USD 매도",from:"시행",dec:"근거",perL:"백만₫/량",empty:"거시 데이터 없음"},
 };
 const MAC_SRC={sbv:"NHNN",vcb:"Vietcombank",sjc:"SJC",nyfed:"NY Fed",treasury:"U.S. Treasury","sbv-curated":"NHNN"};
 let MAC=null, MACOPEN=null, MACFC="USD", MACUT="y10", MACHIST={};
@@ -448,7 +448,7 @@ function renderMacro(){
     <div class="hint" style="padding:0">${name}</div>
     <div style="font-size:17px;font-weight:700;margin:2px 0">${val} ${chg||""}</div>
     ${spark||""}<div class="hint" style="padding:2px 0 0">${sub||""}</div>
-    <div style="font-size:10px;color:var(--pp-mut)">${L.src}: ${src} · ${date||""}</div></div>`;
+    <div style="font-size:12px;color:var(--pp-mut)">${L.src}: ${src} · ${date||""}</div></div>`;
   let h=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">`;
   const c=S.fx_center;
   if(c) h+=card("fx_center",L.fxC,fVnd(c.last.rate)+" ₫",macChg(c.change,v=>fVnd(v)+" ₫"),macSpark(c.spark,"#38bdf8"),"",MAC_SRC[c.source],c.date);
@@ -460,12 +460,17 @@ function renderMacro(){
   if(f) h+=card("fed_effr",L.fed,fPct(f.last.effr),macChg(f.change,x=>x.toFixed(2).replace(".",",")),macSpark(f.spark,"#a78bfa"),`${L.tgt} ${fPct(f.last.target_from)}–${fPct(f.last.target_to)}`,MAC_SRC[f.source],f.date);
   const u=S.ust;
   if(u) h+=card("ust",L.ust,fPct(u.last.y10),macChg(u.change,x=>x.toFixed(2).replace(".",",")),macSpark(u.spark,"#a78bfa"),`2Y ${fPct(u.last.y2)} · 30Y ${fPct(u.last.y30)}`,MAC_SRC[u.source],u.date);
+  const o=S.omo;
+  if(o&&o.last){ const fTy=v=>Number(v||0).toLocaleString("vi-VN",{maximumFractionDigits:1});
+    const tt=(o.last.tenors||[]).filter(t=>t.volume>0);
+    const sub=tt.length?tt.map(t=>`${t.days}${L.omoDay} ${fPct(t.rate)}`).join(" · "):L.omoNone;
+    h+=card("omo",L.omo,fTy(o.last.total)+" "+L.omoUnit,macChg(o.change,v=>fTy(v)),macSpark(o.spark,"#34d399"),sub,MAC_SRC[o.source],o.date); }
   const p=MAC.policy_rates;
   if(p) h+=`<div class="card" style="margin:0;padding:10px;grid-column:1/-1">
     <div class="hint" style="padding:0">${L.pol}</div>
     <div style="display:flex;gap:16px;margin-top:4px;flex-wrap:wrap">
       <span>${L.refi} <b>${fPct(p.refinancing)}</b></span><span>${L.redisc} <b>${fPct(p.rediscount)}</b></span><span>${L.dep} <b>${fPct(p.deposit_avg)}</b></span></div>
-    <div style="font-size:10px;color:var(--pp-mut);margin-top:4px">${L.from} ${p.effective} · ${L.dec} ${esc(p.decision||"")} · ${L.src}: NHNN</div></div>`;
+    <div style="font-size:12px;color:var(--pp-mut);margin-top:4px">${L.from} ${p.effective} · ${L.dec} ${esc(p.decision||"")} · ${L.src}: NHNN</div></div>`;
   h+="</div>"+(MACOPEN?`<div class="card" style="margin-top:8px;padding:10px" id="macroDetail"><div class="hint">…</div></div>`:"");
   w.innerHTML=h||`<div class="hint">${L.empty}</div>`;
   if(MACOPEN) macDrawDetail();
@@ -474,6 +479,7 @@ function macSeriesVal(sid,row){
   if(sid==="fx_center") return row.rate;
   if(sid==="gold_sjc") return row.sell;
   if(sid==="fed_effr") return row.effr;
+  if(sid==="omo") return row.total;
   if(sid==="ust") return row[MACUT];
   if(sid==="fx_vcb"){ const r=(row.rates||[]).find(x=>x.code===MACFC); return r?r.sell:null; }
   return null;
@@ -508,6 +514,11 @@ function macDrawDetail(){
     extra=`<div style="display:flex;gap:6px;flex-wrap:wrap;margin:6px 0">${codes.slice(0,10).map(c=>`<button onclick="MACFC='${c}';macDrawDetail()" style="padding:3px 9px;border-radius:99px;border:1px solid var(--pp-line);background:${c===MACFC?"var(--pp-accent)":"var(--pp-bg2)"};color:${c===MACFC?"#fff":"var(--pp-ink)"};font-size:12px;cursor:pointer">${c}</button>`).join("")}</div>`;
     const last=rows[rows.length-1];
     if(last) extra+=`<table>${last.rates.map(r=>`<tr><td><b>${r.code}</b></td><td style="text-align:right">${Math.round(r.buy_cash||0).toLocaleString("vi-VN")}</td><td style="text-align:right">${Math.round(r.buy_transfer||0).toLocaleString("vi-VN")}</td><td style="text-align:right">${Math.round(r.sell||0).toLocaleString("vi-VN")}</td></tr>`).join("")}</table>`;
+  }
+  if(MACOPEN==="omo"){
+    const last=rows[rows.length-1];
+    const fPct=v=>v==null?"—":Number(v).toFixed(2).replace(".",",")+"%";
+    if(last&&last.tenors&&last.tenors.length) extra=`<table>${last.tenors.map(t=>`<tr><td><b>${t.days} ${L.omoDay}</b></td><td style="text-align:right">${Number(t.volume||0).toLocaleString("vi-VN",{maximumFractionDigits:1})} ${L.omoUnit}</td><td style="text-align:right">${fPct(t.rate)}</td><td style="text-align:right">${t.members_won||0}/${t.members_bid||0}</td></tr>`).join("")}</table>`;
   }
   if(MACOPEN==="ust"){
     extra=`<div style="display:flex;gap:6px;margin:6px 0">${["y2","y10","y30"].map(t=>`<button onclick="MACUT='${t}';macDrawDetail()" style="padding:3px 9px;border-radius:99px;border:1px solid var(--pp-line);background:${t===MACUT?"var(--pp-accent)":"var(--pp-bg2)"};color:${t===MACUT?"#fff":"var(--pp-ink)"};font-size:12px;cursor:pointer">${t.toUpperCase()}</button>`).join("")}</div>`;
@@ -589,9 +600,9 @@ async function loadMine(){
     }catch(e){$("jStrat").innerHTML='<tr><td colspan="5"><div class="hint">Lỗi tải đánh giá chiến lược.</div></td></tr>';}
     const pr=rk.profile||{};
     const PROF_LBL={than_trong:"Thận trọng",can_bang:"Cân bằng",tang_truong:"Tăng trưởng",mao_hiem:"Mạo hiểm"};
-    $("riskProfile").innerHTML=pr.profile?`<div class="row"><span class="k">Hồ sơ</span><span class="v" style="font-size:15px">${esc(PROF_LBL[pr.profile]||pr.profile)} · ${pr.score}/100</span></div><div class="hint" style="padding:6px 0">${esc(pr.mo_ta||"")}</div>${(pr.ly_do||[]).map(x=>`<div class="hint" style="padding:2px 0">• ${esc(x)}</div>`).join("")}${pr.goi_y_gioi_han?`<div class="row" style="margin-top:6px"><span class="k">Giới hạn gợi ý</span><span class="v">Mã ≤ ${pr.goi_y_gioi_han.max_position_pct}% · Cắt lỗ ${pr.goi_y_gioi_han.stop_loss_pct}%</span></div><div class="hint" style="padding:2px 0">${esc(pr.goi_y_gioi_han.note||"")}</div>`:""}`:'<div class="hint">Chưa đủ dữ liệu.</div>';
+    $("riskProfile").innerHTML=pr.profile?`<div class="row"><span class="k">Hồ sơ</span><span class="v" style="font-size:17px">${esc(PROF_LBL[pr.profile]||pr.profile)} · ${pr.score}/100</span></div><div class="hint" style="padding:6px 0">${esc(pr.mo_ta||"")}</div>${(pr.ly_do||[]).map(x=>`<div class="hint" style="padding:2px 0">• ${esc(x)}</div>`).join("")}${pr.goi_y_gioi_han?`<div class="row" style="margin-top:6px"><span class="k">Giới hạn gợi ý</span><span class="v">Mã ≤ ${pr.goi_y_gioi_han.max_position_pct}% · Cắt lỗ ${pr.goi_y_gioi_han.stop_loss_pct}%</span></div><div class="hint" style="padding:2px 0">${esc(pr.goi_y_gioi_han.note||"")}</div>`:""}`:'<div class="hint">Chưa đủ dữ liệu.</div>';
     const vs=rk.violations||[];
-    $("riskWatch").innerHTML=vs.length?vs.map(v=>`<div class="card" style="margin-bottom:8px;border-left:3px solid ${v.severity==="high"?"var(--pp-danger)":v.severity==="medium"?"#f0b429":"var(--pp-mut)"}"><div style="font-size:13px">${esc(v.message)}</div></div>`).join(""):'<div class="card"><div class="hint">Không có cảnh báo rủi ro. Danh mục đang trong giới hạn an toàn.</div></div>';
+    $("riskWatch").innerHTML=vs.length?vs.map(v=>`<div class="card" style="margin-bottom:8px;border-left:3px solid ${v.severity==="high"?"var(--pp-danger)":v.severity==="medium"?"#f0b429":"var(--pp-mut)"}"><div style="font-size:14px">${esc(v.message)}</div></div>`).join(""):'<div class="card"><div class="hint">Không có cảnh báo rủi ro. Danh mục đang trong giới hạn an toàn.</div></div>';
   }catch(e){$("jStats").innerHTML='<div class="hint">Lỗi tải rủi ro (cần đăng nhập).</div>';$("riskProfile").innerHTML='<div class="hint">Đăng nhập để xem hồ sơ rủi ro.</div>';$("riskWatch").innerHTML='<div class="hint">Đăng nhập để xem cảnh báo rủi ro.</div>';}
 }
 // Import: parse bảng (port portfolio_parse.py: doan cot + parse so Viet)
@@ -674,7 +685,7 @@ $("psGo").onclick=()=>{
   const cap=parseFloat($("psCap").value),rp=parseFloat($("psRisk").value),en=parseFloat($("psEntry").value),st=parseFloat($("psStop").value);
   if(!(cap>0&&rp>0&&en>0&&st>0&&en>st)){$("psOut").innerHTML='<div class="hint">Kiểm tra lại: cần Vốn, % rủi ro, Giá vào &gt; Giá cắt lỗ &gt; 0.</div>';return;}
   const riskAmt=cap*rp/100, per=en-st, qty=Math.floor(riskAmt/per/100)*100, val=qty*en;
-  $("psOut").innerHTML=`<div class="row"><span class="k">Số tiền rủi ro</span><span class="v">${fmtD(riskAmt)} đ</span></div><div class="row"><span class="k">Khối lượng mua</span><span class="v" style="font-size:15px">${fmtN(qty)} cp</span></div><div class="row"><span class="k">Giá trị vị thế</span><span class="v">${fmtD(val)} đ (${(val/cap*100).toFixed(1)}% vốn)</span></div><div class="hint" style="padding-top:4px">Lô chẵn 100 cp (HOSE). Nếu giá chạm cắt lỗ, lỗ đúng ${fmtD(riskAmt)} đ = ${rp}% vốn.</div>`;
+  $("psOut").innerHTML=`<div class="row"><span class="k">Số tiền rủi ro</span><span class="v">${fmtD(riskAmt)} đ</span></div><div class="row"><span class="k">Khối lượng mua</span><span class="v" style="font-size:17px">${fmtN(qty)} cp</span></div><div class="row"><span class="k">Giá trị vị thế</span><span class="v">${fmtD(val)} đ (${(val/cap*100).toFixed(1)}% vốn)</span></div><div class="hint" style="padding-top:4px">Lô chẵn 100 cp (HOSE). Nếu giá chạm cắt lỗ, lỗ đúng ${fmtD(riskAmt)} đ = ${rp}% vốn.</div>`;
 };
 $("pfExportBtn").onclick=()=>{
   const pos=(_pfCache&&_pfCache.positions)||[];
@@ -759,7 +770,7 @@ async function loadDetail(sym){
   try{
     const j=await api("/quote?symbol="+encodeURIComponent(sym));
     const q=j.quote||j;const pc=q.pct_change,cls=pc>0?"up":pc<0?"down":"";
-    let h=`<div class="row"><span class="k">Giá khớp</span><span class="v" style="font-size:16px">${fmtN(q.close)}</span></div>`;
+    let h=`<div class="row"><span class="k">Giá khớp</span><span class="v" style="font-size:17px">${fmtN(q.close)}</span></div>`;
     h+=`<div class="row"><span class="k">Thay đổi</span><span class="v ${cls}">${q.change!=null?fmtN(q.change)+" ("+fmtPct(pc)+")":fmtPct(pc)}</span></div>`;
     if(q.foreign_buy_value!=null||q.foreign_sell_value!=null){
       h+=`<div class="row"><span class="k">NN mua / bán (hôm nay)</span><span class="v"><span class="up">${fmtTy(q.foreign_buy_value)}</span> / <span class="down">−${fmtTy(q.foreign_sell_value).replace("-","")}</span></span></div>`;
@@ -806,7 +817,7 @@ async function loadNews(sym){
   try{
     const j=await api("/news?symbol="+encodeURIComponent(sym));
     const items=j.items||[];
-    $("dNewsList").innerHTML=items.length?items.slice(0,15).map(n=>`<div style="padding:8px 0;border-bottom:1px solid var(--pp-line)"><a href="${esc(n.url||"#")}" target="_blank" rel="noopener" style="color:var(--pp-ink);text-decoration:none;font-size:13px;font-weight:600">${esc(n.title||"")}</a><div style="font-size:11px;color:var(--pp-mut);margin-top:2px">${esc((n.publish_time||"").slice(0,10))}</div></div>`).join(""):'<div class="hint">Chưa có tin</div>';
+    $("dNewsList").innerHTML=items.length?items.slice(0,15).map(n=>`<div style="padding:8px 0;border-bottom:1px solid var(--pp-line)"><a href="${esc(n.url||"#")}" target="_blank" rel="noopener" style="color:var(--pp-ink);text-decoration:none;font-size:14px;font-weight:600">${esc(n.title||"")}</a><div style="font-size:12px;color:var(--pp-mut);margin-top:2px">${esc((n.publish_time||"").slice(0,10))}</div></div>`).join(""):'<div class="hint">Chưa có tin</div>';
   }catch(e){ $("dNewsList").innerHTML='<div class="hint">Chưa có tin</div>'; }
 }
 // ===== Dot B (20/10): watchlist · targets · events · compare · cost history =====
@@ -856,7 +867,7 @@ function paintEvents(){
   else{
     h+=list.slice(0,EVST.n).map(n=>{
       const pay=n.payout_date&&/^\d{4}-\d{2}-\d{2}/.test(String(n.payout_date))?String(n.payout_date).slice(0,10):"";
-      return `<div style="padding:7px 0;border-bottom:1px solid var(--pp-line)"><div style="font-size:13px;font-weight:600">${esc(n.title||n.name||"")}</div><div style="font-size:11px;color:var(--pp-mut);margin-top:2px">${esc(n.name||"")}${n.date?" · "+esc(String(n.date).slice(0,10)):""}${n.exright_date?" · Ex: "+esc(String(n.exright_date).slice(0,10)):""}${pay?" · "+L.evPay+": "+pay:""}</div></div>`;
+      return `<div style="padding:7px 0;border-bottom:1px solid var(--pp-line)"><div style="font-size:14px;font-weight:600">${esc(n.title||n.name||"")}</div><div style="font-size:12px;color:var(--pp-mut);margin-top:2px">${esc(n.name||"")}${n.date?" · "+esc(String(n.date).slice(0,10)):""}${n.exright_date?" · Ex: "+esc(String(n.exright_date).slice(0,10)):""}${pay?" · "+L.evPay+": "+pay:""}</div></div>`;
     }).join("");
     if(list.length>EVST.n)h+=`<button id="evMore" style="width:100%;margin-top:8px;padding:8px;border-radius:8px;background:var(--pp-bg2);color:var(--pp-ink);border:1px solid var(--pp-line);font-size:12px;font-weight:600;cursor:pointer">${L.evMore} (${Math.min(EVST.n,list.length)}/${list.length})</button>`;
     box.innerHTML=h;
@@ -882,12 +893,12 @@ async function loadTarget(sym){
     const cur=t?((t.take_profit_pct!=null?("TP +"+t.take_profit_pct+"%"):"")+(t.take_profit_pct!=null&&t.stop_loss_pct!=null?" · ":"")+(t.stop_loss_pct!=null?("SL −"+t.stop_loss_pct+"%"):"")):L.curNone;
     box.innerHTML=`<div class="row"><span class="k">${esc(cur)}</span>${t&&t.unrealized_pct!=null?`<span class="v ${t.unrealized_pct>0?"up":t.unrealized_pct<0?"down":""}">${t.unrealized_pct>0?"+":""}${t.unrealized_pct}%</span>`:""}</div>
     <div style="display:flex;gap:8px;margin-top:8px">
-    <input id="tgTp" type="number" min="0" step="0.5" placeholder="${L.tpPh}" value="${t&&t.take_profit_pct!=null?t.take_profit_pct:""}" style="flex:1;background:var(--pp-bg2);color:var(--pp-ink);border:1px solid var(--pp-line);border-radius:8px;padding:8px;font-size:13px">
-    <input id="tgSl" type="number" min="0" step="0.5" placeholder="${L.slPh}" value="${t&&t.stop_loss_pct!=null?t.stop_loss_pct:""}" style="flex:1;background:var(--pp-bg2);color:var(--pp-ink);border:1px solid var(--pp-line);border-radius:8px;padding:8px;font-size:13px">
+    <input id="tgTp" type="number" min="0" step="0.5" placeholder="${L.tpPh}" value="${t&&t.take_profit_pct!=null?t.take_profit_pct:""}" style="flex:1;background:var(--pp-bg2);color:var(--pp-ink);border:1px solid var(--pp-line);border-radius:8px;padding:8px;font-size:14px">
+    <input id="tgSl" type="number" min="0" step="0.5" placeholder="${L.slPh}" value="${t&&t.stop_loss_pct!=null?t.stop_loss_pct:""}" style="flex:1;background:var(--pp-bg2);color:var(--pp-ink);border:1px solid var(--pp-line);border-radius:8px;padding:8px;font-size:14px">
     </div>
     <div style="display:flex;gap:8px;margin-top:8px">
-    <button id="tgSave" style="flex:1;padding:9px;border-radius:8px;background:var(--pp-accent);color:#fff;border:none;font-size:13px;font-weight:600;cursor:pointer">${L.save}</button>
-    ${t?`<button id="tgDel" style="padding:9px 14px;border-radius:8px;background:var(--pp-bg2);color:var(--pp-ink);border:1px solid var(--pp-line);font-size:13px;cursor:pointer">${L.del}</button>`:""}
+    <button id="tgSave" style="flex:1;padding:9px;border-radius:8px;background:var(--pp-accent);color:#fff;border:none;font-size:14px;font-weight:600;cursor:pointer">${L.save}</button>
+    ${t?`<button id="tgDel" style="padding:9px 14px;border-radius:8px;background:var(--pp-bg2);color:var(--pp-ink);border:1px solid var(--pp-line);font-size:14px;cursor:pointer">${L.del}</button>`:""}
     </div><div class="hint" id="tgMsg" style="padding-top:6px"></div>`;
     $("tgSave").onclick=async()=>{
       const tp=parseFloat($("tgTp").value),sl=parseFloat($("tgSl").value);
@@ -919,7 +930,7 @@ async function loadCost(sym){
     const s=j.series||[];
     if(s.length<2){sec.style.display="none";box.style.display="none";return;}
     sec.style.display="";box.style.display="";
-    box.innerHTML=twoLineSvg(s)+`<div style="font-size:11px;color:var(--pp-mut);margin-top:4px"><span style="color:#f59e0b">- - ${BL().avgCost}</span> · <span style="color:#2563eb">— ${BL().mktClose}</span> · ${esc(s[0].time)} → ${esc(s[s.length-1].time)}</div>`;
+    box.innerHTML=twoLineSvg(s)+`<div style="font-size:12px;color:var(--pp-mut);margin-top:4px"><span style="color:#f59e0b">- - ${BL().avgCost}</span> · <span style="color:#2563eb">— ${BL().mktClose}</span> · ${esc(s[0].time)} → ${esc(s[s.length-1].time)}</div>`;
   }catch(e){sec.style.display="none";box.style.display="none";}
 }
 async function loadWatchlist(){
@@ -976,7 +987,7 @@ async function doCompare(){
       return `<span style="color:${CMP_COLORS[si%5]};font-weight:700">${esc(s)}</span> <span class="${last.v>0?"up":last.v<0?"down":""}">${last.v>0?"+":""}${Number(last.v.toFixed(2))}%</span>`;
     }).join(" · ");
     const s0=series[syms[0]];
-    out.innerHTML=svg+`<div style="font-size:12px;margin-top:4px">${legend}</div><div style="font-size:11px;color:var(--pp-mut)">${esc(s0[0].t)} → ${esc(s0[s0.length-1].t)}</div>`;
+    out.innerHTML=svg+`<div style="font-size:12px;margin-top:4px">${legend}</div><div style="font-size:12px;color:var(--pp-mut)">${esc(s0[0].t)} → ${esc(s0[s0.length-1].t)}</div>`;
   }catch(e){out.innerHTML='<div class="hint">'+L.cmpErr+'</div>';}
 }
 $("cmpBtn").onclick=doCompare;
@@ -999,7 +1010,7 @@ function chartSvg(rows){
     s+=`<rect x="${(i*xw+1).toFixed(1)}" y="${(H-vh).toFixed(1)}" width="${Math.max(2,xw-2).toFixed(1)}" height="${vh.toFixed(1)}" fill="${col}" opacity=".5"/>`;
   });
   s+=`<text x="2" y="10" font-size="8" fill="var(--pp-mut)">${fmtN(rawHi*1000)}</text><text x="2" y="${priceH}" font-size="8" fill="var(--pp-mut)">${fmtN(rawLo*1000)}</text>`;
-  return s+"</svg>"+`<div style="font-size:11px;color:var(--pp-mut);margin-top:4px">${esc(rows[0].t)} → ${esc(rows[rows.length-1].t)}</div>`;
+  return s+"</svg>"+`<div style="font-size:12px;color:var(--pp-mut);margin-top:4px">${esc(rows[0].t)} → ${esc(rows[rows.length-1].t)}</div>`;
 }
 async function loadChart(sym, iv){
   _chartSym=sym; iv=iv||"1D";
