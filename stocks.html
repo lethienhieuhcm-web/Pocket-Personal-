@@ -137,6 +137,29 @@ input,select{background:var(--pp-bg2);border:1px solid var(--pp-line);color:var(
 <div class="card" style="margin-top:8px"><table><thead id="consHead"></thead><tbody id="consBody"><tr><td colspan="7"><div class="hint">Đang tải…</div></td></tr></tbody></table></div>
 </div>
 
+
+<!-- ===== MAN 5C: Co dong ===== -->
+<div class="view" id="v-holders">
+<div class="hdr"><a href="/hub" class="pp-back" style="text-decoration:none;font-size:20px" title="Về Pocket Personal" aria-label="Về Pocket Personal">‹</a><h1>Cổ đông</h1><span class="src"></span></div>
+<div class="tabs main" id="holdTabs"></div>
+<div style="padding:12px 16px 0"><input id="holdQ" type="text" autocomplete="off" style="width:100%;box-sizing:border-box;background:var(--pp-bg2);color:var(--pp-ink);border:1px solid var(--pp-line);border-radius:10px;padding:10px 12px;font-size:14px"></div>
+<div class="hint" id="holdCov" style="padding:8px 16px 0"></div>
+<div id="holdListWrap"><div class="card" id="holdList" style="margin-top:8px"><div class="hint">Đang tải…</div></div></div>
+<div id="holdDetail" style="display:none"></div>
+</div>
+
+
+<!-- ===== MAN 5D: Nganh ===== -->
+<div class="view" id="v-sectors">
+<div class="hdr"><a href="/hub" class="pp-back" style="text-decoration:none;font-size:20px" title="Về Pocket Personal" aria-label="Về Pocket Personal">‹</a><h1>Ngành</h1><span class="src"></span></div>
+<div class="tabs main" id="secTabs"></div>
+<div id="secListWrap">
+<div class="hint" id="secNote" style="padding:8px 16px 0"></div>
+<div class="card" style="margin-top:8px"><table><thead id="secHead"></thead><tbody id="secBody"><tr><td colspan="6"><div class="hint">Đang tải…</div></td></tr></tbody></table></div>
+</div>
+<div id="secDetail" style="display:none"></div>
+</div>
+
 <!-- ===== MÀN 6: Cảnh báo ===== -->
 <div class="view" id="v-alert">
 <div class="hdr"><a href="/hub" class="pp-back" style="text-decoration:none;font-size:20px" title="Về Pocket Personal" aria-label="Về Pocket Personal">‹</a><h1><svg class="tic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg> Cảnh báo</h1><span class="src"></span></div>
@@ -316,7 +339,7 @@ async function api(p){
   return r.json();
 }
 // Nav pill trên đầu — theo mockup
-const NAV=[["v-market","Thị trường"],["v-screen","Sàng lọc"],["v-consensus","Đồng thuận"],["v-alert","Cảnh báo"],["v-mine","Của tôi"]];
+const NAV=[["v-market","Thị trường"],["v-screen","Sàng lọc"],["v-consensus","Đồng thuận"],["v-holders","Cổ đông"],["v-sectors","Ngành"],["v-alert","Cảnh báo"],["v-mine","Của tôi"]];
 const NAVLBL={ "v-market":"Thị trường","v-screen":'Sàng lọc',"v-alert":"Cảnh báo","v-mine":'Của tôi'};
 function buildNav(el,cur){
   $(el).innerHTML=NAV.map(([v,l])=>`<div class="tab${v===cur?" on":""}" onclick="go('${v}')">${NAVLBL[v]}</div>`).join("");
@@ -332,13 +355,15 @@ function go(v){
   document.querySelectorAll(".view").forEach(s=>s.classList.remove("on"));
   $(v).classList.add("on");window.scrollTo(0,0);
   $("aiFab").style.display="";
-  ["mainTabs","screenTabs","consTabs","alertTabs","mineMainTabs","chatTabs"].forEach(e=>{if($(e))buildNav(e,v);});
+  ["mainTabs","screenTabs","consTabs","holdTabs","secTabs","alertTabs","mineMainTabs","chatTabs"].forEach(e=>{if($(e))buildNav(e,v);});
   if(v==="v-screen")loadScreener();
   if(v==="v-consensus")loadConsensus();
+  if(v==="v-holders")loadHolders();
+  if(v==="v-sectors")loadSectors();
   if(v==="v-alert")loadAlerts();
   if(v==="v-mine")loadMine();
 }
-["mainTabs","screenTabs","consTabs","alertTabs","mineMainTabs","chatTabs"].forEach(e=>{if($(e))buildNav(e,"v-market");});
+["mainTabs","screenTabs","consTabs","holdTabs","secTabs","alertTabs","mineMainTabs","chatTabs"].forEach(e=>{if($(e))buildNav(e,"v-market");});
 document.querySelectorAll("#mineTabs .tab").forEach(t=>t.onclick=()=>{
   document.querySelectorAll("#mineTabs .tab").forEach(x=>x.classList.remove("on"));t.classList.add("on");
   ["mPort","mJournal","mRisk","mSettings"].forEach(k=>$(k).style.display="none");
@@ -1057,6 +1082,210 @@ function renderConsDetail(j){
   }
   box.innerHTML=h;
 }
+// ---- Co dong: tra cuu nguoc (GET /holders + /holders/shard) ----
+const HOLD_I18N={
+  vi:{searchPh:"Tìm theo tên cổ đông…",total:"Tổng cổ phần nắm giữ",symbols:"Số mã",holdings:"Các mã nắm giữ",back:"‹ Quay lại danh sách",empty:"Không tìm thấy cổ đông khớp",nodata:"Cổ đông này chưa có trong chỉ mục đã thu thập",updated:"Cập nhật",cov:(c,t)=>`Chỉ mục đã thu thập: ${c}/${t} mã có dữ liệu cổ đông`,found:n=>`${n} cổ đông`,top:"Nắm giữ lớn nhất",INDIVIDUAL:"Cá nhân",CORPORATE:"Tổ chức"},
+  en:{searchPh:"Search by shareholder name…",total:"Total shares held",symbols:"Symbols",holdings:"Holdings",back:"‹ Back to list",empty:"No matching shareholder",nodata:"This shareholder is not in the collected index yet",updated:"Updated",cov:(c,t)=>`Index coverage: ${c}/${t} symbols with shareholder data`,found:n=>`${n} shareholders`,top:"Largest holders",INDIVIDUAL:"Individual",CORPORATE:"Organization"},
+  zh:{searchPh:"按股东姓名搜索…",total:"持有股份总数",symbols:"股票数",holdings:"持股明细",back:"‹ 返回列表",empty:"未找到匹配的股东",nodata:"该股东尚未收录于已采集索引",updated:"更新于",cov:(c,t)=>`索引覆盖:${c}/${t} 只股票有股东数据`,found:n=>`${n} 位股东`,top:"持股最多",INDIVIDUAL:"个人",CORPORATE:"机构"},
+  ko:{searchPh:"주주 이름으로 검색…",total:"총 보유 주식",symbols:"종목 수",holdings:"보유 종목",back:"‹ 목록으로",empty:"일치하는 주주가 없습니다",nodata:"이 주주는 아직 수집된 인덱스에 없습니다",updated:"업데이트",cov:(c,t)=>`인덱스 커버리지: 주주 데이터가 있는 ${c}/${t} 종목`,found:n=>`주주 ${n}명`,top:"최다 보유",INDIVIDUAL:"개인",CORPORATE:"기관"},
+};
+function holdNorm(s){
+  return (s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+    .replace(/đ/g,"d").replace(/Đ/g,"D")
+    .replace(/\s+/g," ").trim().toUpperCase();
+}
+let HOLD_IDX=null, HOLD_SHARDS={}, HOLD_CUR=null, HOLD_LOADING=null;
+async function loadHolders(){
+  const L=HOLD_I18N[curLang]||HOLD_I18N.vi;
+  const q=$("holdQ");
+  if(q){ q.placeholder=L.searchPh;
+    if(!q.dataset.wired){ q.dataset.wired=1;
+      q.addEventListener("input",()=>renderHoldList()); } }
+  if(HOLD_IDX){ renderHoldList(); return; }
+  if(!HOLD_LOADING){
+    HOLD_LOADING=api("/holders").then(j=>{
+      HOLD_IDX=j; const m=j.meta||{};
+      const c=$("holdCov");
+      if(c) c.textContent=L.cov(fmtN(m.covered||0),fmtN(m.total||0));
+    }).catch(()=>{ const b=$("holdList");
+      if(b) b.innerHTML='<div class="hint">Lỗi tải</div>'; });
+  }
+  await HOLD_LOADING;
+  if(HOLD_IDX) renderHoldList();
+}
+function renderHoldList(){
+  const L=HOLD_I18N[curLang]||HOLD_I18N.vi;
+  const box=$("holdList"); if(!box||!HOLD_IDX) return;
+  $("holdDetail").style.display="none"; $("holdListWrap").style.display="";
+  const qn=holdNorm(($("holdQ")||{}).value||"");
+  let rows=HOLD_IDX.rows||[];
+  if(qn) rows=rows.filter(r=>r.q.includes(qn));
+  const total=rows.length;
+  rows=rows.slice(0,50);
+  const head=qn?L.found(total):L.top;
+  box.innerHTML=`<div class="hint" style="padding:4px 0 8px">${head}${total>rows.length?" · "+rows.length:""}</div>`+
+    (rows.length?`<table>${rows.map(r=>`<tr>
+      <td><a href="#" onclick="openHolder('${r.id}');return false" style="color:var(--pp-accent);text-decoration:none"><b>${esc(r.name)}</b></a><div style="font-size:12px;color:var(--pp-mut)">${L[r.t]||r.t||""}</div></td>
+      <td style="text-align:right">${fmtN(r.tot)}<div style="font-size:12px;color:var(--pp-mut)">${r.n} ${L.symbols}</div></td></tr>`).join("")}</table>`
+    :`<div class="hint">${L.empty}</div>`);
+}
+async function openHolder(id){
+  const L=HOLD_I18N[curLang]||HOLD_I18N.vi;
+  const sh=id.slice(0,2);
+  if(!HOLD_SHARDS[sh]){
+    try{ HOLD_SHARDS[sh]=await api("/holders/shard?s="+sh); }
+    catch(e){ HOLD_SHARDS[sh]={}; }
+  }
+  const h=(HOLD_SHARDS[sh]||{})[id];
+  const box=$("holdDetail");
+  $("holdListWrap").style.display="none"; box.style.display="";
+  if(!h){ box.innerHTML=`<div class="card"><div class="hint">${L.nodata}</div></div>`+
+    `<div style="padding:10px 2px"><a href="#" onclick="renderHoldList();return false" style="color:var(--pp-accent);text-decoration:none">${L.back}</a></div>`; return; }
+  HOLD_CUR=id;
+  let s=`<div style="padding:2px 2px 8px"><a href="#" onclick="renderHoldList();return false" style="color:var(--pp-accent);text-decoration:none">${L.back}</a></div>
+  <div class="card">
+    <div style="font-size:17px;font-weight:600">${esc(h.name)}</div>
+    <div style="font-size:12px;color:var(--pp-mut)">${L[h.t]||h.t||""}</div>
+    <div class="row" style="margin-top:6px"><span class="k">${L.total}</span><span class="v" style="font-size:17px">${fmtN(h.tot)}</span></div>
+    <div class="row"><span class="k">${L.symbols}</span><span class="v">${(h.holds||[]).length}</span></div>
+  </div>
+  <div class="sec">${L.holdings}</div>
+  <div class="card"><table>${(h.holds||[]).map(x=>`<tr>
+    <td><a href="#" onclick="openSym('${x.symbol}');return false"><b>${x.symbol}</b></a>${x.position?`<div style="font-size:12px;color:var(--pp-mut)">${esc(x.position)}</div>`:""}</td>
+    <td style="text-align:right">${fmtN(x.quantity)}<div style="font-size:12px;color:var(--pp-mut)">${x.pct==null?"—":(x.pct*100).toFixed(2).replace(".",",")+"%"}</div></td>
+    <td style="text-align:right;color:var(--pp-mut);font-size:12px">${(x.date||"").slice(0,10)}</td></tr>`).join("")}</table></div>`;
+  box.innerHTML=s;
+}
+async function openHolderByName(name){
+  go('v-holders');
+  const L=HOLD_I18N[curLang]||HOLD_I18N.vi;
+  if(!HOLD_IDX){ await loadHolders(); }
+  const qn=holdNorm(name);
+  const row=(HOLD_IDX.rows||[]).find(r=>r.q===qn);
+  if(row){ openHolder(row.id); }
+  else{
+    $("holdListWrap").style.display="none";
+    const box=$("holdDetail"); box.style.display="";
+    box.innerHTML=`<div class="card"><div style="font-size:17px;font-weight:600">${esc(name)}</div><div class="hint" style="padding-top:6px">${L.nodata}</div></div>`+
+    `<div style="padding:10px 2px"><a href="#" onclick="renderHoldList();return false" style="color:var(--pp-accent);text-decoration:none">${L.back}</a></div>`;
+  }
+}
+// ---- Nganh (GET /sectors + /sectors/detail) ----
+const SEC_I18N={
+  vi:{rev:"Doanh thu 4 quý",npat:"LNST 4 quý",roe:"ROE 4 quý",pe:"P/E",members:"Số mã",mcap:"Vốn hoá",chart:"Doanh thu & LNST theo quý (tỷ đồng)",series:"Chuỗi theo kỳ",period:"Kỳ",revQ:"Doanh thu",npatQ:"LNST",roeQ:"ROE quý",margin:"Biên LN",back:"‹ Quay lại danh sách",mem:"Mã thành viên",empty:"Chưa có dữ liệu ngành",kTy:"nghìn tỷ",ty:"tỷ",note:"P/E ngành = tổng vốn hoá / tổng LNST 4 quý của các mã có đủ dữ liệu EPS (số mã được tính ghi ở chi tiết). ROE 4 quý = LNST 4 quý / vốn chủ sở hữu kỳ mới nhất."},
+  en:{rev:"Revenue (TTM)",npat:"Net profit (TTM)",roe:"ROE (TTM)",pe:"P/E",members:"Symbols",mcap:"Market cap",chart:"Quarterly revenue & net profit (VND bn)",series:"History by quarter",period:"Period",revQ:"Revenue",npatQ:"Net profit",roeQ:"Quarterly ROE",margin:"Net margin",back:"‹ Back to list",mem:"Member symbols",empty:"No sector data yet",kTy:"tn",ty:"bn",note:"Sector P/E = total market cap / total TTM net profit over symbols with sufficient EPS data (count shown in detail). TTM ROE = TTM net profit / latest equity."},
+  zh:{rev:"营收(近4季)",npat:"净利润(近4季)",roe:"ROE(近4季)",pe:"市盈率",members:"股票数",mcap:"总市值",chart:"季度营收与净利润(十亿越盾)",series:"分季度序列",period:"期间",revQ:"营收",npatQ:"净利润",roeQ:"季度ROE",margin:"净利率",back:"‹ 返回列表",mem:"成分股",empty:"暂无行业数据",kTy:"万亿",ty:"十亿",note:"行业市盈率 = 有足够 EPS 数据股票的总市值 / 近4季净利润总额(样本数见详情)。近4季 ROE = 近4季净利润 / 最新净资产。"},
+  ko:{rev:"매출(최근 4분기)",npat:"순이익(최근 4분기)",roe:"ROE(최근 4분기)",pe:"P/E",members:"종목 수",mcap:"시가총액",chart:"분기 매출 및 순이익(십억 동)",series:"분기별 추이",period:"기간",revQ:"매출",npatQ:"순이익",roeQ:"분기 ROE",margin:"순이익률",back:"‹ 목록으로",mem:"구성 종목",empty:"업종 데이터 없음",kTy:"조",ty:"십억",note:"업종 P/E = EPS 데이터가 충분한 종목들의 시가총액 합계 / 최근 4분기 순이익 합계(표본 수는 상세에 표시). 최근 4분기 ROE = 최근 4분기 순이익 / 최신 자본."},
+};
+function fmtMoney(v){
+  const L=SEC_I18N[curLang]||SEC_I18N.vi;
+  if(v==null) return "—";
+  const a=Math.abs(v);
+  if(a>=1e12) return (v/1e12).toFixed(2).replace(".",",")+" "+L.kTy;
+  if(a>=1e9) return Math.round(v/1e9).toLocaleString("vi-VN")+" "+L.ty;
+  return fmtN(Math.round(v));
+}
+let SEC_ROWS=[], SEC_SORT={k:"rev_ttm",dir:-1};
+async function loadSectors(){
+  try{
+    const j=await api("/sectors");
+    SEC_ROWS=j.rows||[];
+    renderSec();
+  }catch(e){ const b=$("secBody"); if(b) b.innerHTML='<tr><td colspan="6"><div class="hint">Lỗi tải</div></td></tr>'; }
+}
+function secSort(k){
+  if(SEC_SORT.k===k) SEC_SORT.dir*=-1; else SEC_SORT={k,dir:k==="name"?1:-1};
+  renderSec();
+}
+function renderSec(){
+  const L=SEC_I18N[curLang]||SEC_I18N.vi;
+  const tb=$("secBody"); if(!tb) return;
+  $("secNote").textContent=L.note;
+  if(!SEC_ROWS.length){ tb.innerHTML=`<tr><td colspan="6"><div class="hint">${L.empty}</div></td></tr>`; return; }
+  const {k,dir}=SEC_SORT;
+  const rows=SEC_ROWS.slice().sort((a,b)=>{
+    const x=a[k],y=b[k];
+    if(x==null&&y==null) return 0; if(x==null) return 1; if(y==null) return -1;
+    return (typeof x==="string"?x.localeCompare(y):x-y)*dir;
+  });
+  const arrow=(kk)=>SEC_SORT.k===kk?(SEC_SORT.dir===1?" ↑":" ↓"):"";
+  $("secHead").innerHTML=`<tr>
+    <th onclick="secSort('name')" style="cursor:pointer">Ngành${arrow('name')}</th>
+    <th onclick="secSort('rev_ttm')" style="cursor:pointer;text-align:right">${L.rev}${arrow('rev_ttm')}</th>
+    <th onclick="secSort('npat_ttm')" style="cursor:pointer;text-align:right">${L.npat}${arrow('npat_ttm')}</th>
+    <th onclick="secSort('roe_ttm')" style="cursor:pointer;text-align:right">${L.roe}${arrow('roe_ttm')}</th>
+    <th onclick="secSort('pe')" style="cursor:pointer;text-align:right">${L.pe}${arrow('pe')}</th>
+    <th onclick="secSort('n_members')" style="cursor:pointer;text-align:center">${L.members}${arrow('n_members')}</th></tr>`;
+  tb.innerHTML=rows.map(r=>`<tr>
+    <td><a href="#" onclick="openSector('${r.code}');return false" style="color:var(--pp-accent);text-decoration:none"><b>${esc(r.name)}</b></a><div style="font-size:12px;color:var(--pp-mut)">${r.latest_period||""}</div></td>
+    <td style="text-align:right">${fmtMoney(r.rev_ttm)}</td>
+    <td style="text-align:right">${fmtMoney(r.npat_ttm)}</td>
+    <td style="text-align:right">${r.roe_ttm==null?"—":(r.roe_ttm*100).toFixed(1).replace(".",",")+"%"}</td>
+    <td style="text-align:right">${r.pe==null?"—":r.pe.toFixed(1).replace(".",",")}</td>
+    <td style="text-align:center">${r.n_members}</td></tr>`).join("");
+}
+async function openSector(code){
+  const L=SEC_I18N[curLang]||SEC_I18N.vi;
+  $("secListWrap").style.display="none";
+  const box=$("secDetail"); box.style.display="";
+  box.innerHTML='<div class="card"><div class="hint">Đang tải…</div></div>';
+  try{
+    const j=await api("/sectors/detail?code="+encodeURIComponent(code));
+    renderSector(j);
+  }catch(e){ box.innerHTML='<div class="card"><div class="hint">Lỗi tải</div></div>'; }
+}
+function renderSector(j){
+  const L=SEC_I18N[curLang]||SEC_I18N.vi;
+  const box=$("secDetail"); if(!box) return;
+  const ser=(j.series||[]).filter(p=>p.rev!=null||p.npat!=null);
+  let h=`<div style="padding:2px 2px 8px"><a href="#" onclick="backSectors();return false" style="color:var(--pp-accent);text-decoration:none">${L.back}</a></div>
+  <div class="card">
+    <div style="font-size:17px;font-weight:600">${esc(j.name||"")}</div>
+    <div class="row" style="margin-top:6px"><span class="k">${L.rev}</span><span class="v">${fmtMoney(j.rev_ttm)}</span></div>
+    <div class="row"><span class="k">${L.npat}</span><span class="v">${fmtMoney(j.npat_ttm)}</span></div>
+    <div class="row"><span class="k">${L.roe}</span><span class="v">${j.roe_ttm==null?"—":(j.roe_ttm*100).toFixed(1).replace(".",",")+"%"}</span></div>
+    <div class="row"><span class="k">${L.pe}</span><span class="v">${j.pe==null?"—":j.pe.toFixed(1).replace(".",",")+" ("+(j.n_pe||0)+"/"+(j.n_members||0)+" "+L.members+")"}</span></div>
+    <div class="row"><span class="k">${L.mcap}</span><span class="v">${fmtMoney(j.mcap)}</span></div>
+  </div>`;
+  if(ser.length>3){
+    const W=340,H=140,PL=4,PR=4,PT=10,PB=14,BW=(W-PL-PR)/ser.length;
+    const mx=Math.max(...ser.map(p=>Math.max(p.rev||0,p.npat||0)))*1.1||1;
+    const mn=Math.min(0,...ser.map(p=>Math.min(p.rev||0,p.npat||0)))*1.1;
+    const Y=v=>PT+(1-(v-mn)/(mx-mn))*(H-PT-PB);
+    let svg=`<svg width="100%" viewBox="0 0 ${W} ${H}">`;
+    svg+=`<line x1="${PL}" y1="${Y(0)}" x2="${W-PR}" y2="${Y(0)}" stroke="var(--pp-line)"/>`;
+    ser.forEach((p,i)=>{
+      const x=PL+i*BW+BW*0.15, w=BW*0.7;
+      if(p.rev!=null) svg+=`<rect x="${x.toFixed(1)}" y="${Y(Math.max(p.rev,0)).toFixed(1)}" width="${w.toFixed(1)}" height="${Math.abs(Y(p.rev)-Y(0)).toFixed(1)}" fill="#38bdf8" opacity="0.75"/>`;
+    });
+    let d="";
+    ser.forEach((p,i)=>{ if(p.npat!=null){ const x=PL+i*BW+BW/2; d+=(d?" L ":"M ")+x.toFixed(1)+" "+Y(p.npat).toFixed(1); } });
+    if(d) svg+=`<path d="${d}" fill="none" stroke="#f0b429" stroke-width="1.8"/>`;
+    svg+=`<text x="${PL}" y="${H-2}" font-size="9" fill="var(--pp-mut)">${ser[0].period}</text>`;
+    svg+=`<text x="${W-PR}" y="${H-2}" font-size="9" fill="var(--pp-mut)" text-anchor="end">${ser[ser.length-1].period}</text>`;
+    svg+="</svg>";
+    h+=`<div class="sec">${L.chart}</div><div class="card">${svg}<div style="font-size:12px"><span style="color:#38bdf8">■</span> ${L.revQ} · <span style="color:#f0b429">■</span> ${L.npatQ}</div></div>`;
+  }
+  const last=ser.slice(-8).reverse();
+  if(last.length){
+    h+=`<div class="sec">${L.series}</div><div class="card"><table>
+    <tr><th>${L.period}</th><th style="text-align:right">${L.revQ}</th><th style="text-align:right">${L.npatQ}</th><th style="text-align:right">${L.roeQ}</th><th style="text-align:right">${L.margin}</th></tr>
+    ${last.map(p=>`<tr><td>${p.period}</td><td style="text-align:right">${fmtMoney(p.rev)}</td><td style="text-align:right">${fmtMoney(p.npat)}</td><td style="text-align:right">${p.roe_q==null?"—":(p.roe_q*100).toFixed(1).replace(".",",")+"%"}</td><td style="text-align:right">${p.net_margin==null?"—":(p.net_margin*100).toFixed(1).replace(".",",")+"%"}</td></tr>`).join("")}</table></div>`;
+  }
+  const mem=j.members||[];
+  if(mem.length){
+    h+=`<div class="sec">${L.mem} (${mem.length})</div><div class="card"><div style="display:flex;flex-wrap:wrap;gap:6px">${mem.map(m=>{
+      const pc=m.pct==null?null:m.pct;
+      const cls=pc==null?"":pc>0?"up":pc<0?"down":"";
+      return `<a href="#" onclick="openSym('${m.symbol}');return false" style="display:inline-block;padding:5px 9px;border:1px solid var(--pp-line);border-radius:99px;text-decoration:none;color:var(--pp-ink);font-size:12px"><b>${m.symbol}</b>${m.price?" · "+fmtN(m.price):""}${pc!=null?` <span class="${cls}">${pc>0?"+":""}${Number(pc).toFixed(1).replace(".",",")}%</span>`:""}</a>`;
+    }).join("")}</div></div>`;
+  }
+  box.innerHTML=h;
+}
+function backSectors(){
+  $("secDetail").style.display="none";
+  $("secListWrap").style.display="";
+}
 const PROF_I18N={
   vi:{holders:"Cổ đông lớn",officers:"Ban lãnh đạo",subs:"Công ty con / liên kết",capital:"Vốn điều lệ",own:"Cơ cấu sở hữu",shares:"CP",empty:"Chưa có dữ liệu hồ sơ",ty:"tỷ"},
   en:{holders:"Major shareholders",officers:"Management",subs:"Subsidiaries / affiliates",capital:"Charter capital",own:"Ownership structure",shares:"shares",empty:"No profile data yet",ty:"B"},
@@ -1078,7 +1307,7 @@ function renderProfile(j){
   const pctF=v=>v==null?"—":pct(v<=1?v*100:v);
   let h="";
   const sh=(j.shareholders||[]).slice().sort((a,b)=>(b.shares_owned||0)-(a.shares_owned||0)).slice(0,10);
-  if(sh.length) h+=`<div class="sec">${L.holders}</div><div class="card"><table>${sh.map(r=>`<tr><td>${esc(r.name||"")}</td><td style="text-align:right">${fmtN(r.shares_owned)} ${L.shares}</td><td style="text-align:right">${pct(r.ownership_percentage)}</td></tr>`).join("")}</table></div>`;
+  if(sh.length) h+=`<div class="sec">${L.holders}</div><div class="card"><table>${sh.map(r=>`<tr><td><a href="#" onclick="openHolderByName('${(r.name||"").replace(/\\/g,"").replace(/'/g,"\\'")}');return false" style="color:var(--pp-accent);text-decoration:none">${esc(r.name||"")}</a></td><td style="text-align:right">${fmtN(r.shares_owned)} ${L.shares}</td><td style="text-align:right">${pct(r.ownership_percentage)}</td></tr>`).join("")}</table></div>`;
   const of=j.officers||[];
   if(of.length) h+=`<div class="sec">${L.officers}</div><div class="card"><table>${of.map(r=>`<tr><td>${esc(r.name||"")}</td><td style="text-align:right;color:var(--pp-mut)">${esc(r.position||"")}</td><td style="text-align:right">${r.total_shares?fmtN(r.total_shares)+" "+L.shares:"—"}</td></tr>`).join("")}</table></div>`;
   const sb=j.subsidiaries||[];
@@ -1349,10 +1578,10 @@ $("chatIn").onkeydown=e=>{if(e.key==="Enter")chatAsk();};
 
 // ---- i18n 4 ngôn ngữ ----
 const LANGS = {
-  vi: {market:"Thị trường",screen:"Sàng lọc",cons:"Đồng thuận",alert:"Cảnh báo",mine:"Của tôi",indices:"Chỉ số",gainers:"Tăng mạnh nhất HOSE",send:"Gửi",askPh:"Hỏi về cổ phiếu…"},
-  en: {market:"Market",screen:"Screener",cons:"Consensus",alert:"Alerts",mine:"Mine",indices:"Indices",gainers:"Top gainers HOSE",send:"Send",askPh:"Ask about stocks…"},
-  zh: {market:"市场",screen:"筛选",cons:"共识",alert:"提醒",mine:"我的",indices:"指数",gainers:"HOSE涨幅榜",send:"发送",askPh:"询问股票…"},
-  ko: {market:"시장",screen:"스크리너",cons:"컨센서스",alert:"알림",mine:"내 정보",indices:"지수",gainers:"HOSE 상승 상위",send:"보내기",askPh:"주식에 대해 질문…"}
+  vi: {market:"Thị trường",screen:"Sàng lọc",cons:"Đồng thuận",hold:"Cổ đông",sec:"Ngành",alert:"Cảnh báo",mine:"Của tôi",indices:"Chỉ số",gainers:"Tăng mạnh nhất HOSE",send:"Gửi",askPh:"Hỏi về cổ phiếu…"},
+  en: {market:"Market",screen:"Screener",cons:"Consensus",hold:"Shareholders",sec:"Sectors",alert:"Alerts",mine:"Mine",indices:"Indices",gainers:"Top gainers HOSE",send:"Send",askPh:"Ask about stocks…"},
+  zh: {market:"市场",screen:"筛选",cons:"共识",hold:"股东",sec:"行业",alert:"提醒",mine:"我的",indices:"指数",gainers:"HOSE涨幅榜",send:"发送",askPh:"询问股票…"},
+  ko: {market:"시장",screen:"스크리너",cons:"컨센서스",hold:"주주",sec:"업종",alert:"알림",mine:"내 정보",indices:"지수",gainers:"HOSE 상승 상위",send:"보내기",askPh:"주식에 대해 질문…"}
 };
 let curLang = (localStorage.getItem("elab_uiLang") || localStorage.getItem("stk_lang") || "vi").replace(/"/g, "");
 if(!["vi","en","zh","ko"].includes(curLang)) curLang = "vi";
@@ -1380,9 +1609,9 @@ function setStkLang(l){
   try{ localStorage.setItem("elab_uiLang", l); }catch(e){}
   localStorage.setItem("stk_lang", l);
   const L = LANGS[curLang];
-  NAVLBL["v-market"] = L.market; NAVLBL["v-screen"] = L.screen; NAVLBL["v-consensus"] = L.cons;
+  NAVLBL["v-market"] = L.market; NAVLBL["v-screen"] = L.screen; NAVLBL["v-consensus"] = L.cons; NAVLBL["v-holders"] = L.hold; NAVLBL["v-sectors"] = L.sec;
   NAVLBL["v-alert"] = L.alert; NAVLBL["v-mine"] = L.mine;
-  ["mainTabs","screenTabs","consTabs","alertTabs","mineMainTabs","chatTabs"].forEach(e=>{if($(e))buildNav(e, document.querySelector(".view.on")?.id || "v-market");});
+  ["mainTabs","screenTabs","consTabs","holdTabs","secTabs","alertTabs","mineMainTabs","chatTabs"].forEach(e=>{if($(e))buildNav(e, document.querySelector(".view.on")?.id || "v-market");});
   syncLangUI();
   applyLang();
   translateDOM();
@@ -1465,6 +1694,8 @@ const I18N_FULL = {
 "Tin thị trường":["Market news","市场新闻","시장 뉴스"],
 "Hồ sơ":["Profile","公司档案","회사 프로필"],
 "Đồng thuận":["Consensus","共识","컨센서스"],
+"Cổ đông":["Shareholders","股东","주주"],
+"Ngành":["Sectors","行业","업종"],
 "Vĩ mô":["Macro","宏观经济","거시경제"],
 "Mã theo dõi":["Watchlist","自选股","관심 종목"],
 "Theo dõi":["Watch","关注","관심 추가"],
@@ -1602,7 +1833,7 @@ function applyLang(){
   const L = LANGS[curLang] || LANGS.vi;
   document.querySelectorAll("#langPick button").forEach(b=>b.classList.toggle("on", b.dataset.lang===curLang));
   // Dịch nhãn tab chính
-  const lbl = {"v-market":L.market,"v-screen":L.screen,"v-consensus":L.cons,"v-alert":L.alert,"v-mine":L.mine};
+  const lbl = {"v-market":L.market,"v-screen":L.screen,"v-consensus":L.cons,"v-holders":L.hold,"v-sectors":L.sec,"v-alert":L.alert,"v-mine":L.mine};
   document.querySelectorAll("[data-scr]").forEach(()=>{});
   if($("chatSend")) $("chatSend").textContent = L.send;
   if($("chatIn")) $("chatIn").placeholder = L.askPh;
