@@ -400,6 +400,36 @@ export async function hStockConsensus(request, env){
   return cachedMarket(request, env, "market/consensus.json", 300); // 5m cache
 }
 
+/* Tong hop nganh: bang 19 nganh (TTM + ROE + P/E) */
+export async function hStockSectors(request, env){
+  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
+  return cachedMarket(request, env, "market/sectors.json", 900); // 15m cache
+}
+
+/* Tong hop nganh: chi tiet 1 nganh (chuoi ky + thanh vien) */
+export async function hStockSectorsDetail(request, env){
+  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
+  const code = new URL(request.url).searchParams.get("code")||"";
+  if(!/^[0-9]{4}$/.test(code)) return jerr("Bad code", 400);
+  const d = await sGet(env, "market/sectors/"+code+".json");
+  return sJson(d || {code, series:[], members:[]});
+}
+
+/* Chi muc dao co dong: index tim kiem (toan bo co dong) */
+export async function hStockHolders(request, env){
+  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
+  return cachedMarket(request, env, "market/holders_index.json", 900); // 15m cache
+}
+
+/* Chi muc dao co dong: shard chi tiet theo 2 ky tu dau cua id */
+export async function hStockHoldersShard(request, env){
+  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
+  const sh = (new URL(request.url).searchParams.get("s")||"").toLowerCase();
+  if(!/^[0-9a-f]{2}$/.test(sh)) return jerr("Bad shard", 400);
+  const d = await sGet(env, "market/holders/"+sh+".json");
+  return sJson(d || {});
+}
+
 /* Dong thuan theo ma: tung hang + chuoi gia muc tieu theo thoi gian */
 export async function hStockConsensusDetail(request, env){
   const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
@@ -871,6 +901,18 @@ export async function hStockPublish(request, env){
   if(body.consensus) await put1("consensus", body.consensus);
   if(body.consensus_detail) for(const sym of Object.keys(body.consensus_detail)){
     await sPut(env, "market/consensus/"+sym+".json", doc(body.consensus_detail[sym]));
+    n++;
+  }
+  if(body.sectors) await put1("sectors", body.sectors);
+  if(body.sectors_detail) for(const code of Object.keys(body.sectors_detail)){
+    if(!/^[0-9]{4}$/.test(code)) continue;
+    await sPut(env, "market/sectors/"+code+".json", doc(body.sectors_detail[code]));
+    n++;
+  }
+  if(body.holders_index) await put1("holders_index", body.holders_index);
+  if(body.holders_shards) for(const sh of Object.keys(body.holders_shards)){
+    if(!/^[0-9a-f]{2}$/.test(sh)) continue;
+    await sPut(env, "market/holders/"+sh+".json", doc(body.holders_shards[sh]));
     n++;
   }
   if(body.regime) await put1("regime", body.regime);
