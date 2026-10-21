@@ -30,6 +30,17 @@ body{font-family:var(--pp-font);background:var(--pp-bg);color:var(--pp-ink);max-
 .idxcard .c{font-size:12px}
 .up{color:var(--pp-accent)}.down{color:var(--pp-danger)}
 .sec{padding:14px 16px 4px;font-size:14px;font-weight:700;color:var(--pp-ink)}
+.symsearch{position:relative;margin:12px 16px 0}
+.symsearch input{width:100%;box-sizing:border-box;background:var(--pp-bg2);color:var(--pp-ink);border:1px solid var(--pp-line);border-radius:10px;padding:11px 12px;font-size:14px}
+.ss-results{position:absolute;left:0;right:0;top:calc(100% + 4px);background:var(--pp-bg2);border:1px solid var(--pp-line);border-radius:10px;z-index:60;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.35)}
+.ss-row{display:flex;align-items:baseline;gap:8px;padding:10px 12px;cursor:pointer}
+.ss-row:hover,.ss-row.on{background:rgba(127,127,127,.14)}
+.ss-sym{font-weight:700;font-size:14px}
+.ss-ex{font-size:10px;color:var(--pp-mut);border:1px solid var(--pp-line);padding:1px 5px;border-radius:6px;white-space:nowrap}
+.ss-name{color:var(--pp-mut);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.ss-px{font-size:12px;white-space:nowrap}
+.ss-none{padding:10px 12px;color:var(--pp-mut);font-size:13px}
+
 .card{margin:8px 16px;background:var(--pp-card);border:1px solid var(--pp-line);border-radius:16px;padding:14px;box-shadow:var(--pp-shadow)}
 .row{display:flex;justify-content:space-between;align-items:center;font-size:14px;padding:8px 0;border-bottom:1px solid var(--pp-line)}
 .row:last-child{border:none}
@@ -89,6 +100,8 @@ input,select{background:var(--pp-bg2);border:1px solid var(--pp-line);color:var(
 </div><span class="src" id="mktSrc">Nguồn: VCI trực tiếp</span></div>
 <div class="regime" id="regimeBox" style="display:none"><div class="t" id="regimeT"></div><div class="d" id="regimeD"></div></div>
 <div class="tabs main" id="mainTabs"></div>
+<div class="symsearch"><input id="symSearch" type="text" autocomplete="off" spellcheck="false" placeholder="Tìm mã hoặc tên công ty…"><div class="ss-results" id="ssResults" style="display:none"></div></div>
+
 <div class="sec">Chỉ số</div>
 <div class="idx" id="idxRow"><div class="hint">Đang tải…</div></div>
 <div class="sec">Tăng mạnh nhất HOSE</div>
@@ -354,6 +367,7 @@ async function loadMarket(){
   }catch(e){}
   try{
     const j=await api("/screener?sort=pct_change&order=desc&exchange=HOSE&min_value=1000000000");
+    (j.rows||[]).forEach(r=>{try{SS_PX[r.symbol]={c:r.close,p:r.pct_change};}catch(e){}});
     const rows=(j.rows||[]).filter(r=>r.pct_change!=null).slice(0,8);
     $("topMovers").innerHTML=rows.map(r=>{const pc=r.pct_change,cls=pc>0?"up":pc<0?"down":"";
       const ff=r.foreign_net_value,ffc=ff>0?"up":ff<0?"down":"";
@@ -668,6 +682,64 @@ $("pfExportBtn").onclick=()=>{
   let csv="symbol,qty,avg_cost,current,market_value,unrealized,unrealized_pct\n"+pos.map(p=>[p.symbol,p.qty,p.avg_cost,p.current??"",p.market_value??"",p.unrealized??"",p.unrealized_pct??""].join(",")).join("\n");
   const a=document.createElement("a");a.href=URL.createObjectURL(new Blob(["\ufeff"+csv],{type:"text/csv"}));a.download="danh-muc.csv";a.click();URL.revokeObjectURL(a.href);
 };
+
+
+// ---- Tim ma (o tim o dau tab Thi truong, Chot 21/10) ----
+// Danh sach 1.519 ma tai LUOI khi nguoi dung cham vao o tim (khong
+// tai luc mo app). Gia/% chi hien neu ma da co san trong du lieu
+// trang da tai (SS_PX tu luot screener cua top movers) - khong goi
+// API rieng cho tung ket qua.
+const SS_I18N={vi:{ph:"Tìm mã hoặc tên công ty…",none:"Không tìm thấy mã phù hợp"},en:{ph:"Search symbol or company name…",none:"No matching symbol"},zh:{ph:"搜索代码或公司名称…",none:"未找到匹配代码"},ko:{ph:"종목 코드 또는 회사명 검색…",none:"일치하는 종목이 없습니다"}};
+let SS_ROWS=null; const SS_PX={};
+function ssT(k){const L=SS_I18N[curLang]||SS_I18N.vi;return L[k];}
+function ssFold(s){return (s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/đ/g,"d");}
+async function ssLoad(){
+  if(SS_ROWS)return;
+  try{const j=await api("/listing");
+    SS_ROWS=(j.rows||[]).map(r=>({s:r.s,n:r.n,e:r.e,f:ssFold(r.n)}));
+  }catch(e){SS_ROWS=[];}
+}
+function ssMatch(q){
+  const qs=q.trim().toUpperCase(), qf=ssFold(q.trim());
+  if(!qs||!SS_ROWS)return [];
+  const t0=[],t1=[],t2=[];
+  for(const r of SS_ROWS){
+    if(r.s.startsWith(qs))t0.push(r);
+    else if(r.s.includes(qs))t1.push(r);
+    else if(qf&&r.f.includes(qf))t2.push(r);
+    if(t0.length>=8)break;
+  }
+  return t0.concat(t1,t2).slice(0,8);
+}
+function ssRender(){
+  const inp=$("symSearch"), box=$("ssResults");
+  if(!inp||!box)return;
+  const ms=ssMatch(inp.value);
+  if(!inp.value.trim()){box.style.display="none";return;}
+  if(!ms.length){box.innerHTML='<div class="ss-none">'+esc(ssT("none"))+"</div>";box.style.display="";return;}
+  box.innerHTML=ms.map(r=>{const px=SS_PX[r.s];
+    const pxh=px&&px.c!=null?'<span class="ss-px">'+fmtN(px.c)+(px.p!=null?' <span class="'+(px.p>0?"up":px.p<0?"down":"")+'">'+fmtPct(px.p)+"</span>":"")+"</span>":"";
+    return '<div class="ss-row" data-sym="'+esc(r.s)+'"><span class="ss-sym">'+esc(r.s)+'</span><span class="ss-ex">'+esc(r.e)+'</span><span class="ss-name">'+esc(r.n)+"</span>"+pxh+"</div>";}).join("");
+  box.style.display="";
+  box.querySelectorAll(".ss-row").forEach(el=>{
+    el.addEventListener("mousedown",ev=>{ev.preventDefault();ssPick(el.dataset.sym);});
+  });
+}
+function ssPick(sym){
+  const box=$("ssResults"); if(box)box.style.display="none";
+  const inp=$("symSearch"); if(inp)inp.value=sym;
+  openSym(sym);
+}
+(function ssInit(){
+  const inp=$("symSearch"); if(!inp)return;
+  inp.addEventListener("focus",async()=>{inp.placeholder=ssT("ph");await ssLoad();ssRender();});
+  inp.addEventListener("input",async()=>{await ssLoad();ssRender();});
+  inp.addEventListener("keydown",ev=>{
+    if(ev.key==="Enter"){const ms=ssMatch(inp.value);if(ms.length)ssPick(ms[0].s);}
+    else if(ev.key==="Escape"){$("ssResults").style.display="none";}
+  });
+  inp.addEventListener("blur",()=>setTimeout(()=>{const b=$("ssResults");if(b)b.style.display="none";},150));
+})();
 
 // ---- Chi tiết mã ----
 let curSym=null;
@@ -1154,6 +1226,8 @@ const I18N_FULL = {
 "Sổ lệnh":["Order book","订单簿","주문 내역"],
 "Thay đổi":["Change","涨跌","변동"],
 "Thị trường":["Market","市场","시장"],
+"Tìm mã hoặc tên công ty…":["Search symbol or company name…","搜索代码或公司名称…","종목 코드 또는 회사명 검색…"],
+"Không tìm thấy mã phù hợp":["No matching symbol","未找到匹配代码","일치하는 종목이 없습니다"],
 "Thống kê (trade-journal)":["Statistics (trade journal)","统计 (交易日志)","통계 (거래 일지)"],
 "Tin tức":["News","新闻","뉴스"],
 "Trạng thái":["Status","状态","상태"],
