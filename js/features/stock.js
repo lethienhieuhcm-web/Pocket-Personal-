@@ -423,7 +423,7 @@ async function renderSignalsTab(){
     else box.innerHTML = sigs.map(s=>
       '<div class="frow" style="gap:10px;padding:8px 0;border-bottom:1px solid var(--pp-border)">'
       + '<b class="symlink" data-sym="'+esc(s.symbol)+'">'+esc(s.symbol)+'</b>'
-      + '<div><div style="font-weight:600;font-size:13px">'+esc(patName[s.pattern]||s.pattern)+'</div>'
+      + '<div><div style="font-weight:600;font-size:14px">'+esc(patName[s.pattern]||s.pattern)+'</div>'
       + '<div class="hint">'+esc(s.desc||"")+' · '+esc((s.time||"").slice(0,16))+'</div></div></div>'
     ).join("");
     $("stkSignalsUpd").textContent = (j.updated ? t("updated")+new Date(j.updated).toLocaleString() : "") + " · Nguồn: tự tính";
@@ -843,7 +843,7 @@ async function loadChart(sym, interval="1D"){
       mkLine(candleData.filter(p=>val(p.time,"macd_sig")!=null).map(p=>({time:p.time, value:val(p.time,"macd_sig")})), "#FF6D00", {priceScaleId:"macd"});
       chart.priceScale("right").applyOptions({scaleMargins:{top:0.05, bottom:0.35}});
       const lg = document.createElement("div");
-      lg.style.cssText = "position:absolute;top:6px;left:8px;font-size:11px;font-weight:700;pointer-events:none";
+      lg.style.cssText = "position:absolute;top:6px;left:8px;font-size:12px;font-weight:700;pointer-events:none";
       lg.innerHTML = '<span style="color:#7B1FA2">RSI 14</span> · <span style="color:#2962FF">MACD</span> · <span style="color:#FF6D00">Signal</span> · <span style="color:#2962FF">BB(20,2)</span>';
       el.appendChild(lg);
     } else {
@@ -862,7 +862,7 @@ async function loadChart(sym, interval="1D"){
       chart.priceScale("right").applyOptions({scaleMargins:{top:0.05, bottom:0.30}});
       chart.priceScale("vol").applyOptions({scaleMargins:{top:0.78, bottom:0.02}});
       const lg = document.createElement("div");
-      lg.style.cssText = "position:absolute;top:6px;left:8px;font-size:11px;font-weight:700;pointer-events:none";
+      lg.style.cssText = "position:absolute;top:6px;left:8px;font-size:12px;font-weight:700;pointer-events:none";
       const ma10v = ma10[ma10.length-1], ma50v = ma50[ma50.length-1];
       lg.innerHTML = `<span style="color:#26a69a">MA10:${ma10v!=null?ma10v.toFixed(2):"—"}</span> <span style="color:#FF9800">MA50:${ma50v!=null?ma50v.toFixed(2):"—"}</span>`;
       el.appendChild(lg);
@@ -1647,7 +1647,7 @@ function initAgentChat(){
       const chip = document.createElement("button");
       chip.type = "button";
       chip.textContent = txt;
-      chip.style.cssText = "flex:0 0 auto;padding:8px 14px;border-radius:20px;border:1px solid var(--pp-border);background:var(--pp-bg2);color:var(--pp-text);font-size:13px;cursor:pointer;white-space:nowrap";
+      chip.style.cssText = "flex:0 0 auto;padding:8px 14px;border-radius:20px;border:1px solid var(--pp-border);background:var(--pp-bg2);color:var(--pp-text);font-size:14px;cursor:pointer;white-space:nowrap";
       chip.onclick = () => {
         input.value = txt;
         send();
