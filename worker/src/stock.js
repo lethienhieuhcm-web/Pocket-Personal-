@@ -992,6 +992,25 @@ export async function hStockPublish(request, env){
     await sPut(env, "market/intraday/"+key+".json", doc({rows:body.intraday[key]}));
     n++;
   }
+  // Bo thu tick chay bong (Chot 21/10): chi ghi duoi prefix
+  // market/shadow_tick/ — KHONG consumer production nao doc.
+  if(body.tick_shadow){
+    const ts = body.tick_shadow;
+    if(ts.intraday) for(const key of Object.keys(ts.intraday)){
+      await sPut(env, "market/shadow_tick/intraday/"+key+".json",
+        doc({rows:ts.intraday[key], src:(body._prov||{}).source||null, updated:now}));
+      n++;
+    }
+    if(ts.foreign){
+      await sPut(env, "market/shadow_tick/foreign.json",
+        doc({by_symbol:ts.foreign, src:(body._prov||{}).source||null, updated:now}));
+      n++;
+    }
+    if(ts.status){
+      await sPut(env, "market/shadow_tick/status.json", doc(Object.assign({}, ts.status, {updated:now})));
+      n++;
+    }
+  }
   // Push real-time update to Ably (fire-and-forget; skip if no key)
   if(env.ABLY_ROOT_KEY && n>0){
     try{
