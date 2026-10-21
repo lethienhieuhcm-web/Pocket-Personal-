@@ -665,15 +665,20 @@ class Aggregator:
 
     @staticmethod
     def _rows(buckets):
-        return [{"t": t, "o": b[0], "h": b[1], "l": b[2], "c": b[3],
-                 "v": b[4]}
+        # Dinh dang t giong het intraday REST noi tieu thu dang doc:
+        # chuoi gio ICT "%Y-%m-%dT%H:%M" (source_router._intraday_vnd).
+        return [{"t": datetime.fromtimestamp(t, ICT).strftime(
+                    "%Y-%m-%dT%H:%M"),
+                 "o": b[0], "h": b[1], "l": b[2], "c": b[3], "v": b[4]}
                 for t, b in sorted(buckets.items())]
 
     @staticmethod
     def _resample(rows1m, minutes):
         out = {}
         for r in rows1m:
-            k = r["t"] // (minutes * 60) * (minutes * 60)
+            t = datetime.strptime(r["t"], "%Y-%m-%dT%H:%M") \
+                .replace(tzinfo=ICT)
+            k = int(t.timestamp()) // (minutes * 60) * (minutes * 60)
             b = out.get(k)
             if b is None:
                 out[k] = [r["o"], r["h"], r["l"], r["c"], r["v"]]
