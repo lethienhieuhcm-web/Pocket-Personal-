@@ -1,0 +1,39 @@
+name: Deploy Tick Collector to Modal
+
+on:
+  workflow_dispatch:
+    inputs:
+      spawn_minutes:
+        description: "Spawn a shadow session run of N minutes after deploy (0 = deploy only)"
+        required: false
+        default: "0"
+  push:
+    paths:
+      - "modal_crons/tick_collector.py"
+      - ".github/workflows/deploy-tick-collector.yml"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      MODAL_TOKEN_ID: ${{ secrets.MODAL_TOKEN_ID }}
+      MODAL_TOKEN_SECRET: ${{ secrets.MODAL_TOKEN_SECRET }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Modal CLI
+        run: pip install modal
+
+      - name: Deploy tick collector
+        run: |
+          cd modal_crons && modal deploy tick_collector.py
+
+      - name: Spawn shadow session (manual only)
+        if: ${{ inputs.spawn_minutes != '0' && inputs.spawn_minutes != '' }}
+        run: |
+          cd modal_crons && modal run --detach tick_collector.py --max-minutes ${{ inputs.spawn_minutes }}
