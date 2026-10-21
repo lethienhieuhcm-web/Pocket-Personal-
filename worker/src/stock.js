@@ -1029,6 +1029,25 @@ export async function hStockPublish(request, env){
       n++;
     }
   }
+  // Chan VCI doc lap Tang B (Chot 19:39 21/10): chay tren ha tang
+  // OVH/Botkeep (Modal bi VCI chan 403) — nguon ngoai DU BO thu hai.
+  // Chi ghi shadow rieng market/shadow_tick/vci/ de doi chieu +
+  // bao cao do on dinh; KHONG dung du lieu production.
+  if(body.tick_vci){
+    const tv = body.tick_vci;
+    if(tv.intraday) for(const key of Object.keys(tv.intraday)){
+      await sPut(env, "market/shadow_tick/vci/intraday/"+key+".json", doc({rows:tv.intraday[key]}));
+      n++;
+    }
+    if(tv.foreign){
+      await sPut(env, "market/shadow_tick/vci/foreign.json", doc({by_symbol:tv.foreign, src:(body._prov||{}).source||null, updated:now}));
+      n++;
+    }
+    if(tv.status){
+      await sPut(env, "market/shadow_tick/vci/status.json", doc(Object.assign({}, tv.status, {updated:now})));
+      n++;
+    }
+  }
   // Push real-time update to Ably (fire-and-forget; skip if no key)
   if(env.ABLY_ROOT_KEY && n>0){
     try{
