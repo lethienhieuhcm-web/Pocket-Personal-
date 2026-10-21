@@ -15,7 +15,7 @@ import { and, eq, lt, sql } from "drizzle-orm";
 import { rateLimits } from "./schema.js";
 import {getSession, getUser, OWNER_EMAIL} from './auth.js';
 import {jerr} from './utils.js';
-import {hStockVersion, hStockIndices, hStockRegime, hStockSignals, hStockQuote, hStockOhlcv, hStockScreener, hStockFundamentals, hStockStatements, hStockNews, hStockMarketNews, hStockForeignFlow, hStockForeignHistory, hStockProprietaryFlow, hStockProprietaryHistory, hStockEvents, hStockCompanyProfile, hStockCompare, hWatchlistGet, hWatchlistAdd, hWatchlistDel, hPortfolio, hTxnAdd, hTxnDel, hTxnNote, hCostHistory, hTargetsGet, hTargetsSet, hTargetsDel, hStockPublish, hModalAlert, hStockReportData, hStockAlertDone, hStockTargetDone, hStockRisk, hStockStrategyReview, hRuleAlertsGet, hRuleAlertsAdd, hRuleAlertsDel, hRuleAlertsInternal} from './stock.js';
+import {hStockVersion, hStockIndices, hStockRegime, hStockSignals, hStockQuote, hStockOhlcv, hStockScreener, hStockFundamentals, hStockStatements, hStockNews, hStockMarketNews, hStockForeignFlow, hStockForeignHistory, hStockProprietaryFlow, hStockProprietaryHistory, hStockMacro, hStockMacroHistory, hStockEvents, hStockCompanyProfile, hStockCompare, hWatchlistGet, hWatchlistAdd, hWatchlistDel, hPortfolio, hTxnAdd, hTxnDel, hTxnNote, hCostHistory, hTargetsGet, hTargetsSet, hTargetsDel, hStockPublish, hModalAlert, hStockReportData, hStockAlertDone, hStockTargetDone, hStockRisk, hStockStrategyReview, hRuleAlertsGet, hRuleAlertsAdd, hRuleAlertsDel, hRuleAlertsInternal} from './stock.js';
 
 // Build ID - replaced with timestamp on every deploy (see cf_deploy.py)
 const BUILD_ID = "__BUILD__";
@@ -158,6 +158,8 @@ const ROUTES = [
   ['GET',    '/api/stock/foreign-flow/history', hStockForeignHistory, 'user'],
   ['GET',    '/api/stock/proprietary-flow', hStockProprietaryFlow, 'user'],
   ['GET',    '/api/stock/proprietary-flow/history', hStockProprietaryHistory, 'user'],
+  ['GET',    '/api/stock/macro', hStockMacro, 'user'],
+  ['GET',    '/api/stock/macro/history', hStockMacroHistory, 'user'],
   ['GET',    '/api/stock/events',    hStockEvents,           'user'],
   ['GET',    '/api/stock/company/profile', hStockCompanyProfile, 'user'],
   ['GET',    '/api/stock/compare',   hStockCompare,          'user'],
