@@ -400,6 +400,25 @@ export async function hStockForeignFlow(request, env){
   return cachedMarket(request, env, "market/foreign_flow.json", 900); // 15m cache
 }
 
+/* Vi mo Tier 2: tong quan cac series moi nhat + lai suat dieu hanh */
+export async function hStockMacro(request, env){
+  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
+  return cachedMarket(request, env, "market/macro/overview.json", 300);
+}
+
+/* Lich su vi mo theo series: ?series=gold_sjc&limit=250 */
+export async function hStockMacroHistory(request, env){
+  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
+  const u = new URL(request.url);
+  const sid = (u.searchParams.get("series")||"").toLowerCase();
+  if(!/^[a-z0-9_]+$/.test(sid)) return jerr("Missing series", 400);
+  const limit = Math.min(parseInt(u.searchParams.get("limit")||"250")||250, 1200);
+  const d = await sGet(env, "market/macro/history/"+sid+".json");
+  const rows = (d && d.rows) || [];
+  return sJson({series:sid, count:rows.length, rows:rows.slice(-limit),
+    updated:d?d.updated:null});
+}
+
 /* Proprietary flow tu chu: tu PDF cua HOSE (thay Market().proprietary_flow() bi khoa) */
 export async function hStockProprietaryFlow(request, env){
   const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
@@ -886,6 +905,27 @@ export async function hStockPublish(request, env){
       merged.sort((a,b)=>(a.trade_date||"").localeCompare(b.trade_date||""));
       const trimmed = merged.slice(-500);
       await sPut(env, hkey, doc({symbol:sym, rows:trimmed}));
+      n++;
+    }
+  }
+  // Vi mo Tier 2 (Henrry Chot T2-1 20/10/2026): overview + history
+  // theo series, merge theo ngay, tran 1200 diem (~4-5 nam ngay lam
+  // viec). Nguon: scripts/fetch_macro.py (SBV/VCB/SJC/NYFed/Treasury).
+  if(body.macro_overview) await put1("macro/overview", body.macro_overview);
+  if(body.macro_history_batch){
+    for(const sid of Object.keys(body.macro_history_batch)){
+      const days = body.macro_history_batch[sid];
+      if(!Array.isArray(days) || !days.length) continue;
+      if(!/^[a-z0-9_]+$/.test(sid)) continue;
+      const hkey = "market/macro/history/"+sid+".json";
+      const h = await sGet(env, hkey) || {rows:[]};
+      const rows = h.rows || [];
+      const byDate = {};
+      for(const r of rows) if(r.date) byDate[r.date] = r;
+      for(const d of days){ if(d && d.date) byDate[d.date] = d; }
+      const merged = Object.values(byDate);
+      merged.sort((a,b)=>(a.date||"").localeCompare(b.date||""));
+      await sPut(env, hkey, doc({series:sid, rows:merged.slice(-1200)}));
       n++;
     }
   }
