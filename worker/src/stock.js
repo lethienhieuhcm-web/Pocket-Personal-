@@ -401,6 +401,10 @@ export async function hStockForeignFlow(request, env){
 }
 
 /* Vi mo Tier 2: tong quan cac series moi nhat + lai suat dieu hanh */
+export async function hStockListing(request, env){
+  return cachedMarket(request, env, "market/listing.json", 3600);
+}
+
 export async function hStockMacro(request, env){
   const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
   return cachedMarket(request, env, "market/macro/overview.json", 300);
@@ -831,6 +835,7 @@ export async function hStockPublish(request, env){
   if(body.screener) await put1("screener", {rows:body.screener});
   if(body.fundamentals) await put1("fundamentals", {by_symbol:body.fundamentals});
   if(body.symbols) await put1("symbols", {rows:body.symbols});
+  if(body.listing) await put1("listing", {rows:body.listing});
   if(body.ohlcv) for(const sym of Object.keys(body.ohlcv)){
     await sPut(env, "market/ohlcv/"+sym+".json", doc({rows:body.ohlcv[sym]}));
     n++;
