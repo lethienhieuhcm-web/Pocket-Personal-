@@ -95,6 +95,8 @@ input,select{background:var(--pp-bg2);border:1px solid var(--pp-line);color:var(
 <div class="card"><table><tr><th>Mã</th><th>Giá</th><th>+/−</th><th>NN ròng</th></tr><tbody id="topMovers"><tr><td colspan="4"><div class="hint">Đang tải…</div></td></tr></tbody></table></div>
 <div class="sec">Khối ngoại hôm nay</div>
 <div class="card" id="ffCard"><div class="hint">Đang tải…</div></div>
+<div class="sec">Vĩ mô</div>
+<div id="macroWrap"><div class="hint">Đang tải…</div></div>
 <div class="hint" id="verLine" style="text-align:center;margin:14px 0 4px"></div>
 </div>
 
@@ -358,6 +360,7 @@ async function loadMarket(){
       return `<tr><td><b onclick="openSym('${esc(r.symbol)}')" style="cursor:pointer">${esc(r.symbol)}</b></td><td>${fmtN(r.close)}</td><td class="${cls}">${fmtPct(pc)}</td><td class="${ffc}">${fmtTy(ff)}</td></tr>`;}).join("")||'<tr><td colspan="4"><div class="hint">Chưa có dữ liệu</div></td></tr>';
   }catch(e){$("topMovers").innerHTML='<tr><td colspan="4"><div class="hint">Lỗi tải</div></td></tr>';}
   loadFF();
+  loadMacro();
 }
 
 // ---- Khoi ngoai hom nay (GET /foreign-flow): du lieu publish gom 30 ma
@@ -395,6 +398,107 @@ function renderFF(j){
     `<div class="hint" style="padding-bottom:8px">${L.buy}: ${fmtTyF(tot.bv,L,false)} · ${L.sell}: ${fmtTyF(tot.sv,L,false)}</div>`+
     (buy.length?`<div class="hint" style="padding:4px 0">${L.topBuy}</div><table>${list(buy)}</table>`:"")+
     (sell.length?`<div class="hint" style="padding:8px 0 4px">${L.topSell}</div><table>${list(sell)}</table>`:"");
+}
+// ---- Vi mo (Tier 2-1): GET /macro (overview + spark) va /macro/history
+// khi mo chi tiet. Nguon chinh thong: NHNN, Vietcombank, SJC, NY Fed,
+// Bo Tai chinh My — nhan nguon hien duoi moi the.
+const MAC_I18N={
+  vi:{src:"Nguồn",fxC:"Tỷ giá trung tâm USD/VND",fxV:"Tỷ giá Vietcombank",gold:"Vàng SJC",fed:"Lãi suất FED (EFFR)",ust:"Lợi suất TP Mỹ 10Y",pol:"Lãi suất điều hành NHNN",tgt:"Mục tiêu",refi:"Tái cấp vốn",redisc:"Tái chiết khấu",dep:"Huy động bình quân",buy:"Mua",sell:"Bán",buyTr:"Mua CK",usdSell:"USD bán",from:"Hiệu lực",dec:"theo",perL:"tr ₫/lượng",empty:"Chưa có dữ liệu vĩ mô"},
+  en:{src:"Source",fxC:"SBV central rate USD/VND",fxV:"Vietcombank FX",gold:"SJC gold",fed:"Fed funds rate (EFFR)",ust:"US Treasury 10Y",pol:"SBV policy rates",tgt:"Target",refi:"Refinancing",redisc:"Rediscount",dep:"Avg deposit rate",buy:"Buy",sell:"Sell",buyTr:"Buy (transfer)",usdSell:"USD sell",from:"Effective",dec:"per",perL:"M ₫/tael",empty:"No macro data yet"},
+  zh:{src:"来源",fxC:"央行中心汇率 USD/VND",fxV:"Vietcombank 汇率",gold:"SJC 黄金",fed:"美联储利率 (EFFR)",ust:"美国10年期国债收益率",pol:"央行政策利率",tgt:"目标",refi:"再融资",redisc:"再贴现",dep:"平均存款利率",buy:"买入",sell:"卖出",buyTr:"买入(转账)",usdSell:"美元卖出",from:"生效",dec:"依据",perL:"百万₫/两",empty:"暂无宏观数据"},
+  ko:{src:"출처",fxC:"중앙환율 USD/VND",fxV:"Vietcombank 환율",gold:"SJC 금",fed:"연준 금리 (EFFR)",ust:"미국 국채 10년",pol:"중앙은행 정책금리",tgt:"목표",refi:"재융자",redisc:"재할인",dep:"평균 예금금리",buy:"매수",sell:"매도",buyTr:"매수(송금)",usdSell:"USD 매도",from:"시행",dec:"근거",perL:"백만₫/량",empty:"거시 데이터 없음"},
+};
+const MAC_SRC={sbv:"NHNN",vcb:"Vietcombank",sjc:"SJC",nyfed:"NY Fed",treasury:"U.S. Treasury","sbv-curated":"NHNN"};
+let MAC=null, MACOPEN=null, MACFC="USD", MACUT="y10", MACHIST={};
+function macSpark(vals,color){
+  if(!vals||vals.length<2) return "";
+  const w=120,h=30,mn=Math.min(...vals),mx=Math.max(...vals),rg=(mx-mn)||1;
+  const pts=vals.map((v,i)=>`${(i/(vals.length-1)*w).toFixed(1)},${(h-3-((v-mn)/rg)*(h-6)).toFixed(1)}`).join(" ");
+  return `<svg width="100%" height="${h}" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.6"/></svg>`;
+}
+function macChg(ch,fmt){
+  if(ch==null||ch===0) return `<span style="color:var(--pp-mut)">—</span>`;
+  const cls=ch>0?"up":"down", ar=ch>0?"▲":"▼";
+  return `<span class="${cls}" style="font-size:12px">${ar} ${fmt(Math.abs(ch))}</span>`;
+}
+async function loadMacro(){
+  try{ MAC=await api("/macro"); renderMacro(); }
+  catch(e){ /* giu khung, khong lam hong man thi truong */ }
+}
+function renderMacro(){
+  const w=$("macroWrap"); if(!w||!MAC) return;
+  const L=MAC_I18N[curLang]||MAC_I18N.vi, S=MAC.series||{};
+  const fVnd=v=>Math.round(v).toLocaleString("vi-VN");
+  const fPct=v=>v==null?"—":Number(v).toFixed(2).replace(".",",")+"%";
+  const card=(sid,name,val,chg,spark,sub,src,date)=>`<div class="card" style="margin:0;padding:10px;cursor:pointer" onclick="macOpen('${sid}')">
+    <div class="hint" style="padding:0">${name}</div>
+    <div style="font-size:17px;font-weight:700;margin:2px 0">${val} ${chg||""}</div>
+    ${spark||""}<div class="hint" style="padding:2px 0 0">${sub||""}</div>
+    <div style="font-size:10px;color:var(--pp-mut)">${L.src}: ${src} · ${date||""}</div></div>`;
+  let h=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">`;
+  const c=S.fx_center;
+  if(c) h+=card("fx_center",L.fxC,fVnd(c.last.rate)+" ₫",macChg(c.change,v=>fVnd(v)+" ₫"),macSpark(c.spark,"#38bdf8"),"",MAC_SRC[c.source],c.date);
+  const v=S.fx_vcb;
+  if(v&&v.usd) h+=card("fx_vcb",L.fxV,fVnd(v.usd.sell||0)+" ₫",macChg(v.change,x=>fVnd(x)+" ₫"),macSpark(v.spark,"#38bdf8"),`${L.usdSell} · ${L.buyTr} ${fVnd(v.usd.buy_transfer||0)} ₫`,MAC_SRC[v.source],v.date);
+  const g=S.gold_sjc;
+  if(g) h+=card("gold_sjc",L.gold,(g.last.sell/1e6).toFixed(1).replace(".",",")+" "+L.perL,macChg(g.change,x=>(x/1e6).toFixed(2).replace(".",",")+" tr"),macSpark(g.spark,"#e8c56a"),`${L.buy} ${(g.last.buy/1e6).toFixed(1).replace(".",",")} · ${L.sell} ${(g.last.sell/1e6).toFixed(1).replace(".",",")}`,MAC_SRC[g.source],g.date);
+  const f=S.fed_effr;
+  if(f) h+=card("fed_effr",L.fed,fPct(f.last.effr),macChg(f.change,x=>x.toFixed(2).replace(".",",")),macSpark(f.spark,"#a78bfa"),`${L.tgt} ${fPct(f.last.target_from)}–${fPct(f.last.target_to)}`,MAC_SRC[f.source],f.date);
+  const u=S.ust;
+  if(u) h+=card("ust",L.ust,fPct(u.last.y10),macChg(u.change,x=>x.toFixed(2).replace(".",",")),macSpark(u.spark,"#a78bfa"),`2Y ${fPct(u.last.y2)} · 30Y ${fPct(u.last.y30)}`,MAC_SRC[u.source],u.date);
+  const p=MAC.policy_rates;
+  if(p) h+=`<div class="card" style="margin:0;padding:10px;grid-column:1/-1">
+    <div class="hint" style="padding:0">${L.pol}</div>
+    <div style="display:flex;gap:16px;margin-top:4px;flex-wrap:wrap">
+      <span>${L.refi} <b>${fPct(p.refinancing)}</b></span><span>${L.redisc} <b>${fPct(p.rediscount)}</b></span><span>${L.dep} <b>${fPct(p.deposit_avg)}</b></span></div>
+    <div style="font-size:10px;color:var(--pp-mut);margin-top:4px">${L.from} ${p.effective} · ${L.dec} ${esc(p.decision||"")} · ${L.src}: NHNN</div></div>`;
+  h+="</div>"+(MACOPEN?`<div class="card" style="margin-top:8px;padding:10px" id="macroDetail"><div class="hint">…</div></div>`:"");
+  w.innerHTML=h||`<div class="hint">${L.empty}</div>`;
+  if(MACOPEN) macDrawDetail();
+}
+function macSeriesVal(sid,row){
+  if(sid==="fx_center") return row.rate;
+  if(sid==="gold_sjc") return row.sell;
+  if(sid==="fed_effr") return row.effr;
+  if(sid==="ust") return row[MACUT];
+  if(sid==="fx_vcb"){ const r=(row.rates||[]).find(x=>x.code===MACFC); return r?r.sell:null; }
+  return null;
+}
+function macChartSvg(rows,sid){
+  const pts=rows.map(r=>({d:r.date,v:macSeriesVal(sid,r)})).filter(p=>p.v!=null);
+  if(pts.length<2) return '<div class="hint">—</div>';
+  const w=330,h=120,vs=pts.map(p=>p.v),mn=Math.min(...vs),mx=Math.max(...vs),rg=(mx-mn)||1;
+  const X=i=>(i/(pts.length-1)*w).toFixed(1), Y=v=>(h-14-((v-mn)/rg)*(h-28)).toFixed(1);
+  const line=pts.map((p,i)=>`${X(i)},${Y(p.v)}`).join(" ");
+  const fN=v=>v>=1000?Math.round(v).toLocaleString("vi-VN"):Number(v).toFixed(2).replace(".",",");
+  return `<svg width="100%" viewBox="0 0 ${w} ${h}"><polyline points="${line}" fill="none" stroke="#38bdf8" stroke-width="1.6"/>
+    <text x="2" y="10" fill="#9db8a9" font-size="9">${fN(mx)}</text><text x="2" y="${h-2}" fill="#9db8a9" font-size="9">${fN(mn)}</text>
+    <text x="${w-2}" y="10" text-anchor="end" fill="#9db8a9" font-size="9">${pts[0].d}</text><text x="${w-2}" y="${h-2}" text-anchor="end" fill="#9db8a9" font-size="9">${pts[pts.length-1].d}</text></svg>`;
+}
+async function macOpen(sid){
+  MACOPEN=(MACOPEN===sid)?null:sid;
+  renderMacro();
+  if(!MACOPEN) return;
+  if(!MACHIST[sid]){
+    try{ const j=await api("/macro/history?series="+sid+"&limit=500"); MACHIST[sid]=j.rows||[]; }
+    catch(e){ MACHIST[sid]=[]; }
+  }
+  macDrawDetail();
+}
+function macDrawDetail(){
+  const box=$("macroDetail"); if(!box||!MACOPEN) return;
+  const L=MAC_I18N[curLang]||MAC_I18N.vi, rows=MACHIST[MACOPEN]||[];
+  let extra="";
+  if(MACOPEN==="fx_vcb"&&MAC.series.fx_vcb){
+    const codes=MAC.series.fx_vcb.codes||["USD"];
+    extra=`<div style="display:flex;gap:6px;flex-wrap:wrap;margin:6px 0">${codes.slice(0,10).map(c=>`<button onclick="MACFC='${c}';macDrawDetail()" style="padding:3px 9px;border-radius:99px;border:1px solid var(--pp-line);background:${c===MACFC?"var(--pp-accent)":"var(--pp-bg2)"};color:${c===MACFC?"#fff":"var(--pp-ink)"};font-size:12px;cursor:pointer">${c}</button>`).join("")}</div>`;
+    const last=rows[rows.length-1];
+    if(last) extra+=`<table>${last.rates.map(r=>`<tr><td><b>${r.code}</b></td><td style="text-align:right">${Math.round(r.buy_cash||0).toLocaleString("vi-VN")}</td><td style="text-align:right">${Math.round(r.buy_transfer||0).toLocaleString("vi-VN")}</td><td style="text-align:right">${Math.round(r.sell||0).toLocaleString("vi-VN")}</td></tr>`).join("")}</table>`;
+  }
+  if(MACOPEN==="ust"){
+    extra=`<div style="display:flex;gap:6px;margin:6px 0">${["y2","y10","y30"].map(t=>`<button onclick="MACUT='${t}';macDrawDetail()" style="padding:3px 9px;border-radius:99px;border:1px solid var(--pp-line);background:${t===MACUT?"var(--pp-accent)":"var(--pp-bg2)"};color:${t===MACUT?"#fff":"var(--pp-ink)"};font-size:12px;cursor:pointer">${t.toUpperCase()}</button>`).join("")}</div>`;
+  }
+  box.innerHTML=extra+macChartSvg(rows.slice(-250),MACOPEN);
 }
 // ---- Màn 4 ----
 const patName={trend_crossover:"Trend Crossover",bollinger_squeeze:"Bollinger Squeeze",episodic_pivot:"Episodic Pivot",momentum_pullback:"Momentum Pullback"};
@@ -1058,6 +1162,7 @@ const I18N_FULL = {
 "Tính cỡ vị thế cho lệnh mới":["Calculate position size","计算新订单仓位","포지션 크기 계산"],
 "Tăng mạnh nhất HOSE":["Top gainers HOSE","HOSE 涨幅最大","HOSE 상승 상위"],
 "Khối ngoại hôm nay":["Foreign flow today","今日外资动向","오늘 외국인 동향"],
+"Vĩ mô":["Macro","宏观经济","거시경제"],
 "Mã theo dõi":["Watchlist","自选股","관심 종목"],
 "Theo dõi":["Watch","关注","관심 추가"],
 "Chốt lời / Cắt lỗ (%)":["Take profit / Stop loss (%)","止盈 / 止损 (%)","익절 / 손절 (%)"],
