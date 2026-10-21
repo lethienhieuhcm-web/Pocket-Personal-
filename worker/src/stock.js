@@ -394,6 +394,21 @@ export async function hStockMarketNews(request, env){
   return cachedMarket(request, env, "market/market_news.json", 900); // 15m cache
 }
 
+/* Dong thuan CTCK: tong hop toan thi truong (publish tu warehouse) */
+export async function hStockConsensus(request, env){
+  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
+  return cachedMarket(request, env, "market/consensus.json", 300); // 5m cache
+}
+
+/* Dong thuan theo ma: tung hang + chuoi gia muc tieu theo thoi gian */
+export async function hStockConsensusDetail(request, env){
+  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
+  const sym = (new URL(request.url).searchParams.get("symbol")||"").toUpperCase();
+  if(!sym) return jerr("Symbol required", 400);
+  const d = await sGet(env, "market/consensus/"+sym+".json");
+  return sJson(d || {symbol:sym, firms:[], series:{}});
+}
+
 /* Foreign flow tu chu: tu price_board (thay Market().foreign_flow() bi khoa) */
 export async function hStockForeignFlow(request, env){
   const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
@@ -853,6 +868,11 @@ export async function hStockPublish(request, env){
     n++;
   }
   if(body.market_news) await put1("market_news", {items:body.market_news});
+  if(body.consensus) await put1("consensus", body.consensus);
+  if(body.consensus_detail) for(const sym of Object.keys(body.consensus_detail)){
+    await sPut(env, "market/consensus/"+sym+".json", doc(body.consensus_detail[sym]));
+    n++;
+  }
   if(body.regime) await put1("regime", body.regime);
   if(body.signals) await put1("signals", {signals:body.signals});
   // Batch history upload cho backfill (nhanh hon nhieu so voi tung ngay)
