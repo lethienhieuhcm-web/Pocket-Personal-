@@ -746,7 +746,7 @@ export async function hCostHistory(request, env){
   const sym = (new URL(request.url).searchParams.get("symbol")||"").toUpperCase();
   const pf = await uGet(env, s.email, "portfolio", {txns:[]});
   const txns = (pf.txns||[]).filter(t=>t.symbol===sym).sort((a,b)=> a.date<b.date?-1:a.date>b.date?1:a.id-b.id);
-  if(!txns.length) return jerr("No transactions", 404);
+  if(!txns.length) return sJson({symbol:sym, series:[]}); // chua co giao dich = du lieu rong, khong phai loi (404 cu lam console do o trang chi tiet)
   let qty=0, cost=0; const events=[];
   for(const t of txns){
     if(t.side==="BUY"){ qty+=t.qty; cost+=t.price*t.qty+t.fee; }
