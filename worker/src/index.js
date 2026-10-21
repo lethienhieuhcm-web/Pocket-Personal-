@@ -6,6 +6,7 @@ import {handleVocabAdd, handleVocabDue, handleVocabReview} from './vocab.js';
 import {handleAnalytics, handleInsights, handleBankGet, handleBankPost, handleReadingsList, handleReadingsCreate, handleReadingGet, handleReadingDelete, handleReadingAudioPut, handleAdminUsers, handleAdminRole, handleAdminDelete} from './library.js';
 import {handleRegister, handleSendCode, handleVerifyCode, handleLogin, handleLogout, handleMe, handleGoogleLogin, handleGoogleCallback, handleGoogleIdToken, handleListSessions, handleRevokeSession, handleVerifyEmail, handleResendVerification, handleForgotPassword, handleResetPassword, handleResetPasswordPage } from './auth.js';
 import {handleGetPlan, handleGetUsage, handleSetPlan} from './billing.js';
+import {hMcp, hMcpGet, hMcpLogAdmin} from './mcp.js';
 import {handleDriveAuthUrl, handleDriveCallback, handleDriveStatus, handleDriveDisconnect, handleDriveMusic, handleDriveStream, handleDriveUpload} from './drive.js';
 import {handleDacMusic, handleDacStream, handleDacStreamTest, handleDacDriveToken, handleDacAudio, handleDacAudioSign, handleDacAudioToken, handleDacResolve, handleDacCopy, handleDacFolders, handleDacSync, handleDacSearch, handleDacLibrary, handleDacPlaylistList, handleDacPlaylistCreate, handleDacPlaylistDelete, handleDacPlaylistGet, handleDacPlaylistSetItems, handleDacAuthLogin, handleDacAuthRefresh, handleDacAuthLogout} from './dac.js';
 import {handleSpotifyAuthUrl, handleSpotifyCallback, handleSpotifyStatus, handleSpotifySearch} from './spotify.js';
@@ -61,6 +62,7 @@ const ROUTES = [
   ['GET',    '/api/admin/books/pending', handleAdminBooksPending, 'admin'],
   ['POST',   '/api/admin/books/approve', handleAdminBooksApprove, 'admin'],
   ['POST',   '/api/admin/set-plan',  handleSetPlan,          'admin'],
+  ['GET',    '/api/admin/mcp-log',   hMcpLogAdmin,           'admin'],
   // --- auth ---
   ['POST',   '/api/auth/send-code',  handleSendCode,         'public'],
   ['POST',   '/api/auth/verify-code',handleVerifyCode,       'public'],
@@ -83,6 +85,9 @@ const ROUTES = [
   // --- billing ---
   ['GET',    '/api/user/plan',       handleGetPlan,          'user'],
   ['GET',    '/api/user/usage',      handleGetUsage,         'user'],
+  // --- MCP khai thac kho tu chu, GD1 (Chot thiet ke 22/10/2026) ---
+  ['POST',   '/api/mcp',           hMcp,                   'user'],
+  ['GET',    '/api/mcp',           hMcpGet,                'user'],
   // --- drive ---
   ['GET',    '/api/drive/auth-url',  handleDriveAuthUrl,     'user'],
   ['GET',    '/api/drive/callback',  handleDriveCallback,    'custom'],

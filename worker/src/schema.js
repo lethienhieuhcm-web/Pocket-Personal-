@@ -144,6 +144,25 @@ export const usageDaily = sqliteTable("usage_daily", {
   browsePages: integer("browse_pages").default(0),
 }, (t) => [primaryKey({ columns: [t.email, t.date] })]);
 
+// MCP GD1 (Chot 22/10/2026): nhat ky truy van MCP — bang vat ly
+// duoc tao bang CREATE TABLE IF NOT EXISTS trong mcp.js (ensureLog,
+// cung pattern dac_playlists cua dac.js); dinh nghia nay de tai lieu
+// hoa + truy van drizzle khi can. Giu 90 ngay.
+export const mcpLog = sqliteTable("mcp_log", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  ts: text("ts").notNull(),
+  userEmail: text("user_email").notNull(),
+  plan: text("plan"),
+  tool: text("tool"),
+  paramsJson: text("params_json"),
+  status: text("status").notNull(),
+  refusalCode: text("refusal_code"),
+  verificationFlags: text("verification_flags"),
+  resultRows: integer("result_rows"),
+  latencyMs: integer("latency_ms"),
+  asOf: text("as_of"),
+});
+
 export const browserCookies = sqliteTable("browser_cookies", {
   email: text("email").notNull(),
   host: text("host").notNull(),
