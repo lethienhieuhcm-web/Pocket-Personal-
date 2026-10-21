@@ -1011,6 +1011,24 @@ export async function hStockPublish(request, env){
       n++;
     }
   }
+  // Bo thu tick DA CONG — ban LAT (Chot Henrry 19:39 21/10): du lieu
+  // hop nhat DNSE+KBS+VNDirect+VPS ghi thang production. Intraday ->
+  // market/intraday/ (cung khoa voi nhanh intraday thuong). Khoi
+  // ngoai MERGE vao market/foreign_flow.json: chi de cac ma cua bo
+  // thu (40 ma), giu nguyen moi ma con lai do luong publish cham ghi.
+  if(body.tick_live){
+    const tl = body.tick_live;
+    if(tl.intraday) for(const key of Object.keys(tl.intraday)){
+      await sPut(env, "market/intraday/"+key+".json", doc({rows:tl.intraday[key]}));
+      n++;
+    }
+    if(tl.foreign && Object.keys(tl.foreign).length){
+      const cur = await sGet(env, "market/foreign_flow.json") || {by_symbol:{}};
+      const merged = Object.assign({}, cur.by_symbol || {}, tl.foreign);
+      await sPut(env, "market/foreign_flow.json", doc({by_symbol:merged}));
+      n++;
+    }
+  }
   // Push real-time update to Ably (fire-and-forget; skip if no key)
   if(env.ABLY_ROOT_KEY && n>0){
     try{
