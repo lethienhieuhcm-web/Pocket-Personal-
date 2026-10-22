@@ -419,15 +419,18 @@ function extractModelIds(data){
 
 // Gọi qua relay; lỗi ném {status, detail} (y chang readResponse của file:
 // "HTTP {status}: {detail(700)}").
-async function proxyCall(baseUrl, key, path, method, body){
+async function proxyCall(baseUrl, key, path, method, body, authStyle){
   // tốc T1: đo 4 mốc thời gian. Worker trả Server-Timing (session/upstream/
   // upstream_body/total); browser suy ra thêm mạng browser↔Worker.
   // Chỉ log ra console — không hiện UI để khỏi rối user.
   const t0 = nowMs();
   try{
+    const envelope = { baseUrl, key, path, method, body };
+    // 2026-10-22: authStyle 'goog' → Worker gắn x-goog-api-key thay Bearer.
+    if(authStyle === 'goog') envelope.auth = 'goog';
     const { data, timing } = await apiCallTimed('/api/ai/relay', {
       method: 'POST',
-      body: JSON.stringify({ baseUrl, key, path, method, body }),
+      body: JSON.stringify(envelope),
     });
     logRelayTiming(t0, timing, path);
     return data;
@@ -470,22 +473,49 @@ function logRelayTiming(t0, timing, label){
 // 8b 2026-10-13: object params theo Meta (tránh đảo args như bug proxyModels(k, base)).
 // Gọi: proxyModels({ baseUrl, key })
 // tốc T4: thử trực tiếp trước (GET {base}/models), CORS/network lỗi → relay.
+// 2026-10-22 (bug Henrry báo: key ngoài không load được model): đường cũ chỉ
+// biết auth Bearer (kiểu OpenAI). Endpoint Gemini-native không nhận Bearer
+// cho API key — verify thật bằng key giả 2026-10-22: Bearer → 401
+// UNAUTHENTICATED "invalid authentication credentials"; x-goog-api-key →
+// 400 "API key not valid" (đúng lớp soi key). Nên: provider đã trả lời mà
+// chê Bearer thì thử tiếp auth kiểu Gemini (trực tiếp, rồi qua relay) trước
+// khi kết luận key hỏng. Lỗi 400 (key không hợp lệ) của đường Gemini được
+// ưu tiên hiện vì mô tả đúng key hơn lỗi Bearer.
 export async function proxyModels({ baseUrl, key }){
   const base = (baseUrl || '').trim().replace(/\/+$/, '');
   const origin = safeOrigin(base);
   if(base && key && (!origin || directPathCache.get(origin) !== 'relay')){
     try{
-      const ids = await directModelsOnce(base, key);
+      const ids = await directModelsOnce(base, key, 'bearer');
       if(origin) directPathCache.set(origin, 'direct');
       return ids;
     }catch(e){
-      if(e.code === 'direct-http') throw e;
+      if(e.code === 'direct-http'){
+        try{
+          const ids = await directModelsOnce(base, key, 'goog');
+          if(origin) directPathCache.set(origin, 'direct');
+          return ids;
+        }catch(e2){
+          if(e2.code === 'direct-http') throw (e2.status === 400 ? e2 : e);
+          // Đường Gemini lỗi mạng → rớt relay kiểu Gemini ở dưới.
+          const data = await proxyCall(base, key, '/models', 'GET', undefined, 'goog');
+          return extractModelIds(data);
+        }
+      }
       if(origin) directPathCache.set(origin, 'relay');
       console.info('[toc] direct models that bai, dung relay: ' + String(e.detail || e.message || e).slice(0, 120));
     }
   }
-  const data = await proxyCall(base, key, '/models', 'GET');
-  return extractModelIds(data);
+  try{
+    const data = await proxyCall(base, key, '/models', 'GET');
+    return extractModelIds(data);
+  }catch(e){
+    if(e.status === 400 || e.status === 401 || e.status === 403 || e.status === 404){
+      const data = await proxyCall(base, key, '/models', 'GET', undefined, 'goog');
+      return extractModelIds(data);
+    }
+    throw e;
+  }
 }
 
 // ============================================================================
@@ -597,13 +627,16 @@ async function directChat({ base, key, model, msgs, toks, onToken }){
 }
 // Một lần lấy models thẳng từ provider. Throw direct-network / direct-http
 // (cùng quy ước directChatOnce).
-async function directModelsOnce(base, key){
+// authStyle: 'bearer' (OpenAI-style) | 'goog' (Gemini-style, x-goog-api-key).
+async function directModelsOnce(base, key, authStyle){
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), DIRECT_TIMEOUT_MS);
   let r;
   try{
     r = await fetch(base + '/models', {
-      headers: { 'Authorization': 'Bearer ' + key },
+      headers: authStyle === 'goog'
+        ? { 'x-goog-api-key': key }
+        : { 'Authorization': 'Bearer ' + key },
       signal: ctrl.signal,
     });
   }catch(e){
@@ -658,7 +691,17 @@ export async function proxyChat({ baseUrl, key, model, messages, maxTokens, onTo
     }catch(de){
       if(de.code === 'direct-http'){
         if(origin) directPathCache.set(origin, 'direct'); // CORS mở (provider đã trả lời)
-        throw de;
+        // 2026-10-22: 404 = endpoint không có /chat/completions (kiểu
+        // Gemini-native) → thử chat kiểu Gemini trực tiếp bằng
+        // x-goog-api-key (chatGeminiStyle có sẵn). Gemini trả HTTP lỗi →
+        // đó là lỗi thật, ném luôn; lỗi mạng → rớt relay như cũ.
+        if(de.status === 404){
+          try{
+            return await chatGeminiStyle(base, k, m, messages, onToken);
+          }catch(ge){
+            if(ge.status) throw ge;
+          }
+        } else throw de;
       }
       if(origin) directPathCache.set(origin, 'relay');
       console.info('[toc] direct that bai, dung relay: ' + String((de && de.detail) || (de && de.message) || de).slice(0, 120));
@@ -679,6 +722,15 @@ export async function proxyChat({ baseUrl, key, model, messages, maxTokens, onTo
   try{
     data = await proxyCall(base, k, '/chat/completions', 'POST', body);
   }catch(error){
+    // 2026-10-22: relay báo upstream 404 (endpoint không có
+    // /chat/completions, kiểu Gemini-native) → thử chat Gemini trực tiếp.
+    if(error.upstreamStatus === 404){
+      try{
+        return await chatGeminiStyle(base, k, m, messages, onToken);
+      }catch(ge){
+        if(ge.status) throw ge;
+      }
+    }
     if(!/max_tokens|unsupported.*param|unknown.*param|unrecognized.*param/i.test(String(error.detail || ""))) throw error;
     const compat = { ...body, max_completion_tokens: toks };
     delete compat.max_tokens;

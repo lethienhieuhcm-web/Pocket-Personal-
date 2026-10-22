@@ -286,7 +286,9 @@ const RELAY_METHODS = ["GET", "POST", "PUT", "DELETE", "PATCH"];
 function isRelayTargetAllowed(u){
   if(u.protocol !== "https:") return false;
   if(u.username || u.password) return false;
-  if(u.port && u.port !== "443") return false;
+  // 2026-10-22 (Henrry: nhieu kieu base URL): bo gioi han cong 443 — user
+  // mua key o nhieu noi, endpoint hop le co the o cong cong khai bat ky.
+  // Van chan IP noi bo/loopback/link-local/metadata + domain cua minh.
   const h = u.hostname.toLowerCase();
   const OWN = ["lethanhdong.one"];
   for(const own of OWN){ if(h === own || h.endsWith("." + own)) return false; }
@@ -345,9 +347,14 @@ export async function handleAiRelay(request, env){
 
   const targetUrl = u.toString() + path;
   const headers = {
-    "Authorization": "Bearer " + key, // y chang file: key gắn phía server
     "Accept": "application/json",
   };
+  // 2026-10-22: client xin auth kiểu Gemini (auth:'goog') → gắn key bằng
+  // header x-goog-api-key thay Bearer. Verify bằng key giả: endpoint Gemini
+  // nhận Bearer trả 401 UNAUTHENTICATED (coi như thiếu credentials), nhận
+  // x-goog-api-key mới vào tới lớp soi key (400 "API key not valid").
+  if(b.auth === "goog") headers["x-goog-api-key"] = key;
+  else headers["Authorization"] = "Bearer " + key; // y chang file: key gắn phía server
   let fwdBody;
   if(b.body !== undefined){
     let bodyStr;
