@@ -25,8 +25,9 @@ body.dark .card{background:#1c1813;border-color:#3d352a}
 .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
 .topbar a{color:var(--pp-mut);text-decoration:none;font-size:var(--pp-text-sm)}
 textarea{width:100%;min-height:140px;padding:12px;border:1px solid var(--pp-line);border-radius:12px;background:var(--pp-card);color:var(--pp-ink);font-size:var(--pp-text-base);font-family:inherit;resize:vertical}
-select{padding:10px 12px;border:1px solid var(--pp-line);border-radius:12px;background:var(--pp-card);color:var(--pp-ink);font-size:var(--pp-text-sm)}
-input[type=text]{padding:10px 12px;border:1px solid var(--pp-line);border-radius:12px;background:var(--pp-card);color:var(--pp-ink);font-size:var(--pp-text-sm);font-family:inherit;min-width:0}
+select{padding:10px 12px;border:1px solid var(--pp-line);border-radius:12px;background:var(--pp-card);color:var(--pp-ink);font-size:var(--pp-text-sm);min-height:44px}
+input[type=checkbox]{width:20px;height:20px;flex:none}
+input[type=text]{padding:10px 12px;border:1px solid var(--pp-line);border-radius:12px;background:var(--pp-card);color:var(--pp-ink);font-size:var(--pp-text-sm);font-family:inherit;min-width:0;min-height:44px}
 .dict-row{display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--pp-line);font-size:var(--pp-text-sm)}
 .dict-row .w{font-weight:700}
 .dict-row .arr{color:var(--pp-mut)}
@@ -45,7 +46,7 @@ try{var s=localStorage.getItem('pp_theme');if(!s){s=localStorage.getItem('elab_t
 </head>
 <body>
 <div class="topbar">
-  <a href="/hub">‹</a>
+  <a href="/hub" class="pp-back" aria-label="Pocket Personal">‹</a>
   <span class="row" style="gap:8px">
     <div class="pp-langdrop" id="langDrop">
       <button class="pp-langdrop-btn" aria-label="Language">
@@ -101,7 +102,7 @@ try{var s=localStorage.getItem('pp_theme');if(!s){s=localStorage.getItem('elab_t
   </div>
   <!-- #1 Giọng khác nhau từng đoạn: chế độ hội thoại 2 giọng (2026-10-11) -->
   <div class="row" style="margin-top:8px;flex-wrap:wrap;gap:8px">
-    <label class="row" style="gap:6px;font-size:var(--pp-text-sm)">
+    <label class="row" style="gap:6px;font-size:var(--pp-text-sm);min-height:44px;align-items:center">
       <input type="checkbox" id="dialogMode"> <span data-i18n="dialog">Hội thoại 2 giọng</span>
     </label>
   </div>
