@@ -309,14 +309,6 @@ input,select{background:var(--pp-bg2);border:1px solid var(--pp-line);color:var(
 <!-- ===== Chi tiết mã: MÀN 2/3/5 ===== -->
 <div class="view" id="v-detail">
 <div class="hdr"><button onclick="go('v-market')" style="background:none;border:none;color:var(--pp-mut);font-size:20px;cursor:pointer;padding:0 6px 0 0">‹</button><h1 id="dSym">—</h1><button id="dWatch" title="Theo dõi mã này" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--pp-mut);padding:0 4px">☆</button><span class="src" id="dSrc">Nguồn: KBS trực tiếp</span></div>
-<div class="tabs" id="dTabs">
-<div class="tab on" data-dt="ov">Tổng quan</div>
-<div class="tab" data-dt="flow">Dòng tiền</div>
-<div class="tab" data-dt="news">Tin tức</div>
-<div class="tab" data-dt="fund">Cơ bản</div>
-<div class="tab" data-dt="prof">Hồ sơ</div>
-<div class="tab" data-dt="cons">Đồng thuận</div>
-</div>
 <div id="dOv">
 <div class="card" id="dQuote"><div class="hint">Đang tải…</div></div>
 <div class="sec">Biểu đồ</div>
@@ -327,14 +319,19 @@ input,select{background:var(--pp-bg2);border:1px solid var(--pp-line);color:var(
 <div class="card" id="dCost" style="display:none"></div>
 <div class="sec" id="dEventsSec">Sự kiện</div>
 <div class="card" id="dEventsCard"><div id="dEvents"><div class="hint">Đang tải…</div></div></div>
+<div class="sec" id="dNavTitle">Mục lục</div>
+<div class="navgrid" id="dNav" style="padding-top:2px"></div>
 </div>
+<div id="dFlowH" style="display:none"><div class="pagebar"><span class="backrow" onclick="dBack()">‹ <span class="dbacksym"></span></span></div><div class="sec dtitle" data-k="flow"></div></div>
 <div id="dFlow" style="display:none">
 <div class="sec">Khối ngoại mua/bán ròng — 20 phiên (tỷ đồng)</div>
 <div class="card"><div class="bars" id="dFf"></div><div class="barlbl" id="dFfLbl"></div><div class="row" style="margin-top:8px"><span class="k">Tổng 20 phiên</span><span class="v" id="dFfSum">—</span></div></div>
 <div class="sec">Tự doanh mua/bán ròng — 20 phiên (tỷ đồng)</div>
 <div class="card"><div class="bars" id="dPf"></div><div class="barlbl" id="dPfLbl"></div><div class="row" style="margin-top:8px"><span class="k">Tổng 20 phiên</span><span class="v" id="dPfSum">—</span></div></div>
 </div>
+<div id="dNewsH" style="display:none"><div class="pagebar"><span class="backrow" onclick="dBack()">‹ <span class="dbacksym"></span></span></div><div class="sec dtitle" data-k="news"></div></div>
 <div id="dNews" style="display:none"><div class="card"><div id="dNewsList"><div class="hint">Đang tải…</div></div></div></div>
+<div id="dFundH" style="display:none"><div class="pagebar"><span class="backrow" onclick="dBack()">‹ <span class="dbacksym"></span></span></div><div class="sec dtitle" data-k="fund"></div></div>
 <div id="dFund" style="display:none">
 <div class="sec">Chỉ số tự tính (TTM)</div>
 <div class="card" id="dRatios"><div class="hint">Đang tải…</div></div>
@@ -345,7 +342,9 @@ input,select{background:var(--pp-bg2);border:1px solid var(--pp-line);color:var(
 <button style="flex:1;padding:9px;border-radius:8px;background:var(--pp-bg2);color:var(--pp-ink);border:1px solid var(--pp-line);font-size:12px;cursor:pointer" id="dlCsv">Tải CSV</button>
 </div></div>
 </div>
+<div id="dProfH" style="display:none"><div class="pagebar"><span class="backrow" onclick="dBack()">‹ <span class="dbacksym"></span></span></div><div class="sec dtitle" data-k="prof"></div></div>
 <div id="dProf" style="display:none"></div>
+<div id="dConsH" style="display:none"><div class="pagebar"><span class="backrow" onclick="dBack()">‹ <span class="dbacksym"></span></span></div><div class="sec dtitle" data-k="cons"></div></div>
 <div id="dCons" style="display:none"></div>
 </div>
 
@@ -1015,7 +1014,8 @@ let curSym=null;
 function openSym(sym){
   curSym=sym;
   _idxMode=false; curIdx=null;
-  $("dWatch").style.display=""; $("dTabs").style.display="";
+  $("dWatch").style.display="";
+  if($("dNav"))$("dNav").style.display=""; if($("dNavTitle"))$("dNavTitle").style.display="";
   ["dTargetSec","dTarget","dEventsSec","dEventsCard"].forEach(k=>{if($(k))$(k).style.display="";});
   if($("dIdxBar"))$("dIdxBar").style.display="none";
   document.querySelectorAll("#dIv button").forEach(b=>b.style.display="");
@@ -1023,9 +1023,8 @@ function openSym(sym){
   $("v-detail").classList.add("on");window.scrollTo(0,0);
   $("aiFab").style.display="";
   $("dSym").innerHTML=esc(sym)+' <span style="font-size:12px;color:var(--pp-mut)">HOSE</span>';
-  document.querySelectorAll("#dTabs .tab").forEach(x=>x.classList.remove("on"));
-  document.querySelector("#dTabs .tab").classList.add("on");
-  ["dOv","dFlow","dNews","dFund","dProf","dCons"].forEach((k,i)=>$(k).style.display=i===0?"":"none");
+  renderDNav();
+  dShow(null);
   loadDetail(sym);
 }
 // ===== Bieu do chi so (22/10): bam the chi so o tab Thi truong mo
@@ -1045,9 +1044,8 @@ function openIndex(fs){
   $("aiFab").style.display="";
   $("dSym").innerHTML=esc(fs)+' <span style="font-size:12px;color:var(--pp-mut)">'+IDX_META[fs]+'</span>';
   $("dWatch").style.display="none";
-  $("dTabs").style.display="none";
-  $("dOv").style.display="";
-  ["dFlow","dNews","dFund","dProf","dCons"].forEach(k=>$(k).style.display="none");
+  dShow(null);
+  if($("dNav"))$("dNav").style.display="none"; if($("dNavTitle"))$("dNavTitle").style.display="none";
   ["dTargetSec","dTarget","dCostSec","dCost","dEventsSec","dEventsCard"].forEach(k=>{if($(k))$(k).style.display="none";});
   document.querySelectorAll("#dIv button").forEach(b=>{b.style.display=b.textContent==="1D"?"":"none";});
   const bar=$("dIdxBar"); bar.style.display="";
@@ -1090,11 +1088,36 @@ async function loadDetail(sym){
   loadFlow(sym);loadFund(sym);loadNews(sym);loadChart(sym);
   loadEvents(sym);loadProfile(sym);loadConsDetail(sym);loadTarget(sym);loadCost(sym);wlLoad().then(paintWatchBtn);
 }
-document.querySelectorAll("#dTabs .tab").forEach(t=>t.onclick=()=>{
-  document.querySelectorAll("#dTabs .tab").forEach(x=>x.classList.remove("on"));t.classList.add("on");
-  ["dOv","dFlow","dNews","dFund","dProf","dCons"].forEach(k=>$(k).style.display="none");
-  $("d"+t.dataset.dt[0].toUpperCase()+t.dataset.dt.slice(1)).style.display="";
-});
+// ===== Trang con chi tiet ma: muc luc the lien ket thay thanh tab
+// (Lenh Henrry 11:03 22/10 — cung khuon trang Thi truong). Trang tong
+// quan la goc; moi muc con la trang rieng co back "< <Ma>".
+const DT_I18N={
+  flow:{vi:"Dòng tiền",en:"Money flow",zh:"资金流",ko:"자금 흐름"},
+  news:{vi:"Tin tức",en:"News",zh:"新闻",ko:"뉴스"},
+  fund:{vi:"Cơ bản",en:"Fundamentals",zh:"基本面",ko:"펀더멘털"},
+  prof:{vi:"Hồ sơ",en:"Profile",zh:"公司资料",ko:"기업 프로필"},
+  cons:{vi:"Đồng thuận",en:"Consensus",zh:"一致预期",ko:"컨센서스"},
+  idx:{vi:"Mục lục",en:"Contents",zh:"目录",ko:"목차"}};
+const DKEYMAP={flow:"Flow",news:"News",fund:"Fund",prof:"Prof",cons:"Cons"};
+const DKEYS=["Flow","News","Fund","Prof","Cons"];
+function dShow(key){
+  $("dOv").style.display=key?"none":"";
+  DKEYS.forEach(k=>{
+    const on=(k===key), h=$("d"+k+"H"), b=$("d"+k);
+    if(h)h.style.display=on?"":"none";
+    if(b)b.style.display=on?"":"none";
+  });
+  window.scrollTo(0,0);
+}
+function dOpen(k){ renderDNav(); dShow(k); }
+function dBack(){ dShow(null); }
+function renderDNav(){
+  const nav=$("dNav"); if(!nav) return;
+  nav.innerHTML=Object.keys(DKEYMAP).map(k=>`<div class="navcard" onclick="dOpen('${DKEYMAP[k]}')"><span>${DT_I18N[k][curLang]||DT_I18N[k].vi}</span><span class="nchev">›</span></div>`).join("");
+  const t=$("dNavTitle"); if(t) t.textContent=DT_I18N.idx[curLang]||DT_I18N.idx.vi;
+  document.querySelectorAll(".dtitle").forEach(e=>{ const d=DT_I18N[e.dataset.k]; if(d) e.textContent=d[curLang]||d.vi; });
+  document.querySelectorAll(".dbacksym").forEach(e=>{ e.textContent=curSym||""; });
+}
 function renderFlowBars(rows, valKey, barId, lblId, sumId){
   const vals=rows.map(r=>r[valKey]||0);
   const max=Math.max(...vals.map(v=>Math.abs(v)),1);
@@ -2075,6 +2098,7 @@ function applyLang(){
   if($("chatIn")) $("chatIn").placeholder = L.askPh;
   localStorage.setItem("stk_lang", curLang);
   try{ localStorage.setItem("elab_uiLang", curLang); }catch(e){}
+  if(typeof renderDNav==="function")renderDNav();
   syncLangUI();
 }
 document.querySelectorAll("#langPick button").forEach(b=>b.onclick=()=>setStkLang(b.dataset.lang));
