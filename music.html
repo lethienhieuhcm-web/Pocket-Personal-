@@ -16,7 +16,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
   background:var(--pp-bg);color:var(--pp-ink);min-height:100vh;min-height:100dvh;padding-bottom:160px}
 header{display:flex;align-items:center;gap:12px;padding:14px 16px;position:sticky;top:0;flex-wrap:wrap;
   background:rgba(246,247,249,.95);backdrop-filter:blur(10px);z-index:10}
-.back{color:var(--pp-accent);text-decoration:none;font-weight:700;font-size:var(--pp-text-sm)}
+.back{color:var(--pp-accent);text-decoration:none;font-weight:700;font-size:var(--pp-text-sm);display:inline-flex;align-items:center;justify-content:center;min-height:44px;min-width:44px}
 h1{font-size:var(--pp-text-lg)}
 main{max-width:640px;margin:0 auto;padding:0 16px}
 .greet{padding:20px 0 4px}
@@ -104,8 +104,8 @@ try{var s=localStorage.getItem('pp_theme');if(!s){s=localStorage.getItem('elab_t
 </head>
 <body>
 <header>
-  <a class="back" href="/hub">← Pocket Personal</a>
-  <h1 style="display:flex;align-items:center;gap:8px"><img src="/english/icons/icon-music-192.png" alt="" style="width:28px;height:28px;border-radius:8px;object-fit:cover">Music</h1>
+  <a class="back" href="/hub">‹</a>
+  <h1 style="display:flex;align-items:center;gap:8px"><img src="/english/icons/icon-music-192.png" alt="" width="28" height="28" decoding="async" style="width:28px;height:28px;border-radius:8px;object-fit:cover">Music</h1>
   <div class="pp-langdrop" id="langDrop" style="margin-left:auto">
     <button class="pp-langdrop-btn" aria-label="Language">
       <svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
@@ -157,7 +157,7 @@ try{var s=localStorage.getItem('pp_theme');if(!s){s=localStorage.getItem('elab_t
 
   <div id="tab-spotify" style="display:none">
     <div class="card" style="text-align:center;padding:32px" id="spotifyConnectCard">
-      <img src="/english/icons/icon-music-192.png" alt="" style="width:72px;height:72px;border-radius:18px;object-fit:cover">
+      <img src="/english/icons/icon-music-192.png" srcset="/english/icons/icon-music-96.png 96w, /english/icons/icon-music-192.png 192w" sizes="72px" alt="" width="72" height="72" decoding="async" style="width:72px;height:72px;border-radius:18px;object-fit:cover">
       <h3 style="margin:12px 0" data-i18n="connect_spotify">Connect Spotify</h3>
       <button class="btn primary" id="spotifyConnect" data-i18n="connect">Connect</button>
     </div>
@@ -455,7 +455,7 @@ async function loadDriveFiles(){
     box.innerHTML = queue.map((t,i)=>`
       <div class="track" data-i="${i}">
         <div class="rank" style="color:${RANK_COLORS[i%5]}">${i+1}</div>
-        <img src="/english/icons/icon-music-192.png" alt="" style="width:56px;height:56px;border-radius:12px;object-fit:cover">
+        <img src="/english/icons/icon-music-192.png" alt="" width="56" height="56" decoding="async" style="width:56px;height:56px;border-radius:12px;object-fit:cover">
         <div class="t-info"><div class="t-title">${esc(t.title)}</div><div class="t-artist">${esc(t.artist)}</div></div>
         <button class="t-menu">⋮</button>
       </div>`).join('');
