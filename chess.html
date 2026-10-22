@@ -4,6 +4,8 @@
 <script>/* Auto cache-buster: reload if this HTML is stale (build ID mismatch) */
 (function(){var B="__BUILD__";function c(){try{fetch(location.pathname,{method:"HEAD",cache:"no-store"}).then(function(r){var l=r.headers.get("x-build-id");if(l&&l!==B){location.reload();}}).catch(function(){})}catch(e){}}if(document.readyState==="complete"){setTimeout(c,2000);}else{window.addEventListener("load",function(){setTimeout(c,2000);});}})();
 </script>
+<script>/* Gốc theme: snippet chuẩn, không sửa. Controller ở /english/js/shared/theme.js */
+try{var s=localStorage.getItem('pp_theme');if(!s){s=localStorage.getItem('elab_theme')||localStorage.getItem('hub_theme');if(s)localStorage.setItem('pp_theme',s)}var d=s?s==='dark':matchMedia('(prefers-color-scheme: dark)').matches;if(d)document.documentElement.classList.add('pp-dark')}catch(e){}</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Chess — Pocket Personal</title>
@@ -18,7 +20,7 @@ body.dark{--bg:#1a1714;--card:#23201a;--ink:#e8e2d6;--mut:#8a847c;--line:#3d352a
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;min-height:100dvh}
 header{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg);z-index:10}
-.back{color:var(--accent);text-decoration:none;font-weight:600;font-size:var(--pp-text-sm)}
+.back{color:var(--accent);text-decoration:none;font-weight:600;font-size:var(--pp-text-sm);display:inline-flex;align-items:center;justify-content:center;min-height:44px;min-width:44px}
 .lang-pill{display:inline-flex;border:1px solid var(--line);border-radius:20px;overflow:hidden}
 .lang-pill button{border:none;background:transparent;padding:6px 10px;font-size:var(--pp-text-xs);font-weight:700;color:var(--mut);cursor:pointer}
 .lang-pill button.on{background:var(--accent);color:#fff}
@@ -49,7 +51,7 @@ main{max-width:1080px;margin:0 auto;padding:16px}
 .sq.last{filter:brightness(1.1)}
 .sq.hint-dot::after{content:"";position:absolute}
 .controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;justify-content:center}
-select{padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);font-size:var(--pp-text-sm)}
+select{padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);font-size:var(--pp-text-sm);min-height:44px}
 #status{text-align:center;font-weight:700;margin:12px 0;min-height:24px}
 #moves{max-height:120px;overflow-y:auto;font-size:var(--pp-text-sm);color:var(--mut);text-align:center}
 .piece{font-size:44px;text-anchor:middle;dominant-baseline:central;pointer-events:none;user-select:none}
@@ -58,7 +60,7 @@ select{padding:10px;border-radius:10px;border:1px solid var(--line);background:v
 </head>
 <body>
 <header>
-  <a class="back" href="/hub">← Pocket Personal</a>
+  <a class="back" href="/hub">‹</a>
   <h1 data-i18n="title">Chess</h1>
   <div class="pp-langdrop" id="langDrop" style="margin-left:auto">
     <button class="pp-langdrop-btn" aria-label="Language">
@@ -109,7 +111,7 @@ select{padding:10px;border-radius:10px;border:1px solid var(--line);background:v
   </div>
 </main>
 <script type="module">
-import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/dist/esm/chess.js';
+import { Chess } from '/english/js/vendor/chess.js';
 
 const PIECES = {k:'♚',q:'♛',r:'♜',b:'♝',n:'♞',p:'♟',K:'♔',Q:'♕',R:'♖',B:'♗',N:'♘',P:'♙'};
 let game = new Chess();
@@ -210,6 +212,7 @@ const SAVE_KEY = 'pp_chess_save';
 function saveGame(){
   try{ localStorage.setItem(SAVE_KEY, JSON.stringify({
     fen: game.fen(),
+    history: game.history({verbose:true}).map(m=>({from:m.from, to:m.to, promotion:m.promotion})),
     mode: document.getElementById('mode').value,
     orientation
   })); }catch(e){}
@@ -217,7 +220,14 @@ function saveGame(){
 function loadSaved(){
   try{
     const s = JSON.parse(localStorage.getItem(SAVE_KEY));
-    if(s && s.fen){ game.load(s.fen); orientation = s.orientation || 'w';
+    if(s && s.fen){
+      if(s.history && s.history.length){
+        game = new Chess();
+        for(const m of s.history){
+          try{ game.move({from:m.from, to:m.to, promotion:m.promotion||'q'}); }catch(e){ break; }
+        }
+      } else game.load(s.fen);
+      orientation = s.orientation || 'w';
       document.getElementById('mode').value = s.mode || 'ai-medium';
       document.getElementById('orientation').value = orientation;
     }
@@ -225,12 +235,16 @@ function loadSaved(){
 }
 function updateMoves(){
   const h = game.history();
-  let s = '<table>';
-  for(let i=0;i<h.length;i+=2)
-    s += `<tr><td class="num">${i/2+1}.</td><td>${h[i]}</td><td>${h[i+1]||''}</td></tr>`;
-  s += '</table>';
   const el = document.getElementById('moves');
-  el.innerHTML = s || `<div style="color:var(--mut);text-align:center;padding:12px">${I18N[LANG].noMoves}</div>`;
+  if(!h.length){
+    el.innerHTML = `<div style="color:var(--mut);text-align:center;padding:12px">${I18N[LANG].noMoves}</div>`;
+  } else {
+    let s = '<table>';
+    for(let i=0;i<h.length;i+=2)
+      s += `<tr><td class="num">${i/2+1}.</td><td>${h[i]}</td><td>${h[i+1]||''}</td></tr>`;
+    s += '</table>';
+    el.innerHTML = s;
+  }
   el.scrollTop = el.scrollHeight;
   saveGame();
 }
@@ -281,10 +295,14 @@ document.getElementById('newGame').onclick = ()=>{
   render(); updateMoves();
   maybeAi();
 };
-document.getElementById('orientation').onchange = (e)=>{ orientation = e.target.value; render(); };
+document.getElementById('orientation').onchange = (e)=>{ orientation = e.target.value; render(); maybeAi(); };
 document.getElementById('mode').onchange = ()=>{ document.getElementById('newGame').click(); };
-document.getElementById('undoBtn').onclick = ()=>{ game.undo(); game.undo(); selected=null; render(); updateMoves(); };
-document.getElementById('flipBtn').onclick = ()=>{ orientation = orientation==='w'?'b':'w'; render(); };
+document.getElementById('undoBtn').onclick = ()=>{
+  game.undo();
+  if(document.getElementById('mode').value.startsWith('ai')) game.undo();
+  selected=null; render(); updateMoves();
+};
+document.getElementById('flipBtn').onclick = ()=>{ orientation = orientation==='w'?'b':'w'; document.getElementById('orientation').value = orientation; render(); };
 
 async function checkPremium(){
   try{
@@ -334,10 +352,21 @@ let LANG = "vi";
 try{ const v = localStorage.getItem("elab_uiLang"); if(v) LANG = JSON.parse(v); }catch(e){}
 function applyLang(l){
   LANG = l;
+  // Gốc i18n (G2): đồng bộ shared module
+  if(window.__elabI18n && window.__elabI18n.setLang){ try{ window.__elabI18n.setLang(l); }catch(e){} }
   try{ localStorage.setItem("elab_uiLang", JSON.stringify(l)); }catch(e){}
   document.documentElement.lang = l;
   const t = I18N[l];
-  document.querySelectorAll("[data-i18n]").forEach(el=>{ const v = t[el.dataset.i18n]; if(v) el.textContent = v; });
+  const useShared = window.__elabI18n && window.__elabI18n.t;
+  document.querySelectorAll("[data-i18n]").forEach(el=>{
+    const k = el.dataset.i18n;
+    if(useShared){
+      const v = window.__elabI18n.t(k);
+      if(v && v !== k) el.textContent = v;
+    } else {
+      const v = t[k]; if(v) el.textContent = v;
+    }
+  });
   ["vi","en","zh","ko"].forEach(x=>{ const b=document.getElementById("lang"+x[0].toUpperCase()+x[1]); if(b) b.classList.toggle("on", l===x); });
   updateStatus(); updateMoves();
 }
@@ -346,25 +375,28 @@ window.__elabSetLang = applyLang;
 initSF();
 render();
 applyLang(LANG);
+// Service worker update (Chốt A 2026-10-11): hiện banner, user bấm "Cập nhật" mới update.
+// Không tự SKIP_WAITING, không tự reload (user đang nhập liệu sẽ mất dữ liệu).
 if("serviceWorker" in navigator){
   navigator.serviceWorker.register("/chess/sw.js",{scope:"/chess/"}).then(function(reg){
     reg.addEventListener("updatefound", function(){
       var newWorker = reg.installing;
       newWorker.addEventListener("statechange", function(){
         if(newWorker.state === "installed" && navigator.serviceWorker.controller){
-          newWorker.postMessage({type: "SKIP_WAITING"});
+          showUpdateBanner(newWorker);
         }
       });
     });
   }).catch(()=>{});
-  navigator.serviceWorker.addEventListener("controllerchange", function(){
-    location.reload();
-  });
 }
 // Banner "Có bản mới" - hiện inline, không popup/modal (chuẩn big tech)
 function showUpdateBanner(newWorker){
   if(document.getElementById("sw-update-banner")) return;
-  const lang = (window.elab_uiLang || "vi").toLowerCase();
+  // Đọc ngôn ngữ từ localStorage (JSON hoặc chuỗi thường đều được).
+  // Không dùng window.elab_uiLang vì không nơi nào gán nó.
+  var _lang = "vi";
+  try{ _lang = (localStorage.getItem("elab_uiLang")||"vi").replace(/"/g,""); }catch(e){}
+  const lang = _lang.toLowerCase();
   const t = (typeof I18N !== "undefined" && I18N[lang]) ? I18N[lang] : (typeof I18N !== "undefined" ? I18N.vi : {});
   const banner = document.createElement("div");
   banner.id = "sw-update-banner";
@@ -383,19 +415,24 @@ function showUpdateBanner(newWorker){
   const btnLater = document.createElement("button");
   btnLater.textContent = t.update_later || "Để sau";
   btnLater.style.cssText = "background:transparent;color:#fff;border:1px solid rgba(255,255,255,.5);border-radius:8px;padding:6px 14px;cursor:pointer;";
-  btnLater.addEventListener("click", function(){ banner.remove(); });
+  btnLater.addEventListener("click", function(){ document.body.style.paddingTop = ""; banner.remove(); });
   btns.appendChild(btnUpdate);
   btns.appendChild(btnLater);
   banner.appendChild(msg);
   banner.appendChild(btns);
   document.body.prepend(banner);
+  // 8b 2026-10-12 BUG-3: banner fixed top che nút — đẩy body xuống
+  document.body.style.paddingTop = banner.offsetHeight + 'px';
 }
 </script>
 <script src="/english/js/lang-dropdown.js?v=__BUILD__"></script>
 <script>/* FIT 8b-8: nút chuyển theme */
 document.getElementById('themeBtn').onclick = ()=>{
+  if(window.__elabTheme){ window.__elabTheme.toggle(); return; }
   const dark = document.body.classList.toggle('dark');
-  try{ localStorage.setItem('elab_theme', dark ? 'dark' : 'light'); }catch(e){}
+  try{ localStorage.setItem('pp_theme', dark ? 'dark' : 'light'); }catch(e){}
 };</script>
+<script>import("/english/js/shared/theme.js").catch(function(){});</script>
+<script>import("/english/js/shared/i18n.js").then(m=>{try{m.setApp("chess")}catch(e){}}).catch(function(){});</script>
 </body>
 </html>
