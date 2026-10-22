@@ -57,12 +57,15 @@ async function main() {
   const outDir = isBaseline ? BASELINE_DIR : CURRENT_DIR;
   [outDir, DIFF_DIR].forEach(d => fs.mkdirSync(d, { recursive: true }));
 
-  // Qua relay local (relay.js) để tránh vấn đề proxy auth của Chromium
-  const browser = await chromium.launch({
-    executablePath: '/home/hatch/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome',
-    args: ['--no-sandbox'],
-    proxy: { server: 'http://127.0.0.1:18899' },
-  });
+  // Chromium: ưu tiên bản cài sẵn trên máy dev (đường dẫn cố định); nơi khác
+  // (CI) để Playwright tự dùng bản nó cài. Proxy chỉ khi gate.js truyền
+  // CAPTURE_PROXY (relay local trên máy dev để qua egress proxy có auth);
+  // CI nối thẳng internet, không proxy.
+  const LOCAL_CHROME = '/home/hatch/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome';
+  const launchOpts = { args: ['--no-sandbox'] };
+  if (fs.existsSync(LOCAL_CHROME)) launchOpts.executablePath = LOCAL_CHROME;
+  if (process.env.CAPTURE_PROXY) launchOpts.proxy = { server: process.env.CAPTURE_PROXY };
+  const browser = await chromium.launch(launchOpts);
   // Login qua API một lần, inject token vào localStorage
   const token = await getToken();
   console.log('Login API OK.');
