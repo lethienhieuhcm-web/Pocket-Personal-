@@ -23,6 +23,17 @@ body{font-family:var(--pp-font);background:var(--pp-bg);color:var(--pp-ink);max-
 .tab.on{background:var(--pp-accent);color:#fff;border-color:var(--pp-accent)}
 .idx{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:4px 16px}
 .idxcard{min-width:0;background:var(--pp-card);border:1px solid var(--pp-line);border-radius:10px;padding:10px}
+.mgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:stretch}
+.mcard{margin:0;padding:12px;cursor:pointer;display:flex;flex-direction:column;height:100%;box-sizing:border-box;text-align:left}
+.mct{font-size:13px;color:var(--pp-mut);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mcv{font-size:17px;font-weight:700;margin-top:2px;line-height:1.3;height:45px;overflow:hidden}
+.mcspark{height:30px;margin-top:8px;flex:none}
+.mcsub{font-size:12.5px;color:var(--pp-mut);margin-top:8px;height:32px;overflow:hidden}
+.mcsrc{font-size:11.5px;color:var(--pp-mut);margin-top:auto;padding-top:6px}
+.mcpol{margin:0;padding:12px;grid-column:1/-1;text-align:left}
+.mcpol .vals{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:8px}
+.mcpol .cell .k{font-size:12.5px;color:var(--pp-mut)}
+.mcpol .cell .v{font-size:16px;font-weight:700;margin-top:1px}
 .idxcard .s{font-size:12px;color:var(--pp-mut)}
 .idxcard .p{font-size:17px;font-weight:700;margin:2px 0}
 .idxcard .c{font-size:12px}
@@ -530,12 +541,13 @@ function renderMacro(){
   const L=MAC_I18N[curLang]||MAC_I18N.vi, S=MAC.series||{};
   const fVnd=v=>Math.round(v).toLocaleString("vi-VN");
   const fPct=v=>v==null?"—":Number(v).toFixed(2).replace(".",",")+"%";
-  const card=(sid,name,val,chg,spark,sub,src,date)=>`<div class="card" style="margin:0;padding:10px;cursor:pointer" onclick="macOpen('${sid}')">
-    <div class="hint" style="padding:0">${name}</div>
-    <div style="font-size:17px;font-weight:700;margin:2px 0">${val} ${chg||""}</div>
-    ${spark||""}<div class="hint" style="padding:2px 0 0">${sub||""}</div>
-    <div style="font-size:12px;color:var(--pp-mut)">${L.src}: ${src} · ${date||""}</div></div>`;
-  let h=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">`;
+  const card=(sid,name,val,chg,spark,sub,src,date)=>`<div class="card mcard" onclick="macOpen('${sid}')">
+    <div class="mct">${name}</div>
+    <div class="mcv">${val} ${chg||""}</div>
+    <div class="mcspark">${spark||""}</div>
+    <div class="mcsub">${sub||""}</div>
+    <div class="mcsrc">${L.src}: ${src} · ${date||""}</div></div>`;
+  let h=`<div class="mgrid">`;
   const c=S.fx_center;
   if(c) h+=card("fx_center",L.fxC,fVnd(c.last.rate)+" ₫",macChg(c.change,v=>fVnd(v)+" ₫"),macSpark(c.spark,"#38bdf8"),"",MAC_SRC[c.source],c.date);
   const v=S.fx_vcb;
@@ -552,11 +564,13 @@ function renderMacro(){
     const sub=tt.length?tt.map(t=>`${t.days}${L.omoDay} ${fPct(t.rate)}`).join(" · "):L.omoNone;
     h+=card("omo",L.omo,fTy(o.last.total)+" "+L.omoUnit,macChg(o.change,v=>fTy(v)),macSpark(o.spark,"#34d399"),sub,MAC_SRC[o.source],o.date); }
   const p=MAC.policy_rates;
-  if(p) h+=`<div class="card" style="margin:0;padding:10px;grid-column:1/-1">
-    <div class="hint" style="padding:0">${L.pol}</div>
-    <div style="display:flex;gap:16px;margin-top:4px;flex-wrap:wrap">
-      <span>${L.refi} <b>${fPct(p.refinancing)}</b></span><span>${L.redisc} <b>${fPct(p.rediscount)}</b></span><span>${L.dep} <b>${fPct(p.deposit_avg)}</b></span></div>
-    <div style="font-size:12px;color:var(--pp-mut);margin-top:4px">${L.from} ${p.effective} · ${L.dec} ${esc(p.decision||"")} · ${L.src}: NHNN</div></div>`;
+  if(p) h+=`<div class="card mcpol">
+    <div class="mct">${L.pol}</div>
+    <div class="vals">
+      <div class="cell"><div class="k">${L.refi}</div><div class="v">${fPct(p.refinancing)}</div></div>
+      <div class="cell"><div class="k">${L.redisc}</div><div class="v">${fPct(p.rediscount)}</div></div>
+      <div class="cell"><div class="k">${L.dep}</div><div class="v">${fPct(p.deposit_avg)}</div></div></div>
+    <div class="mcsrc" style="margin-top:8px">${L.from} ${p.effective} · ${L.dec} ${esc(p.decision||"")} · ${L.src}: NHNN</div></div>`;
   h+="</div>"+(MACOPEN?`<div class="card" style="margin-top:8px;padding:10px" id="macroDetail"><div class="hint">…</div></div>`:"");
   w.innerHTML=h||`<div class="hint">${L.empty}</div>`;
   if(MACOPEN) macDrawDetail();
