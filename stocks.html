@@ -285,6 +285,7 @@ input,select{background:var(--pp-bg2);border:1px solid var(--pp-line);color:var(
 <div class="sec"><svg class="tic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg> Khóa AI của tôi</div>
 <div class="card">
 <div class="hint" style="padding:0 0 8px;font-size:12px">Dùng chung với Talk và English Lab. Key lưu trên máy anh, không gửi lên server.</div>
+<div class="row" style="gap:8px;margin-bottom:8px"><select id="bkPreset" style="flex:1;padding:9px;border-radius:8px;background:var(--pp-bg2);color:var(--pp-ink);border:1px solid var(--pp-line);font-size:12px;min-width:0"><option value="">Chọn nhà cung cấp có sẵn…</option></select></div>
 <div class="row" style="gap:8px"><input id="bkEp" placeholder="https://api.../v1" style="flex:1" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
 <div class="row" style="gap:8px;margin-top:8px"><input id="bkKey" type="password" placeholder="Dán khóa API…" style="flex:1" autocomplete="off">
 <button id="bkTest" style="padding:9px 12px;border-radius:8px;background:var(--pp-bg2);color:var(--pp-ink);border:1px solid var(--pp-line);font-size:12px;cursor:pointer">Kiểm tra</button>
@@ -1917,6 +1918,7 @@ const I18N_FULL = {
 "Hôm nay chưa có tín hiệu mới":["No new signals today","今日暂无新信号","오늘 새 신호 없음"],
 "Hồ sơ rủi ro của anh (risk-profile)":["Your risk profile","您的风险档案","리스크 프로필"],
 "Khóa AI của tôi":["My AI key","我的 AI 密钥","내 AI 키"],
+"Chọn nhà cung cấp có sẵn…":["Choose a provider...","选择服务商…","제공업체 선택..."],
 "Khối ngoại mua/bán ròng — 20 phiên (tỷ đồng)":["Foreign net buy/sell — 20 sessions (B VND)","外资净买卖 — 20 个交易日 (十亿越盾)","외국인 순매수/매도 — 20일 (10억 동)"],
 "Kiểm tra":["Test","测试","테스트"],
 "Loại":["Type","类型","유형"],
@@ -2126,7 +2128,7 @@ async function byokLoad(){
     const u = await idbOp("readonly","ai_base_url");
     if(k) $("bkKey").placeholder = "Đã lưu (ẩn)";
     if(m) $("bkModel").value = m;
-    if(u) $("bkEp").value = u;
+    if(u){ $("bkEp").value = u; const _ps = $("bkPreset"); if(_ps){ const _uu = String(u).replace(/\/+$/,""); _ps.value = BK_PRESETS.some(p=>p[1]===_uu) ? _uu : ""; } }
   }catch(e){}
 }
 async function byokSave(){
@@ -2223,6 +2225,51 @@ $("bkDel").onclick = async ()=>{
   $("bkStatus").textContent = "Đã xoá khóa"; $("bkStatus").style.color = "var(--pp-mut)";
 };
 
+// 2026-10-22 (Henrry Chot): preset endpoint — cung danh sach
+// AI_ENDPOINT_PRESETS trong js/core/aiClient.js (34 endpoint, verify
+// that 2026-10-22 bang key gia). Chon la dien vao o endpoint; nhap
+// tay van nguyen nhu cu.
+const BK_PRESETS = [
+["OpenAI","https://api.openai.com/v1"],
+["Google Gemini","https://generativelanguage.googleapis.com/v1beta"],
+["Google Gemini (OpenAI mode)","https://generativelanguage.googleapis.com/v1beta/openai"],
+["Anthropic Claude","https://api.anthropic.com/v1"],
+["DeepSeek","https://api.deepseek.com/v1"],
+["Groq","https://api.groq.com/openai/v1"],
+["OpenRouter","https://openrouter.ai/api/v1"],
+["Mistral AI","https://api.mistral.ai/v1"],
+["xAI Grok","https://api.x.ai/v1"],
+["Together AI","https://api.together.xyz/v1"],
+["Fireworks AI","https://api.fireworks.ai/inference/v1"],
+["Cohere","https://api.cohere.com/compatibility/v1"],
+["Cerebras","https://api.cerebras.ai/v1"],
+["SambaNova","https://api.sambanova.ai/v1"],
+["NVIDIA NIM","https://integrate.api.nvidia.com/v1"],
+["Hugging Face","https://router.huggingface.co/v1"],
+["DeepInfra","https://api.deepinfra.com/v1/openai"],
+["Poe","https://api.poe.com/v1"],
+["Chutes","https://llm.chutes.ai/v1"],
+["Nebius","https://api.studio.nebius.ai/v1"],
+["Ollama Cloud","https://ollama.com/v1"],
+["Novita AI","https://api.novita.ai/openai/v1"],
+["Hyperbolic","https://api.hyperbolic.xyz/v1"],
+["Scaleway","https://api.scaleway.ai/v1"],
+["Kimi / Moonshot (Global)","https://api.moonshot.ai/v1"],
+["Kimi / Moonshot (China)","https://api.moonshot.cn/v1"],
+["Qwen / Alibaba (Global)","https://dashscope-intl.aliyuncs.com/compatible-mode/v1"],
+["Qwen / Alibaba (China)","https://dashscope.aliyuncs.com/compatible-mode/v1"],
+["GLM / Zhipu","https://open.bigmodel.cn/api/paas/v4"],
+["MiniMax (Global)","https://api.minimax.io/v1"],
+["Doubao / Volcengine","https://ark.cn-beijing.volces.com/api/v3"],
+["SiliconFlow","https://api.siliconflow.cn/v1"],
+["StepFun","https://api.stepfun.com/v1"],
+["Upstage Solar","https://api.upstage.ai/v1"]
+];
+(function(){
+  const sel = $("bkPreset"); if(!sel) return;
+  for(const pr of BK_PRESETS){ const o = document.createElement("option"); o.value = pr[1]; o.textContent = pr[0]; sel.appendChild(o); }
+  sel.addEventListener("change", ()=>{ if(sel.value) $("bkEp").value = sel.value; });
+})();
 byokLoad();
 applyLang();
 if(curLang!=="vi") translateDOM();
