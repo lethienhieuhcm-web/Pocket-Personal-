@@ -35,6 +35,13 @@ function portOpen(port) {
 
 async function main() {
   const baseline = process.argv.includes('--baseline');
+  // Thiếu hạ tầng (chưa cài playwright trong tests/visual, vd môi trường lạ)
+  // -> SKIP exit 3, không FAIL: cổng chỉ được chặn deploy khi thật sự chụp
+  // và so được. cf_deploy cũng tiền kiểm lớp này; đây là lớp dự phòng.
+  try { require.resolve('playwright'); } catch (e) {
+    console.log('VISUAL GATE: SKIP — chưa cài playwright trong tests/visual (npm ci).');
+    process.exit(3);
+  }
   // Khoá chạy đơn: hai lượt gate chồng nhau (vd 2 deploy song song trên cùng
   // cây repo) dùng chung thư mục current/ + report.json sẽ nhiễm số liệu của
   // nhau (gặp thật 22/10: verdict FAIL 81% trong khi ảnh chụp đúng chuẩn).
@@ -55,18 +62,34 @@ async function main() {
   }
   process.on('exit', () => { try { fs.unlinkSync(LOCK); } catch (e) {} });
   let relay = null;
-  if (!(await portOpen(18899))) {
+  let proxy = null;
+  if (await portOpen(18899)) {
+    proxy = 'http://127.0.0.1:18899';
+  } else {
     relay = spawn('node', [path.join(DIR, 'relay.js')], { stdio: 'ignore' });
     for (let i = 0; i < 20 && !(await portOpen(18899)); i++)
       await new Promise(r => setTimeout(r, 250));
+    if (await portOpen(18899)) proxy = 'http://127.0.0.1:18899';
+    // Relay không lên (CI không có egress proxy auth) -> chụp thẳng, không proxy.
   }
-  const token = execFileSync('python3', [path.join(DIR, 'make_gate_token.py')], { encoding: 'utf8' }).trim();
+  let token;
+  try {
+    token = execFileSync('python3', [path.join(DIR, 'make_gate_token.py')], { encoding: 'utf8' }).trim();
+  } catch (e) {
+    // Mint session lỗi = sự cố hạ tầng (D1/token), không phải hồi quy hình
+    // ảnh -> SKIP exit 3 thay vì FAIL oan cả deploy.
+    console.log('VISUAL GATE: SKIP — mint session test lỗi:', (e.stderr || e.message || '').toString().slice(0, 200));
+    if (relay) relay.kill();
+    process.exit(3);
+  }
   console.log('Gate: đã mint session test.');
   let code = 0;
   try {
     const args = [path.join(DIR, 'capture.js')];
     if (baseline) args.push('--baseline');
-    code = await run('node', args, { env: { ...process.env, TEST_TOKEN: token } });
+    const env = { ...process.env, TEST_TOKEN: token };
+    if (proxy) env.CAPTURE_PROXY = proxy;
+    code = await run('node', args, { env });
   } finally {
     try { execFileSync('python3', [path.join(DIR, 'make_gate_token.py'), '--cleanup', token], { stdio: 'ignore' }); } catch (e) {}
     if (relay) relay.kill();
