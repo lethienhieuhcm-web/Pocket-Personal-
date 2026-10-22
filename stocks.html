@@ -289,7 +289,7 @@ input,select{background:var(--pp-bg2);border:1px solid var(--pp-line);color:var(
 <div class="row" style="gap:8px;margin-top:8px"><input id="bkKey" type="password" placeholder="Dán khóa API…" style="flex:1" autocomplete="off">
 <button id="bkTest" style="padding:9px 12px;border-radius:8px;background:var(--pp-bg2);color:var(--pp-ink);border:1px solid var(--pp-line);font-size:12px;cursor:pointer">Kiểm tra</button>
 <button id="bkDel" style="padding:9px 12px;border-radius:8px;background:var(--pp-bg2);color:var(--pp-ink);border:1px solid var(--pp-line);font-size:12px;cursor:pointer">Xoá</button></div>
-<div class="row" style="gap:8px;margin-top:8px"><span class="k">Model</span><input id="bkModel" placeholder="vd: gemini-2.0-flash" style="flex:1"></div>
+<div class="row" style="gap:8px;margin-top:8px"><span class="k">Model</span><input id="bkModel" placeholder="Model ID" style="flex:1"></div>
 <div class="hint" id="bkStatus" style="padding:8px 0 0;font-size:12px"></div>
 </div>
 <div class="sec">Ngôn ngữ / Language</div>
@@ -2142,21 +2142,79 @@ async function byokSave(){
     $("bkKey").value = ""; $("bkKey").placeholder = "Đã lưu (ẩn)";
   }catch(e){ $("bkStatus").textContent = "Lỗi: "+e.message; $("bkStatus").style.color = "var(--pp-danger)"; }
 }
+// 2026-10-22 (Henrry: nhieu kieu base URL, khong hardcode nha cung cap):
+// Kiem tra khoa theo FORMAT endpoint user nhap, khong theo ten nha cung
+// cap: tai danh sach model that — kieu OpenAI (Bearer) -> kieu Gemini
+// (x-goog-api-key) -> qua relay ca 2 kieu khi trinh duyet bi chan CORS.
+// Ban cu hardcode duong Gemini + model mac dinh doan san nen moi base
+// URL khac deu "Khóa lỗi".
+function bkParseModels(j){
+  const raw = (j && Array.isArray(j.data)) ? j.data : ((j && Array.isArray(j.models)) ? j.models : []);
+  const out = [];
+  for(const it of raw){
+    const id = typeof it === "string" ? it : (it && (it.id || it.name || it.model || it.model_name));
+    if(id) out.push(String(id).replace(/^models\//,""));
+  }
+  return [...new Set(out)];
+}
+async function bkErrDetail(r){
+  try{
+    const j = await r.json();
+    const m = (j.error && j.error.message) || j.message;
+    if(m) return String(m).slice(0,200);
+  }catch(e){}
+  return "";
+}
+async function bkModelsDirect(u,k,style){
+  const ctl = new AbortController(); const tm = setTimeout(()=>ctl.abort(),10000);
+  try{
+    const r = await fetch(u+"/models",{headers: style==="goog" ? {"x-goog-api-key":k} : {"Authorization":"Bearer "+k}, signal: ctl.signal});
+    if(!r.ok){ const e = new Error("HTTP "+r.status); e.status = r.status; e.detail = await bkErrDetail(r); throw e; }
+    return bkParseModels(await r.json());
+  }finally{ clearTimeout(tm); }
+}
+async function bkModelsRelay(u,k,style){
+  const h = {"Content-Type":"application/json"};
+  if(_tok) h["Authorization"] = "Bearer "+_tok;
+  const env = {baseUrl:u, key:k, path:"/models", method:"GET"};
+  if(style==="goog") env.auth = "goog";
+  const r = await fetch("/api/ai/relay",{method:"POST",headers:h,body:JSON.stringify(env)});
+  if(!r.ok){ const e = new Error("HTTP "+r.status); e.status = r.status; e.detail = await bkErrDetail(r); throw e; }
+  return bkParseModels(await r.json());
+}
 $("bkTest").onclick = async ()=>{
   await byokSave();
-  $("bkStatus").textContent = "Đang kiểm tra…"; $("bkStatus").style.color = "var(--pp-mut)";
+  const st = $("bkStatus");
+  st.textContent = "Đang kiểm tra…"; st.style.color = "var(--pp-mut)";
   try{
     const k = await idbOp("readonly","gemini_user_key");
-    const m = await idbOp("readonly","gemini_user_model") || "gemini-2.0-flash";
-    const u = await idbOp("readonly","ai_base_url");
-    if(!k || !u) throw new Error("Chưa có key hoặc endpoint");
-    const r = await fetch(u.replace(/\/+$/,"")+"/models/"+encodeURIComponent(m)+":generateContent?key="+encodeURIComponent(k),{
-      method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({contents:[{parts:[{text:"Hi"}]}]})
-    });
-    if(r.ok){ $("bkStatus").textContent = "Khóa hoạt động! ✓"; $("bkStatus").style.color = "var(--pp-accent)"; }
-    else{ $("bkStatus").textContent = "Khóa lỗi: "+r.status; $("bkStatus").style.color = "var(--pp-danger)"; }
-  }catch(e){ $("bkStatus").textContent = "Khóa lỗi: "+e.message; $("bkStatus").style.color = "var(--pp-danger)"; }
+    const u0 = await idbOp("readonly","ai_base_url");
+    if(!k || !u0) throw new Error("Chưa có key hoặc endpoint");
+    const u = String(u0).replace(/\/+$/,"");
+    let models = null, lastErr = null, googErr = null;
+    const attempts = [
+      ()=>bkModelsDirect(u,k,"bearer"),
+      ()=>bkModelsDirect(u,k,"goog"),
+      ()=>bkModelsRelay(u,k,"bearer"),
+      ()=>bkModelsRelay(u,k,"goog"),
+    ];
+    for(let i=0;i<attempts.length && !models;i++){
+      try{ const ms = await attempts[i](); if(ms && ms.length) models = ms; }
+      catch(e){ lastErr = e; if(i===1) googErr = e; }
+    }
+    if(!models) throw (googErr && googErr.status===400 ? googErr : (lastErr || new Error("Không tải được danh sách model")));
+    const cur = $("bkModel").value.trim();
+    if(!cur){
+      $("bkModel").value = models[0];
+      await idbOp("readwrite","gemini_user_model",models[0]);
+      st.textContent = "Khóa hoạt động! ✓ Endpoint có "+models.length+" model, đã chọn "+models[0];
+    }else if(!models.includes(cur)){
+      st.textContent = "Khóa hoạt động! ✓ Endpoint có "+models.length+" model, nhưng không có '"+cur+"'";
+    }else{
+      st.textContent = "Khóa hoạt động! ✓ Endpoint có "+models.length+" model";
+    }
+    st.style.color = "var(--pp-accent)";
+  }catch(e){ st.textContent = "Khóa lỗi: "+(e.detail || e.message); st.style.color = "var(--pp-danger)"; }
 };
 $("bkDel").onclick = async ()=>{
   await idbOp("readwrite","gemini_user_key",undefined);
