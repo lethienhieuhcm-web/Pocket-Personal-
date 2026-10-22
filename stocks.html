@@ -10,6 +10,7 @@
 body{font-family:var(--pp-font);background:var(--pp-bg);color:var(--pp-ink);max-width:480px;margin:0 auto}
 .hdr{padding:20px 16px 12px;display:flex;align-items:center;gap:14px}
 .hdr h1{font-size:var(--pp-text-2xl);font-weight:800;letter-spacing:-0.3px;flex:none;white-space:nowrap}
+.hdr .pp-langdrop-btn{min-height:0;min-width:0;padding:4px 9px;gap:5px}
 .src{font-size:12px;color:var(--pp-mut);flex:1;min-width:0;text-align:right;line-height:1.45}
 .regime{margin:4px 16px 12px;padding:14px;border-radius:12px;background:var(--pp-card);border:1px solid var(--pp-line);border-left:3px solid var(--pp-accent)}
 .regime.warn{background:color-mix(in srgb,#f59e0b 6%,var(--pp-card));border-left-color:#f59e0b}
@@ -377,9 +378,9 @@ input,select{background:var(--pp-bg2);border:1px solid var(--pp-line);color:var(
 <script>
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-const fmtN=n=>n==null?"—":Number(n).toLocaleString("vi-VN");
-const fmtPct=p=>p==null?"—":(p>0?"+":"")+Number(p).toFixed(2)+"%";
-const fmtTy=n=>n==null?"—":(n>0?"+":"")+(n/1e9).toFixed(0)+" tỷ";
+const fmtN=n=>{ if(n==null) return "—"; const v=Number(n); return isFinite(v)? v.toLocaleString("vi-VN") : "—"; };
+const fmtPct=p=>{ if(p==null) return "—"; const v=Number(p); return isFinite(v)? (v>0?"+":"")+v.toFixed(2)+"%" : "—"; };
+const fmtTy=n=>{ if(n==null) return "—"; const v=Number(n); return isFinite(v)? (v>0?"+":"")+(v/1e9).toFixed(0)+" tỷ" : "—"; };
 const _tok=localStorage.getItem("elab_authToken");
 async function api(p){
   const h={"Content-Type":"application/json"};
@@ -491,6 +492,8 @@ const FF_I18N={
   ko:{net:"순매수 · 유동성 상위 30종목",buy:"매수",sell:"매도",topBuy:"순매수 상위",topSell:"순매도 상위",empty:"이번 세션 데이터 없음",ty:"십억",tr:"백만"},
 };
 function fmtTyF(v,L,signed){
+  if(v==null||!isFinite(Number(v))) return "—";
+  v=Number(v);
   const a=Math.abs(v), s=v<0?"−":(signed?"+":"");
   if(a>=1e9) return s+(a/1e9).toFixed(1).replace(".",",")+" "+L.ty;
   if(a>=1e6) return s+Math.round(a/1e6)+" "+L.tr;
@@ -1110,9 +1113,11 @@ async function loadDetail(sym){
       h+=`<div class="row"><span class="k">NN mua / bán (hôm nay)</span><span class="v"><span class="up">${fmtTy(q.foreign_buy_value)}</span> / <span class="down">−${fmtTy(q.foreign_sell_value).replace("-","")}</span></span></div>`;
     }
     if(q.bid||q.ask){
-      const bids=Array.isArray(q.bid)?q.bid:[q.bid],asks=Array.isArray(q.ask)?q.ask:[q.ask];
       const stepP=x=>Array.isArray(x)?+x[0]:(x&&typeof x==="object"?+(x.price??x.p):+x);
-      const bp=bids.slice(0,3).map(x=>fmtN(stepP(x))).join(" / "),ap=asks.slice(0,3).map(x=>fmtN(stepP(x))).join(" / ");
+      const side=a=>{ if(!Array.isArray(a)) return "—";
+        const s=a.slice(0,3).map(x=>fmtN(stepP(x))).filter(t=>t!=="—");
+        return s.length? s.join(" / ") : "—"; };
+      const bp=side(q.bid),ap=side(q.ask);
       h+=`<div class="bidask"><div class="ba"><div class="t">Mua 1/2/3</div><div class="pr up">${bp}</div></div><div class="ba"><div class="t">Bán 1/2/3</div><div class="pr down">${ap}</div></div></div>`;
     }
     $("dQuote").innerHTML=h;

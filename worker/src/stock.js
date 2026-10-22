@@ -188,6 +188,23 @@ export async function hStockVersion(request, env){
 }
 
 /* ---- Data accessors (dung chung trong stock.js) ---- */
+// Dien do sau 3 buoc tu market/depth.json (poller publish moi 5 phut tu
+// bang KBS toan thi truong) khi quote chinh thieu — tien le FR/FO:
+// nguon chinh thieu thi dien tu nguon co that (22/10/2026).
+async function _withDepth(env, sym, q){
+  if(!q || (q.bid != null && q.ask != null)) return q;
+  try{
+    const d = await sGet(env, "market/depth.json");
+    const dep = d && d.by_symbol ? d.by_symbol[sym] : null;
+    if(dep){
+      if(q.bid == null && dep.bid) q.bid = dep.bid;
+      if(q.ask == null && dep.ask) q.ask = dep.ask;
+      if(dep.bid || dep.ask) q.depth_updated = d.updated || null;
+    }
+  }catch(e){ /* depth la lop bo sung — loi thi tra quote goc */ }
+  return q;
+}
+
 export async function getQuoteData(env, sym){
   sym = String(sym||"").toUpperCase();
   if(!sym) return null;
@@ -195,7 +212,7 @@ export async function getQuoteData(env, sym){
   const q = d && d.by_symbol ? d.by_symbol[sym] : null;
   if(q){
     // Include data timestamp so AI can state which trading session the data is from
-    return Object.assign({symbol:sym, data_updated:d.updated||null, _prov:d._prov||null}, q);
+    return _withDepth(env, sym, Object.assign({symbol:sym, data_updated:d.updated||null, _prov:d._prov||null}, q));
   }
   // Fallback (22/10, bug chi tiet DGC): ma ngoai vu tru poller
   // realtime (~30 ma) khong co trong quotes.json -> lay dong
@@ -205,10 +222,10 @@ export async function getQuoteData(env, sym){
   const sc = await sGet(env, "market/screener.json");
   const row = sc && Array.isArray(sc.rows) ? sc.rows.find(r=>r.symbol===sym) : null;
   if(!row || row.close == null) return null;
-  return {symbol:sym, close:row.close*1000, pct_change:row.pct_change,
+  return _withDepth(env, sym, {symbol:sym, close:row.close*1000, pct_change:row.pct_change,
           volume:row.volume, value_vnd:row.value_vnd,
           exchange:row.exchange, data_updated:row.updated_at||sc.updated||null,
-          _prov:{source:"screener-eod", retrieved_at:sc.updated||null}};
+          _prov:{source:"screener-eod", retrieved_at:sc.updated||null}});
 }
 
 export async function getFundamentalsData(env, sym){
@@ -919,6 +936,7 @@ export async function hStockPublish(request, env){
     const mergedQ = Object.assign({}, (curQ && curQ.by_symbol) || {}, body.quotes_patch);
     await put1("quotes", {by_symbol:mergedQ});
   }
+  if(body.depth) await put1("depth", {by_symbol:body.depth});
   if(body.screener) await put1("screener", {rows:body.screener});
   if(body.fundamentals) await put1("fundamentals", {by_symbol:body.fundamentals});
   if(body.symbols) await put1("symbols", {rows:body.symbols});
