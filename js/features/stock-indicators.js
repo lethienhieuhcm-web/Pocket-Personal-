@@ -1156,6 +1156,292 @@
     return { plot_0: mul(div(sub(hh, ctx.C), sub(hh, ll)), -100) };
   };
 
+  // ---- Đợt B additions ----
+  // Definitions verified against the study catalog shipped in the reference
+  // chart library (metainfo + study definitions) and the standard published
+  // formulas; implemented here from those definitions.
+
+  IMPL['Arnaud Legoux Moving Average'] = function (ctx) {
+    // ALMA (Arnaud Legoux): Gaussian weights over the window ordered
+    // oldest -> newest: m = floor(offset * (size - 1)), s = size / sigma,
+    // w(k) = exp(-(k - m)^2 / (2 s^2)), normalized by the weight sum.
+    var size = Math.max(1, intv(ctx.get('in_0'), 9));
+    var offset = num(ctx.get('in_1'), 0.85), sigma = num(ctx.get('in_2'), 6);
+    var m = Math.floor(offset * (size - 1)), s = sigma === 0 ? 1 : size / sigma;
+    var w = [], wsum = 0;
+    for (var k = 0; k < size; k++) { var wk = Math.exp(-((k - m) * (k - m)) / (2 * s * s)); w.push(wk); wsum += wk; }
+    var n = ctx.n, out = nul(n), C = ctx.C;
+    for (var i = size - 1; i < n; i++) {
+      var acc = 0, ok = true;
+      for (var j = 0; j < size; j++) {
+        var v = C[i - size + 1 + j];
+        if (v == null || !isFinite(v)) { ok = false; break; }
+        acc += w[j] * v;
+      }
+      if (ok && wsum !== 0) out[i] = acc / wsum;
+    }
+    return { plot_0: out };
+  };
+  IMPL['Keltner Channels'] = function (ctx) {
+    // Basis = EMA(close, length); range = EMA(true range, length) — or EMA
+    // of (high - low) when useTrueRange is off; bands = basis ± mult * range.
+    // Library defaults: useTrueRange = true, length = 20, mult = 1.
+    var len = intv(ctx.get('in_1'), 20), mult = num(ctx.get('in_2'), 1);
+    var useTR = ctx.get('in_0') !== false && ctx.get('in_0') !== '!1';
+    var basis = ema(ctx.C, len);
+    var range = useTR ? trueRange(ctx.bars) : sub(ctx.H, ctx.L);
+    var rng = ema(range, len);
+    return { plot_0: add(basis, mul(rng, mult)), plot_1: basis, plot_2: sub(basis, mul(rng, mult)) };
+  };
+  IMPL['Moving Average Hamming'] = function (ctx) {
+    // Sine-taper weighted MA as defined in the reference library: the
+    // weight of a bar of age a (0 = newest) in a window of length P is
+    // sin((a + 2) * PI / (2P)); weights normalized by their sum.
+    var P = Math.max(1, intv(ctx.get('periods'), 10));
+    var n = ctx.n, out = nul(n), C = ctx.C;
+    var wAge = [], wsum = 0;
+    for (var a = 0; a < P; a++) { var wa = Math.sin((a + 2) * Math.PI / (2 * P)); wAge.push(wa); wsum += wa; }
+    for (var i = P - 1; i < n; i++) {
+      var acc = 0, ok = true;
+      for (var j = 0; j < P; j++) {
+        var v = C[i - j];
+        if (v == null || !isFinite(v)) { ok = false; break; }
+        acc += wAge[j] * v;
+      }
+      if (ok && wsum !== 0) out[i] = acc / wsum;
+    }
+    return { plot_0: out };
+  };
+  IMPL['Advance/Decline'] = function (ctx) {
+    // Library definition: (# bars with close > open) / (# bars with
+    // close < open) counted over the length window; when the down count
+    // is 0 the value is the up count.
+    var len = intv(ctx.get('in_0'), 10), n = ctx.n, out = nul(n);
+    var up = nul(n), dn = nul(n);
+    for (var i = 0; i < n; i++) {
+      up[i] = (ctx.C[i] != null && ctx.O[i] != null && ctx.C[i] > ctx.O[i]) ? 1 : 0;
+      dn[i] = (ctx.C[i] != null && ctx.O[i] != null && ctx.C[i] < ctx.O[i]) ? 1 : 0;
+    }
+    var su = sumArr(up, len), sd = sumArr(dn, len);
+    for (var j = 0; j < n; j++) {
+      if (su[j] == null || sd[j] == null) continue;
+      out[j] = sd[j] === 0 ? su[j] : su[j] / sd[j];
+    }
+    return { plot_0: out };
+  };
+  IMPL['Majority Rule'] = function (ctx) {
+    // Library definition: 100 * SMA(close > previous close, rollingPeriod)
+    // — the percentage of rising bars inside the rolling window.
+    var len = intv(ctx.get('rollingPeriod'), 14), n = ctx.n;
+    var up = nul(n);
+    up[0] = 0;
+    for (var i = 1; i < n; i++) up[i] = (ctx.C[i] != null && ctx.C[i - 1] != null && ctx.C[i] > ctx.C[i - 1]) ? 1 : 0;
+    return { plot_0: mul(sma(up, len), 100) };
+  };
+  IMPL['Standard Error'] = function (ctx) {
+    // Standard error of the least-squares line fitted to close over the
+    // window: SE = sqrt((SS_tot - slope^2 * SS_xx) / (N - 2)).
+    var len = Math.max(3, intv(ctx.get('length'), 14)), n = ctx.n, out = nul(n), C = ctx.C;
+    var sx = len * (len - 1) / 2, sxx = (len - 1) * len * (2 * len - 1) / 6;
+    var den = len * sxx - sx * sx, ssx = sxx - sx * sx / len;
+    for (var i = len - 1; i < n; i++) {
+      var sy = 0, syy = 0, sxy = 0, ok = true;
+      for (var j = 0; j < len; j++) {
+        var v = C[i - len + 1 + j];
+        if (v == null || !isFinite(v)) { ok = false; break; }
+        sy += v; syy += v * v; sxy += j * v;
+      }
+      if (!ok || den === 0) continue;
+      var slope = (len * sxy - sx * sy) / den;
+      var sse = (syy - sy * sy / len) - slope * slope * ssx;
+      out[i] = Math.sqrt(Math.max(0, sse) / (len - 2));
+    }
+    return { plot_0: out };
+  };
+  IMPL['Regression Trend'] = function (ctx) {
+    // Library study (hidden, graphics output): a single least-squares line
+    // fitted to the source over a selected range, plus deviation lines.
+    // The engine has no range picker, so the range is the full loaded
+    // series and the lines are evaluated at every bar. Library defaults:
+    // source = close, deviations = ±2 population stdevs of the residuals.
+    var src = ctx.C, n = ctx.n, out0 = nul(n), out1 = nul(n), out2 = nul(n);
+    var first = -1, last = -1, cnt = 0;
+    for (var i = 0; i < n; i++) if (src[i] != null && isFinite(src[i])) { if (first < 0) first = i; last = i; cnt++; }
+    if (cnt < 2 || first < 0) return { plot_0: out0, plot_1: out1, plot_2: out2 };
+    var span = last - first + 1;
+    var sx = 0, sy = 0, sxx = 0, sxy = 0, ok = true;
+    for (var j = 0; j < span; j++) {
+      var v = src[first + j];
+      if (v == null || !isFinite(v)) { ok = false; break; }
+      sx += j; sy += v; sxx += j * j; sxy += j * v;
+    }
+    if (!ok) return { plot_0: out0, plot_1: out1, plot_2: out2 };
+    var den = span * sxx - sx * sx;
+    if (den === 0) return { plot_0: out0, plot_1: out1, plot_2: out2 };
+    var slope = (span * sxy - sx * sy) / den;
+    var intercept = (sy - slope * sx) / span;
+    var sse = 0;
+    for (var k = 0; k < span; k++) { var r = src[first + k] - (intercept + slope * k); sse += r * r; }
+    var sd = Math.sqrt(sse / span);
+    for (var t = 0; t < span; t++) {
+      var base = intercept + slope * t;
+      out0[first + t] = base; out1[first + t] = base + 2 * sd; out2[first + t] = base - 2 * sd;
+    }
+    return { plot_0: out0, plot_1: out1, plot_2: out2 };
+  };
+  IMPL['Chop Zone'] = function (ctx) {
+    // Everget Chop Zone, library definition: the signed angle (degrees,
+    // rounded) of the EMA(34) slope. With hh/ll = highest/lowest of high
+    // over 30 bars and o = 25 * ll / (hh - ll):
+    //   c = (ema[prev] - ema) / hlc3 * o;  angle = round(deg(atan(|c|)));
+    //   value = -angle when c > 0 (falling EMA), else +angle.
+    // (The library draws the value as a colorer over a constant strip; the
+    // engine plots the angle itself — the study's actual quantity.)
+    var n = ctx.n, out = nul(n);
+    var e = ema(ctx.C, 34);
+    var hh = highest(ctx.H, 30), ll = lowest(ctx.H, 30);
+    for (var i = 1; i < n; i++) {
+      if (e[i] == null || e[i - 1] == null || hh[i] == null || ll[i] == null) continue;
+      if (ctx.hlc3[i] == null || ctx.hlc3[i] === 0) continue;
+      var range = hh[i] - ll[i];
+      if (range === 0) continue;
+      var o = 25 / range * ll[i];
+      var c = (e[i - 1] - e[i]) / ctx.hlc3[i] * o;
+      var d = Math.round(180 * Math.acos(1 / Math.sqrt(1 + c * c)) / Math.PI);
+      out[i] = c > 0 ? -d : d;
+    }
+    return { plot_0: out };
+  };
+  function barDeltaDays(bars, i) {
+    // Calendar days between bars i-1 and i (from bar times); 1 when the
+    // times are missing or non-increasing.
+    if (i <= 0) return 1;
+    var d1 = barDate(bars[i] && bars[i].t), d0 = barDate(bars[i - 1] && bars[i - 1].t);
+    if (!d1 || !d0) return 1;
+    var dd = (d1.getTime() - d0.getTime()) / 86400000;
+    return (dd > 0 && isFinite(dd)) ? dd : 1;
+  }
+  IMPL['Volatility Zero Trend Close-to-Close'] = function (ctx) {
+    // Zero-trend (zero-mean) close-to-close estimator, time-scaled as in
+    // the library: each bar contributes (ln(C/Cprev))^2 * daysPerYear /
+    // deltaDays; value = 100 * sqrt(mean over the Periods window).
+    var periods = Math.max(1, intv(ctx.get('periods'), 10));
+    var dpy = num(ctx.get('daysPerYear'), 252);
+    var n = ctx.n, sq = nul(n);
+    for (var i = 1; i < n; i++) {
+      if (ctx.C[i] == null || ctx.C[i - 1] == null || ctx.C[i - 1] <= 0 || ctx.C[i] <= 0) continue;
+      var r = Math.log(ctx.C[i] / ctx.C[i - 1]);
+      sq[i] = r * r * dpy / barDeltaDays(ctx.bars, i);
+    }
+    var s = sumArr(sq, periods);
+    return { plot_0: map1(s, function (v) { return 100 * Math.sqrt(v / periods); }) };
+  };
+  IMPL['Volatility O-H-L-C'] = function (ctx) {
+    // Garman-Klass O-H-L-C estimator with the library's time scaling and
+    // optional market-closed adjustment:
+    //   g = 0.5*(ln(H/L))^2 - (ln4 - 1)*(ln(C/O))^2
+    //   value = 100 * sqrt(daysPerYear * mean(g / deltaDays)) over Periods.
+    var periods = Math.max(1, intv(ctx.get('periods'), 10));
+    var mcp = num(ctx.get('marketClosedPercentage'), 0);
+    var dpy = num(ctx.get('daysPerYear'), 252);
+    var n = ctx.n, g = nul(n), LN4M1 = Math.log(4) - 1;
+    for (var i = 0; i < n; i++) {
+      var o = ctx.O[i], h = ctx.H[i], l = ctx.L[i], c = ctx.C[i];
+      if (o == null || h == null || l == null || c == null || o <= 0 || h <= 0 || l <= 0 || c <= 0) continue;
+      var v = 0.5 * Math.pow(Math.log(h / l), 2) - LN4M1 * Math.pow(Math.log(c / o), 2);
+      if (mcp > 0 && i > 0 && ctx.C[i - 1] != null && ctx.C[i - 1] > 0) {
+        v = 0.12 * Math.pow(Math.log(o / ctx.C[i - 1]), 2) / mcp + 0.88 * v / (1 - mcp);
+      }
+      g[i] = v * dpy / barDeltaDays(ctx.bars, i);
+    }
+    var s = sumArr(g, periods);
+    return { plot_0: map1(s, function (v) { return 100 * Math.sqrt(v / periods); }) };
+  };
+  IMPL['Volatility Index'] = function (ctx) {
+    // ATR trailing-stop index (library definition; defaults periods = 10,
+    // atrMult = 3, method = Wilder Smoothing). Warmup of `periods` bars
+    // (mean TR, highest close) seeds a long stop at sic - mult * ATR; each
+    // later bar plots the current stop, then the stop advances with the
+    // extreme close since the position started and the smoothed ATR; a
+    // close through the stop flips the side.
+    var P = Math.max(1, intv(ctx.get('periods'), 10));
+    var mult = num(ctx.get('atrMult'), 3);
+    var method = String(ctx.get('method') || 'Wilder Smoothing');
+    var n = ctx.n, out = nul(n), C = ctx.C;
+    if (n <= P) return { plot_0: out };
+    var tr = trueRange(ctx.bars);
+    var sum = 0, sic = null, wi;
+    for (wi = 0; wi < P; wi++) {
+      if (tr[wi] == null || C[wi] == null) return { plot_0: out };
+      sum += tr[wi]; if (sic === null || C[wi] > sic) sic = C[wi];
+    }
+    var atrS = sum / P;
+    var emaK = 2 / (P + 1), emaState = null;
+    if (method === 'Exponential') {
+      for (var s2 = 0; s2 < P; s2++) emaState = (emaState === null) ? tr[s2] : emaK * tr[s2] + (1 - emaK) * emaState;
+    }
+    var posLong = true, next = sic - atrS * mult;
+    for (var j = P; j < n; j++) {
+      if (C[j] == null || tr[j] == null) continue;
+      var stop = next;
+      out[j] = stop;
+      var off;
+      if (method === 'Exponential') {
+        emaState = (emaState === null) ? tr[j] : emaK * tr[j] + (1 - emaK) * emaState;
+        off = emaState * mult;
+      } else {
+        atrS = tr[j] / P + (1 - 1 / P) * atrS;
+        off = atrS * mult;
+      }
+      if (posLong) {
+        if (C[j] < stop) { posLong = false; sic = C[j]; next = sic + off; }
+        else { if (C[j] > sic) sic = C[j]; next = sic - off; }
+      } else {
+        if (C[j] > stop) { posLong = true; sic = C[j]; next = sic - off; }
+        else { if (C[j] < sic) sic = C[j]; next = sic + off; }
+      }
+    }
+    return { plot_0: out };
+  };
+  IMPL['Williams Fractals'] = function (ctx) {
+    // Bill Williams fractals with the library's tie handling. An up
+    // fractal at bar m requires every newer bar in the window strictly
+    // below H[m]; on the older side the bars must be strictly below,
+    // except that up to 4 immediately-older bars may equal H[m] when a
+    // strictly lower bar follows inside the extended window. Down
+    // fractals mirror this on lows. A fractal is confirmed `periods`
+    // bars after m; its value sits on bar m, so the last `periods` bars
+    // never carry a value. plot_0 = down fractals (at low), plot_1 = up
+    // fractals (at high), per the catalog's plot order.
+    var P = Math.max(1, intv(ctx.get('in_0'), 2));
+    var n = ctx.n, up = nul(n), dn = nul(n), H = ctx.H, L = ctx.L;
+    function side(arr, m, isUp) {
+      var c0 = arr[m];
+      if (c0 == null) return false;
+      var j;
+      for (j = 1; j <= P; j++) {
+        var vn = arr[m + j];
+        if (vn == null || (isUp ? !(vn < c0) : !(vn > c0))) return false;
+      }
+      for (var k = 0; k <= 4; k++) {
+        var okk = true;
+        for (j = 1; j <= P + k; j++) {
+          var vo = arr[m - j];
+          if (vo == null) { okk = false; break; }
+          if (j <= k) { if (isUp ? !(vo <= c0) : !(vo >= c0)) { okk = false; break; } }
+          else if (isUp ? !(vo < c0) : !(vo > c0)) { okk = false; break; }
+        }
+        if (okk) return true;
+      }
+      return false;
+    }
+    for (var m = P; m + P < n; m++) {
+      if (side(H, m, true)) up[m] = H[m];
+      if (side(L, m, false)) dn[m] = L[m];
+    }
+    return { plot_0: dn, plot_1: up };
+  };
+
   // ---------------- public API ----------------
   var SPEC_BY_NAME = {};
   (window.PP_STUDIES || []).forEach(function (s) { SPEC_BY_NAME[s.name] = s; });

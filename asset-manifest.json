@@ -1,6 +1,6 @@
 {
-  "build_id": "20261022050155",
-  "built_at": "2026-10-22T05:01:55.481061+00:00",
+  "build_id": "20261022232504",
+  "built_at": "2026-10-22T23:25:04.971474+00:00",
   "assets": {
     "design-system.css": "design-system.67bd4f89.css",
     "js/core/aiClient.js": "js/core/aiClient.ed227a22.js",
@@ -22,6 +22,9 @@
     "js/features/scan.js": "js/features/scan.7e6ba5d7.js",
     "js/features/sentence.js": "js/features/sentence.e4904017.js",
     "js/features/settings.js": "js/features/settings.643b3b8e.js",
+    "js/features/stock-chart.js": "js/features/stock-chart.95745fa9.js",
+    "js/features/stock-indicators-spec.js": "js/features/stock-indicators-spec.ab0cb1d9.js",
+    "js/features/stock-indicators.js": "js/features/stock-indicators.6f657258.js",
     "js/features/stock-v2.js": "js/features/stock-v2.a6e44be2.js",
     "js/features/stock.js": "js/features/stock.0d374814.js",
     "js/features/tts.js": "js/features/tts.84914807.js",

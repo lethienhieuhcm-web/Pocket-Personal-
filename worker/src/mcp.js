@@ -39,6 +39,12 @@ import {
 
 const PROTOCOL_VERSION = '2025-03-26';
 const SERVER_INFO = { name: 'pocket-personal-stock-mcp', version: '1.0.0' };
+// MO FULL giai doan thu nghiem (Henrry sua lenh 10:07 22/10/2026,
+// Dot A the hien MCP ra frontend): true = bo phan goi muc 2.5 + bo
+// quota agent_calls cho MOI user (tools/list tra du 14 tool, khong
+// tru usage). Khi Henrry lenh dong, gat ve false la phan goi + quota
+// ap dung lai nguyen ven (khong sua them cho nao khac).
+const MCP_DEV_OPEN = true;
 const SCOPE_NOTE =
   'MCP Pocket Personal chi tra SO LIEU THI TRUONG da publish trong ' +
   'app (gia, ho so, dong tien, vi mo, dong thuan dang so + link ' +
@@ -836,16 +842,17 @@ async function handleToolsCall(env, caller, params, t0) {
     return finish({ error: { code: 'unknown_tool', message: `Tool '${name}' khong ton tai.`, available: TOOLS.map((t) => t.name) } },
       true, 'refused', { refusal_code: 'unknown_tool' });
   }
-  // Cong goi theo muc 2.5 da Chot
-  if (caller.tier < tool.minTier) {
+  // Cong goi theo muc 2.5 da Chot (tat khi MCP_DEV_OPEN)
+  if (!MCP_DEV_OPEN && caller.tier < tool.minTier) {
     return finish({ error: {
       code: 'plan_restricted', tool: name,
       message: `Tool ${name} yeu cau goi ${TIER_NAME[tool.minTier]} tro len; goi hien tai: ${caller.plan}.`,
       required_plan: TIER_NAME[tool.minTier], current_plan: caller.plan,
     } }, true, 'refused', { refusal_code: 'plan_restricted' });
   }
-  // Quota agent_calls/ngay theo goi (admin = khong gioi han)
-  const limit = caller.plan === 'admin' ? null
+  // Quota agent_calls/ngay theo goi (admin = khong gioi han;
+  // MCP_DEV_OPEN = khong chan quota cho moi user)
+  const limit = (MCP_DEV_OPEN || caller.plan === 'admin') ? null
     : ((PLANS[caller.plan] || PLANS.free).limits.agent_calls || 0);
   let used = 0;
   try { used = (await getUsage(env, caller.email)).agent_calls || 0; } catch (e) { /* bang usage loi -> fail-open doc */ }
@@ -858,7 +865,9 @@ async function handleToolsCall(env, caller, params, t0) {
   }
   try {
     const r = await tool.run(env, args);
-    try { await incrUsage(env, caller.email, 'agent_calls', 1); } catch (e) { /* dem loi khong chan ket qua */ }
+    if (!MCP_DEV_OPEN) {
+      try { await incrUsage(env, caller.email, 'agent_calls', 1); } catch (e) { /* dem loi khong chan ket qua */ }
+    }
     return finish(r.env, false, 'ok', {
       rows: r.rows, verification: r.env.meta.verification, as_of: r.env.meta.as_of,
     });
@@ -900,7 +909,7 @@ export async function hMcp(request, env) {
       } else if (m.method === 'tools/list') {
         caller = caller || (await resolveCaller(request, env));
         if (!caller) return rpcError(m.id, -32001, 'Not logged in', 401);
-        const list = TOOLS.filter((t) => caller.tier >= t.minTier).map((t) => ({
+        const list = TOOLS.filter((t) => MCP_DEV_OPEN || caller.tier >= t.minTier).map((t) => ({
           name: t.name, description: t.description, inputSchema: t.inputSchema,
           version: '1.0.0',
         }));

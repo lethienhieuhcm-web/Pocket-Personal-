@@ -39,15 +39,39 @@ body{font-family:var(--pp-font);background:var(--pp-bg);color:var(--pp-ink);max-
 .idxcard{min-width:0;background:var(--pp-card);border:1px solid var(--pp-line);border-radius:10px;padding:10px}
 .mgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:stretch}
 .mcard{margin:0;padding:12px;cursor:pointer;display:flex;flex-direction:column;height:100%;box-sizing:border-box;text-align:left}
-.mct{font-size:13px;color:var(--pp-mut);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.mcv{font-size:17px;font-weight:700;margin-top:2px;line-height:1.3;height:45px;overflow:hidden}
+.mct{font-size:13px;color:var(--pp-mut);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;height:18px;line-height:1.35;flex:none}
+.mcv{font-size:17px;font-weight:700;margin-top:2px;line-height:1.3;height:45px;overflow:hidden;display:flex;align-items:baseline;gap:6px;white-space:nowrap;flex:none}
+.mcv .mv{white-space:nowrap}
+.mcv .mu{font-size:11px;color:var(--pp-mut);font-weight:600;white-space:nowrap}
+.mcv .md{flex:none;white-space:nowrap}
 .mcspark{height:30px;margin-top:8px;flex:none}
 .mcsub{font-size:12.5px;color:var(--pp-mut);margin-top:8px;height:32px;overflow:hidden}
 .mcsrc{font-size:11.5px;color:var(--pp-mut);margin-top:auto;padding-top:6px}
+.mcsrc .nw{white-space:nowrap}
 .mcpol{margin:0;padding:12px;grid-column:1/-1;text-align:left}
 .mcpol .vals{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:8px}
-.mcpol .cell .k{font-size:12.5px;color:var(--pp-mut)}
-.mcpol .cell .v{font-size:16px;font-weight:700;margin-top:1px}
+.mcpol .cell .k{font-size:12.5px;color:var(--pp-mut);height:34px;line-height:1.3;display:flex;align-items:flex-end}
+.mcpol .cell .v{font-size:16px;font-weight:700;margin-top:2px}
+.faleg{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:11.5px;color:var(--pp-mut)}
+.faleg .fi{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.faleg .dot{width:8px;height:8px;border-radius:2px;display:inline-block;flex:none}
+.faleg b{color:var(--pp-ink);font-weight:600}
+.fapct{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.fapct .pc{flex:1;min-width:48px;text-align:center;background:var(--pp-bg2);border:1px solid var(--pp-line);border-radius:8px;padding:5px 2px}
+.fapct .pc .k{display:block;font-size:10.5px;color:var(--pp-mut);font-weight:600}
+.fapct .pc .v{display:block;font-size:12.5px;font-weight:700;margin-top:1px}
+.fagrid{display:grid;grid-template-columns:1fr 1fr;gap:0 18px;margin-top:10px;border-top:1px solid var(--pp-line);padding-top:4px}
+.fagrid .fr{display:flex;justify-content:space-between;align-items:baseline;font-size:12.5px;padding:6px 0;border-bottom:1px solid var(--pp-line)}
+.fagrid .fr .k{color:var(--pp-mut)}
+.fagrid .fr .v{font-weight:600;white-space:nowrap}
+.chatsug .sg{margin-bottom:10px}
+.chatsug .sgt{font-size:12px;font-weight:700;color:var(--pp-mut);margin:0 0 6px}
+.chipq{display:inline-block;margin:0 6px 6px 0;padding:7px 11px;border-radius:999px;background:var(--pp-bg2);border:1px solid var(--pp-line);font-size:12.5px;cursor:pointer;color:var(--pp-ink);text-align:left}
+.chatmeta{font-size:11px;color:var(--pp-mut);margin-top:8px;border-top:1px dashed var(--pp-line);padding-top:6px;line-height:1.5}
+.chatfollow{margin-top:8px;display:flex;flex-wrap:wrap;gap:0}
+.chatft{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:4px}
+.chatft td{padding:5px 4px;border-bottom:1px solid var(--pp-line)}
+.symlink{color:var(--pp-accent);font-weight:700;cursor:pointer}
 .idxcard .s{font-size:12px;color:var(--pp-mut)}
 .idxcard .p{font-size:17px;font-weight:700;margin:2px 0}
 .idxcard .c{font-size:12px}
@@ -227,16 +251,17 @@ input,select{background:var(--pp-bg2);border:1px solid var(--pp-line);color:var(
 </div>
 </div>
 
-<!-- ===== AI Chat (dùng MCP backend) ===== -->
+<!-- ===== AI Chat (trang rieng, Dot A) ===== -->
 <div class="view" id="v-chat">
-<div class="hdr"><a href="/hub" class="pp-back" style="text-decoration:none;font-size:20px" title="Về Pocket Personal" aria-label="Về Pocket Personal">‹</a><h1><svg class="tic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> AI Chat</h1><span class="src">MCP</span></div>
+<div class="hdr"><a href="/hub" class="pp-back" style="text-decoration:none;font-size:20px" title="Về Pocket Personal" aria-label="Về Pocket Personal">‹</a><h1><svg class="tic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> AI Chat</h1><span class="src"></span></div>
 <div class="pagebar" id="chatTabs"></div>
-<div class="card" id="chatBox" style="height:50vh;overflow-y:auto"></div>
+<div id="chatSug" style="padding:10px 16px 0"></div>
+<div class="card" id="chatBox" style="height:46vh;overflow-y:auto"></div>
 <div style="display:flex;gap:8px;margin:8px 16px">
 <input id="chatIn" placeholder="Hỏi về cổ phiếu… (vd: FPT giá bao nhiêu)" style="flex:1">
 <button style="padding:9px 16px;border-radius:8px;background:var(--pp-accent);color:#fff;border:none;font-size:14px;font-weight:600;cursor:pointer" id="chatSend">Gửi</button>
 </div>
-<div class="note">AI trả lời dựa trên dữ liệu thật từ MCP server (giá, sàng lọc, tín hiệu, regime).</div>
+<div class="note">Trả lời từ dữ liệu thị trường đã công bố trong ứng dụng; mỗi câu trả lời kèm nguồn và thời điểm của dữ liệu.</div>
 </div>
 
 <!-- ===== Của tôi: Danh mục + Sổ lệnh + Rủi ro ===== -->
@@ -341,7 +366,7 @@ input,select{background:var(--pp-bg2);border:1px solid var(--pp-line);color:var(
 <div class="navgrid" id="dNav" style="padding-top:2px"></div>
 <div class="card" id="dQuote"><div class="hint">Đang tải…</div></div>
 <div class="sec">Biểu đồ</div>
-<div class="card"><div class="iv" id="dIdxBar" style="display:none;margin-top:0"></div><div class="iv" id="dIv"><button>15m</button><button>1H</button><button class="on">1D</button></div><div id="dChart" style="min-height:150px;margin-top:8px"><div class="hint">Đang tải…</div></div><div id="dIndChips" style="margin-top:8px"></div><div id="dIndPanes"></div><div id="dIndPanel" style="display:none;margin-top:8px"></div></div>
+<div class="card"><div class="iv" id="dIdxBar" style="display:none;margin-top:0"></div><div class="iv" id="dIv"><button>15m</button><button>1H</button><button class="on">1D</button></div><div id="dFaLegend" style="margin-top:6px"></div><div id="dChart" style="min-height:150px;margin-top:8px"><div class="hint">Đang tải…</div></div><div id="dFaPct"></div><div id="dIndChips" style="margin-top:8px"></div><div id="dIndPanes"></div><div id="dIndPanel" style="display:none;margin-top:8px"></div><div id="dFaGrid"></div></div>
 <div class="sec" id="dTargetSec">Chốt lời / Cắt lỗ (%)</div>
 <div class="card" id="dTarget"><div class="hint">Đang tải…</div></div>
 <div class="sec" id="dCostSec" style="display:none">Giá vốn của bạn vs thị trường</div>
@@ -391,7 +416,7 @@ async function api(p){
   return r.json();
 }
 // Nav pill trên đầu — theo mockup
-const NAV=[["v-market","Thị trường"],["v-screen","Sàng lọc"],["v-consensus","Đồng thuận"],["v-holders","Cổ đông"],["v-sectors","Ngành"],["v-alert","Cảnh báo"],["v-mine","Của tôi"]];
+const NAV=[["v-market","Thị trường"],["v-screen","Sàng lọc"],["v-consensus","Đồng thuận"],["v-holders","Cổ đông"],["v-sectors","Ngành"],["v-alert","Cảnh báo"],["v-mine","Của tôi"],["v-chat","AI Chat"]];
 const NAVLBL=Object.fromEntries(NAV);
 // Trang lien ket (Chot 08:41 + phan hoi 09:06 22/10): bo thanh tab
 // chen chuc; trang Thi truong la muc luc cac muc, trang con chi co
@@ -414,7 +439,8 @@ function openChat(){
 function go(v){
   document.querySelectorAll(".view").forEach(s=>s.classList.remove("on"));
   $(v).classList.add("on");window.scrollTo(0,0);
-  $("aiFab").style.display="";
+  $("aiFab").style.display=(v==="v-chat")?"none":"";
+  if(v==="v-chat")renderChatSug();
   ["mainTabs","screenTabs","consTabs","holdTabs","secTabs","alertTabs","mineMainTabs","chatTabs"].forEach(e=>{if($(e))buildNav(e,v);});
   if(v==="v-screen")loadScreener();
   if(v==="v-consensus")loadConsensus();
@@ -575,7 +601,7 @@ const MAC_I18N={
 const MAC_SRC={sbv:"NHNN",vcb:"Vietcombank",sjc:"SJC",nyfed:"NY Fed",treasury:"U.S. Treasury","sbv-curated":"NHNN"};
 let MAC=null, MACOPEN=null, MACFC="USD", MACUT="y10", MACHIST={};
 function macSpark(vals,color){
-  if(!vals||vals.length<2) return "";
+  if(!vals||vals.length<2) return '<svg width="100%" height="30" viewBox="0 0 120 30" preserveAspectRatio="none" aria-hidden="true"></svg>';
   const w=120,h=30,mn=Math.min(...vals),mx=Math.max(...vals),rg=(mx-mn)||1;
   const pts=vals.map((v,i)=>`${(i/(vals.length-1)*w).toFixed(1)},${(h-3-((v-mn)/rg)*(h-6)).toFixed(1)}`).join(" ");
   return `<svg width="100%" height="${h}" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.6"/></svg>`;
@@ -596,17 +622,17 @@ function renderMacro(){
   const fPct=v=>v==null?"—":Number(v).toFixed(2).replace(".",",")+"%";
   const card=(sid,name,val,chg,spark,sub,src,date)=>`<div class="card mcard" onclick="macOpen('${sid}')">
     <div class="mct">${name}</div>
-    <div class="mcv">${val} ${chg||""}</div>
+    <div class="mcv"><span class="mv">${val}</span><span class="md">${chg||""}</span></div>
     <div class="mcspark">${spark||""}</div>
     <div class="mcsub">${sub||""}</div>
-    <div class="mcsrc">${L.src}: ${src} · ${date||""}</div></div>`;
+    <div class="mcsrc">${L.src}: ${src} · <span class="nw">${date||""}</span></div></div>`;
   let h=`<div class="mgrid">`;
   const c=S.fx_center;
   if(c) h+=card("fx_center",L.fxC,fVnd(c.last.rate)+" ₫",macChg(c.change,v=>fVnd(v)+" ₫"),macSpark(c.spark,"#38bdf8"),"",MAC_SRC[c.source],c.date);
   const v=S.fx_vcb;
   if(v&&v.usd) h+=card("fx_vcb",L.fxV,fVnd(v.usd.sell||0)+" ₫",macChg(v.change,x=>fVnd(x)+" ₫"),macSpark(v.spark,"#38bdf8"),`${L.usdSell} · ${L.buyTr} ${fVnd(v.usd.buy_transfer||0)} ₫`,MAC_SRC[v.source],v.date);
   const g=S.gold_sjc;
-  if(g) h+=card("gold_sjc",L.gold,(g.last.sell/1e6).toFixed(1).replace(".",",")+" "+L.perL,macChg(g.change,x=>(x/1e6).toFixed(2).replace(".",",")+" tr"),macSpark(g.spark,"#e8c56a"),`${L.buy} ${(g.last.buy/1e6).toFixed(1).replace(".",",")} · ${L.sell} ${(g.last.sell/1e6).toFixed(1).replace(".",",")}`,MAC_SRC[g.source],g.date);
+  if(g) h+=card("gold_sjc",L.gold,(g.last.sell/1e6).toFixed(1).replace(".",",")+' <span class="mu">'+L.perL+"</span>",macChg(g.change,x=>(x/1e6).toFixed(2).replace(".",",")),macSpark(g.spark,"#e8c56a"),`${L.buy} ${(g.last.buy/1e6).toFixed(1).replace(".",",")} · ${L.sell} ${(g.last.sell/1e6).toFixed(1).replace(".",",")}`,MAC_SRC[g.source],g.date);
   const f=S.fed_effr;
   if(f) h+=card("fed_effr",L.fed,fPct(f.last.effr),macChg(f.change,x=>x.toFixed(2).replace(".",",")),macSpark(f.spark,"#a78bfa"),`${L.tgt} ${fPct(f.last.target_from)}–${fPct(f.last.target_to)}`,MAC_SRC[f.source],f.date);
   const u=S.ust;
@@ -1048,6 +1074,7 @@ function ssPick(sym){
 let curSym=null;
 function openSym(sym){
   curSym=sym;
+  _lastQuote=null; _lastFund=null; _lastProfile=null;
   _idxMode=false; curIdx=null;
   $("dWatch").style.display="";
   if($("dNav"))$("dNav").style.display=""; if($("dNavTitle"))$("dNavTitle").style.display="";
@@ -1073,6 +1100,7 @@ let _idxMode=false, curIdx=null;
 function idxFileSym(s){const m={VNINDEX:"VNINDEX",VN30:"VN30",HNXINDEX:"HNX",HNX:"HNX",UPCOMINDEX:"UPCOM",UPCOM:"UPCOM"};return m[String(s||"").toUpperCase()]||null;}
 function openIndex(fs){
   if(!IDX_META[fs])return;
+  _lastQuote=null; _lastFund=null; _lastProfile=null;
   _idxMode=true; curIdx=fs; curSym=null;
   document.querySelectorAll(".view").forEach(s=>s.classList.remove("on"));
   $("v-detail").classList.add("on");window.scrollTo(0,0);
@@ -1106,7 +1134,8 @@ async function loadDetail(sym){
   $("dQuote").innerHTML='<div class="hint">Đang tải…</div>';
   try{
     const j=await api("/quote?symbol="+encodeURIComponent(sym));
-    const q=j.quote||j;const pc=q.pct_change,cls=pc>0?"up":pc<0?"down":"";
+    const q=j.quote||j; _lastQuote=q; renderFaPctGrid();
+    const pc=q.pct_change,cls=pc>0?"up":pc<0?"down":"";
     let h=`<div class="row"><span class="k">Giá khớp</span><span class="v" style="font-size:17px">${fmtN(q.close)}</span></div>`;
     h+=`<div class="row"><span class="k">Thay đổi</span><span class="v ${cls}">${q.change!=null?fmtN(q.change)+" ("+fmtPct(pc)+")":fmtPct(pc)}</span></div>`;
     if(q.foreign_buy_value!=null||q.foreign_sell_value!=null){
@@ -1588,6 +1617,7 @@ async function loadProfile(sym){
 }
 function renderProfile(j){
   const box=$("dProf"); if(!box) return;
+  _lastProfile=j; renderFaPctGrid();
   const L=PROF_I18N[curLang]||PROF_I18N.vi;
   const pct=v=>v==null?"—":Number(v).toFixed(2).replace(".",",")+"%";
   const pctF=v=>v==null?"—":pct(v<=1?v*100:v);
@@ -1747,6 +1777,10 @@ function chartSvg(rows,scale){
     const vh=vmax?(r.v||0)/vmax*volH:0;
     s+=`<rect x="${(i*xw+1).toFixed(1)}" y="${(H-vh).toFixed(1)}" width="${Math.max(2,xw-2).toFixed(1)}" height="${vh.toFixed(1)}" fill="${col}" opacity=".5"/>`;
   });
+  const lastR=rows[rows.length-1];
+  if(lastR){ const ly=Y(lastR.c), lc=lastR.c>=lastR.o?"#16a34a":"#dc2626";
+    s+=`<line x1="0" y1="${ly.toFixed(1)}" x2="${W}" y2="${ly.toFixed(1)}" stroke="${lc}" stroke-width="0.7" stroke-dasharray="4 3" opacity="0.85"/><text x="${W-3}" y="${(ly-3).toFixed(1)}" font-size="8.5" text-anchor="end" font-weight="700" fill="${lc}">${fmtN(lastR.c*(scale||1000))}</text>`;
+  }
   s+=`<text x="2" y="10" font-size="8" fill="var(--pp-mut)">${fmtN(rawHi*(scale||1000))}</text><text x="2" y="${priceH}" font-size="8" fill="var(--pp-mut)">${fmtN(rawLo*(scale||1000))}</text>`;
   return s+"</svg>"+`<div style="font-size:12px;color:var(--pp-mut);margin-top:4px">${esc(rows[0].t)} → ${esc(rows[rows.length-1].t)}</div>`;
 }
@@ -1754,6 +1788,7 @@ async function loadChart(sym, iv){
   _chartSym=sym; iv=iv||"1D"; _chartIv=iv;
   document.querySelectorAll("#dIv button").forEach(b=>b.classList.toggle("on", b.textContent===iv));
   const box=$("dChart"); box.innerHTML='<div class="hint">Đang tải…</div>';
+  ["dFaLegend","dFaPct","dFaGrid"].forEach(k=>{ const e=$(k); if(e) e.innerHTML=""; });
   const pnl=$("dIndPanel"); if(pnl) pnl.style.display="none";
   try{
     const cnt = iv==="1D" ? 400 : 200;
@@ -1790,10 +1825,12 @@ function indLastText(res, mul){
   }
   return parts.join(" ");
 }
-function chartSvgInd(disp, overlays, off, scale){
+const VOL_MA5_COL="#f59e0b",VOL_MA10_COL="#c084fc";
+function chartSvgInd(disp, overlays, off, scale, volLines){
   const W=340,H=150,volH=26,priceH=H-volH-2;
   let hi=-1e18,lo=1e18,vmax=0;
   for(const r of disp){hi=Math.max(hi,r.h);lo=Math.min(lo,r.l);vmax=Math.max(vmax,r.v||0);}
+  for(const L of (volLines||[])) for(const v of L.vals){ if(v!=null&&v>vmax) vmax=v; }
   for(const ov of overlays){ for(const p of ov.res.plots){ if(p.kind==="histogram") continue; for(let i=0;i<disp.length;i++){ const v=p.values[off+i]; if(v!=null){ if(v>hi)hi=v; if(v<lo)lo=v; } } } }
   const rawHi=hi,rawLo=lo,pad=(hi-lo)*0.06||1; hi+=pad; lo-=pad;
   const xw=W/disp.length, Y=v=>priceH-(v-lo)/(hi-lo)*priceH;
@@ -1819,6 +1856,16 @@ function chartSvgInd(disp, overlays, off, scale){
       for(let i=0;i<disp.length;i++){ const v=p.values[off+i]; if(v==null){ pen=false; continue; } d+=(pen?"L":"M")+(i*xw+xw/2).toFixed(1)+" "+Y(v).toFixed(1)+" "; pen=true; }
       if(d) s+=`<path d="${d}" fill="none" stroke="${col}" stroke-width="1.2"/>`;
     }
+  }
+  for(const L of (volLines||[])){
+    let run=[];
+    const flush=()=>{ if(run.length>1) s+=`<polyline points="${run.join(" ")}" fill="none" stroke="${L.color}" stroke-width="1"/>`; run=[]; };
+    L.vals.forEach((v,i)=>{ if(v==null||!vmax){ flush(); return; } run.push((i*xw+xw/2).toFixed(1)+","+(H-(v/vmax)*volH).toFixed(1)); });
+    flush();
+  }
+  const lastR=disp[disp.length-1];
+  if(lastR){ const ly=Y(lastR.c), lc=lastR.c>=lastR.o?"#16a34a":"#dc2626";
+    s+=`<line x1="0" y1="${ly.toFixed(1)}" x2="${W}" y2="${ly.toFixed(1)}" stroke="${lc}" stroke-width="0.7" stroke-dasharray="4 3" opacity="0.85"/><text x="${W-3}" y="${(ly-3).toFixed(1)}" font-size="8.5" text-anchor="end" font-weight="700" fill="${lc}">${fmtN(lastR.c*scale)}</text>`;
   }
   s+=`<text x="2" y="10" font-size="8" fill="var(--pp-mut)">${fmtN(rawHi*scale)}</text><text x="2" y="${priceH}" font-size="8" fill="var(--pp-mut)">${fmtN(rawLo*scale)}</text>`;
   return s+"</svg>"+`<div style="font-size:12px;color:var(--pp-mut);margin-top:4px">${esc(disp[0].t)} → ${esc(disp[disp.length-1].t)}</div>`;
@@ -1853,14 +1900,93 @@ function paneSvgInd(item, off, dispLen, scale){
   const legend=`<div style="font-size:11px;margin:6px 0 2px"><b>${esc(item.spec&&item.spec.short?item.spec.short:item.st.name)}${esc(indParamSummary(item.st))}</b> ${indLastText(item.res, mul)}</div>`;
   return legend+s;
 }
+function smaSeries(vals,n){
+  const out=new Array(vals.length).fill(null); let sum=0;
+  for(let i=0;i<vals.length;i++){ sum+=vals[i]||0; if(i>=n) sum-=vals[i-n]||0; if(i>=n-1) out[i]=sum/n; }
+  return out;
+}
+let _lastQuote=null,_lastFund=null,_lastProfile=null;
+function renderFaLegend(overlays,volLines,scale){
+  const el=$("dFaLegend"); if(!el) return;
+  const items=[];
+  (overlays||[]).forEach(ov=>{
+    ov.res.plots.forEach(p=>{
+      if(p.kind==="histogram") return;
+      let last=null; for(let i=p.values.length-1;i>=0;i--){ if(p.values[i]!=null){ last=p.values[i]; break; } }
+      const lbl=(ov.spec&&ov.spec.short?ov.spec.short:ov.st.name)+indParamSummary(ov.st);
+      items.push(`<span class="fi"><span class="dot" style="background:${p.color||"#2962FF"}"></span>${esc(lbl)}${last!=null?` <b>${fmtIndVal(last,scale)}</b>`:""}</span>`);
+    });
+  });
+  (volLines||[]).forEach((L,i)=>{
+    let last=null; for(let j=L.vals.length-1;j>=0;j--){ if(L.vals[j]!=null){ last=L.vals[j]; break; } }
+    items.push(`<span class="fi"><span class="dot" style="background:${L.color}"></span>${i===0?"MA5":"MA10"} KL${last!=null?` <b>${fmtN(last)}</b>`:""}</span>`);
+  });
+  el.innerHTML=items.length?`<div class="faleg">${items.join("")}</div>`:"";
+}
+function fmtTyAbs(v){
+  if(v==null||!isFinite(v)) return "—";
+  const a=Math.abs(v);
+  if(a>=1e12) return (v/1e12).toLocaleString("vi-VN",{maximumFractionDigits:2})+" nghìn tỷ";
+  if(a>=1e9) return (v/1e9).toLocaleString("vi-VN",{maximumFractionDigits:1})+" tỷ";
+  if(a>=1e6) return (v/1e6).toLocaleString("vi-VN",{maximumFractionDigits:1})+" triệu";
+  return fmtN(v);
+}
+function renderFaPctGrid(){
+  const pctEl=$("dFaPct"), gridEl=$("dFaGrid");
+  if(pctEl){
+    let h="";
+    if(_chartIv==="1D"&&_chartRows.length>=2){
+      const rows=_chartRows, last=rows[rows.length-1], scale=IDX_LIST.includes(_chartSym)?1:1000;
+      const defs=[["1D",1],["1W",5],["1M",21],["3M",63],["6M",126],["1Y",252]];
+      h='<div class="fapct">'+defs.map(([k,n])=>{
+        const ref=rows[rows.length-1-n];
+        const v=(ref&&ref.c)?(last.c/ref.c-1)*100:null;
+        return `<span class="pc"><span class="k">${k}</span><span class="v">${v==null?"—":`<span class="${v>=0?"up":"dn"}">${fmtPct(v)}</span>`}</span></span>`;
+      }).join("")+"</div>";
+    }
+    pctEl.innerHTML=h;
+  }
+  if(gridEl){
+    let h="";
+    if(_chartIv==="1D"&&!IDX_LIST.includes(_chartSym)&&_chartRows.length>=2){
+      const rows=_chartRows, last=rows[rows.length-1], prev=rows[rows.length-2];
+      const q=_lastQuote||{}, f=_lastFund||{};
+      let shares=null;
+      const ch=(_lastProfile&&_lastProfile.capital_history)||[];
+      if(ch.length){ const cc=Number(ch[0].charter_capital); if(cc>0) shares=cc/10000; }
+      const mcap=(shares!=null)?shares*last.c*1000:null;
+      const val=(q.value_vnd!=null)?q.value_vnd:(last.v||0)*last.c*1000;
+      const cell=(k,v)=>`<div class="fr"><span class="k">${esc(T(k))}</span><span class="v">${v}</span></div>`;
+      h='<div class="fagrid">'
+        +cell("Tham chiếu",fmtN(prev.c*1000))
+        +cell("Mở cửa",fmtN(last.o*1000))
+        +cell("Cao nhất",fmtN(last.h*1000))
+        +cell("Thấp nhất",fmtN(last.l*1000))
+        +cell("Khối lượng",fmtN(last.v||0))
+        +cell("Giá trị",fmtTyAbs(val))
+        +cell("Vốn hoá",fmtTyAbs(mcap))
+        +cell("CP lưu hành",shares!=null?fmtN(shares):"—")
+        +cell("P/E",f.pe_ttm!=null?Number(f.pe_ttm).toFixed(2).replace(".",","):"—")
+        +cell("EPS",f.eps!=null?fmtN(Math.round(f.eps)):"—")
+        +"</div>";
+    }
+    gridEl.innerHTML=h;
+  }
+}
 function renderIndChart(){
   const box=$("dChart"), panes=$("dIndPanes"), chips=$("dIndChips");
   if(!box) return;
   const full=_chartRows, scale=IDX_LIST.includes(_chartSym)?1:1000;
   const disp=full.slice(-60), off=full.length-disp.length;
+  const volFull=full.map(r=>r.v||0);
+  const volLines=[
+    {color:VOL_MA5_COL, vals:smaSeries(volFull,5).slice(off)},
+    {color:VOL_MA10_COL, vals:smaSeries(volFull,10).slice(off)},
+  ];
   const studies=getStudies();
   if(!window.PP_IND||!window.PP_STUDIES){
-    box.innerHTML=chartSvg(disp, scale); if(panes)panes.innerHTML=""; if(chips)chips.innerHTML=""; return;
+    box.innerHTML=chartSvg(disp, scale); if(panes)panes.innerHTML=""; if(chips)chips.innerHTML="";
+    renderFaLegend([], volLines, scale); renderFaPctGrid(); return;
   }
   const bars=full.map(r=>({t:r.t,o:r.o,h:r.h,l:r.l,c:r.c,v:r.v||0}));
   const results=studies.map(st=>{
@@ -1870,9 +1996,11 @@ function renderIndChart(){
   });
   const overlays=results.filter(x=>x.res&&x.res.plots&&x.res.plots.length&&x.spec&&x.spec.priceStudy);
   const paneItems=results.filter(x=>x.res&&x.res.plots&&x.res.plots.length&&x.spec&&!x.spec.priceStudy);
-  box.innerHTML=chartSvgInd(disp, overlays, off, scale);
+  box.innerHTML=chartSvgInd(disp, overlays, off, scale, volLines);
   if(panes) panes.innerHTML=paneItems.map(p=>paneSvgInd(p, off, disp.length, scale)).join("");
   renderIndChips(studies);
+  renderFaLegend(overlays, volLines, scale);
+  renderFaPctGrid();
 }
 function renderIndChips(studies){
   const el=$("dIndChips"); if(!el) return;
@@ -1945,7 +2073,7 @@ document.querySelectorAll("#dIv button").forEach(b=>b.onclick=()=>{ if(_chartSym
 async function loadFund(sym){
   try{
     const j=await api("/fundamentals?symbol="+encodeURIComponent(sym));
-    const f=j.fundamentals||j;
+    const f=j.fundamentals||j; _lastFund=f; renderFaPctGrid();
     const row=(k,v,cls)=>`<div class="row"><span class="k">${k}</span><span class="v ${cls||""}">${v}</span></div>`;
     $("dRatios").innerHTML=row("P/E",f.pe_ttm!=null?Number(f.pe_ttm).toFixed(1):"—")+row("P/B",f.pb!=null?Number(f.pb).toFixed(1):"—")+row("ROE",f.roe_ttm!=null?Number(f.roe_ttm).toFixed(1)+"%":"—","up")+row("ROA",f.roa_ttm!=null?Number(f.roa_ttm).toFixed(1)+"%":"—")+row("Nợ / Vốn chủ",f.de_ratio!=null?Number(f.de_ratio).toFixed(2):"—");
   }catch(e){}
@@ -2011,50 +2139,350 @@ $("dlXls").onclick=()=>{
   dlBlob(h+'</table></body></html>', `${_fsSym}_${FS_TNAME[_fsType]}.xls`, "application/vnd.ms-excel");
 };
 
-// ---- AI Chat ----
+// ---- AI Chat (Dot A): trang rieng, hoi qua lop du lieu da cong bo,
+// tra loi the cau truc + dong nguon/as_of; khong chan goi/han muc
+// (worker mo full giai doan thu nghiem). ----
 function chatAdd(who,text){
   const d=document.createElement("div");
-  d.style.cssText="margin:8px 0;font-size:12px;line-height:1.6";
-  d.innerHTML=(who==="u"?'<div style="text-align:right"><span style="background:var(--pp-accent);color:#fff;padding:8px 12px;border-radius:12px;display:inline-block;max-width:85%">'+esc(text)+'</span></div>':'<div><span style="background:var(--pp-bg2);padding:8px 12px;border-radius:12px;display:inline-block;max-width:90%">'+text+'</span></div>');
+  d.style.cssText="margin:8px 0;font-size:12.5px;line-height:1.6";
+  d.innerHTML=(who==="u"?'<div style="text-align:right"><span style="background:var(--pp-accent);color:#fff;padding:8px 12px;border-radius:12px;display:inline-block;max-width:85%">'+esc(text)+'</span></div>':'<div><div style="background:var(--pp-bg2);padding:10px 12px;border-radius:12px;display:inline-block;max-width:94%;width:94%;box-sizing:border-box">'+text+'</div></div>');
   $("chatBox").appendChild(d);$("chatBox").scrollTop=$("chatBox").scrollHeight;
+  return d;
 }
-async function chatAsk(){
-  const q=$("chatIn").value.trim();if(!q)return;
-  $("chatIn").value="";chatAdd("u",q);chatAdd("a","Đang tìm…");
-  const box=$("chatBox");const loading=box.lastChild;
-  try{
-    const sym=(q.toUpperCase().match(/\b[A-Z]{3,4}\b/)||[])[0];
-    let ans="";
-    if(sym){
-      const j=await api("/quote?symbol="+sym);const qq=j.quote||j;
-      ans=`<b>${esc(sym)}</b>: ${fmtN(qq.close)} (${fmtPct(qq.pct_change)})`;
-      if(qq.foreign_buy_value!=null)ans+=`<br>NN mua/bán: ${fmtTy(qq.foreign_buy_value)} / ${fmtTy(qq.foreign_sell_value)}`;
-    }else if(/sàng lọc|trend/i.test(q)){
-      const j=await api("/screener");const rows=(j.rows||[]).filter(r=>!!r.trend_template).slice(0,5);
-      ans="Mã đạt Trend Template: "+rows.map(r=>`<b style="cursor:pointer" onclick="openSym('${esc(r.symbol)}')">${esc(r.symbol)}</b>`).join(", ");
-    }else if(/tín hiệu|signal/i.test(q)){
-      const j=await api("/signals");const sigs=j.signals||[];
-      ans=sigs.length?sigs.slice(0,3).map(s=>`${esc(s.symbol)} — ${esc(s.pattern)}`).join("<br>"):"Hôm nay chưa có tín hiệu mới.";
-    }else if(/thị trường|regime/i.test(q)){
-      const j=await api("/regime");
-      ans=j.regime?`Chế độ: <b>${esc(j.regime)}</b> — ${esc(j.desc||"")}`:"Chưa có dữ liệu regime.";
-    }else{
-      ans="Em trả lời được: giá mã (gõ tên mã, vd FPT), sàng lọc trend, tín hiệu, chế độ thị trường.";
+let _mcpId=0;
+async function mcpCall(name,args){
+  const tok=localStorage.getItem("elab_authToken")||"";
+  const r=await fetch("/api/mcp",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+tok},
+    body:JSON.stringify({jsonrpc:"2.0",id:++_mcpId,method:"tools/call",params:{name,arguments:args||{}}})});
+  const j=await r.json().catch(()=>null);
+  if(!j||j.error) throw new Error((j&&j.error&&j.error.message)||"mcp");
+  const res=j.result||{};
+  let p=res.structuredContent;
+  if(!p&&res.content&&res.content[0]&&res.content[0].text){ try{ p=JSON.parse(res.content[0].text); }catch(e){} }
+  if(!p) throw new Error("mcp-empty");
+  return p;
+}
+function chatDsLabel(ds){
+  const s=String(ds||"");
+  const M=[["foreign_flow","Dòng tiền khối ngoại"],["prop_flow","Dòng tiền tự doanh"],["company_profile","Hồ sơ công ty"],["quotes","Bảng giá"],["ohlcv","Nến ngày"],["indices","Chỉ số thị trường"],["screener","Bảng sàng lọc"],["fundamentals","Chỉ số tài chính"],["statements","Báo cáo tài chính"],["holders","Sổ cổ đông"],["consensus","Đồng thuận các công ty chứng khoán"],["sectors","Ngành"],["macro","Số liệu vĩ mô"],["events","Sự kiện"],["news","Tin tức"]];
+  for(const [k,v] of M) if(s.includes(k)) return v;
+  return "Dữ liệu thị trường";
+}
+function chatAsOf(s){
+  if(!s) return "";
+  const str=String(s);
+  if(str.includes("T")){ const [d,t]=str.split("T"); return d+" "+(t||"").slice(0,5); }
+  return str;
+}
+function chatMetaHtml(p){
+  const m=p&&p.meta; if(!m) return "";
+  let h=`<div class="chatmeta">${esc(T("Nguồn"))}: ${esc(chatDsLabel(m.source&&m.source.dataset))}`;
+  if(m.as_of) h+=` · ${esc(T("Dữ liệu tại"))}: ${esc(chatAsOf(m.as_of))}`;
+  if(m.stale) h+=` · <span class="down">${esc(T("dữ liệu có thể đã cũ"))}</span>`;
+  if(m.verification==="parity_pending") h+=`<br><span class="down">${esc(T("Số đang được đối chiếu chéo, chưa chốt"))}</span>`;
+  if(m.coverage&&m.coverage.note) h+=`<br>${esc(m.coverage.note)}`;
+  return h+"</div>";
+}
+const CHAT_ROUTES=[];
+function chatReg(label,tool,args){ CHAT_ROUTES.push({label,tool,args}); return CHAT_ROUTES.length-1; }
+function chatChipTap(i){ const r=CHAT_ROUTES[i]; if(!r) return; chatRun(r.label,{tool:r.tool,args:r.args}); }
+function chatFollowHtml(items){
+  if(!items||!items.length) return "";
+  return `<div class="chatfollow">${items.map(it=>`<button class="chipq" onclick="chatChipTap(${chatReg(it.label,it.tool,it.args)})">${esc(it.label)}</button>`).join("")}</div>`;
+}
+function symLink(sym){ return `<span class="symlink" onclick="openSym('${esc(sym)}')">${esc(sym)}</span>`; }
+function chatRow(k,v){ return `<div class="row"><span class="k">${esc(k)}</span><span class="v">${v}</span></div>`; }
+function chatRender(route,p){
+  if(!p) return esc(T("Chưa có dữ liệu"));
+  if(p.error) return `<b>${esc(p.error.message||T("Chưa có dữ liệu"))}</b>`+chatMetaHtml(p);
+  const d=p.data||{}, tool=route.tool, a=route.args||{};
+  let h="", follow=[];
+  const symFollow=(s)=>[
+    {label:`${T("Giá")} ${s}`,tool:"get_quote",args:{symbol:s}},
+    {label:`${T("Biểu đồ 20 phiên")} ${s}`,tool:"get_ohlcv",args:{symbol:s,limit:20}},
+    {label:`${T("Hồ sơ & cổ đông")} ${s}`,tool:"get_company_profile",args:{symbol:s}},
+    {label:`${T("Đồng thuận")} ${s}`,tool:"get_consensus",args:{symbol:s}},
+    {label:`${T("Khối ngoại")} ${s}`,tool:"get_flow",args:{kind:"foreign",symbol:s,days:30}},
+  ];
+  if(tool==="get_quote"){
+    const pc=d.pct_change, cls=pc>0?"up":pc<0?"down":"";
+    h=`<div style="font-size:15px"><b>${esc(d.symbol||a.symbol||"")}</b> <span style="font-size:12px;color:var(--pp-mut)">${esc(d.exchange||"")}</span></div>`
+      +`<div style="font-size:22px;font-weight:800;margin:2px 0">${fmtN(d.close)} <span class="${cls}" style="font-size:13px">${fmtPct(pc)}</span></div>`;
+    if(d.volume!=null) h+=chatRow(T("Khối lượng"),fmtN(d.volume));
+    if(d.value_vnd!=null) h+=chatRow(T("Giá trị"),fmtTyAbs(d.value_vnd));
+    if(d.foreign_buy_value!=null||d.foreign_sell_value!=null) h+=chatRow(T("NN mua / bán"),`<span class="up">${fmtTyAbs(d.foreign_buy_value||0)}</span> / <span class="down">${fmtTyAbs(d.foreign_sell_value||0)}</span>`);
+    follow=symFollow(d.symbol||a.symbol);
+  } else if(tool==="get_ohlcv"){
+    const rows=d.rows||[], sym=d.symbol||a.symbol, isIdx=IDX_LIST.includes(sym);
+    const mult=isIdx?1:1000;
+    if(!rows.length) h=esc(T("Chưa có dữ liệu"));
+    else{
+      const last=rows[rows.length-1];
+      h=`<b>${esc(sym)}</b> — ${esc(T("Đóng cửa phiên gần nhất"))}: <b>${fmtN(last.c*mult)}</b> (${esc(last.t||"")})`;
+      h+='<table class="chatft">'+rows.slice(-6).reverse().map(r=>`<tr><td>${esc(r.t||"")}</td><td style="text-align:right">${fmtN(r.o*mult)}</td><td style="text-align:right">${fmtN(r.h*mult)}</td><td style="text-align:right">${fmtN(r.l*mult)}</td><td style="text-align:right"><b>${fmtN(r.c*mult)}</b></td><td style="text-align:right">${fmtN(r.v||0)}</td></tr>`).join("")+"</table>";
+      h+=`<div style="font-size:11px;color:var(--pp-mut)">${esc(T("Ngày · Mở · Cao · Thấp · Đóng · Khối lượng"))}</div>`;
     }
-    loading.querySelector("span").innerHTML=ans;
-  }catch(e){loading.querySelector("span").textContent="Lỗi tải dữ liệu. Thử lại sau.";}
-  box.scrollTop=box.scrollHeight;
+    if(!isIdx) follow=symFollow(sym);
+  } else if(tool==="get_indices"){
+    const ix=d.indices||{};
+    if(d.regime) h+=`<div style="margin-bottom:6px">${esc(T("Trạng thái thị trường"))}: <b>${esc(typeof d.regime==="string"?d.regime:(d.regime.regime||""))}</b>${d.regime&&d.regime.desc?` — ${esc(d.regime.desc)}`:""}</div>`;
+    const tbl=(arr,tap)=>'<table class="chatft">'+(arr||[]).map(e=>{ const code=e.symbol||e.code||e.name||""; const pc=e.pct_change!=null?e.pct_change:e.pct; return `<tr><td>${tap&&IDX_LIST.includes(code)?`<span class="symlink" onclick="openIndex('${esc(code)}')">${esc(e.name||code)}</span>`:esc(e.name||code)}</td><td style="text-align:right"><b>${fmtN(e.close)}</b></td><td style="text-align:right" class="${(pc||0)>=0?"up":"dn"}">${pc!=null?fmtPct(pc):""}</td></tr>`; }).join("")+"</table>";
+    h+=tbl(ix.main,true);
+    if(ix.sectors&&ix.sectors.length) h+=`<div style="margin-top:8px;font-weight:700">${esc(T("Chỉ số ngành"))}</div>`+tbl(ix.sectors,false);
+    follow=[{label:"VNINDEX 20 phiên",tool:"get_ohlcv",args:{symbol:"VNINDEX",limit:20}}];
+  } else if(tool==="get_company_profile"){
+    const sym=a.symbol||"", sh=(d.shareholders||[]).slice().sort((x,y)=>(y.shares_owned||0)-(x.shares_owned||0));
+    h=`<b>${esc(sym)}</b> — ${esc(T("Hồ sơ & cổ đông"))}`;
+    if(sh.length){
+      const top=sh[0];
+      h+=`<div style="margin-top:4px">${esc(T("Cổ đông lớn nhất"))}: <b>${esc(top.name||"")}</b> — ${fmtN(top.shares_owned)} ${esc(T("cổ phiếu"))} (${top.ownership_percentage!=null?Number(top.ownership_percentage).toFixed(2).replace(".",",")+"%":""})</div>`;
+      h+='<table class="chatft">'+sh.slice(0,5).map(r=>`<tr><td>${esc(r.name||"")}</td><td style="text-align:right">${fmtN(r.shares_owned)}</td><td style="text-align:right">${r.ownership_percentage!=null?Number(r.ownership_percentage).toFixed(2).replace(".",",")+"%":"—"}</td></tr>`).join("")+"</table>";
+    } else h+=`<br>${esc(T("Chưa có dữ liệu"))}`;
+    follow=symFollow(sym);
+  } else if(tool==="find_holder"){
+    const hs=d.holders||[];
+    if(!hs.length) h=esc(T("Không tìm thấy cổ đông khớp tên này trong chỉ mục đã công bố."));
+    else h=hs.map(hd=>{
+      const rows=(hd.holdings||[]).slice().sort((x,y)=>(y.quantity||0)-(x.quantity||0));
+      let s=`<b>${esc(hd.name||"")}</b>${hd.tot?` — ${esc(T("tổng"))} ${fmtN(hd.tot)} ${esc(T("cổ phiếu"))}`:""}`;
+      s+='<table class="chatft">'+rows.slice(0,10).map(r=>`<tr><td>${symLink(r.symbol)}${r.position?`<div style="font-size:11px;color:var(--pp-mut)">${esc(r.position)}</div>`:""}</td><td style="text-align:right">${fmtN(r.quantity)}</td><td style="text-align:right">${r.pct!=null?(r.pct*100).toFixed(2).replace(".",",")+"%":"—"}</td></tr>`).join("")+"</table>";
+      return s;
+    }).join("");
+  } else if(tool==="get_flow"){
+    const kind=a.kind==="proprietary"?T("Tự doanh"):T("Khối ngoại");
+    const pickV=(r,...ks)=>{ for(const k of ks){ if(r[k]!=null) return r[k]; } return null; };
+    if(a.symbol){
+      const rows=d.rows||[];
+      h=`<b>${esc(a.symbol)}</b> — ${kind} (${esc(T("mua/bán ròng theo phiên"))})`;
+      if(rows.length){
+        const rowsDesc=rows.slice().sort((x,y)=>String(y.trade_date||y.date||"").localeCompare(String(x.trade_date||x.date||"")));
+        h+='<table class="chatft">'+rowsDesc.slice(0,8).map(r=>{
+          const bv=pickV(r,"buy_value_est","buy_value_vnd","buy_value"), sv=pickV(r,"sell_value_est","sell_value_vnd","sell_value"), net=pickV(r,"net_value_est","net_value_vnd","net_value");
+          return `<tr><td>${esc(r.trade_date||r.date||"")}</td><td style="text-align:right">${bv==null?"—":fmtTyAbs(bv)}</td><td style="text-align:right">${sv==null?"—":fmtTyAbs(sv)}</td><td style="text-align:right" class="${net==null?"":net>=0?"up":"dn"}"><b>${net==null?"—":fmtTyAbs(net)}</b></td></tr>`; }).join("")+"</table>";
+        h+=`<div style="font-size:11px;color:var(--pp-mut)">${esc(T("Ngày · Mua · Bán · Ròng (đồng)"))}</div>`;
+      } else h+=`<br>${esc(T("Chưa có dữ liệu"))}`;
+      follow=symFollow(a.symbol);
+    } else {
+      let rows=d.rows||[];
+      if(!rows.length&&d.by_symbol) rows=Object.keys(d.by_symbol).map(k=>({symbol:k,...(d.by_symbol[k]||{})}));
+      const netOf=r=>{ const v=pickV(r,"net_value_vnd","net_value_est","net_value","net"); return v==null?0:v; };
+      rows=rows.slice().sort((x,y)=>Math.abs(netOf(y))-Math.abs(netOf(x))).slice(0,10);
+      h=`<b>${kind} — ${esc(T("hôm nay"))}</b>`;
+      if(rows.length) h+='<table class="chatft">'+rows.map(r=>`<tr><td>${r.symbol?symLink(r.symbol):""}</td><td style="text-align:right" class="${netOf(r)>=0?"up":"dn"}"><b>${fmtTyAbs(netOf(r))}</b></td></tr>`).join("")+"</table>";
+      else h+=`<br>${esc(T("Chưa có dữ liệu"))}`;
+    }
+  } else if(tool==="get_sector"){
+    if(a.code){
+      h=`<b>${esc(d.name||a.code)}</b> — ${esc(T("Ngành"))}`;
+      const roePct=v=>v==null?null:((Math.abs(v)<=1.5?v*100:v).toFixed(2).replace(".",",")+"%");
+      if(d.pe!=null) h+=chatRow("P/E",Number(d.pe).toFixed(2).replace(".",","));
+      if(d.roe_ttm!=null) h+=chatRow("ROE (TTM)",roePct(d.roe_ttm));
+      if(d.npat_ttm!=null) h+=chatRow(T("LNST (TTM)"),fmtTyAbs(d.npat_ttm));
+      if(d.mcap!=null) h+=chatRow(T("Vốn hoá ngành"),fmtTyAbs(d.mcap));
+      if(d.n_members!=null) h+=chatRow(T("Số mã thành viên"),fmtN(d.n_members));
+      if(d.pe==null&&d.roe_ttm==null) h+=`<br>${esc(T("Chưa có dữ liệu"))}`;
+      h+=`<div style="font-size:11px;color:var(--pp-mut)">${esc(T("Kỳ"))}: ${esc(d.latest_period||"")}</div>`;
+    } else {
+      const rows=d.rows||[];
+      const roePct1=v=>v==null?"":("ROE "+(Math.abs(v)<=1.5?v*100:v).toFixed(1).replace(".",",")+"%");
+      h=`<b>${esc(T("Ngành"))}</b>`;
+      h+='<table class="chatft">'+rows.map(r=>{ const pe=(r.pe!=null?r.pe:r.pe_ttm); return `<tr><td>${esc(r.name||r.code||"")}</td><td style="text-align:right">${pe!=null?"P/E "+Number(pe).toFixed(1).replace(".",","):""}</td><td style="text-align:right">${roePct1(r.roe_ttm)}</td></tr>`; }).join("")+"</table>";
+    }
+    follow=[{label:T("Tất cả ngành"),tool:"get_sector",args:{}}];
+  } else if(tool==="get_macro"){
+    if(a.series){
+      const rows=d.rows||[];
+      const sLbl={omo:"OMO",fx_center:T("Tỷ giá trung tâm USD/VND"),fx_vcb:"Vietcombank",gold_sjc:T("Vàng SJC (bán)"),us10y:T("TP Mỹ 10 năm"),ust_yield:T("TP Mỹ 10 năm"),fed_funds:"Fed",fed_effr:"Fed"}[a.series]||a.series;
+      h=`<b>${esc(sLbl)}</b>`;
+      const last=rows.length?rows[rows.length-1]:((d.series&&d.series.last)||null);
+      if(last){
+        if(a.series==="omo"){
+          if(last.total!=null) h+=chatRow(T("Tổng trúng thầu"),fmtTyAbs(last.total));
+          if(last.total===0) h+=`<div style="margin-top:2px">${esc(T("Không có giao dịch trúng thầu trong ngày"))}</div>`;
+          (last.tenors||[]).filter(tn=>(tn.volume||0)>0).forEach(tn=>{ h+=chatRow(`${tn.days} ${esc(T("ngày"))}`,`${fmtTyAbs(tn.volume)} · ${tn.rate!=null?Number(tn.rate)+"%":""}`); });
+        } else {
+          const KLBL={rate:T("Tỷ giá"),buy:T("Mua"),sell:T("Bán"),yield:T("Lợi suất"),total:T("Tổng")};
+          h+=Object.keys(last).filter(k=>k!=="date"&&k!=="notice"&&typeof last[k]==="number").slice(0,5).map(k=>chatRow(KLBL[k]||k, Math.abs(last[k])>=1e9?fmtTyAbs(last[k]):fmtN(last[k]))).join("");
+          if(last.notice) h+=`<div style="font-size:11px;color:var(--pp-mut)">${esc(T("Thông báo"))}: ${esc(last.notice)}</div>`;
+        }
+        h+=`<div style="font-size:11px;color:var(--pp-mut)">${esc(T("Ngày"))}: ${esc(last.date||"")}</div>`;
+      } else h+=`<br>${esc(T("Chưa có dữ liệu"))}`;
+    } else {
+      const pr=d.policy_rates;
+      h=`<b>${esc(T("Vĩ mô"))}</b>`;
+      if(pr){
+        if(pr.refinancing!=null) h+=chatRow(T("Lãi suất tái cấp vốn"),Number(pr.refinancing).toFixed(2).replace(".",",")+"%");
+        if(pr.rediscount!=null) h+=chatRow(T("Lãi suất tái chiết khấu"),Number(pr.rediscount).toFixed(2).replace(".",",")+"%");
+        if(pr.deposit_avg!=null) h+=chatRow(T("Huy động bình quân"),Number(pr.deposit_avg).toFixed(2).replace(".",",")+"%");
+        if(pr.date) h+=`<div style="font-size:11px;color:var(--pp-mut)">${esc(T("Hiệu lực từ"))}: ${esc(pr.date)}</div>`;
+      }
+      const S=d.series||{};
+      const one=(lbl,sv,fmt)=>{ if(!sv||!sv.last) return ""; return chatRow(lbl,fmt(sv.last)); };
+      h+=one(T("Tỷ giá trung tâm USD/VND"),S.fx_center,l=>fmtN(l.rate)+" ₫");
+      h+=one(T("Vàng SJC (bán)"),S.gold_sjc,l=>fmtN(l.sell)+" ₫");
+      h+=one(T("TP Mỹ 10 năm"),S.us10y||S.ust_yield,l=>(l.yield!=null?Number(l.yield).toFixed(2).replace(".",","):"")+"%");
+      if(!pr&&!S.fx_center) h+=`<br>${esc(T("Chưa có dữ liệu"))}`;
+    }
+    follow=[{label:"OMO",tool:"get_macro",args:{series:"omo"}},{label:T("Tỷ giá trung tâm"),tool:"get_macro",args:{series:"fx_center"}}];
+  } else if(tool==="get_consensus"){
+    if(a.symbol){
+      h=`<b>${esc(a.symbol)}</b> — ${esc(T("Đồng thuận các công ty chứng khoán"))}`;
+      if(d.n_sources!=null) h+=chatRow(T("Số hãng có khuyến nghị"),fmtN(d.n_sources));
+      if(d.mean_target!=null) h+=chatRow(T("Giá mục tiêu trung bình"),fmtN(d.mean_target));
+      if(d.cur_price!=null) h+=chatRow(T("Giá hiện tại"),fmtN(d.cur_price));
+      if(d.upside!=null) h+=chatRow(T("Dư địa tăng"),`<span class="${d.upside>=0?"up":"dn"}">${fmtPct(d.upside*100)}</span>`);
+      const firms=d.firms||[];
+      if(firms.length) h+='<table class="chatft">'+firms.map(f=>`<tr><td>${f.link?`<a href="${esc(f.link)}" target="_blank" rel="noopener" style="color:var(--pp-accent);text-decoration:none">${esc(f.src||"")}</a>`:esc(f.src||"")}</td><td>${esc(f.kn||"")}</td><td style="text-align:right">${f.tgt!=null?fmtN(f.tgt):"—"}</td><td style="text-align:right">${esc(f.date||"")}</td></tr>`).join("")+"</table>";
+      follow=symFollow(a.symbol);
+    } else {
+      const rows=d.rows||[];
+      h=`<b>${esc(T("Đồng thuận — dư địa tăng cao nhất"))}</b>`;
+      h+='<table class="chatft">'+rows.slice(0,10).map(r=>`<tr><td>${symLink(r.symbol)}</td><td style="text-align:right">${r.n_sources!=null?fmtN(r.n_sources)+" "+esc(T("hãng")):""}</td><td style="text-align:right">${r.mean_target!=null?fmtN(r.mean_target):"—"}</td><td style="text-align:right" class="${(r.upside||0)>=0?"up":"dn"}">${r.upside!=null?fmtPct(r.upside*100):"—"}</td></tr>`).join("")+"</table>";
+    }
+  } else if(tool==="get_screener"){
+    const rows=d.rows||[];
+    h=`<b>${esc(route.label||T("Sàng lọc"))}</b>`;
+    h+='<table class="chatft">'+rows.map((r,i)=>`<tr><td style="color:var(--pp-mut)">${i+1}</td><td>${symLink(r.symbol)}</td><td style="text-align:right">${fmtN((r.close||0)*1000)}</td><td style="text-align:right" class="${(r.pct_change||0)>=0?"up":"dn"}">${r.pct_change!=null?fmtPct(r.pct_change):""}</td><td style="text-align:right">${r.pe_ttm!=null?"P/E "+Number(r.pe_ttm).toFixed(1).replace(".",","):""}</td><td style="text-align:right">${r.roe_ttm!=null?"ROE "+Number(r.roe_ttm).toFixed(1).replace(".",",")+"%":""}</td></tr>`).join("")+"</table>";
+    h+=`<div style="font-size:11px;color:var(--pp-mut)">${esc(T("Giá tính bằng đồng"))}</div>`;
+  } else if(tool==="get_fundamentals"){
+    h=`<b>${esc(a.symbol||"")}</b> — ${esc(T("Chỉ số tài chính"))}${d.quarter?` (${esc(d.quarter)})`:""}`;
+    if(d.pe_ttm!=null) h+=chatRow("P/E",Number(d.pe_ttm).toFixed(2).replace(".",","));
+    if(d.pb!=null) h+=chatRow("P/B",Number(d.pb).toFixed(2).replace(".",","));
+    if(d.roe_ttm!=null) h+=chatRow("ROE",Number(d.roe_ttm).toFixed(2).replace(".",",")+"%");
+    if(d.roa_ttm!=null) h+=chatRow("ROA",Number(d.roa_ttm).toFixed(2).replace(".",",")+"%");
+    if(d.de_ratio!=null) h+=chatRow(T("Nợ / Vốn chủ"),Number(d.de_ratio).toFixed(2).replace(".",","));
+    if(d.eps!=null) h+=chatRow("EPS",fmtN(d.eps)+" ₫");
+    if(d.bvps!=null) h+=chatRow("BVPS",fmtN(d.bvps)+" ₫");
+    follow=symFollow(a.symbol);
+  } else if(tool==="get_statements"){
+    const types=d.types||{}, IS=types.IS||[];
+    const byId=(id)=>IS.find(r=>r.id===id);
+    const findBest=(re,notRe)=>{ const cs=IS.filter(r=>re.test(r.name||"")&&!(notRe&&notRe.test(r.name||"")));
+      return cs.find(r=>{ const vs=Object.values(r.v||{}); return vs.some(v=>v!=null); })||cs[0]||null; };
+    const rev=byId("IS_NET_INTEREST_INCOME")||byId("IS_REVENUE")||byId("IS_NET_REVENUE")||findBest(/doanh thu/i,/tài chính/i);
+    const prf=byId("IS_NET_PROFIT_AFTER_TAX")||findBest(/^lợi nhuận sau thuế/i);
+    const pers=(d.periods||[]).slice(0,3);
+    h=`<b>${esc(a.symbol||"")}</b> — ${esc(T("Kết quả kinh doanh"))}`;
+    const line=(lbl,r)=>{ if(!r) return ""; return `<div style="margin-top:4px">${esc(lbl)}:<br>${pers.map(pp=>`${esc(pp)}: <b>${fmtTyAbs(r.v?r.v[pp]:null)}</b>`).join(" · ")}</div>`; };
+    h+=line(rev&&rev.id==="IS_NET_INTEREST_INCOME"?T("Thu nhập lãi thuần"):T("Doanh thu"),rev)+line(T("Lợi nhuận sau thuế"),prf);
+    if(!rev&&!prf) h+=`<br>${esc(T("Chưa có dữ liệu"))}`;
+    follow=symFollow(a.symbol);
+  } else if(tool==="get_events"){
+    const items=d.items||[];
+    h=`<b>${esc(a.symbol||"")}</b> — ${esc(T("Sự kiện"))}`;
+    if(items.length) h+='<table class="chatft">'+items.slice(0,8).map(e=>`<tr><td style="white-space:nowrap">${esc(e.date||e.event_date||"")}</td><td>${esc(e.title||e.name||e.event_type||"")}</td></tr>`).join("")+"</table>";
+    else h+=`<br>${esc(T("Chưa có dữ liệu"))}`;
+    follow=symFollow(a.symbol);
+  } else if(tool==="get_news"){
+    const items=d.items||[];
+    h=`<b>${esc(T("Tin tức"))}${a.symbol?" — "+esc(a.symbol):""}</b>`;
+    if(d.latest_published_at) h+=`<div style="margin-top:4px">${esc(T("Tin mới nhất"))}: <b>${esc(chatAsOf(d.latest_published_at))}</b></div>`;
+    if(items.length) h+='<div style="margin-top:4px">'+items.slice(0,6).map(n=>`<div style="padding:5px 0;border-bottom:1px solid var(--pp-line)">${n.url?`<a href="${esc(n.url)}" target="_blank" rel="noopener" style="color:var(--pp-ink);text-decoration:none">${esc(n.title||"")}</a>`:esc(n.title||"")}<div style="font-size:11px;color:var(--pp-mut)">${esc(chatAsOf(n.published_at||n.time||""))}${n.source?" · "+esc(n.source):""}</div></div>`).join("")+"</div>";
+    else h+=`<br>${esc(T("Chưa có dữ liệu"))}`;
+  }
+  return h+chatFollowHtml(follow)+chatMetaHtml(p);
+}
+function chatRoute(qRaw){
+  const q=qRaw||"";
+  const symM=q.toUpperCase().match(/\b[A-Z]{3,4}\b/);
+  const sym=symM?symM[0]:null;
+  const low=q.toLowerCase();
+  const has=(re)=>re.test(low);
+  if(has(/lãi suất điều hành|tái cấp vốn|tái chiết khấu/)) return {tool:"get_macro",args:{},label:q};
+  if(has(/omo/)) return {tool:"get_macro",args:{series:"omo"},label:q};
+  if(has(/tỷ giá trung tâm/)) return {tool:"get_macro",args:{series:"fx_center"},label:q};
+  if(has(/giá vàng|vàng sjc/)) return {tool:"get_macro",args:{series:"gold_sjc"},label:q};
+  if(has(/vĩ mô/)) return {tool:"get_macro",args:{},label:q};
+  if(has(/ngành/)){ if(has(/ngân hàng/)) return {tool:"get_sector",args:{code:"8300"},label:q}; return {tool:"get_sector",args:{},label:q}; }
+  if(has(/đồng thuận|khuyến nghị|giá mục tiêu/)) return {tool:"get_consensus",args:sym?{symbol:sym}:{},label:q};
+  if(has(/tự doanh/)) return {tool:"get_flow",args:sym?{kind:"proprietary",symbol:sym,days:30}:{kind:"proprietary"},label:q};
+  if(has(/khối ngoại|nước ngoài/)){ const dm=low.match(/(\d+)\s*ngày/); return {tool:"get_flow",args:sym?{kind:"foreign",symbol:sym,days:dm?Number(dm[1]):30}:{kind:"foreign"},label:q}; }
+  if(has(/nắm/)&&!has(/cổ đông lớn/)){
+    const name=q.replace(/ông|bà|anh|chị/gi," ").replace(/đang\s*nắm.*$/i,"").replace(/nắm.*$/i,"").replace(/[?？]/g,"").trim();
+    if(name.split(/\s+/).length>=2) return {tool:"find_holder",args:{name},label:q};
+  }
+  if(has(/p\/e thấp nhất|thấp nhất thị trường/)) return {tool:"get_screener",args:{sort_by:"pe_ttm",order:"asc",limit:10},label:T("P/E thấp nhất thị trường")};
+  if(has(/tăng mạnh nhất/)) return {tool:"get_screener",args:{sort_by:"pct_change",order:"desc",limit:10},label:T("Tăng mạnh nhất")};
+  if(has(/giá trị giao dịch|thanh khoản cao nhất|giá trị lớn nhất/)) return {tool:"get_screener",args:{sort_by:"value_vnd",order:"desc",limit:10},label:T("Giá trị giao dịch lớn nhất")};
+  if(has(/sàng lọc|xếp hạng/)) return {tool:"get_screener",args:{sort_by:"pct_change",order:"desc",limit:10},label:T("Sàng lọc")};
+  if(has(/cổ đông lớn|hồ sơ/)) { if(sym) return {tool:"get_company_profile",args:{symbol:sym},label:q}; }
+  if(has(/sự kiện|cổ tức|đại hội/)) { if(sym) return {tool:"get_events",args:{symbol:sym},label:q}; }
+  if(has(/doanh thu|lợi nhuận|kết quả kinh doanh|báo cáo tài chính/)) { if(sym) return {tool:"get_statements",args:{symbol:sym,periods:4},label:q}; }
+  if(has(/chỉ số tài chính|p\/e của|roe của|cơ bản/)) { if(sym) return {tool:"get_fundamentals",args:{symbol:sym},label:q}; }
+  if(has(/tin/)) return {tool:"get_news",args:sym?{symbol:sym}:{},label:q};
+  if(has(/chỉ số/)&&(has(/phiên|biểu đồ|diễn biến|nến/))) { const ix=["VNINDEX","VN30","HNX","UPCOM"].find(x=>q.toUpperCase().includes(x))||"VNINDEX"; const lm=low.match(/(\d+)\s*phiên/); return {tool:"get_ohlcv",args:{symbol:ix,limit:lm?Number(lm[1]):20},label:q}; }
+  if(has(/biểu đồ|nến|diễn biến|phiên gần/)) { if(sym&&!IDX_LIST.includes(sym)) return {tool:"get_ohlcv",args:{symbol:sym,limit:20},label:q}; if(sym) return {tool:"get_ohlcv",args:{symbol:sym,limit:20},label:q}; }
+  if(has(/chỉ số|thị trường hôm nay/)) return {tool:"get_indices",args:{},label:q};
+  if(sym) return {tool:"get_quote",args:{symbol:sym},label:q};
+  return null;
+}
+async function chatRun(label,route){
+  chatAdd("u",label);
+  const d=chatAdd("a",esc(T("Đang tìm…")));
+  const inner=d.querySelector("div>div");
+  try{
+    if(!route){ inner.innerHTML=`<b>${esc(T("Câu hỏi này em chưa trả lời được."))}</b><br>${esc(T("Thử các câu gợi ý ở đầu trang, hoặc hỏi theo mã cổ phiếu, ngành, vĩ mô, dòng tiền…"))}`; return; }
+    const p=await mcpCall(route.tool,route.args);
+    inner.innerHTML=chatRender({...route,label},p);
+  }catch(e){ inner.textContent=T("Lỗi tải dữ liệu. Thử lại sau."); }
+  $("chatBox").scrollTop=$("chatBox").scrollHeight;
+}
+function chatAsk(){
+  const q=$("chatIn").value.trim(); if(!q) return;
+  $("chatIn").value="";
+  chatRun(q,chatRoute(q));
 }
 $("chatSend").onclick=chatAsk;
 $("chatIn").onkeydown=e=>{if(e.key==="Enter")chatAsk();};
 
-
-// ---- i18n 4 ngôn ngữ ----
+// ---- Cau hoi goi y theo 7 nhom kha nang (Dot A) ----
+const CHAT_GROUPS=[
+ {t:{vi:"Giá & biểu đồ",en:"Price & charts",zh:"价格与图表",ko:"가격·차트"},qs:[
+  {q:{vi:"Giá FPT phiên gần nhất?",en:"Latest FPT price?",zh:"FPT最新价格?",ko:"FPT 최근 가격?"},tool:"get_quote",args:{symbol:"FPT"}},
+  {q:{vi:"VNINDEX 20 phiên gần đây diễn biến thế nào?",en:"How has VNINDEX moved over the last 20 sessions?",zh:"VNINDEX近20个交易日走势如何?",ko:"VNINDEX 최근 20거래일 흐름은?"},tool:"get_ohlcv",args:{symbol:"VNINDEX",limit:20}},
+  {q:{vi:"Chỉ số thị trường hôm nay",en:"Market indices today",zh:"今日市场指数",ko:"오늘 시장 지수"},tool:"get_indices",args:{}},
+ ]},
+ {t:{vi:"Hồ sơ & cổ đông",en:"Profile & shareholders",zh:"公司资料与股东",ko:"기업 정보·주주"},qs:[
+  {q:{vi:"Cổ đông lớn nhất của FPT là ai?",en:"Who is FPT's largest shareholder?",zh:"FPT的最大股东是谁?",ko:"FPT의 최대 주주는 누구인가요?"},tool:"get_company_profile",args:{symbol:"FPT"}},
+  {q:{vi:"Ông Trương Gia Bình đang nắm những mã nào?",en:"Which stocks does Mr. Truong Gia Binh hold?",zh:"张家平先生持有哪些股票?",ko:"쯔엉자빈 회장은 어떤 종목을 보유하고 있나요?"},tool:"find_holder",args:{name:"Trương Gia Bình"}},
+  {q:{vi:"Sự kiện sắp tới của VNM",en:"Upcoming VNM events",zh:"VNM近期事件",ko:"VNM 예정 이벤트"},tool:"get_events",args:{symbol:"VNM"}},
+ ]},
+ {t:{vi:"Dòng tiền",en:"Money flow",zh:"资金流",ko:"수급"},qs:[
+  {q:{vi:"Khối ngoại mua ròng VCB 30 ngày qua thế nào?",en:"Foreign net buying of VCB over the last 30 days?",zh:"近30日外资净买入VCB情况?",ko:"최근 30일 외국인 VCB 순매수는?"},tool:"get_flow",args:{kind:"foreign",symbol:"VCB",days:30}},
+  {q:{vi:"Tự doanh hôm nay mua ròng mạnh nhất mã nào?",en:"Which stock did proprietary desks net-buy most today?",zh:"今日自营净买入最多的股票?",ko:"오늘 자기자본 순매수 1위 종목은?"},tool:"get_flow",args:{kind:"proprietary"}},
+  {q:{vi:"Khối ngoại hôm nay mua/bán ròng ra sao?",en:"Foreign net flow today?",zh:"今日外资净买卖情况?",ko:"오늘 외국인 순매매는?"},tool:"get_flow",args:{kind:"foreign"}},
+ ]},
+ {t:{vi:"Đồng thuận CTCK",en:"Broker consensus",zh:"券商共识",ko:"증권사 컨센서스"},qs:[
+  {q:{vi:"FPT được mấy hãng khuyến nghị, giá mục tiêu trung bình bao nhiêu?",en:"How many brokers cover FPT and what is the average target?",zh:"有多少家券商覆盖FPT,平均目标价多少?",ko:"FPT를 커버하는 증권사는 몇 곳, 평균 목표가는?"},tool:"get_consensus",args:{symbol:"FPT"}},
+  {q:{vi:"Mã nào có dư địa tăng theo đồng thuận cao nhất?",en:"Which stock has the highest consensus upside?",zh:"共识上涨空间最大的股票?",ko:"컨센서스 상승 여력이 가장 큰 종목은?"},tool:"get_consensus",args:{}},
+ ]},
+ {t:{vi:"Vĩ mô",en:"Macro",zh:"宏观",ko:"거시경제"},qs:[
+  {q:{vi:"Lãi suất điều hành hiện nay bao nhiêu?",en:"Current policy interest rates?",zh:"当前政策利率是多少?",ko:"현재 정책금리는?"},tool:"get_macro",args:{}},
+  {q:{vi:"OMO hôm nay bơm/hút bao nhiêu?",en:"Today's open-market operations?",zh:"今日公开市场操作如何?",ko:"오늘 공개시장운영은?"},tool:"get_macro",args:{series:"omo"}},
+  {q:{vi:"Tỷ giá trung tâm USD/VND hôm nay?",en:"Today's USD/VND central rate?",zh:"今日美元/越盾中心汇率?",ko:"오늘 USD/VND 기준환율은?"},tool:"get_macro",args:{series:"fx_center"}},
+ ]},
+ {t:{vi:"Ngành",en:"Sectors",zh:"行业",ko:"업종"},qs:[
+  {q:{vi:"Ngành ngân hàng: P/E và ROE ra sao?",en:"Banking sector: P/E and ROE?",zh:"银行行业:市盈率和ROE如何?",ko:"은행 업종: P/E와 ROE는?"},tool:"get_sector",args:{code:"8300"}},
+  {q:{vi:"Tất cả ngành: P/E hiện tại",en:"All sectors: current P/E",zh:"全部行业:当前市盈率",ko:"전체 업종: 현재 P/E"},tool:"get_sector",args:{}},
+ ]},
+ {t:{vi:"Sàng lọc",en:"Screener",zh:"筛选",ko:"스크리너"},qs:[
+  {q:{vi:"Mã có P/E thấp nhất thị trường?",en:"Lowest P/E stocks?",zh:"市盈率最低的股票?",ko:"P/E가 가장 낮은 종목은?"},tool:"get_screener",args:{sort_by:"pe_ttm",order:"asc",limit:10}},
+  {q:{vi:"Mã tăng mạnh nhất hôm nay",en:"Top gainers today",zh:"今日涨幅最大的股票",ko:"오늘 상승률 상위 종목"},tool:"get_screener",args:{sort_by:"pct_change",order:"desc",limit:10}},
+  {q:{vi:"Mã có giá trị giao dịch lớn nhất",en:"Highest traded value",zh:"成交额最大的股票",ko:"거래대금 상위 종목"},tool:"get_screener",args:{sort_by:"value_vnd",order:"desc",limit:10}},
+ ]},
+];
+function renderChatSug(){
+  const el=$("chatSug"); if(!el) return;
+  const lg=["vi","en","zh","ko"].includes(curLang)?curLang:"vi";
+  el.innerHTML='<div class="chatsug">'+CHAT_GROUPS.map(g=>
+    `<div class="sg"><div class="sgt">${esc(g.t[lg]||g.t.vi)}</div>${g.qs.map(it=>`<button class="chipq" onclick="chatChipTap(${chatReg(it.q[lg]||it.q.vi,it.tool,it.args)})">${esc(it.q[lg]||it.q.vi)}</button>`).join("")}</div>`
+  ).join("")+"</div>";
+}
 const LANGS = {
-  vi: {market:"Thị trường",screen:"Sàng lọc",cons:"Đồng thuận",hold:"Cổ đông",sec:"Ngành",alert:"Cảnh báo",mine:"Của tôi",indices:"Chỉ số",gainers:"Tăng mạnh nhất HOSE",send:"Gửi",askPh:"Hỏi về cổ phiếu…"},
-  en: {market:"Market",screen:"Screener",cons:"Consensus",hold:"Shareholders",sec:"Sectors",alert:"Alerts",mine:"Mine",indices:"Indices",gainers:"Top gainers HOSE",send:"Send",askPh:"Ask about stocks…"},
-  zh: {market:"市场",screen:"筛选",cons:"共识",hold:"股东",sec:"行业",alert:"提醒",mine:"我的",indices:"指数",gainers:"HOSE涨幅榜",send:"发送",askPh:"询问股票…"},
-  ko: {market:"시장",screen:"스크리너",cons:"컨센서스",hold:"주주",sec:"업종",alert:"알림",mine:"내 정보",indices:"지수",gainers:"HOSE 상승 상위",send:"보내기",askPh:"주식에 대해 질문…"}
+  vi: {market:"Thị trường",screen:"Sàng lọc",cons:"Đồng thuận",hold:"Cổ đông",sec:"Ngành",alert:"Cảnh báo",mine:"Của tôi",chat:"AI Chat",indices:"Chỉ số",gainers:"Tăng mạnh nhất HOSE",send:"Gửi",askPh:"Hỏi về cổ phiếu…"},
+  en: {market:"Market",screen:"Screener",cons:"Consensus",hold:"Shareholders",sec:"Sectors",alert:"Alerts",mine:"Mine",chat:"AI Chat",indices:"Indices",gainers:"Top gainers HOSE",send:"Send",askPh:"Ask about stocks…"},
+  zh: {market:"市场",screen:"筛选",cons:"共识",hold:"股东",sec:"行业",alert:"提醒",mine:"我的",chat:"AI Chat",indices:"指数",gainers:"HOSE涨幅榜",send:"发送",askPh:"询问股票…"},
+  ko: {market:"시장",screen:"스크리너",cons:"컨센서스",hold:"주주",sec:"업종",alert:"알림",mine:"내 정보",chat:"AI Chat",indices:"지수",gainers:"HOSE 상승 상위",send:"보내기",askPh:"주식에 대해 질문…"}
 };
 let curLang = (localStorage.getItem("elab_uiLang") || localStorage.getItem("stk_lang") || "vi").replace(/"/g, "");
 if(!["vi","en","zh","ko"].includes(curLang)) curLang = "vi";
@@ -2098,6 +2526,78 @@ const I18N_FULL = {
 "+ Thêm cảnh báo":["+ Add alert","+ 添加提醒","+ 알림 추가"],
 "+ Thêm cảnh báo mới":["+ Add new alert","+ 添加新提醒","+ 새 알림 추가"],
 "Biểu đồ":["Chart","图表","차트"],
+"Tham chiếu":["Reference","参考价","기준가"],
+"Mở cửa":["Open","开盘","시가"],
+"Cao nhất":["High","最高","고가"],
+"Thấp nhất":["Low","最低","저가"],
+"Giá trị":["Value","成交额","거래대금"],
+"Vốn hoá":["Market cap","市值","시가총액"],
+"CP lưu hành":["Shares outstanding","流通股","유통주식수"],
+"Nguồn":["Source","来源","출처"],
+"Dữ liệu tại":["Data as of","数据截至","기준 시각"],
+"dữ liệu có thể đã cũ":["data may be stale","数据可能已过时","데이터가 오래되었을 수 있음"],
+"Số đang được đối chiếu chéo, chưa chốt":["Figures are being cross-checked, not final","数据正在交叉核对,尚未定稿","수치 교차 검증 중, 미확정"],
+"Biểu đồ 20 phiên":["20-session chart","近20日图表","20거래일 차트"],
+"Hồ sơ & cổ đông":["Profile & shareholders","公司资料与股东","기업 정보·주주"],
+"Khối ngoại":["Foreign investors","外资","외국인"],
+"Đóng cửa phiên gần nhất":["Latest close","最近收盘","최근 종가"],
+"Ngày · Mở · Cao · Thấp · Đóng · Khối lượng":["Date · Open · High · Low · Close · Volume","日期·开·高·低·收·量","날짜 · 시가 · 고가 · 저가 · 종가 · 거래량"],
+"Trạng thái thị trường":["Market state","市场状态","시장 상태"],
+"Chỉ số ngành":["Sector indices","行业指数","업종 지수"],
+"Cổ đông lớn nhất":["Largest shareholder","最大股东","최대 주주"],
+"cổ phiếu":["shares","股","주"],
+"Không tìm thấy cổ đông khớp tên này trong chỉ mục đã công bố.":["No shareholder matching this name in the published index.","已发布索引中未找到匹配该姓名的股东。","공개된 색인에서 해당 이름의 주주를 찾지 못했습니다."],
+"tổng":["total","合计","합계"],
+"Tự doanh":["Proprietary desks","自营","자기자본"],
+"mua/bán ròng theo phiên":["net buy/sell by session","按交易日净买卖","거래일별 순매매"],
+"Ngày · Mua · Bán · Ròng (đồng)":["Date · Buy · Sell · Net (VND)","日期·买·卖·净额(越盾)","날짜 · 매수 · 매도 · 순매매(동)"],
+"hôm nay":["today","今日","오늘"],
+"Kỳ":["Period","期间","기간"],
+"Doanh thu kỳ gần nhất":["Latest-quarter revenue","最近一期营收","최근 분기 매출"],
+"LNST kỳ gần nhất":["Latest-quarter net profit","最近一期净利润","최근 분기 순이익"],
+"Tất cả ngành":["All sectors","全部行业","전체 업종"],
+"Vĩ mô":["Macro","宏观","거시경제"],
+"Lãi suất tái cấp vốn":["Refinancing rate","再融资利率","재융자 금리"],
+"Lãi suất tái chiết khấu":["Rediscount rate","再贴现利率","재할인율"],
+"Huy động bình quân":["Average deposit rate","平均存款利率","평균 예금금리"],
+"Hiệu lực từ":["Effective from","生效日期","시행일"],
+"Tỷ giá trung tâm USD/VND":["USD/VND central rate","美元/越盾中心汇率","USD/VND 기준환율"],
+"Vàng SJC (bán)":["SJC gold (sell)","SJC金价(卖出)","SJC 금(매도)"],
+"TP Mỹ 10 năm":["US 10Y Treasury","美国10年期国债","미국 10년물 국채"],
+"Tỷ giá trung tâm":["Central rate","中心汇率","기준환율"],
+"Tỷ giá":["Exchange rate","汇率","환율"],
+"Đồng thuận các công ty chứng khoán":["Broker consensus","券商共识","증권사 컨센서스"],
+"Số hãng có khuyến nghị":["Brokers covering","覆盖券商数","커버 증권사 수"],
+"Giá mục tiêu trung bình":["Average target price","平均目标价","평균 목표가"],
+"Giá hiện tại":["Current price","当前价格","현재가"],
+"Dư địa tăng":["Upside","上涨空间","상승 여력"],
+"hãng":["brokers","家","곳"],
+"Đồng thuận — dư địa tăng cao nhất":["Consensus — highest upside","共识 — 上涨空间最大","컨센서스 — 상승 여력 상위"],
+"Giá tính bằng đồng":["Prices in VND","价格单位为越盾","가격 단위: 동"],
+"Chỉ số tài chính":["Financial ratios","财务指标","재무 지표"],
+"Nợ / Vốn chủ":["Debt / Equity","负债/权益","부채/자본"],
+"Kết quả kinh doanh":["Business results","经营业绩","경영 실적"],
+"Doanh thu":["Revenue","营收","매출"],
+"Lợi nhuận sau thuế":["Net profit after tax","净利润","순이익"],
+"Tin mới nhất":["Latest news","最新消息","최신 뉴스"],
+"P/E thấp nhất thị trường":["Lowest P/E in the market","全市场最低市盈率","시장 최저 P/E"],
+"Tăng mạnh nhất":["Top gainers","涨幅最大","상승률 상위"],
+"Giá trị giao dịch lớn nhất":["Highest traded value","成交额最大","거래대금 상위"],
+"Đang tìm…":["Searching…","查询中…","조회 중…"],
+"Lỗi tải dữ liệu. Thử lại sau.":["Failed to load data. Please try again later.","数据加载失败,请稍后重试。","데이터 로드 실패. 나중에 다시 시도하세요."],
+"Câu hỏi này em chưa trả lời được.":["I can't answer this question yet.","这个问题暂时无法回答。","이 질문에는 아직 답할 수 없습니다."],
+"Thử các câu gợi ý ở đầu trang, hoặc hỏi theo mã cổ phiếu, ngành, vĩ mô, dòng tiền…":["Try the suggested questions at the top of the page, or ask by stock symbol, sector, macro, money flow…","可尝试页面顶部的建议问题,或按股票代码、行业、宏观、资金流提问…","페이지 상단의 추천 질문을 시도하거나 종목, 업종, 거시, 수급으로 질문해 보세요…"],
+"Bán":["Sell","卖出","매도"],
+"Tổng":["Total","合计","합계"],
+"ngày":["days","天","일"],
+"Thông báo":["Notice","公告","공고"],
+"Lợi suất":["Yield","收益率","수익률"],
+"Tổng trúng thầu":["Total allotted","中标总量","총 낙찰액"],
+"Không có giao dịch trúng thầu trong ngày":["No successful bids today","今日无中标交易","오늘 낙찰 거래 없음"],
+"LNST (TTM)":["Net profit (TTM)","净利润(TTM)","순이익(TTM)"],
+"Vốn hoá ngành":["Sector market cap","行业市值","업종 시가총액"],
+"Số mã thành viên":["Member stocks","成分股数量","구성 종목 수"],
+"Thu nhập lãi thuần":["Net interest income","净利息收入","순이자이익"],
 "+ Chỉ báo":["+ Indicator","+ 指标","+ 지표"],
 "Tìm chỉ báo…":["Search indicators…","搜索指标…","지표 검색…"],
 "Sắp có":["Coming soon","即将推出","준비 중"],
@@ -2316,13 +2816,14 @@ function applyLang(){
   const L = LANGS[curLang] || LANGS.vi;
   document.querySelectorAll("#langPick button").forEach(b=>b.classList.toggle("on", b.dataset.lang===curLang));
   // Dịch nhãn tab chính
-  const lbl = {"v-market":L.market,"v-screen":L.screen,"v-consensus":L.cons,"v-holders":L.hold,"v-sectors":L.sec,"v-alert":L.alert,"v-mine":L.mine};
+  const lbl = {"v-market":L.market,"v-screen":L.screen,"v-consensus":L.cons,"v-holders":L.hold,"v-sectors":L.sec,"v-alert":L.alert,"v-mine":L.mine,"v-chat":L.chat};
   document.querySelectorAll("[data-scr]").forEach(()=>{});
   if($("chatSend")) $("chatSend").textContent = L.send;
   if($("chatIn")) $("chatIn").placeholder = L.askPh;
   localStorage.setItem("stk_lang", curLang);
   try{ localStorage.setItem("elab_uiLang", curLang); }catch(e){}
   if(typeof renderDNav==="function")renderDNav();
+  if(typeof renderChatSug==="function")renderChatSug();
   syncLangUI();
 }
 document.querySelectorAll("#langPick button").forEach(b=>b.onclick=()=>setStkLang(b.dataset.lang));

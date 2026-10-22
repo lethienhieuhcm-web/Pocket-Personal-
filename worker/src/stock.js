@@ -1136,6 +1136,91 @@ export async function hStockPublish(request, env){
       await sPut(env, "market/shadow_tick/status.json", doc(Object.assign({}, ts.status, {updated:now})));
       n++;
     }
+    // Dot 2 (thiet ke tong the bo thu): raw tick chunks (gzip
+    // JSONL, base64) + artifact theo nguon — van duoi prefix
+    // shadow_tick, khong consumer production nao doc.
+    if(ts.raw_chunks){
+      const day = (ts.status && ts.status.session_date) || now.slice(0, 10);
+      for(const src of Object.keys(ts.raw_chunks)){
+        if(!/^[a-z0-9-]+$/.test(src)) continue;
+        for(const hour of Object.keys(ts.raw_chunks[src])){
+          if(!/^[0-9]{2}$/.test(hour)) continue;
+          const b64 = ts.raw_chunks[src][hour];
+          if(typeof b64 !== "string" || !b64) continue;
+          const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+          await env.DATA.put("stock/market/shadow_tick/raw/"+day+"/"+src+"/"+hour+"/"+Date.now()+".jsonl.gz",
+            bytes, {httpMetadata:{contentType:"application/gzip"}});
+          n++;
+        }
+      }
+    }
+    if(ts.src_artifacts){
+      for(const src of Object.keys(ts.src_artifacts)){
+        if(!/^[a-z0-9-]+$/.test(src)) continue;
+        const a = ts.src_artifacts[src] || {};
+        if(a.snapshot){
+          await sPut(env, "market/shadow_tick/src/"+src+"/snapshot.json",
+            doc(Object.assign({}, a.snapshot, {src, updated:now})));
+          n++;
+        }
+        if(a.health){
+          await sPut(env, "market/shadow_tick/src/"+src+"/health.json",
+            doc(Object.assign({}, a.health, {src, updated:now})));
+          n++;
+        }
+        const hasBk = a.buckets_dirty && Object.keys(a.buckets_dirty).length;
+        const hasPt = a.buckets_pt_dirty && Object.keys(a.buckets_pt_dirty).length;
+        if(hasBk || hasPt){
+          const bkey = "market/shadow_tick/src/"+src+"/buckets.json";
+          const cur = await sGet(env, bkey) || {buckets:{}};
+          const bk = cur.buckets || {};
+          const bp = cur.buckets_pt || {};
+          // Chi giu phut cua phien hien tai (session_date trong
+          // status cua cung payload): buckets.json khong tich luy
+          // qua phien -> resume chi thay dung phien dang chay, va
+          // object khong phinh theo ngay.
+          const sessDay = (ts.status && ts.status.session_date) || null;
+          if(sessDay){
+            for(const coll of [bk, bp]){
+              for(const sym of Object.keys(coll)){
+                for(const mk of Object.keys(coll[sym])){
+                  if(!mk.startsWith(sessDay)) delete coll[sym][mk];
+                }
+                if(!Object.keys(coll[sym]).length) delete coll[sym];
+              }
+            }
+          }
+          if(hasBk) for(const sym of Object.keys(a.buckets_dirty)){
+            bk[sym] = Object.assign({}, bk[sym] || {}, a.buckets_dirty[sym]);
+          }
+          if(hasPt) for(const sym of Object.keys(a.buckets_pt_dirty)){
+            bp[sym] = Object.assign({}, bp[sym] || {}, a.buckets_pt_dirty[sym]);
+          }
+          await sPut(env, bkey, doc({buckets:bk, buckets_pt:bp, src, updated:now}));
+          n++;
+        }
+      }
+    }
+  }
+  // Merger tach (Dot 3): ban hop nhat theo truong + verdict
+  // conformance chi ghi duoi market/shadow_tick/merged/ — khong
+  // consumer production nao doc, khong ghi khoa production.
+  if(body.tick_merged){
+    const tm = body.tick_merged;
+    if(tm.intraday) for(const key of Object.keys(tm.intraday)){
+      await sPut(env, "market/shadow_tick/merged/intraday/"+key+".json",
+        doc({rows:tm.intraday[key], src:(body._prov||{}).source||null, updated:now}));
+      n++;
+    }
+    if(tm.foreign){
+      await sPut(env, "market/shadow_tick/merged/foreign.json",
+        doc({by_symbol:tm.foreign, src:(body._prov||{}).source||null, updated:now}));
+      n++;
+    }
+    if(tm.status){
+      await sPut(env, "market/shadow_tick/merged/status.json", doc(Object.assign({}, tm.status, {updated:now})));
+      n++;
+    }
   }
   // Bo thu tick DA CONG — ban LAT (Chot Henrry 19:39 21/10): du lieu
   // hop nhat DNSE+KBS+VNDirect+VPS ghi thang production. Intraday ->
@@ -1190,6 +1275,22 @@ export async function hStockPublish(request, env){
 
 
 /* ---------- internal: Modal bao loi -> Telegram ---------- */
+/* Doc artifact shadow_tick (resume Dot 2 cua bo thu): route
+   internal da kiem X-Internal-Secret o router. key rong ->
+   status.json; key khac chi duoc nam duoi prefix shadow_tick. */
+export async function hTickStateGet(request, env){
+  const key = (new URL(request.url).searchParams.get("key") || "").trim();
+  if(!key){
+    const d = await sGet(env, "market/shadow_tick/status.json");
+    return sJson(d || {});
+  }
+  if(key.includes("..") || !/^[a-z0-9/_.-]+$/.test(key)){
+    return jerr("Bad key", 400);
+  }
+  const d = await sGet(env, "market/shadow_tick/" + key);
+  return sJson(d || {});
+}
+
 export async function hModalAlert(request, env){
   const got = request.headers.get("X-Publish-Secret") || "";
   if(!env.STOCK_PUBLISH_SECRET || got !== env.STOCK_PUBLISH_SECRET) return jerr("Forbidden", 403);
