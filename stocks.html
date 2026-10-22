@@ -53,7 +53,7 @@ body{font-family:var(--pp-font);background:var(--pp-bg);color:var(--pp-ink);max-
 .up{color:var(--pp-accent)}.down{color:var(--pp-danger)}
 .sec{padding:14px 16px 4px;font-size:14px;font-weight:700;color:var(--pp-ink)}
 .symsearch{position:relative;margin:12px 16px 0}
-.symsearch input{width:100%;box-sizing:border-box;background:var(--pp-bg2);color:var(--pp-ink);border:1px solid var(--pp-line);border-radius:10px;padding:11px 12px;font-size:14px}
+.symsearch input{width:100%;box-sizing:border-box;background:var(--pp-bg2);color:var(--pp-ink);border:1px solid var(--pp-line);border-radius:10px;padding:11px 12px;font-size:14px;min-height:44px}
 .ss-results{position:absolute;left:0;right:0;top:calc(100% + 4px);background:var(--pp-bg2);border:1px solid var(--pp-line);border-radius:10px;z-index:60;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.35)}
 .ss-row{display:flex;align-items:baseline;gap:8px;padding:10px 12px;cursor:pointer}
 .ss-row:hover,.ss-row.on{background:rgba(127,127,127,.14)}
@@ -97,6 +97,31 @@ input,select{background:var(--pp-bg2);border:1px solid var(--pp-line);color:var(
 <style>
 .tic{width:16px;height:16px;vertical-align:-3px;margin-right:4px}
 .sec,.src,.note{letter-spacing:var(--pp-track-xs,0.01em)}
+/* Container queries (2026-10-22): lưới thẻ Chỉ số (.idx) + Vĩ mô (.mgrid) tự co
+   theo bề ngang THẬT của khung chứa (#v-market / #macroWrap), không chỉ theo
+   màn hình — hết cảnh thẻ bị ép khi khung hẹp. Safari < 16 không hỗ trợ thì
+   @supports not giữ luật @media dự phòng theo bề ngang màn hình.
+   Lưu ý: body app chốt max-width:480px nên nhánh >=560px chỉ kích hoạt nếu
+   sau này bỏ cap; nhánh <339px là nhánh đang sống trên điện thoại rất nhỏ. */
+@supports (container-type:inline-size){
+#v-market,#macroWrap{container-type:inline-size}
+@container (max-width:339px){
+.idx,.mgrid{grid-template-columns:1fr}
+.mcv{font-size:15px;height:auto;min-height:40px}
+.mcspark{height:24px}
+}
+@container (min-width:560px){
+.idx{grid-template-columns:repeat(4,1fr)}
+.mgrid{grid-template-columns:repeat(3,1fr)}
+}
+}
+@supports not (container-type:inline-size){
+@media (max-width:359px){
+.idx,.mgrid{grid-template-columns:1fr}
+.mcv{font-size:15px;height:auto;min-height:40px}
+.mcspark{height:24px}
+}
+}
 </style>
 </head>
 <body>
@@ -533,7 +558,7 @@ function renderMN(j){
   const card=$("mnCard"); if(!card) return;
   const items=(j&&j.items)||[];
   if(!items.length){ card.innerHTML='<div class="hint">Chưa có tin</div>'; return; }
-  card.innerHTML=items.slice(0,10).map(n=>`<div style="padding:8px 0;border-bottom:1px solid var(--pp-line)"><a href="${esc(n.url||"#")}" target="_blank" rel="noopener" style="color:var(--pp-ink);text-decoration:none;font-size:14px;font-weight:600">${esc(n.title||"")}</a><div style="font-size:12px;color:var(--pp-mut);margin-top:2px">${n.symbol?esc(n.symbol)+" · ":""}${esc((n.publish_time||"").slice(0,10))}</div></div>`).join("");
+  card.innerHTML=items.slice(0,10).map(n=>`<div style="padding:8px 0;border-bottom:1px solid var(--pp-line)"><a href="${esc(n.url||"#")}" target="_blank" rel="noopener" style="display:flex;flex-direction:column;justify-content:center;min-height:44px;color:var(--pp-ink);text-decoration:none;font-size:14px;font-weight:600">${esc(n.title||"")}<div style="font-size:12px;color:var(--pp-mut);margin-top:2px;font-weight:400">${n.symbol?esc(n.symbol)+" · ":""}${esc((n.publish_time||"").slice(0,10))}</div></a></div>`).join("");
 }
 // ---- Vi mo (Tier 2-1): GET /macro (overview + spark) va /macro/history
 // khi mo chi tiet. Nguon chinh thong: NHNN, Vietcombank, SJC, NY Fed,
@@ -684,37 +709,43 @@ const SCR_TPL={
     s1b:" Ngành đông nhất: {ind} ({pi}%).",
     s2:"Động lượng phiên gần nhất: {up}% mã tăng, {down}% mã giảm; {tr}% đạt mẫu hình xu hướng (trend template).",
     s3:"Định giá: P/E trung vị {pe} lần, P/B trung vị {pb} lần.",
-    s4:"Chất lượng: ROE trung vị {roe}%; {pio}% mã đạt Piotroski ≥ 7; {alt}% mã có Altman Z trong vùng an toàn (>2,99).",
+    s4:"Chất lượng: ROE trung vị {roe}%; {pio}% mã đạt Piotroski ≥ 7; {alt}% mã có Altman Z trong vùng an toàn theo thang VN (>1,5).",
     s5:"Thanh khoản: tổng giá trị giao dịch {tv}; mã chiếm tỉ trọng lớn nhất: {sym} ({s}%).",
-    s6:"Rủi ro: {de}% mã đòn bẩy cao (D/E > 2 hoặc âm); {ad}% mã có Altman Z vùng nguy hiểm (<1,81)."},
+    s6:"Rủi ro: {de}% mã đòn bẩy cao (D/E > 2 hoặc âm); {ad}% mã có Altman Z vùng nguy hiểm theo thang VN (<0,45)."},
   en:{all:"All exchanges",trendAll:"Any trend",trendYes:"Trend met",trendNo:"Trend not met",
     low:"The filtered set has only {n} symbols — too small a sample; this insight has low reliability.",
     s1:"The filtered set has {n} symbols; largest exchange: {ex} ({pe}%).",
     s1b:" Largest industry: {ind} ({pi}%).",
     s2:"Latest-session momentum: {up}% advancers, {down}% decliners; {tr}% meet the trend template.",
     s3:"Valuation: median P/E {pe}x, median P/B {pb}x.",
-    s4:"Quality: median ROE {roe}%; {pio}% score Piotroski ≥ 7; {alt}% have Altman Z in the safe zone (>2.99).",
+    s4:"Quality: median ROE {roe}%; {pio}% score Piotroski ≥ 7; {alt}% have Altman Z in the safe zone on the VN-calibrated scale (>1.5).",
     s5:"Liquidity: total traded value {tv}; largest contributor: {sym} ({s}%).",
-    s6:"Risk: {de}% are highly leveraged (D/E > 2 or negative); {ad}% have Altman Z in the distress zone (<1.81)."},
+    s6:"Risk: {de}% are highly leveraged (D/E > 2 or negative); {ad}% have Altman Z in the distress zone on the VN-calibrated scale (<0.45)."},
   zh:{all:"全部交易所",trendAll:"全部趋势",trendYes:"符合趋势",trendNo:"未符合趋势",
     low:"筛选集仅有{n}只股票——样本过小，本解读可靠性低。",
     s1:"当前筛选集共{n}只股票；最多的交易所：{ex}（{pe}%）。",
     s1b:" 最多的行业：{ind}（{pi}%）。",
     s2:"最近一期动量：{up}%上涨，{down}%下跌；{tr}%符合趋势模板。",
     s3:"估值：市盈率中位数{pe}倍，市净率中位数{pb}倍。",
-    s4:"质量：ROE中位数{roe}%；{pio}%的股票Piotroski ≥ 7；{alt}%的股票Altman Z处于安全区（>2.99）。",
+    s4:"质量：ROE中位数{roe}%；{pio}%的股票Piotroski ≥ 7；{alt}%的股票Altman Z按越南校准标准处于安全区（>1.5）。",
     s5:"流动性：总成交额{tv}；占比最大：{sym}（{s}%）。",
-    s6:"风险：{de}%的股票杠杆高（D/E > 2或为负）；{ad}%的股票Altman Z处于危险区（<1.81）。"},
+    s6:"风险：{de}%的股票杠杆高（D/E > 2或为负）；{ad}%的股票Altman Z按越南校准标准处于危险区（<0.45）。"},
   ko:{all:"전체 거래소",trendAll:"모든 추세",trendYes:"추세 충족",trendNo:"추세 미충족",
     low:"필터 집합에 {n}개 종목뿐입니다 — 표본이 너무 작아 이 분석의 신뢰도가 낮습니다.",
     s1:"현재 필터 집합은 {n}개 종목; 가장 큰 거래소: {ex}({pe}%).",
     s1b:" 가장 큰 업종: {ind}({pi}%).",
     s2:"최근 세션 모멘텀: {up}% 상승, {down}% 하락; {tr}%가 추세 템플릿을 충족합니다.",
     s3:"밸류에이션: P/E 중앙값 {pe}배, P/B 중앙값 {pb}배.",
-    s4:"퀄리티: ROE 중앙값 {roe}%; {pio}%가 Piotroski ≥ 7; {alt}%가 Altman Z 안전 구간(>2.99)입니다.",
+    s4:"퀄리티: ROE 중앙값 {roe}%; {pio}%가 Piotroski ≥ 7; {alt}%가 베트남 보정 기준 Altman Z 안전 구간(>1.5)입니다.",
     s5:"유동성: 총 거래대금 {tv}; 비중이 가장 큰 종목: {sym}({s}%).",
-    s6:"리스크: {de}%가 고레버리지(D/E > 2 또는 음수); {ad}%가 Altman Z 위험 구간(<1.81)입니다."}};
+    s6:"리스크: {de}%가 고레버리지(D/E > 2 또는 음수); {ad}%가 베트남 보정 기준 Altman Z 위험 구간(<0.45)입니다."}};
 const _med=a=>{if(!a.length)return null;const s=[...a].sort((x,y)=>x-y);const m=s.length>>1;return s.length%2?s[m]:(s[m-1]+s[m])/2;};
+// Thang Altman HIEU CHUAN cho du lieu VN (22/10/2026, do tren phan bo Z cua
+// fundamentals_cache + neo proxy ket cuc von am/lo TTM): an toan > 1.5,
+// nguy hiem < 0.45. KHONG phai nguong Altman goc (2.99/1.81) — Z luu trong kho
+// la ban 4 nhan to (thieu so hang loi nhuan giu lai) nen nguong goc lam 89%
+// toan thi truong roi vao vung nguy hiem, khong con gia tri phan biet.
+const AZ_SAFE=1.5, AZ_DIST=0.45;
 const _pc=(v,d=0)=>v==null?"—":Number(v).toFixed(d).replace(".",",");
 function scrInsightText(rows){
   const T=SCR_TPL[curLang]||SCR_TPL.vi;
@@ -743,7 +774,7 @@ function scrInsightText(rows){
     const alt=rows.filter(r=>r.altman_z!=null&&r.altman_z!==0);
     let s4=t.s4.replace("{roe}",_pc(_med(roes),1));
     s4=s4.replace("{pio}",pio.length?_pc(pio.filter(r=>r.piotroski>=7).length/pio.length*100,0):"—");
-    s4=s4.replace("{alt}",alt.length?_pc(alt.filter(r=>r.altman_z>2.99).length/alt.length*100,0):"—");
+    s4=s4.replace("{alt}",alt.length?_pc(alt.filter(r=>r.altman_z>AZ_SAFE).length/alt.length*100,0):"—");
     if(roes.length||pio.length||alt.length) s.push(s4);
     const tv=rows.reduce((a,r)=>a+(r.value_vnd||0),0);
     if(tv>0){
@@ -753,7 +784,7 @@ function scrInsightText(rows){
       s.push(t.s5.replace("{tv}",tvs).replace("{sym}",top.symbol).replace("{s}",_pc((top.value_vnd||0)/tv*100,1)));
     }
     const de=rows.filter(r=>r.debt_to_equity!=null);
-    const ad=alt.length?alt.filter(r=>r.altman_z<1.81).length/alt.length*100:null;
+    const ad=alt.length?alt.filter(r=>r.altman_z<AZ_DIST).length/alt.length*100:null;
     if(de.length||ad!=null) s.push(t.s6.replace("{de}",de.length?_pc(de.filter(r=>r.debt_to_equity>2||r.debt_to_equity<0).length/de.length*100,0):"—").replace("{ad}",ad==null?"—":_pc(ad,0)));
     out[lang]=s.join(" ");
   }
