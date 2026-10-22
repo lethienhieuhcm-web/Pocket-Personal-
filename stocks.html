@@ -336,6 +336,8 @@ input,select{background:var(--pp-bg2);border:1px solid var(--pp-line);color:var(
 <div class="view" id="v-detail">
 <div class="hdr"><button onclick="go('v-market')" style="background:none;border:none;color:var(--pp-mut);font-size:20px;cursor:pointer;padding:0 6px 0 0">‹</button><h1 id="dSym">—</h1><button id="dWatch" title="Theo dõi mã này" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--pp-mut);padding:0 4px">☆</button><span class="src" id="dSrc">Nguồn: KBS trực tiếp</span></div>
 <div id="dOv">
+<div class="sec" id="dNavTitle">Mục lục</div>
+<div class="navgrid" id="dNav" style="padding-top:2px"></div>
 <div class="card" id="dQuote"><div class="hint">Đang tải…</div></div>
 <div class="sec">Biểu đồ</div>
 <div class="card"><div class="iv" id="dIdxBar" style="display:none;margin-top:0"></div><div class="iv" id="dIv"><button>15m</button><button>1H</button><button class="on">1D</button></div><div id="dChart" style="min-height:150px;margin-top:8px"><div class="hint">Đang tải…</div></div></div>
@@ -345,8 +347,6 @@ input,select{background:var(--pp-bg2);border:1px solid var(--pp-line);color:var(
 <div class="card" id="dCost" style="display:none"></div>
 <div class="sec" id="dEventsSec">Sự kiện</div>
 <div class="card" id="dEventsCard"><div id="dEvents"><div class="hint">Đang tải…</div></div></div>
-<div class="sec" id="dNavTitle">Mục lục</div>
-<div class="navgrid" id="dNav" style="padding-top:2px"></div>
 </div>
 <div id="dFlowH" style="display:none"><div class="pagebar"><span class="backrow" onclick="dBack()">‹ <span class="dbacksym"></span></span></div><div class="sec dtitle" data-k="flow"></div></div>
 <div id="dFlow" style="display:none">
@@ -1111,7 +1111,8 @@ async function loadDetail(sym){
     }
     if(q.bid||q.ask){
       const bids=Array.isArray(q.bid)?q.bid:[q.bid],asks=Array.isArray(q.ask)?q.ask:[q.ask];
-      const bp=bids.slice(0,3).map(fmtN).join(" / "),ap=asks.slice(0,3).map(fmtN).join(" / ");
+      const stepP=x=>Array.isArray(x)?+x[0]:(x&&typeof x==="object"?+(x.price??x.p):+x);
+      const bp=bids.slice(0,3).map(x=>fmtN(stepP(x))).join(" / "),ap=asks.slice(0,3).map(x=>fmtN(stepP(x))).join(" / ");
       h+=`<div class="bidask"><div class="ba"><div class="t">Mua 1/2/3</div><div class="pr up">${bp}</div></div><div class="ba"><div class="t">Bán 1/2/3</div><div class="pr down">${ap}</div></div></div>`;
     }
     $("dQuote").innerHTML=h;
