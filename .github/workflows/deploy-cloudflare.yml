@@ -36,6 +36,17 @@ jobs:
           cd worker
           npm ci
 
+      - name: Install visual gate dependencies
+        # Cổng so ảnh (tests/visual/gate.js) chạy trong cf_deploy sau deploy:
+        # cần playwright + Chromium ngay trong CI. Thiếu bước này capture.js
+        # crash "Cannot find module 'playwright'" -> deploy báo đỏ giả
+        # (chuỗi 8 run fail 22/10/2026). npm ci theo package-lock của
+        # tests/visual; playwright install lấy đúng bản Chromium theo lock.
+        run: |
+          cd tests/visual
+          npm ci
+          npx playwright install --with-deps chromium
+
       - name: Deploy via cf_deploy.py
         env:
           CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
