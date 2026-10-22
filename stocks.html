@@ -341,7 +341,7 @@ input,select{background:var(--pp-bg2);border:1px solid var(--pp-line);color:var(
 <div class="navgrid" id="dNav" style="padding-top:2px"></div>
 <div class="card" id="dQuote"><div class="hint">Đang tải…</div></div>
 <div class="sec">Biểu đồ</div>
-<div class="card"><div class="iv" id="dIdxBar" style="display:none;margin-top:0"></div><div class="iv" id="dIv"><button>15m</button><button>1H</button><button class="on">1D</button></div><div id="dChart" style="min-height:150px;margin-top:8px"><div class="hint">Đang tải…</div></div></div>
+<div class="card"><div class="iv" id="dIdxBar" style="display:none;margin-top:0"></div><div class="iv" id="dIv"><button>15m</button><button>1H</button><button class="on">1D</button></div><div id="dChart" style="min-height:150px;margin-top:8px"><div class="hint">Đang tải…</div></div><div id="dIndChips" style="margin-top:8px"></div><div id="dIndPanes"></div><div id="dIndPanel" style="display:none;margin-top:8px"></div></div>
 <div class="sec" id="dTargetSec">Chốt lời / Cắt lỗ (%)</div>
 <div class="card" id="dTarget"><div class="hint">Đang tải…</div></div>
 <div class="sec" id="dCostSec" style="display:none">Giá vốn của bạn vs thị trường</div>
@@ -1751,17 +1751,195 @@ function chartSvg(rows,scale){
   return s+"</svg>"+`<div style="font-size:12px;color:var(--pp-mut);margin-top:4px">${esc(rows[0].t)} → ${esc(rows[rows.length-1].t)}</div>`;
 }
 async function loadChart(sym, iv){
-  _chartSym=sym; iv=iv||"1D";
+  _chartSym=sym; iv=iv||"1D"; _chartIv=iv;
   document.querySelectorAll("#dIv button").forEach(b=>b.classList.toggle("on", b.textContent===iv));
   const box=$("dChart"); box.innerHTML='<div class="hint">Đang tải…</div>';
+  const pnl=$("dIndPanel"); if(pnl) pnl.style.display="none";
   try{
-    const j=await api("/ohlcv?symbol="+encodeURIComponent(sym)+"&count=90&interval="+iv);
-    const rows=(j.rows||[]).slice(-60);
-    if(rows.length<2){ box.innerHTML='<div class="hint">Chưa có dữ liệu biểu đồ</div>'; return; }
-    box.innerHTML=chartSvg(rows, IDX_LIST.includes(sym)?1:1000);
+    const cnt = iv==="1D" ? 400 : 200;
+    const j=await api("/ohlcv?symbol="+encodeURIComponent(sym)+"&count="+cnt+"&interval="+iv);
+    _chartRows=(j.rows||[]);
+    if(_chartRows.length<2){ box.innerHTML='<div class="hint">Chưa có dữ liệu biểu đồ</div>'; const pn=$("dIndPanes"); if(pn) pn.innerHTML=""; const cp=$("dIndChips"); if(cp) cp.innerHTML=""; return; }
+    renderIndChart();
   }catch(e){
     box.innerHTML='<div class="hint">'+(String(e.message)==="402"?"Biểu đồ trong phiên cần gói trả phí":String(e.message)==="404"?"Chưa có dữ liệu biểu đồ":"Lỗi tải biểu đồ")+'</div>';
   }
+}
+// ---- Chi bao ky thuat (engine client-side, spec theo TradingView/FireAnt) ----
+let _chartRows=[], _chartIv="1D";
+function studySpec(name){ if(!window.PP_STUDIES) return null; return PP_STUDIES.find(s=>s.name===name)||null; }
+function getStudies(){
+  try{ const v=JSON.parse(localStorage.getItem("pp_studies_v1")||"null"); if(Array.isArray(v)) return v.filter(x=>x&&x.name); }catch(e){}
+  return [{name:"Moving Average",inputs:{length:10}},{name:"Moving Average",inputs:{length:50}}];
+}
+function saveStudies(list){ try{ localStorage.setItem("pp_studies_v1", JSON.stringify(list)); }catch(e){} }
+function indInputVal(inputs, inp){ const v=inputs?inputs[inp.id]:undefined; return (v===undefined||v===null)?inp.defval:v; }
+function indParamSummary(st){
+  const spec=studySpec(st.name); if(!spec) return "";
+  const nums=[];
+  for(const inp of spec.inputs){ if(inp.id==="offset"||inp.id.indexOf("smoothing")===0) continue; if(inp.type==="integer"||inp.type==="float") nums.push(indInputVal(st.inputs, inp)); if(nums.length>=3) break; }
+  return nums.length?(" ("+nums.join(", ")+")"):"";
+}
+function fmtIndVal(v, mul){ const x=v*mul; return Math.abs(x)>=1000?fmtN(Math.round(x)):String(Math.round(x*100)/100); }
+function indLastText(res, mul){
+  if(!res||!res.plots) return "";
+  const parts=[];
+  for(const p of res.plots.slice(0,3)){
+    let v=null; for(let i=p.values.length-1;i>=0;i--){ if(p.values[i]!=null){ v=p.values[i]; break; } }
+    if(v!=null) parts.push('<span style="color:'+(p.color||"#888")+'">'+esc(p.title||p.id)+": "+fmtIndVal(v, mul)+"</span>");
+  }
+  return parts.join(" ");
+}
+function chartSvgInd(disp, overlays, off, scale){
+  const W=340,H=150,volH=26,priceH=H-volH-2;
+  let hi=-1e18,lo=1e18,vmax=0;
+  for(const r of disp){hi=Math.max(hi,r.h);lo=Math.min(lo,r.l);vmax=Math.max(vmax,r.v||0);}
+  for(const ov of overlays){ for(const p of ov.res.plots){ if(p.kind==="histogram") continue; for(let i=0;i<disp.length;i++){ const v=p.values[off+i]; if(v!=null){ if(v>hi)hi=v; if(v<lo)lo=v; } } } }
+  const rawHi=hi,rawLo=lo,pad=(hi-lo)*0.06||1; hi+=pad; lo-=pad;
+  const xw=W/disp.length, Y=v=>priceH-(v-lo)/(hi-lo)*priceH;
+  let s=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block">`;
+  for(let i=1;i<4;i++){const y=(priceH*i/4).toFixed(1); s+=`<line x1="0" y1="${y}" x2="${W}" y2="${y}" stroke="rgba(140,140,140,.25)" stroke-width="1"/>`;}
+  disp.forEach((r,i)=>{
+    const x=i*xw+xw/2, up=r.c>=r.o, col=up?"#16a34a":"#dc2626";
+    s+=`<line x1="${x.toFixed(1)}" y1="${Y(r.h).toFixed(1)}" x2="${x.toFixed(1)}" y2="${Y(r.l).toFixed(1)}" stroke="${col}" stroke-width="1"/>`;
+    const yO=Y(r.o),yC=Y(r.c);
+    s+=`<rect x="${(i*xw+1).toFixed(1)}" y="${Math.min(yO,yC).toFixed(1)}" width="${Math.max(2,xw-2).toFixed(1)}" height="${Math.max(1,Math.abs(yC-yO)).toFixed(1)}" fill="${col}"/>`;
+    const vh=vmax?(r.v||0)/vmax*volH:0;
+    s+=`<rect x="${(i*xw+1).toFixed(1)}" y="${(H-vh).toFixed(1)}" width="${Math.max(2,xw-2).toFixed(1)}" height="${vh.toFixed(1)}" fill="${col}" opacity=".5"/>`;
+  });
+  for(const ov of overlays){
+    for(const p of ov.res.plots){
+      if(p.kind==="histogram") continue;
+      const col=p.color||"#2962FF";
+      if(ov.st.name==="Parabolic SAR"){
+        for(let i=0;i<disp.length;i++){ const v=p.values[off+i]; if(v!=null) s+=`<circle cx="${(i*xw+xw/2).toFixed(1)}" cy="${Y(v).toFixed(1)}" r="1.3" fill="${col}"/>`; }
+        continue;
+      }
+      let d="",pen=false;
+      for(let i=0;i<disp.length;i++){ const v=p.values[off+i]; if(v==null){ pen=false; continue; } d+=(pen?"L":"M")+(i*xw+xw/2).toFixed(1)+" "+Y(v).toFixed(1)+" "; pen=true; }
+      if(d) s+=`<path d="${d}" fill="none" stroke="${col}" stroke-width="1.2"/>`;
+    }
+  }
+  s+=`<text x="2" y="10" font-size="8" fill="var(--pp-mut)">${fmtN(rawHi*scale)}</text><text x="2" y="${priceH}" font-size="8" fill="var(--pp-mut)">${fmtN(rawLo*scale)}</text>`;
+  return s+"</svg>"+`<div style="font-size:12px;color:var(--pp-mut);margin-top:4px">${esc(disp[0].t)} → ${esc(disp[disp.length-1].t)}</div>`;
+}
+const IND_PRICE_UNIT={"Average True Range":1,"Standard Deviation":1,"Detrended Price Oscillator":1,"Price Oscillator":1,"Linear Regression Slope":1};
+function paneSvgInd(item, off, dispLen, scale){
+  const W=340,H=64,padT=4,plotH=H-8;
+  let mn=1e18,mx=-1e18;
+  const bands=item.res.bands||[];
+  for(const p of item.res.plots){ for(let i=0;i<dispLen;i++){ const v=p.values[off+i]; if(v!=null){ if(v<mn)mn=v; if(v>mx)mx=v; } } }
+  for(const b of bands){ if(b.value<mn)mn=b.value; if(b.value>mx)mx=b.value; }
+  if(mx<mn) return "";
+  if(mx===mn){ mx+=1; mn-=1; }
+  const pd=(mx-mn)*0.08; mx+=pd; mn-=pd;
+  const xw=W/dispLen, Y=v=>padT+plotH-(v-mn)/(mx-mn)*plotH;
+  let s=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block">`;
+  if(mn<0&&mx>0){ const y=Y(0).toFixed(1); s+=`<line x1="0" y1="${y}" x2="${W}" y2="${y}" stroke="rgba(140,140,140,.4)" stroke-width="1"/>`; }
+  for(const b of bands){ const y=Y(b.value); s+=`<line x1="0" y1="${y.toFixed(1)}" x2="${W}" y2="${y.toFixed(1)}" stroke="${b.color||"#787B86"}" stroke-width="1" stroke-dasharray="3 3"/><text x="2" y="${Math.max(8,y-2).toFixed(1)}" font-size="7" fill="var(--pp-mut)">${b.value}</text>`; }
+  for(const p of item.res.plots){
+    const col=p.color||"#2962FF";
+    if(p.kind==="histogram"){
+      const base=(mn<0&&mx>0)?0:mn;
+      for(let i=0;i<dispLen;i++){ const v=p.values[off+i]; if(v==null) continue; const y1=Y(Math.max(v,base)), y2=Y(Math.min(v,base)); s+=`<rect x="${(i*xw+0.5).toFixed(1)}" y="${y1.toFixed(1)}" width="${Math.max(1.5,xw-1).toFixed(1)}" height="${Math.max(1,y2-y1).toFixed(1)}" fill="${col}" opacity=".75"/>`; }
+    } else {
+      let d="",pen=false;
+      for(let i=0;i<dispLen;i++){ const v=p.values[off+i]; if(v==null){ pen=false; continue; } d+=(pen?"L":"M")+(i*xw+xw/2).toFixed(1)+" "+Y(v).toFixed(1)+" "; pen=true; }
+      if(d) s+=`<path d="${d}" fill="none" stroke="${col}" stroke-width="1.2"/>`;
+    }
+  }
+  s+="</svg>";
+  const mul=IND_PRICE_UNIT[item.st.name]?scale:1;
+  const legend=`<div style="font-size:11px;margin:6px 0 2px"><b>${esc(item.spec&&item.spec.short?item.spec.short:item.st.name)}${esc(indParamSummary(item.st))}</b> ${indLastText(item.res, mul)}</div>`;
+  return legend+s;
+}
+function renderIndChart(){
+  const box=$("dChart"), panes=$("dIndPanes"), chips=$("dIndChips");
+  if(!box) return;
+  const full=_chartRows, scale=IDX_LIST.includes(_chartSym)?1:1000;
+  const disp=full.slice(-60), off=full.length-disp.length;
+  const studies=getStudies();
+  if(!window.PP_IND||!window.PP_STUDIES){
+    box.innerHTML=chartSvg(disp, scale); if(panes)panes.innerHTML=""; if(chips)chips.innerHTML=""; return;
+  }
+  const bars=full.map(r=>({t:r.t,o:r.o,h:r.h,l:r.l,c:r.c,v:r.v||0}));
+  const results=studies.map(st=>{
+    let res=null;
+    try{ res=PP_IND.compute(st.name, bars, st.inputs||{}); }catch(e){ res=null; }
+    return {st, res, spec:studySpec(st.name)};
+  });
+  const overlays=results.filter(x=>x.res&&x.res.plots&&x.res.plots.length&&x.spec&&x.spec.priceStudy);
+  const paneItems=results.filter(x=>x.res&&x.res.plots&&x.res.plots.length&&x.spec&&!x.spec.priceStudy);
+  box.innerHTML=chartSvgInd(disp, overlays, off, scale);
+  if(panes) panes.innerHTML=paneItems.map(p=>paneSvgInd(p, off, disp.length, scale)).join("");
+  renderIndChips(studies);
+}
+function renderIndChips(studies){
+  const el=$("dIndChips"); if(!el) return;
+  let h="";
+  studies.forEach((st,i)=>{
+    const spec=studySpec(st.name);
+    const label=(spec&&spec.short?spec.short:st.name)+indParamSummary(st);
+    h+=`<button data-ind="${i}" style="font-size:12px;padding:5px 9px;border-radius:6px;background:var(--pp-bg2);border:1px solid var(--pp-line);cursor:pointer;margin:0 6px 6px 0">${esc(label)}</button>`;
+  });
+  h+=`<button data-indadd="1" style="font-size:12px;padding:5px 9px;border-radius:6px;background:var(--pp-accent);color:#fff;border:1px solid var(--pp-accent);cursor:pointer;margin:0 6px 6px 0">${esc(T("+ Chỉ báo"))}</button>`;
+  el.innerHTML=h;
+  el.querySelectorAll("button[data-ind]").forEach(b=>b.onclick=()=>openIndEdit(Number(b.dataset.ind)));
+  const add=el.querySelector("button[data-indadd]"); if(add) add.onclick=openIndList;
+}
+function openIndList(){
+  const p=$("dIndPanel"); if(!p) return; p.style.display="";
+  const impl=(window.PP_IND&&PP_IND.implemented)||[];
+  const btnStyle="font-size:12px;padding:5px 9px;border-radius:6px;background:var(--pp-bg2);border:1px solid var(--pp-line);cursor:pointer";
+  p.innerHTML=`<div style="display:flex;gap:6px;align-items:center"><input id="indSearch" type="text" placeholder="${esc(T("Tìm chỉ báo…"))}" style="flex:1;padding:6px 8px;border-radius:6px;border:1px solid var(--pp-line);background:var(--pp-bg2);color:inherit;font-size:13px"><button id="indClose" style="${btnStyle}">${esc(T("Đóng"))}</button></div><div id="indList" style="max-height:260px;overflow:auto;margin-top:6px"></div>`;
+  const draw=q=>{
+    const list=(window.PP_STUDIES||[]).filter(s=>!q||s.name.toLowerCase().includes(q)||(s.short||"").toLowerCase().includes(q));
+    const box=$("indList"); if(!box) return;
+    box.innerHTML=list.map(s=>{
+      const ok=impl.includes(s.name);
+      return `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 2px;border-bottom:1px solid var(--pp-line)"><span style="font-size:13px">${esc(s.name)}${s.short&&s.short!==s.name?` <span style="color:var(--pp-mut);font-size:11px">${esc(s.short)}</span>`:""}</span>${ok?`<button data-add="${esc(s.name)}" style="${btnStyle}">${esc(T("Thêm"))}</button>`:`<span style="font-size:11px;color:var(--pp-mut)">${esc(T("Sắp có"))}</span>`}</div>`;
+    }).join("")||`<div class="hint">${esc(T("Không tìm thấy"))}</div>`;
+    box.querySelectorAll("button[data-add]").forEach(b=>b.onclick=()=>{ const sts=getStudies(); sts.push({name:b.dataset.add, inputs:{}}); saveStudies(sts); renderIndChart(); draw(($("indSearch").value||"").trim().toLowerCase()); });
+  };
+  draw("");
+  $("indSearch").oninput=e=>draw(e.target.value.trim().toLowerCase());
+  $("indClose").onclick=()=>{ p.style.display="none"; };
+}
+function openIndEdit(i){
+  const studies=getStudies(); const st=studies[i]; if(!st) return;
+  const spec=studySpec(st.name); const p=$("dIndPanel"); if(!p) return; p.style.display="";
+  const inputs=(spec?spec.inputs:[]).filter(inp=>inp.type!=="symbol");
+  const inStyle="width:100px;padding:4px 6px;border-radius:6px;border:1px solid var(--pp-line);background:var(--pp-bg2);color:inherit";
+  let h=`<div style="font-weight:700;font-size:13px">${esc(st.name)}${spec&&spec.short?" — "+esc(spec.short):""}</div>`;
+  for(const inp of inputs){
+    const v=indInputVal(st.inputs, inp);
+    if(inp.type==="integer"||inp.type==="float"){
+      h+=`<div class="row"><span class="k">${esc(inp.name)}</span><span class="v"><input data-inp="${esc(inp.id)}" type="number" step="${inp.type==="integer"?"1":"any"}" value="${v}" style="${inStyle}"></span></div>`;
+    } else if(inp.options){
+      h+=`<div class="row"><span class="k">${esc(inp.name)}</span><span class="v"><select data-inp="${esc(inp.id)}" style="${inStyle}">${inp.options.map(o=>`<option value="${esc(o)}" ${String(o)===String(v)?"selected":""}>${esc(o)}</option>`).join("")}</select></span></div>`;
+    } else if(inp.type==="bool"||inp.type==="boolean"){
+      h+=`<div class="row"><span class="k">${esc(inp.name)}</span><span class="v"><input data-inp="${esc(inp.id)}" type="checkbox" ${v?"checked":""}></span></div>`;
+    } else {
+      h+=`<div class="row"><span class="k">${esc(inp.name)}</span><span class="v"><input data-inp="${esc(inp.id)}" type="text" value="${esc(String(v))}" style="${inStyle}"></span></div>`;
+    }
+  }
+  h+=`<div style="margin-top:8px;display:flex;gap:6px"><button id="indDel" style="font-size:12px;padding:5px 9px;border-radius:6px;background:var(--pp-bg2);border:1px solid var(--pp-line);cursor:pointer;color:#dc2626">${esc(T("Xoá chỉ báo"))}</button><button id="indDone" style="font-size:12px;padding:5px 9px;border-radius:6px;background:var(--pp-bg2);border:1px solid var(--pp-line);cursor:pointer">${esc(T("Đóng"))}</button></div>`;
+  p.innerHTML=h;
+  p.querySelectorAll("[data-inp]").forEach(el2=>{
+    el2.onchange=()=>{
+      const inp=inputs.find(x=>x.id===el2.dataset.inp);
+      let val;
+      if(el2.type==="checkbox") val=el2.checked;
+      else if(inp&&inp.type==="integer") val=parseInt(el2.value,10);
+      else if(inp&&inp.type==="float") val=parseFloat(el2.value);
+      else val=el2.value;
+      if(typeof val==="number"&&isNaN(val)) return;
+      st.inputs=st.inputs||{}; st.inputs[el2.dataset.inp]=val;
+      studies[i]=st; saveStudies(studies); renderIndChart();
+    };
+  });
+  $("indDel").onclick=()=>{ studies.splice(i,1); saveStudies(studies); p.style.display="none"; renderIndChart(); };
+  $("indDone").onclick=()=>{ p.style.display="none"; };
 }
 document.querySelectorAll("#dIv button").forEach(b=>b.onclick=()=>{ if(_chartSym) loadChart(_chartSym, b.textContent); });
 async function loadFund(sym){
@@ -1920,6 +2098,13 @@ const I18N_FULL = {
 "+ Thêm cảnh báo":["+ Add alert","+ 添加提醒","+ 알림 추가"],
 "+ Thêm cảnh báo mới":["+ Add new alert","+ 添加新提醒","+ 새 알림 추가"],
 "Biểu đồ":["Chart","图表","차트"],
+"+ Chỉ báo":["+ Indicator","+ 指标","+ 지표"],
+"Tìm chỉ báo…":["Search indicators…","搜索指标…","지표 검색…"],
+"Sắp có":["Coming soon","即将推出","준비 중"],
+"Xoá chỉ báo":["Remove indicator","删除指标","지표 삭제"],
+"Không tìm thấy":["Not found","未找到","찾을 수 없음"],
+"Thêm":["Add","添加","추가"],
+"Đóng":["Close","关闭","닫기"],
 "Bán 1/2/3":["Ask 1/2/3","卖 1/2/3","매도 1/2/3"],
 "Báo cáo tài chính":["Financial statements","财务报表","재무제표"],
 "Chiến lược":["Strategy","策略","전략"],
@@ -2328,6 +2513,8 @@ loadMarket();
 pollVersion(); setInterval(pollVersion, 5*60*1000);
 </script>
 <script src="/english/js/lang-dropdown.js?v=__BUILD__"></script>
+<script src="/english/js/features/stock-indicators-spec.js?v=__BUILD__"></script>
+<script src="/english/js/features/stock-indicators.js?v=__BUILD__"></script>
 
 <button id="aiFab" onclick="openChat()" style="position:fixed;right:16px;bottom:24px;width:52px;height:52px;border-radius:50%;background:var(--pp-accent);color:#fff;border:none;font-size:20px;box-shadow:0 4px 16px rgba(0,0,0,.5);cursor:pointer;z-index:200"><svg class="tic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></button>
 </body>
