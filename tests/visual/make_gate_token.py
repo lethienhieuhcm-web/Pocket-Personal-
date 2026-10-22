@@ -11,10 +11,27 @@ User visual-gate@lethanhdong.one là tài khoản test riêng (plan free,
 verified=true, không dữ liệu thật) dành cho chụp ảnh hồi quy. Session
 sống 2 giờ rồi tự hết hạn; gate.js xoá ngay sau mỗi lượt chạy.
 """
-import json, secrets, sys, time
+import json, os, secrets, sys, time
 
-sys.path.insert(0, "/home/hatch/workspace/skills/cloudflare/bin")
-from cf_api import api as cf_api
+try:
+    sys.path.insert(0, "/home/hatch/workspace/skills/cloudflare/bin")
+    from cf_api import api as cf_api
+except Exception:
+    # Ngoài máy dev (CI): gọi thẳng Cloudflare API bằng token trong env
+    # (workflow truyền CLOUDFLARE_API_TOKEN từ secrets.CF_API_TOKEN).
+    import urllib.request
+
+    _TOKEN = os.environ.get("CLOUDFLARE_API_TOKEN") or os.environ.get("CF_API_TOKEN")
+
+    def cf_api(method, path, body=None):
+        req = urllib.request.Request(
+            "https://api.cloudflare.com/client/v4" + path,
+            data=json.dumps(body or {}).encode() if method != "GET" else None,
+            method=method,
+            headers={"Authorization": f"Bearer {_TOKEN}",
+                     "Content-Type": "application/json"})
+        with urllib.request.urlopen(req, timeout=60) as r:
+            return json.loads(r.read())
 
 ACCT = "25b2327e932d26e5487c2ba8ad058932"
 D1_ID = "e856db4d-1ee1-42fd-9c1d-1807ca31afb5"
