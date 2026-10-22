@@ -135,7 +135,7 @@ var I18N = {
 vi:{title:"Trò chuyện",new_chat:"Đoạn chat mới",placeholder:"Nhắn tin cho AI…",send:"Gửi",
 empty_title:"Xin chào",empty_hint:"Chọn đoạn chat ở thanh bên, hoặc bắt đầu trò chuyện mới ngay bên dưới.",
 setup_title:"Thiết lập AI",setup_hint:"Nhập địa chỉ máy chủ AI, API key và tên model. Key chỉ lưu trên thiết bị này, không gửi về máy chủ.",
-setup_base:"Địa chỉ máy chủ",setup_key:"API key",setup_model:"Tên model",
+setup_base:"Địa chỉ máy chủ",setup_preset:"Chọn nhà cung cấp có sẵn…",setup_key:"API key",setup_model:"Tên model",
 setup_base_ph:"https://api.example.com/v1",setup_key_ph:"Dán API key…",setup_model_ph:"Chọn model...",
 setup_save:"Lưu",setup_test:"Kiểm tra",setup_ok:"Đã lưu. Bắt đầu trò chuyện nào.",
 setup_close:"Đóng",setup_key_keep:"Để trống ô key để giữ key cũ.",setup_rlen:"Độ dài trả lời",setup_custom:"Cài đặt riêng cho Talk",setup_model_custom:"Nhập tay...",setup_model_custom_ph:"Gõ tên model...",setup_shared_hint:"Đang dùng chung với English Lab và Stocks",setup_custom_hint:"Đang dùng riêng cho Talk, không ảnh hưởng app khác",
@@ -156,7 +156,7 @@ update_available:"Có bản mới",update_btn:"Cập nhật",update_later:"Để
 en:{title:"Talk",new_chat:"New chat",placeholder:"Message AI…",send:"Send",
 empty_title:"Hello",empty_hint:"Pick a chat from the sidebar, or start a new conversation below.",
 setup_title:"Set up AI",setup_hint:"Enter the AI server address, API key and model name. The key stays on this device only.",
-setup_base:"Server address",setup_key:"API key",setup_model:"Model name",
+setup_base:"Server address",setup_preset:"Choose a provider...",setup_key:"API key",setup_model:"Model name",
 setup_base_ph:"https://api.example.com/v1",setup_key_ph:"Paste API key…",setup_model_ph:"Choose a model...",
 setup_save:"Save",setup_test:"Test",setup_ok:"Saved. Start chatting.",
 setup_close:"Close",setup_key_keep:"Leave the key field blank to keep the current key.",setup_rlen:"Response length",setup_custom:"Custom settings for Talk",setup_model_custom:"Enter manually...",setup_model_custom_ph:"Type model name...",setup_shared_hint:"Shared with English Lab and Stocks",setup_custom_hint:"Using custom settings for Talk, other apps unaffected",
@@ -177,7 +177,7 @@ update_available:"New version available",update_btn:"Update",update_later:"Later
 zh:{title:"聊天",new_chat:"新对话",placeholder:"给 AI 发消息…",send:"发送",
 empty_title:"你好",empty_hint:"从侧边栏选择对话，或直接在下方开始新的对话。",
 setup_title:"设置 AI",setup_hint:"输入 AI 服务器地址、API 密钥和模型名称。密钥仅保存在本设备上。",
-setup_base:"服务器地址",setup_key:"API 密钥",setup_model:"模型名称",
+setup_base:"服务器地址",setup_preset:"选择服务商…",setup_key:"API 密钥",setup_model:"模型名称",
 setup_base_ph:"https://api.example.com/v1",setup_key_ph:"粘贴 API 密钥…",setup_model_ph:"选择模型...",
 setup_save:"保存",setup_test:"测试",setup_ok:"已保存，开始聊天吧。",
 setup_close:"关闭",setup_key_keep:"密钥栏留空则保留原密钥。",setup_rlen:"回答长度",setup_custom:"Talk 的自定义设置",setup_model_custom:"手动输入...",setup_model_custom_ph:"输入模型名称...",setup_shared_hint:"与 English Lab 和 Stocks 共享",setup_custom_hint:"Talk 使用自定义设置，不影响其他应用",
@@ -198,7 +198,7 @@ update_available:"有新版本",update_btn:"更新",update_later:"稍后"},
 ko:{title:"대화",new_chat:"새 대화",placeholder:"AI에게 메시지…",send:"보내기",
 empty_title:"안녕하세요",empty_hint:"사이드바에서 대화를 선택하거나 아래에서 새 대화를 시작하세요.",
 setup_title:"AI 설정",setup_hint:"AI 서버 주소, API 키, 모델 이름을 입력하세요. 키는 이 기기에만 저장됩니다.",
-setup_base:"서버 주소",setup_key:"API 키",setup_model:"모델 이름",
+setup_base:"서버 주소",setup_preset:"제공업체 선택...",setup_key:"API 키",setup_model:"모델 이름",
 setup_base_ph:"https://api.example.com/v1",setup_key_ph:"API 키 붙여넣기…",setup_model_ph:"모델 선택...",
 setup_save:"저장",setup_test:"테스트",setup_ok:"저장됨. 대화를 시작하세요.",
 setup_close:"닫기",setup_key_keep:"키 입력란을 비워 두면 기존 키가 유지됩니다.",setup_rlen:"답변 길이",setup_custom:"Talk 사용자 설정",setup_model_custom:"직접 입력...",setup_model_custom_ph:"모델 이름 입력...",setup_shared_hint:"English Lab 및 Stocks와 공유",setup_custom_hint:"Talk에 사용자 설정 사용 중, 다른 앱에 영향 없음",
@@ -374,6 +374,29 @@ function renderMain(){
     if(f[3]) inp.type = 'password';
     inp.autocomplete = 'off'; inp.spellcheck = false;
     setup.appendChild(lb); setup.appendChild(inp);
+    if(f[2] === 'setupBase'){
+      /* 2026-10-22 (Henrry Chốt): ô chọn nhanh endpoint — preset từ
+         AI_ENDPOINT_PRESETS (aiClient.js, 1 nguồn chung 34 endpoint).
+         Chọn là điền vào ô địa chỉ; nhập tay vẫn nguyên như cũ. */
+      var pSel = document.createElement('select');
+      pSel.id = 'setupPreset';
+      var pPh = document.createElement('option');
+      pPh.value = ''; pPh.dataset.i18n = 'setup_preset'; pPh.textContent = t('setup_preset');
+      pSel.appendChild(pPh);
+      pSel.addEventListener('change', function(){
+        if(pSel.value) inp.value = pSel.value;
+      });
+      setup.appendChild(pSel);
+      getAi().then(function(m){
+        (m.AI_ENDPOINT_PRESETS || []).forEach(function(p){
+          var o = document.createElement('option');
+          o.value = p.base; o.textContent = p.name;
+          pSel.appendChild(o);
+        });
+        var cur = (inp.value || '').trim().replace(/\/+$/, '');
+        if(cur) pSel.value = cur;
+      }).catch(function(){});
+    }
     if(f[2] === 'setupKey'){
       var kh = document.createElement('div');
       kh.id = 'setupKeyHint'; kh.className = 'keyhint';
