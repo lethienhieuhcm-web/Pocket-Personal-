@@ -33,7 +33,7 @@ display:flex;align-items:center;justify-content:center;font-size:var(--pp-text-s
 .lang-pill{display:flex;background:var(--pp-card);border:1px solid var(--pp-line);border-radius:999px;padding:3px}
 .lang-pill button{border:0;background:transparent;color:var(--mut);font-weight:700;font-size:var(--pp-text-xs);padding:7px 14px;border-radius:999px;cursor:pointer;transition:all .2s}
 .lang-pill button.on{background:var(--pp-ink);color:#fff}
-.btn{display:inline-flex;align-items:center;gap:8px;padding:12px 24px;border-radius:999px;font-weight:700;font-size:var(--pp-text-sm);
+.btn{display:inline-flex;align-items:center;min-height:44px;gap:8px;padding:12px 24px;border-radius:999px;font-weight:700;font-size:var(--pp-text-sm);
 text-decoration:none;cursor:pointer;border:0;transition:transform .15s,box-shadow .15s}
 .btn:active{transform:scale(.97)}
 .btn-primary{background:var(--pp-grad);color:#fff;box-shadow:var(--pp-shadow)}
@@ -88,7 +88,7 @@ footer .f-links{white-space:nowrap}
 }
 @media(max-width:760px){.app-card.big,.app-card.sm{grid-column:span 6}.hero{padding:64px 0 48px}
 .nav{padding:12px 0;gap:6px}
-.brand{font-size:var(--pp-text-sm);gap:7px;flex-shrink:0}
+.brand{font-size:var(--pp-text-sm);gap:7px;flex-shrink:0;min-height:44px;min-width:44px;align-items:center}
 .brand-mark{width:28px;height:28px}
 .nav-r{gap:8px;flex-shrink:1;min-width:0}
 .lang-pill{padding:2px}
@@ -110,7 +110,7 @@ try{
 <div class="glow g1"></div><div class="glow g2"></div><div class="glow g3"></div>
 <div class="wrap">
   <nav class="nav">
-    <a class="brand" href="/"><img class="brand-mark" src="/english/icons/logo-pp-64.png" alt="Pocket Personal logo" width="34" height="34"><span class="brand-name">Pocket Personal</span></a>
+    <a class="brand" href="/"><img class="brand-mark" src="/english/icons/logo-pp-64.png" srcset="/english/icons/logo-pp-64.png 64w, /english/icons/logo-pp-96.png 96w" sizes="34px" decoding="async" alt="Pocket Personal logo" width="34" height="34"><span class="brand-name">Pocket Personal</span></a>
     <div class="nav-r">
       <div class="pp-langdrop" id="langDrop">
         <button class="pp-langdrop-btn" aria-label="Language">
@@ -146,27 +146,27 @@ try{
   <p class="sec-s" data-i18n="apps_s">Mỗi ứng dụng cài riêng ra màn hình chính — mở là dùng.</p>
   <div style="display:flex;flex-direction:column;gap:10px;max-width:640px;margin:0 auto">
     <a class="pp-app-row" href="/login">
-      <img class="pp-app-ic" src="/english/icons/icon-english-192.png" alt="English Lab">
+      <img class="pp-app-ic" src="/english/icons/icon-english-192.png" srcset="/english/icons/icon-english-96.png 96w, /english/icons/icon-english-192.png 192w" sizes="46px" width="46" height="46" decoding="async" alt="English Lab">
       <span class="pp-app-tx"><span class="pp-app-name">English Lab</span><span class="pp-app-desc" data-i18n="d_english">Học tiếng Anh qua đọc tương tác, từ điển đa nguồn, sổ câu mã hoá và thư viện sách của riêng bạn.</span></span>
       <span class="pp-app-go">›</span>
     </a>
     <a class="pp-app-row" href="/login">
-      <img class="pp-app-ic" src="/english/icons/icon-stocks-192.png" alt="Stocks">
+      <img class="pp-app-ic" src="/english/icons/icon-stocks-192.png" srcset="/english/icons/icon-stocks-96.png 96w, /english/icons/icon-stocks-192.png 192w" sizes="46px" width="46" height="46" decoding="async" alt="Stocks">
       <span class="pp-app-tx"><span class="pp-app-name">Stocks</span><span class="pp-app-desc" data-i18n="d_stocks">Chứng khoán Việt Nam: giá trực tuyến, biểu đồ kỹ thuật, danh mục, cảnh báo giá và báo cáo Telegram.</span></span>
       <span class="pp-app-go">›</span>
     </a>
     <a class="pp-app-row" href="/login">
-      <img class="pp-app-ic" src="/english/icons/icon-chess-192.png" alt="Chess">
+      <img class="pp-app-ic" src="/english/icons/icon-chess-192.png" srcset="/english/icons/icon-chess-96.png 96w, /english/icons/icon-chess-192.png 192w" sizes="46px" width="46" height="46" decoding="async" alt="Chess">
       <span class="pp-app-tx"><span class="pp-app-name">Chess</span><span class="pp-app-desc" data-i18n="d_chess">Chơi cờ vua với máy nhiều cấp độ.</span></span>
       <span class="pp-app-go">›</span>
     </a>
     <a class="pp-app-row" href="/login">
-      <img class="pp-app-ic" src="/english/icons/icon-music-192.png" alt="Music">
+      <img class="pp-app-ic" src="/english/icons/icon-music-192.png" srcset="/english/icons/icon-music-96.png 96w, /english/icons/icon-music-192.png 192w" sizes="46px" width="46" height="46" decoding="async" alt="Music">
       <span class="pp-app-tx"><span class="pp-app-name">Music</span><span class="pp-app-desc" data-i18n="d_music">Nghe nhạc, tìm kiếm và quản lý playlist.</span></span>
       <span class="pp-app-go">›</span>
     </a>
     <a class="pp-app-row" href="/login">
-      <img class="pp-app-ic" src="/english/icons/icon-voice-192.png" alt="Voice">
+      <img class="pp-app-ic" src="/english/icons/icon-voice-192.png" srcset="/english/icons/icon-voice-96.png 96w, /english/icons/icon-voice-192.png 192w" sizes="46px" width="46" height="46" decoding="async" alt="Voice">
       <span class="pp-app-tx"><span class="pp-app-name">Voice</span><span class="pp-app-desc" data-i18n="d_voice">Chuyển văn bản thành giọng nói tiếng Việt và tiếng Anh chất lượng cao.</span></span>
       <span class="pp-app-go">›</span>
     </a>
