@@ -333,7 +333,8 @@ export async function hStockScreener(request, env){
   rows = [...rows].sort((a,b)=>{ const av=a[sort]??-1e18, bv=b[sort]??-1e18; return order==="asc"? av-bv : bv-av; });
   // Merge fundamentals (pe_ttm/pb/roe_ttm) + foreign net tu quotes vao tung row:
   // truoc day frontend doc cac field nay tu /screener nhung khong ai ghi -> luon "—".
-  const out = rows.slice(0,500);
+  // all=1: tra toan bo tap da loc (khoi Nhan dinh o client tinh tren tap nay).
+  const out = u.searchParams.get("all") ? rows.slice(0,2000) : rows.slice(0,500);
   try{
     const fd = await sGet(env, "market/fundamentals.json");
     const qt = await sGet(env, "market/quotes.json");
@@ -345,6 +346,12 @@ export async function hStockScreener(request, env){
         if(f.eps>0 && r.close) r.pe_ttm = Math.round(r.close*1000/f.eps*100)/100;
         if(f.bvps>0 && r.close) r.pb = Math.round(r.close*1000/f.bvps*100)/100;
         if(f.roe!=null) r.roe_ttm = f.roe;
+        // Truong co ban cho khoi Nhan dinh Sang loc (client-side)
+        r.industry = f.industry ?? null;
+        r.eps = f.eps ?? null; r.bvps = f.bvps ?? null;
+        r.roa = f.roa ?? null; r.net_margin = f.net_margin ?? null;
+        r.debt_to_equity = f.debt_to_equity ?? null;
+        r.altman_z = f.altman_z ?? null; r.piotroski = f.piotroski ?? null;
       }
       if(q && q.foreign_buy_value!=null && q.foreign_sell_value!=null)
         r.foreign_net_value = q.foreign_buy_value - q.foreign_sell_value;
@@ -446,6 +453,15 @@ export async function hStockHoldersShard(request, env){
   if(!/^[0-9a-f]{2}$/.test(sh)) return jerr("Bad shard", 400);
   const d = await sGet(env, "market/holders/"+sh+".json");
   return sJson(d || {});
+}
+
+/* Co dong theo ma: nhan dinh co dac so huu (publish warehouse-holders) */
+export async function hStockHoldersSymbol(request, env){
+  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
+  const sym = (new URL(request.url).searchParams.get("symbol")||"").toUpperCase();
+  if(!sym) return jerr("Symbol required", 400);
+  const d = await sGet(env, "market/holders_by_symbol/"+sym+".json");
+  return sJson(d || {symbol:sym, insight:null});
 }
 
 /* Dong thuan theo ma: tung hang + chuoi gia muc tieu theo thoi gian */
@@ -939,6 +955,10 @@ export async function hStockPublish(request, env){
   if(body.holders_shards) for(const sh of Object.keys(body.holders_shards)){
     if(!/^[0-9a-f]{2}$/.test(sh)) continue;
     await sPut(env, "market/holders/"+sh+".json", doc(body.holders_shards[sh]));
+    n++;
+  }
+  if(body.holders_by_symbol) for(const sym of Object.keys(body.holders_by_symbol)){
+    await sPut(env, "market/holders_by_symbol/"+sym+".json", doc(body.holders_by_symbol[sym]));
     n++;
   }
   if(body.regime) await put1("regime", body.regime);
