@@ -572,9 +572,35 @@ def main():
                 check_worker_repo_drift()
         except Exception as e:
             print(f"Repo drift check skipped (non-fatal): {e}")
+        # Cổng so ảnh sau deploy (2026-10-22): chụp live so baseline.
+        # Chỉ production (staging đặt CF_WORKER_NAME thì bỏ qua).
+        # Tắt hẳn bằng CF_VISUAL_GATE=0. FAIL = lệch cấu trúc sau deploy.
+        if os.environ.get("CF_VISUAL_GATE", "1") != "0" and not os.environ.get("CF_WORKER_NAME"):
+            if run_visual_gate() == 2:
+                print("VISUAL GATE: FAIL — bản đã live nhưng giao diện lệch cấu trúc; xem tests/visual/diff/")
+                sys.exit(2)
     else:
         print("DEPLOY FAILED:", json.dumps(dep)[:800])
         sys.exit(1)
+
+
+def run_visual_gate():
+    """Chạy tests/visual/gate.js: chụp 8 trang x 3 viewport x sáng/tối trên
+    live, so baseline bằng pixelmatch. Trả exit của gate (0 PASS / 1 WARN /
+    2 FAIL). Thiếu node/playwright thì in cảnh báo và trả 0 — không chặn
+    deploy đã qua LIVE VERIFIED; cổng chỉ FAIL khi thật sự chụp và so được."""
+    import subprocess
+    gate = os.path.join(SRC, "tests", "visual", "gate.js")
+    if not os.path.exists(gate):
+        print("Visual gate skipped: không thấy tests/visual/gate.js")
+        return 0
+    print("Running visual gate (tests/visual/gate.js)...")
+    try:
+        r = subprocess.run(["node", gate], timeout=1800)
+        return r.returncode
+    except Exception as e:
+        print(f"Visual gate skipped (non-fatal): {e}")
+        return 0
 
 
 def check_worker_repo_drift():
