@@ -16,6 +16,50 @@ const BASE_URL_ID = 'ai_base_url';
 // Kiểu ông lớn (OpenAI SDK, Vercel AI SDK): không đoán provider từ format key,
 // user khai endpoint ở đâu, app gọi {base_url}/models để lấy danh sách thật.
 // KHÔNG hardcode bất kỳ provider URL nào — user phải nhập endpoint.
+// 2026-10-22 (Henrry Chốt): Danh sách endpoint AI chọn nhanh — CHỈ là
+// preset điền sẵn vào ô endpoint cho tiện, user vẫn nhập tay bất kỳ
+// base URL nào khác được. Mọi dòng đều verify thật ngày 2026-10-22 bằng
+// key giả: GET {base}/models → 401/400 đúng lớp soi key, hoặc 200 danh
+// sách công khai. Loại có chủ đích: Perplexity (đường /models ở gốc /v1
+// nhưng /chat/completions ở gốc / — 1 ô base không khớp cả hai),
+// GitHub Models (trả "OK" lạ, chưa verify được luồng /models).
+export const AI_ENDPOINT_PRESETS = [
+  { name: 'OpenAI', base: 'https://api.openai.com/v1' },
+  { name: 'Google Gemini', base: 'https://generativelanguage.googleapis.com/v1beta' },
+  { name: 'Google Gemini (OpenAI mode)', base: 'https://generativelanguage.googleapis.com/v1beta/openai' },
+  { name: 'Anthropic Claude', base: 'https://api.anthropic.com/v1' },
+  { name: 'DeepSeek', base: 'https://api.deepseek.com/v1' },
+  { name: 'Groq', base: 'https://api.groq.com/openai/v1' },
+  { name: 'OpenRouter', base: 'https://openrouter.ai/api/v1' },
+  { name: 'Mistral AI', base: 'https://api.mistral.ai/v1' },
+  { name: 'xAI Grok', base: 'https://api.x.ai/v1' },
+  { name: 'Together AI', base: 'https://api.together.xyz/v1' },
+  { name: 'Fireworks AI', base: 'https://api.fireworks.ai/inference/v1' },
+  { name: 'Cohere', base: 'https://api.cohere.com/compatibility/v1' },
+  { name: 'Cerebras', base: 'https://api.cerebras.ai/v1' },
+  { name: 'SambaNova', base: 'https://api.sambanova.ai/v1' },
+  { name: 'NVIDIA NIM', base: 'https://integrate.api.nvidia.com/v1' },
+  { name: 'Hugging Face', base: 'https://router.huggingface.co/v1' },
+  { name: 'DeepInfra', base: 'https://api.deepinfra.com/v1/openai' },
+  { name: 'Poe', base: 'https://api.poe.com/v1' },
+  { name: 'Chutes', base: 'https://llm.chutes.ai/v1' },
+  { name: 'Nebius', base: 'https://api.studio.nebius.ai/v1' },
+  { name: 'Ollama Cloud', base: 'https://ollama.com/v1' },
+  { name: 'Novita AI', base: 'https://api.novita.ai/openai/v1' },
+  { name: 'Hyperbolic', base: 'https://api.hyperbolic.xyz/v1' },
+  { name: 'Scaleway', base: 'https://api.scaleway.ai/v1' },
+  { name: 'Kimi / Moonshot (Global)', base: 'https://api.moonshot.ai/v1' },
+  { name: 'Kimi / Moonshot (China)', base: 'https://api.moonshot.cn/v1' },
+  { name: 'Qwen / Alibaba (Global)', base: 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1' },
+  { name: 'Qwen / Alibaba (China)', base: 'https://dashscope.aliyuncs.com/compatible-mode/v1' },
+  { name: 'GLM / Zhipu', base: 'https://open.bigmodel.cn/api/paas/v4' },
+  { name: 'MiniMax (Global)', base: 'https://api.minimax.io/v1' },
+  { name: 'Doubao / Volcengine', base: 'https://ark.cn-beijing.volces.com/api/v3' },
+  { name: 'SiliconFlow', base: 'https://api.siliconflow.cn/v1' },
+  { name: 'StepFun', base: 'https://api.stepfun.com/v1' },
+  { name: 'Upstage Solar', base: 'https://api.upstage.ai/v1' },
+];
+
 function openDb() {
   return new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, 1);

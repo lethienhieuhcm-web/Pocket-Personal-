@@ -20,7 +20,8 @@ import {
   getAppEndpoint, saveAppEndpoint, deleteAppEndpoint,
   getAppModel, saveAppModel, deleteAppModel,
   isAppCustom, proxyModels,
-  getSmallModel, saveSmallModel
+  getSmallModel, saveSmallModel,
+  AI_ENDPOINT_PRESETS
 } from '../core/aiClient.js';
 
 let boundPrefixes = {};
@@ -43,6 +44,36 @@ export function initByok(config){
   const statusEl = $(id('Status'));
   const endpointInput = $(id('Endpoint'));
   const modelSel = $(id('Model'));
+
+  // 2026-10-22 (Henrry Chốt): ô chọn nhanh endpoint — 34 preset từ
+  // AI_ENDPOINT_PRESETS (aiClient.js, 1 nguồn chung). Chọn là điền vào
+  // ô endpoint + phát event input để handler lưu hiện có chạy. Nhập tay
+  // vẫn nguyên như cũ; endpoint không khớp preset nào → ô chọn về trống.
+  let presetSel = null;
+  if(endpointInput && Array.isArray(AI_ENDPOINT_PRESETS) && AI_ENDPOINT_PRESETS.length){
+    presetSel = document.createElement("select");
+    presetSel.id = id('Preset');
+    presetSel.style.cssText = "width:100%;margin-bottom:6px";
+    const ph = document.createElement("option");
+    ph.value = ""; ph.textContent = t("byok_preset") || "Choose a provider...";
+    presetSel.appendChild(ph);
+    AI_ENDPOINT_PRESETS.forEach(p => {
+      const o = document.createElement("option");
+      o.value = p.base; o.textContent = p.name;
+      presetSel.appendChild(o);
+    });
+    presetSel.addEventListener("change", () => {
+      if(!presetSel.value) return;
+      endpointInput.value = presetSel.value;
+      endpointInput.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    endpointInput.parentNode.insertBefore(presetSel, endpointInput);
+  }
+  function syncPreset(){
+    if(!presetSel || !endpointInput) return;
+    const cur = (endpointInput.value || "").trim().replace(/\/+$/, '');
+    presetSel.value = AI_ENDPOINT_PRESETS.some(p => p.base === cur) ? cur : "";
+  }
 
   if(!keyInput || !testBtn || !delBtnFinal) return;
 
@@ -79,6 +110,7 @@ export function initByok(config){
       ? await getAppModel(APP).catch(() => null)
       : await getUserModel().catch(() => null);
     if(endpointInput) endpointInput.value = ep || "";
+    syncPreset();
     if(modelSel && modelSel.tagName === "SELECT"){
       if(mo){
         let has = false;
