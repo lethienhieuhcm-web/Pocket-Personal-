@@ -1,0 +1,28 @@
+# Secrets & local-only files — never push to GitHub
+.processor_secret
+.internal_secret_ref.txt
+.env
+*.env
+
+# Build/runtime junk
+node_modules/
+__pycache__/
+*.pyc
+.wrangler/
+
+# Backups & logs
+*.bak
+*.bak2
+*.pre-refactor
+*.full-backup
+backups/
+logs/
+*.log
+
+# Local service files
+*.service
+
+# Visual gate outputs (baseline/ is tracked; these are per-run)
+tests/visual/current/
+tests/visual/diff/
+tests/visual/report.json
