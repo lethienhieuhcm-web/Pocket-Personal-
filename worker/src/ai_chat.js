@@ -146,20 +146,29 @@ async function aiRateCount(env, email) {
 
 /* ---------------- goi Gemini co failover khoa ---------------- */
 // Goi 1 luot generateContent: thu toi da 4 khoa (xoay vong), tong
-// thoi gian khong vuot deadlineMs. 429/503/loi mang/timeout -> khoa
-// ke; HTTP 400 -> dung ngay (sai request, doi khoa khong cuu duoc).
-async function geminiCall(env, keys, state, body, deadlineMs) {
+// thoi gian khong vuot deadlineMs. 429/503/400/loi mang/timeout ->
+// khoa ke tiep. (Sua sau ca loi 11:35 23/10: ban dau coi 400 la
+// "sai request, dung ngay" — thuc te Gemini tra 400 ca cho loi
+// nhat thoi va loi phia khoa, mot 400 chop nhoang lam sap toan bo
+// luot chat, log keys_tried=1. Nay 400 thu khoa ke nhu cac loi
+// khac; ma loi chi tiet cua Google ghi vao state.errDetail de
+// dua vao ai_chat_log.)
+async function geminiCall(env, keys, state, body, deadlineMs, perAttemptMs) {
   const model = env.AI_CHAT_MODEL || DEFAULT_MODEL;
   const url = GEMINI_BASE + model + ':generateContent';
   const endAt = Date.now() + deadlineMs;
   let lastErr = null;
   let tried = 0; // ngan sach 4 lan thu ap cho TUNG luot goi
-  while (tried < 4 && Date.now() < endAt) {
+  while (tried < 4 && Date.now() < endAt - 300) {
     const key = keys[state.idx % keys.length];
     state.idx++; tried++; state.keysTried++;
-    const remain = Math.max(500, endAt - Date.now());
+    // Moi lan thu co tran rieng: mot khoa treo khong an het ngan
+    // sach cua cac khoa con lai (do that 23/10: luot song 8-13s,
+    // luot chet fail nhanh ~200ms/khoa theo dot).
+    const remain = Math.max(400, endAt - Date.now());
     const ctl = new AbortController();
-    const timer = setTimeout(() => ctl.abort(), remain);
+    const timer = setTimeout(() => ctl.abort(),
+      Math.min(perAttemptMs || 3000, remain));
     try {
       const r = await fetch(url, {
         method: 'POST',
@@ -169,21 +178,30 @@ async function geminiCall(env, keys, state, body, deadlineMs) {
       });
       clearTimeout(timer);
       if (r.status === 400) {
-        const e = new Error('gemini_400'); e.reason = 'gemini_400'; throw e;
+        let det = '';
+        try {
+          const ej = await r.json();
+          det = (ej && ej.error && ej.error.status) || '';
+        } catch (e2) { /* body loi khong doc duoc */ }
+        state.saw400 = true;
+        if (det) state.errDetail = det;
+        lastErr = new Error('gemini_http_400');
+        continue;
       }
       if (r.status === 429 || r.status === 503 || !r.ok) {
+        state.errDetail = 'http_' + r.status;
         lastErr = new Error('gemini_http_' + r.status);
         continue;
       }
       return await r.json();
     } catch (e) {
       clearTimeout(timer);
-      if (e && e.reason === 'gemini_400') throw e;
       lastErr = e; // abort / loi mang -> khoa ke
     }
   }
-  const e = new Error('gemini_down');
-  e.reason = 'gemini_down';
+  const e = new Error(state.saw400 ? 'gemini_400' : 'gemini_down');
+  e.reason = state.saw400 ? 'gemini_400' : 'gemini_down';
+  e.detail = state.errDetail || null;
   e.cause = lastErr;
   throw e;
 }
@@ -213,6 +231,8 @@ const SYSTEM_PROMPT = [
   '3. "Do ve dau", "tien do ve dau", "dong tien theo nganh/san", "tien vao nganh nao" -> get_flow_summary (group_by=sector mac dinh; group_by=exchange khi hoi theo san; group_by=market khi chi hoi tong toan thi truong), TRU KHI dang bam mot ma cu the thi dung get_flow voi symbol do.',
   '4. P/E, ROE, doanh thu, loi nhuan CUA NGANH -> get_sector (khong phai dong tien). Hoi ve mot nguoi nam giu co phieu -> find_holder. Hoi co dong lon cua mot ma -> get_company_profile.',
   '5. Chi goi tool khi cau hoi can so lieu thi truong. Chao hoi xa giao thi tra loi text ngan gon, khong goi tool. Khong co tool nao phu hop thi tra loi text ngan noi chua co du lieu cho cau do. TUYET DOI khong bia so, khong tu tinh so, khong du doan gia, khong khuyen nghi mua/ban.',
+  '6. KHOAN SAU THEO NGANH: neu lich su co luot "TOOL get_flow_summary" va nguoi dung noi "phan tich <ten nganh> de ro hon", "xem them/khoan sau <ten nganh>", "<ten nganh> thi sao" -> goi get_flow_summary voi sector_code cua nganh do (giu kind cua luot truoc neu ro). Neu KHONG co ngu canh dong tien ma chi hoi "phan tich nganh X" chung chung -> get_sector voi code tuong ung. Bang ma ICB: 0500 Dau khi; 8600 Bat dong san; 1700 Tai nguyen Co ban; 3500 Thuc pham va do uong; 7500 Dien, nuoc & xang dau khi dot; 5300 Ban le; 2700 Hang & Dich vu Cong nghiep; 2300 Xay dung va Vat lieu; 5700 Du lich va Giai tri; 1300 Hoa chat; 3700 Hang ca nhan & Gia dung; 3300 O to va phu tung; 8700 Dich vu tai chinh; 9500 Cong nghe Thong tin; 6500 Vien thong; 4500 Y te; 5500 Truyen thong; 8300 Ngan hang; 8500 Bao hiem.',
+  '7. VI MO: hoi ty gia, lai suat, gia vang, OMO, chinh sach tien te -> get_macro (co series thi dat series tuong ung); khong tra loi van xuoi thay cho so lieu vi mo.',
 ].join('\n');
 
 export async function hAiChat(request, env) {
@@ -234,7 +254,11 @@ export async function hAiChat(request, env) {
     });
     return json(payload);
   };
-  const fallback = (reason, extra) => finish({ fallback: true, reason }, 'fallback:' + reason, extra);
+  const fallback = (reason, extra) => finish(
+    { fallback: true, reason },
+    'fallback:' + reason +
+      ((extra && extra.detail) ? ':' + String(extra.detail).slice(0, 40) : ''),
+    extra);
 
   let body;
   try { body = await request.json(); } catch (e) { return fallback('bad_request'); }
@@ -260,7 +284,10 @@ export async function hAiChat(request, env) {
   // giu so lieu that cho viec dat tran sau nay; loi dem thi bo qua.
   try { await aiRateCount(env, email); } catch (e) { /* bo qua */ }
 
-  const state = { idx: Math.floor(Math.random() * keys.length), keysTried: 0 };
+  const state = {
+    idx: Math.floor(Math.random() * keys.length), keysTried: 0,
+    saw400: false, errDetail: null,
+  };
   const contents = msgs.map((m) => ({
     role: m.role === 'assistant' ? 'model' : 'user',
     parts: [{ text: m.text }],
@@ -270,17 +297,18 @@ export async function hAiChat(request, env) {
   let j1;
   try {
     j1 = await geminiCall(env, keys, state, {
-      systemInstruction: { parts: [{ text: SYSTEM_PROMPT + '\n6. Tra loi bang ngon ngu: ' + lang + '.' }] },
+      systemInstruction: { parts: [{ text: SYSTEM_PROMPT + '\n8. Tra loi bang ngon ngu: ' + lang + '.' }] },
       contents,
       tools: [{ functionDeclarations: _buildDecls() }],
       toolConfig: { functionCallingConfig: { mode: 'AUTO' } },
       generationConfig: { temperature: 0.2, maxOutputTokens: 1024 },
-    }, 6000);
+    }, 10000, 3000);
   } catch (e) {
-    return fallback((e && e.reason) || 'gemini_down', { keys_tried: state.keysTried });
+    return fallback((e && e.reason) || 'gemini_down',
+      { keys_tried: state.keysTried, detail: (e && e.detail) || null });
   }
 
-  const fc = geminiFunctionCall(j1);
+  let fc = geminiFunctionCall(j1);
   if (!fc) {
     // Khong can so lieu: chi chap nhan text neu khong chua con so
     // nao khong kiem chung duoc (khong co envelope de gac).
@@ -288,7 +316,23 @@ export async function hAiChat(request, env) {
     if (text && _numericGuard(text, null)) {
       return finish({ ok: true, tool: null, text }, 'ok', { keys_tried: state.keysTried });
     }
-    return fallback('no_tool', { keys_tried: state.keysTried });
+    // Van xuoi khong kiem chung duoc (hoac rong): ep model CHON
+    // TOOL 1 luot (mode ANY) truoc khi roi du phong. Ca loi
+    // 23/10: cau khoan nganh sau the dong tien bi tra van xuoi
+    // chua so -> fallback:no_tool lap 2 lan du prompt da co luat.
+    try {
+      const j1b = await geminiCall(env, keys, state, {
+        systemInstruction: { parts: [{ text: SYSTEM_PROMPT + '\n8. Tra loi bang ngon ngu: ' + lang + '.' }] },
+        contents,
+        tools: [{ functionDeclarations: _buildDecls() }],
+        toolConfig: { functionCallingConfig: { mode: 'ANY' } },
+        generationConfig: { temperature: 0.2, maxOutputTokens: 1024 },
+      }, 6000, 2500);
+      fc = geminiFunctionCall(j1b);
+    } catch (e) { /* het ngan sach / loi -> giu duong fallback cu */ }
+    if (!fc) {
+      return fallback('no_tool', { keys_tried: state.keysTried });
+    }
   }
 
   tool = fc.name;
@@ -305,9 +349,11 @@ export async function hAiChat(request, env) {
     return fallback('tool_error', { keys_tried: state.keysTried });
   }
 
-  // Luot 2: viet cau dan tu envelope, qua cong gac so
+  // Luot 2: viet cau dan tu envelope, qua cong gac so. Bo qua khi
+  // luot 1 da an gan het ngan sach thoi gian (the du lieu la chinh).
   let lead = null;
   try {
+    if (Date.now() - t0 < 10000) {
     const dataJson = JSON.stringify(envelope.data || {}).slice(0, 6000);
     const leadPrompt =
       'Duoi day la du lieu thi truong (JSON) vua truy van duoc cho cau hoi cua nguoi dung. ' +
@@ -319,9 +365,10 @@ export async function hAiChat(request, env) {
     const j2 = await geminiCall(env, keys, state, {
       contents: [{ role: 'user', parts: [{ text: leadPrompt }] }],
       generationConfig: { temperature: 0.3, maxOutputTokens: 1024 },
-    }, 5000);
+    }, 4000, 2000);
     const txt = geminiText(j2).replace(/\s+/g, ' ').slice(0, 400);
     if (txt && _numericGuard(txt, envelope.data)) lead = txt;
+    }
   } catch (e) { /* cau dan loi/gac truot -> chi hien the du lieu */ }
 
   return finish(

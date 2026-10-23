@@ -2339,6 +2339,20 @@ function chatRender(route,p){
       {label:T("Chỉ khối ngoại"),tool:"get_flow_summary",args:{kind:"foreign",group_by:"sector"}},
       {label:T("Chỉ tự doanh"),tool:"get_flow_summary",args:{kind:"proprietary",group_by:"sector"}},
     ];
+    if(gb==="sector"&&!d.sector){
+      // Chip khoan co cau truc cho 3 nganh dong tien lon nhat: bam la
+      // ra ngay the nganh + top ma, khong phu thuoc tang LLM (ca loi
+      // 11:35 23/10: the thieu chip khoan, chi con duong go cau tu do).
+      const tops=[...(d.groups||[])]
+        .sort((x,y)=>Math.abs(y.net_total||0)-Math.abs(x.net_total||0))
+        .slice(0,3);
+      for(const g of tops){
+        if(!g.key) continue;
+        follow.push({label:`${T("Phân tích")} ${g.name||g.key} ${T("để rõ hơn")}`,
+          tool:"get_flow_summary",
+          args:{kind,group_by:"sector",sector_code:g.key}});
+      }
+    }
   } else if(tool==="get_sector"){
     if(a.code){
       h=`<b>${esc(d.name||a.code)}</b> — ${esc(T("Ngành"))}`;
@@ -2680,6 +2694,8 @@ const I18N_FULL = {
 "Theo sàn":["By exchange","按交易所","거래소별"],
 "Chỉ khối ngoại":["Foreign only","仅外资","외국인만"],
 "Chỉ tự doanh":["Proprietary only","仅自营","자기자본만"],
+"Phân tích":["Analyze","分析","분석"],
+"để rõ hơn":["in more detail","详细分析","자세히 보기"],
 "Số mã có dòng tiền":["Symbols with flow","有资金流的股票数","자금 흐름 있는 종목 수"],
 "Dữ liệu tại":["Data as of","数据截至","기준 시각"],
 "dữ liệu có thể đã cũ":["data may be stale","数据可能已过时","데이터가 오래되었을 수 있음"],
