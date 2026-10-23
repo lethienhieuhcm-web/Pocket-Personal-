@@ -136,6 +136,12 @@ export async function hStockIndices(request, env){
   return cachedMarket(request, env, "market/indices.json", 300);
 }
 
+// Chi so nganh (engine chi so Dot B): file rieng market/sector_indices.json
+export async function hStockSectorIndices(request, env){
+  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
+  return cachedMarket(request, env, "market/sector_indices.json", 300);
+}
+
 // Tu chu: market regime (scripts/market_regime.py) + signals (scripts/signal_detector.py)
 export async function hStockRegime(request, env){
   const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);

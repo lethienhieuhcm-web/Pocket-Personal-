@@ -69,6 +69,10 @@ body{font-family:var(--pp-font);background:var(--pp-bg);color:var(--pp-ink);max-
 .fagrid .fr .v{font-weight:600;white-space:nowrap}
 .chatsug .sg{margin-bottom:10px}
 .chatsug .sgt{font-size:12px;font-weight:700;color:var(--pp-mut);margin:0 0 6px}
+.sugbar{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;padding:11px 12px;border-radius:12px;background:var(--pp-bg2);border:1px solid var(--pp-line);font-size:13px;font-weight:600;cursor:pointer;color:var(--pp-ink);font-family:inherit}
+.sugbar svg{flex-shrink:0;transition:transform .15s}
+.suglist{margin-top:8px;border:1px solid var(--pp-line);border-radius:12px;padding:10px 12px 2px;max-height:46vh;overflow-y:auto}
+.sugq{display:block;width:100%;margin:0 0 6px;padding:8px 10px;border-radius:10px;background:var(--pp-bg2);border:1px solid var(--pp-line);font-size:12.5px;cursor:pointer;color:var(--pp-ink);text-align:left;font-family:inherit}
 .chipq{display:inline-block;margin:0 6px 6px 0;padding:7px 11px;border-radius:999px;background:var(--pp-bg2);border:1px solid var(--pp-line);font-size:12.5px;cursor:pointer;color:var(--pp-ink);text-align:left}
 .chatmeta{font-size:11px;color:var(--pp-mut);margin-top:8px;border-top:1px dashed var(--pp-line);padding-top:6px;line-height:1.5}
 .chatfollow{margin-top:8px;display:flex;flex-wrap:wrap;gap:0}
@@ -179,6 +183,8 @@ input,select{background:var(--pp-bg2);border:1px solid var(--pp-line);color:var(
 
 <div class="sec">Chỉ số</div>
 <div class="idx" id="idxRow"><div class="hint">Đang tải…</div></div>
+<div class="sec">Chỉ số ngành</div>
+<div class="idx" id="idxSecRow"><div class="hint">Đang tải…</div></div>
 <div class="sec">Tăng mạnh nhất HOSE</div>
 <div class="card"><table><tr><th>Mã</th><th>Giá</th><th>+/−</th><th>NN ròng</th></tr><tbody id="topMovers"><tr><td colspan="4"><div class="hint">Đang tải…</div></td></tr></tbody></table></div>
 <div class="sec">Khối ngoại hôm nay</div>
@@ -489,6 +495,11 @@ async function loadMarket(){
       return `<div class="idxcard"${fs?` style="cursor:pointer" onclick="openIndex('${fs}')" title="${esc(r.symbol)}"`:""}><div class="s">${esc(r.symbol)}</div><div class="p">${fmtN(r.close)}</div><div class="c ${cls}">${pc>0?"▲":pc<0?"▼":""} ${fmtPct(pc)}</div></div>`;}).join("")||'<div class="hint">Chưa có dữ liệu</div>';
     if(j._prov){_lastMktSrc=j._prov.source;refreshSrc();}
   }catch(e){$("idxRow").innerHTML='<div class="hint">Lỗi tải chỉ số</div>';}
+  try{
+    const j=await api("/sector-indices");const rows=j.rows||[];
+    $("idxSecRow").innerHTML=rows.map(r=>{const pc=r.pct_change,cls=pc>0?"up":pc<0?"down":"";
+      return `<div class="idxcard" style="cursor:pointer" onclick="openIndex('${esc(r.symbol)}')" title="${esc(r.symbol)}"><div class="s">${esc(r.symbol)}</div><div class="p">${fmtN(r.close)}</div><div class="c ${cls}">${pc>0?"▲":pc<0?"▼":""} ${fmtPct(pc)}</div></div>`;}).join("")||'<div class="hint">Chưa có dữ liệu</div>';
+  }catch(e){$("idxSecRow").innerHTML='<div class="hint">Lỗi tải chỉ số</div>';}
   try{
     const j=await api("/regime");
     if(j.regime){const box=$("regimeBox");box.style.display="";
@@ -1099,8 +1110,9 @@ function openSym(sym){
 // (market/ohlcv/<IDX>.json, 320 phien). Che do chi so an cac muc
 // chi danh cho ma (watchlist, tab con, muc tieu, su kien) va khoa
 // khung thoi gian o 1D (chi so chi co nen ngay).
-const IDX_META={VNINDEX:"HOSE",VN30:"HOSE",HNX:"HNX",UPCOM:"UPCOM"};
+const IDX_META={VNINDEX:"HOSE",VN30:"HOSE",HNX:"HNX",UPCOM:"UPCOM",VNFIN:"HOSE",VNREAL:"HOSE",VNIT:"HOSE",VNIND:"HOSE",VNMAT:"HOSE",VNCONS:"HOSE"};
 const IDX_LIST=["VNINDEX","VN30","HNX","UPCOM"];
+const IDX_SEC_LIST=["VNFIN","VNREAL","VNIT","VNIND","VNMAT","VNCONS"];
 let _idxMode=false, curIdx=null;
 function idxFileSym(s){const m={VNINDEX:"VNINDEX",VN30:"VN30",HNXINDEX:"HNX",HNX:"HNX",UPCOMINDEX:"UPCOM",UPCOM:"UPCOM"};return m[String(s||"").toUpperCase()]||null;}
 function openIndex(fs){
@@ -1116,16 +1128,20 @@ function openIndex(fs){
   if($("dNav"))$("dNav").style.display="none"; if($("dNavTitle"))$("dNavTitle").style.display="none";
   ["dTargetSec","dTarget","dCostSec","dCost","dEventsSec","dEventsCard"].forEach(k=>{if($(k))$(k).style.display="none";});
   document.querySelectorAll("#dIv button").forEach(b=>{b.style.display=b.textContent==="1D"?"":"none";});
-  const bar=$("dIdxBar"); bar.style.display="";
-  bar.innerHTML=IDX_LIST.map(x=>`<button class="${x===fs?"on":""}" onclick="openIndex('${x}')">${x}</button>`).join("");
+  const bar=$("dIdxBar"); bar.style.display=""; bar.style.flexWrap="wrap";
+  bar.innerHTML=IDX_LIST.concat(IDX_SEC_LIST).map(x=>`<button class="${x===fs?"on":""}" onclick="openIndex('${x}')">${x}</button>`).join("");
   loadIndexQuote(fs);
   loadChart(fs,"1D");
 }
 async function loadIndexQuote(fs){
   const box=$("dQuote"); box.innerHTML='<div class="hint">Đang tải…</div>';
   try{
-    const j=await api("/indices"); const rows=j.rows||[];
-    const r=rows.find(x=>idxFileSym(x.symbol)===fs);
+    const j=await api("/indices"); let rows=j.rows||[];
+    let r=rows.find(x=>idxFileSym(x.symbol)===fs);
+    if(!r && IDX_SEC_LIST.includes(fs)){
+      const j2=await api("/sector-indices"); const rows2=j2.rows||[];
+      r=rows2.find(x=>x.symbol===fs);
+    }
     if(!r){ box.innerHTML='<div class="hint">Chưa có dữ liệu</div>'; return; }
     const pc=r.pct_change, cls=pc>0?"up":pc<0?"down":"";
     let h=`<div class="row"><span class="k">Điểm</span><span class="v" style="font-size:17px">${fmtN(r.close)}</span></div>`;
@@ -1953,7 +1969,7 @@ function renderFaPctGrid(){
   }
   if(gridEl){
     let h="";
-    if(_chartIv==="1D"&&!IDX_LIST.includes(_chartSym)&&_chartRows.length>=2){
+    if(_chartIv==="1D"&&!(IDX_LIST.includes(_chartSym)||IDX_SEC_LIST.includes(_chartSym))&&_chartRows.length>=2){
       const rows=_chartRows, last=rows[rows.length-1], prev=rows[rows.length-2];
       const q=_lastQuote||{}, f=_lastFund||{};
       let shares=null;
@@ -1981,7 +1997,7 @@ function renderFaPctGrid(){
 function renderIndChart(){
   const box=$("dChart"), panes=$("dIndPanes"), chips=$("dIndChips");
   if(!box) return;
-  const full=_chartRows, scale=IDX_LIST.includes(_chartSym)?1:1000;
+  const full=_chartRows, scale=(IDX_LIST.includes(_chartSym)||IDX_SEC_LIST.includes(_chartSym))?1:1000;
   const disp=full.slice(-60), off=full.length-disp.length;
   const volFull=full.map(r=>r.v||0);
   const volLines=[
@@ -2580,12 +2596,23 @@ const CHAT_GROUPS=[
   {q:{vi:"Mã có giá trị giao dịch lớn nhất",en:"Highest traded value",zh:"成交额最大的股票",ko:"거래대금 상위 종목"},tool:"get_screener",args:{sort_by:"value_vnd",order:"desc",limit:10}},
  ]},
 ];
+const SUG_TITLE={vi:"Câu hỏi gợi ý",en:"Suggested questions",zh:"推荐问题",ko:"추천 질문"};
+let _sugOpen=false;
+function chatSugToggle(){
+  _sugOpen=!_sugOpen;
+  const l=$("sugList"); if(l) l.style.display=_sugOpen?"":"none";
+  const c=$("sugChev"); if(c) c.style.transform=_sugOpen?"rotate(180deg)":"";
+}
+function chatSugPick(i){ if(_sugOpen) chatSugToggle(); chatChipTap(i); }
 function renderChatSug(){
   const el=$("chatSug"); if(!el) return;
   const lg=["vi","en","zh","ko"].includes(curLang)?curLang:"vi";
-  el.innerHTML='<div class="chatsug">'+CHAT_GROUPS.map(g=>
-    `<div class="sg"><div class="sgt">${esc(g.t[lg]||g.t.vi)}</div>${g.qs.map(it=>`<button class="chipq" onclick="chatChipTap(${chatReg(it.q[lg]||it.q.vi,it.tool,it.args)})">${esc(it.q[lg]||it.q.vi)}</button>`).join("")}</div>`
-  ).join("")+"</div>";
+  _sugOpen=false;
+  el.innerHTML='<div class="chatsug"><button type="button" class="sugbar" id="sugBar"><span>'+esc(SUG_TITLE[lg])+'</span><svg id="sugChev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>'
+    +'<div class="suglist" id="sugList" style="display:none">'+CHAT_GROUPS.map(g=>
+    `<div class="sg"><div class="sgt">${esc(g.t[lg]||g.t.vi)}</div>${g.qs.map(it=>`<button class="sugq" onclick="chatSugPick(${chatReg(it.q[lg]||it.q.vi,it.tool,it.args)})">${esc(it.q[lg]||it.q.vi)}</button>`).join("")}</div>`
+  ).join("")+"</div></div>";
+  const bar=$("sugBar"); if(bar) bar.addEventListener("click",chatSugToggle);
 }
 const LANGS = {
   vi: {market:"Thị trường",screen:"Sàng lọc",cons:"Đồng thuận",hold:"Cổ đông",sec:"Ngành",alert:"Cảnh báo",mine:"Của tôi",chat:"AI Chat",indices:"Chỉ số",gainers:"Tăng mạnh nhất HOSE",send:"Gửi",askPh:"Hỏi về cổ phiếu…"},
@@ -2739,6 +2766,7 @@ const I18N_FULL = {
 "Lỗi tải biểu đồ":["Chart load error","图表加载失败","차트 로드 오류"],
 "Chỉ tiêu":["Indicator","指标","지표"],
 "Chỉ số":["Indices","指数","지수"],
+"Chỉ số ngành":["Sector indices","行业指数","섹터 지수"],
 "Chỉ số tự tính (TTM)":["Self-computed ratios (TTM)","自算指标 (TTM)","자체 계산 지표 (TTM)"],
 "Chụp ảnh":["Photo","拍照","사진"],
 "Tải Excel/CSV · Dán bảng":["Upload Excel/CSV · Paste table","上传 Excel/CSV · 粘贴表格","Excel/CSV 업로드 · 표 붙여넣기"],
