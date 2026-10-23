@@ -338,6 +338,31 @@ export async function hStockOhlcv(request, env){
   return sJson({symbol:sym, interval:iv, rows:d.rows.slice(-count), count:d.rows.length, updated:d.updated, indicators});
 }
 
+// GET /api/stock/trades?symbol=STB&limit=120 — bang khop lenh chi
+// tiet cua phien (bo thu tick, chan DNSE). Phia M/B suy theo luat
+// tick (side_method trong file). Khong co du lieu -> 404.
+export async function hStockTrades(request, env){
+  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
+  const u = new URL(request.url);
+  const sym = (u.searchParams.get("symbol")||"").toUpperCase();
+  if(!sym) return jerr("Symbol required", 400);
+  const limit = Math.max(10, Math.min(parseInt(u.searchParams.get("limit")||"120",10)||120, 1000));
+  const d = await sGet(env, "market/tape/"+sym+".json");
+  if(!d) return jerr("No tape data for "+sym, 404);
+  // Gia trong tape la NGHIN dong (quy uoc chan DNSE) -> doi sang
+  // dong de khop thang gia quote o frontend.
+  const trades = (d.trades || []).slice(-limit).map(t => ({
+    ts: t.ts, time: t.time, p: (t.p != null ? Math.round(t.p * 1000) : null),
+    v: t.v, s: t.s}));
+  const levels = (d.levels || []).map(l => ({
+    p: (l.p != null ? Math.round(l.p * 1000) : null), v: l.v}));
+  return sJson({symbol: sym, date: d.date, source: d.source,
+    side_method: d.side_method, partial: !!d.partial,
+    total_vol: d.total_vol, buy_vol: d.buy_vol, sell_vol: d.sell_vol,
+    unknown_vol: d.unknown_vol, n_trades: d.n_trades,
+    levels, trades, updated: d.updated});
+}
+
 export async function hStockScreener(request, env){
   const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
   const u = new URL(request.url);
@@ -962,6 +987,10 @@ export async function hStockPublish(request, env){
   }
   if(body.news) for(const sym of Object.keys(body.news)){
     await sPut(env, "market/news/"+sym+".json", doc({symbol:sym, items:body.news[sym]}));
+    n++;
+  }
+  if(body.tape) for(const sym of Object.keys(body.tape)){
+    await sPut(env, "market/tape/"+sym+".json", doc(body.tape[sym]));
     n++;
   }
   if(body.statements) for(const sym of Object.keys(body.statements)){

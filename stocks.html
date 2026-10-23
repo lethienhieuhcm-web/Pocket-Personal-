@@ -376,6 +376,8 @@ input,select{background:var(--pp-bg2);border:1px solid var(--pp-line);color:var(
 <div class="card" id="dQuote"><div class="hint">Đang tải…</div></div>
 <div class="sec">Biểu đồ</div>
 <div class="card"><div class="iv" id="dIdxBar" style="display:none;margin-top:0"></div><div class="iv" id="dIv"><button>15m</button><button>1H</button><button class="on">1D</button></div><div id="dFaLegend" style="margin-top:6px"></div><div id="dChart" style="min-height:150px;margin-top:8px"><div class="hint">Đang tải…</div></div><div id="dFaPct"></div><div id="dIndChips" style="margin-top:8px"></div><div id="dIndPanes"></div><div id="dIndPanel" style="display:none;margin-top:8px"></div><div id="dFaGrid"></div></div>
+<div class="sec" id="dTapeSec" style="display:none">Khớp lệnh</div>
+<div class="card" id="dTapeCard" style="display:none"><div id="dTapeMini"></div><div style="text-align:center;margin-top:8px"><span class="nchev" style="cursor:pointer;color:var(--pp-accent);font-weight:600" onclick="dOpen('Tape')"><span id="dTapeMore">Xem đầy đủ</span> ›</span></div></div>
 <div class="sec" id="dTargetSec">Chốt lời / Cắt lỗ (%)</div>
 <div class="card" id="dTarget"><div class="hint">Đang tải…</div></div>
 <div class="sec" id="dCostSec" style="display:none">Giá vốn của bạn vs thị trường</div>
@@ -407,6 +409,14 @@ input,select{background:var(--pp-bg2);border:1px solid var(--pp-line);color:var(
 <div id="dProf" style="display:none"></div>
 <div id="dConsH" style="display:none"><div class="pagebar"><span class="backrow" onclick="dBack()">‹ <span class="dbacksym"></span></span></div><div class="sec dtitle" data-k="cons"></div></div>
 <div id="dCons" style="display:none"></div>
+<div id="dTapeH" style="display:none"><div class="pagebar"><span class="backrow" onclick="dBack()">‹ <span class="dbacksym"></span></span></div><div class="sec dtitle" data-k="tape"></div></div>
+<div id="dTape" style="display:none">
+<div id="dTapeCards"></div>
+<div class="sec" id="dTapeLvlT">Phân bổ khối lượng theo giá</div>
+<div class="card"><div id="dTapeLevels"></div></div>
+<div class="sec" id="dTapeListT">Chi tiết từng lệnh</div>
+<div class="card"><div id="dTapeList"></div><div class="hint" id="dTapeNote" style="margin-top:8px"></div></div>
+</div>
 </div>
 
 <script>
@@ -1173,7 +1183,7 @@ async function loadDetail(sym){
     $("dQuote").innerHTML=h;
     if(q._prov){_lastDSrc=q._prov.source;refreshSrc();}
   }catch(e){$("dQuote").innerHTML='<div class="hint">Lỗi tải</div>';}
-  loadFlow(sym);loadFund(sym);loadNews(sym);loadChart(sym);
+  loadFlow(sym);loadFund(sym);loadNews(sym);loadChart(sym);loadTape(sym);
   loadEvents(sym);loadProfile(sym);loadConsDetail(sym);loadTarget(sym);loadCost(sym);wlLoad().then(paintWatchBtn);
 }
 // ===== Trang con chi tiet ma: muc luc the lien ket thay thanh tab
@@ -1185,9 +1195,10 @@ const DT_I18N={
   fund:{vi:"Cơ bản",en:"Fundamentals",zh:"基本面",ko:"펀더멘털"},
   prof:{vi:"Hồ sơ",en:"Profile",zh:"公司资料",ko:"기업 프로필"},
   cons:{vi:"Đồng thuận",en:"Consensus",zh:"一致预期",ko:"컨센서스"},
+  tape:{vi:"Khớp lệnh",en:"Trades",zh:"逐笔成交",ko:"체결 내역"},
   idx:{vi:"Mục lục",en:"Contents",zh:"目录",ko:"목차"}};
-const DKEYMAP={flow:"Flow",news:"News",fund:"Fund",prof:"Prof",cons:"Cons"};
-const DKEYS=["Flow","News","Fund","Prof","Cons"];
+const DKEYMAP={flow:"Flow",news:"News",fund:"Fund",prof:"Prof",cons:"Cons",tape:"Tape"};
+const DKEYS=["Flow","News","Fund","Prof","Cons","Tape"];
 function dShow(key){
   $("dOv").style.display=key?"none":"";
   DKEYS.forEach(k=>{
@@ -1228,6 +1239,72 @@ async function loadFlow(sym){
     if(rows.length) renderFlowBars(rows, "net_value_vnd", "dPf", "dPfLbl", "dPfSum");
   }catch(e){}
 }
+// ===== Khop lenh chi tiet (tape, chan DNSE; phia M/B suy luat tick) =====
+const TP_I18N={
+vi:{tot:"Tổng KL khớp",buy:"MUA chủ động",sell:"BÁN chủ động",more:"Xem đầy đủ",lvl:"Phân bổ khối lượng theo giá",list:"Chi tiết từng lệnh",time:"Thời gian",price:"Giá",vol:"KL",side:"M/B",none:"Chưa có dữ liệu khớp lệnh chi tiết cho mã này.",note:"Phía M/B ước lượng theo luật tick (giá lên = mua chủ động, giá xuống = bán chủ động).",partial:"Dữ liệu từ giữa phiên (bộ thu khởi động lại) — tổng có thể thiếu đầu phiên."},
+en:{tot:"Total matched",buy:"Active buy",sell:"Active sell",more:"See all",lvl:"Volume by price",list:"Trade details",time:"Time",price:"Price",vol:"Vol",side:"B/S",none:"No detailed trade data for this symbol yet.",note:"Buy/sell side estimated by the tick rule (uptick = active buy, downtick = active sell).",partial:"Data starts mid-session (collector restarted) — totals may miss the open."},
+zh:{tot:"总成交量",buy:"主动买入",sell:"主动卖出",more:"查看全部",lvl:"按价格的成交量分布",list:"逐笔明细",time:"时间",price:"价格",vol:"量",side:"买/卖",none:"该股票暂无逐笔成交数据。",note:"买卖方向按逐笔规则估算(上涨=主动买入,下跌=主动卖出)。",partial:"数据从盘中开始(采集器重启)—总量可能缺少开盘部分。"},
+ko:{tot:"총 체결량",buy:"능동 매수",sell:"능동 매도",more:"전체 보기",lvl:"가격별 거래량 분포",list:"체결 상세",time:"시간",price:"가격",vol:"수량",side:"매수/매도",none:"이 종목의 체결 상세 데이터가 아직 없습니다.",note:"매수/매도 방향은 틱 규칙으로 추정합니다(상승=능동 매수, 하락=능동 매도).",partial:"장중에 시작된 데이터입니다(수집기 재시작)—합계에 시가 부분이 누락될 수 있습니다."}};
+function TPL(){return TP_I18N[curLang]||TP_I18N.vi;}
+let _tape=null;
+function fmtK(v){ if(v==null) return "—"; const a=Math.abs(v); if(a>=1e6) return (v/1e6).toFixed(1).replace(".",",")+"M"; if(a>=1e3) return (v/1e3).toFixed(1).replace(".",",")+"K"; return String(v); }
+function tapeRef(){ const q=_lastQuote||{}; if(q.close!=null&&q.change!=null) return q.close-q.change; return null; }
+function tapePCls(p){ const r=tapeRef(); if(r==null||p==null) return ""; return p>r?"up":p<r?"down":""; }
+function tapeBadge(s){ if(s==="M") return '<span style="display:inline-block;min-width:22px;text-align:center;padding:1px 5px;border-radius:9px;background:#e5f6ec;color:#0a7a42;font-weight:700;font-size:11px">M</span>'; if(s==="B") return '<span style="display:inline-block;min-width:22px;text-align:center;padding:1px 5px;border-radius:9px;background:#fdecec;color:#c22727;font-weight:700;font-size:11px">B</span>'; return ""; }
+function tapeLevelsHtml(levels,lastP){
+  if(!levels||!levels.length) return '<div class="hint">—</div>';
+  const max=Math.max(...levels.map(l=>l.v||0),1);
+  const rows=[...levels].sort((a,b)=>b.p-a.p).slice(0,48);
+  return rows.map(l=>{const w=Math.max(2,(l.v||0)/max*100);const hot=lastP!=null&&l.p===lastP;
+    return `<div style="display:flex;align-items:center;gap:8px;padding:1.5px 0"><span style="width:64px;text-align:right;font-weight:${hot?"800":"600"}" class="${tapePCls(l.p)}">${fmtN(l.p)}</span><div style="flex:1;background:var(--pp-bg2);border-radius:3px"><div style="width:${w}%;height:11px;border-radius:3px;background:${hot?"#d6336c":"var(--pp-accent)"}"></div></div><span style="width:58px;font-size:12px;color:var(--pp-mut)">${fmtK(l.v)}</span></div>`;}).join("");
+}
+async function loadTape(sym){
+  _tape=null;
+  const sec=$("dTapeSec"),card=$("dTapeCard");
+  try{
+    const j=await api("/trades?symbol="+encodeURIComponent(sym)+"&limit=300");
+    if(j.trades) j.trades.sort((a,b)=>(a.ts||0)-(b.ts||0));
+    _tape=j;
+    if(sec)sec.style.display=""; if(card)card.style.display="";
+    renderTapeMini(); renderTapePage();
+  }catch(e){
+    if(sec)sec.style.display="none"; if(card)card.style.display="none";
+    const l=$("dTapeList"); if(l) l.innerHTML='<div class="hint">'+esc(TPL().none)+'</div>';
+    const c=$("dTapeCards"); if(c) c.innerHTML="";
+    const lv=$("dTapeLevels"); if(lv) lv.innerHTML="";
+  }
+}
+function renderTapeMini(){
+  const el=$("dTapeMini"); if(!el||!_tape) return;
+  const tr=(_tape.trades||[]).slice(-10).reverse();
+  const lastP=(_tape.trades&&_tape.trades.length)?_tape.trades[_tape.trades.length-1].p:null;
+  const list=tr.map(t=>`<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--pp-line)"><span style="color:var(--pp-mut)">${esc((t.time||"").slice(0,5))}</span><span class="${tapePCls(t.p)}" style="font-weight:700">${fmtN(t.p)}</span><span>${fmtK(t.v)}</span></div>`).join("");
+  el.innerHTML=`<div style="display:flex;gap:10px"><div style="flex:1.1">${list||'<div class="hint">—</div>'}</div><div style="flex:1">${tapeLevelsHtml(_tape.levels,lastP)}</div></div>`;
+  const m=$("dTapeMore"); if(m) m.textContent=TPL().more;
+  const s=$("dTapeSec"); if(s) s.textContent=(DT_I18N.tape[curLang]||DT_I18N.tape.vi);
+}
+function renderTapePage(){
+  if(!_tape) return;
+  const L=TPL();
+  const cards=$("dTapeCards");
+  if(cards) cards.innerHTML=`<div style="display:flex;gap:8px">
+    <div class="card" style="flex:1;text-align:center;margin:0"><div style="font-size:12px;color:var(--pp-mut)">${esc(L.tot)}</div><div style="font-size:17px;font-weight:800;color:var(--pp-accent)">${fmtN(_tape.total_vol)}</div></div>
+    <div class="card" style="flex:1;text-align:center;margin:0"><div style="font-size:12px;color:var(--pp-mut)">${esc(L.buy)} <span style="color:#0a7a42;font-weight:700">M</span></div><div style="font-size:17px;font-weight:800" class="up">${fmtN(_tape.buy_vol)}</div></div>
+    <div class="card" style="flex:1;text-align:center;margin:0"><div style="font-size:12px;color:var(--pp-mut)">${esc(L.sell)} <span style="color:#c22727;font-weight:700">B</span></div><div style="font-size:17px;font-weight:800" class="down">${fmtN(_tape.sell_vol)}</div></div></div>`;
+  const lt=$("dTapeLvlT"); if(lt) lt.textContent=L.lvl;
+  const lst=$("dTapeListT"); if(lst) lst.textContent=L.list;
+  const lastP=(_tape.trades&&_tape.trades.length)?_tape.trades[_tape.trades.length-1].p:null;
+  const lv=$("dTapeLevels"); if(lv) lv.innerHTML=tapeLevelsHtml(_tape.levels,lastP);
+  const ref=tapeRef();
+  const rows=(_tape.trades||[]).slice().reverse().map(t=>{
+    const chg=(ref!=null&&t.p!=null)?t.p-ref:null;
+    return `<div style="display:flex;align-items:center;padding:4px 0;border-bottom:1px solid var(--pp-line)"><span style="width:70px;color:var(--pp-mut)">${esc(t.time||"")}</span><span class="${tapePCls(t.p)}" style="width:76px;text-align:right;font-weight:700">${fmtN(t.p)}</span><span class="${tapePCls(t.p)}" style="width:70px;text-align:right">${chg==null?"":(chg>0?"+":"")+fmtN(chg)}</span><span style="flex:1;text-align:right">${fmtN(t.v)}</span><span style="width:34px;text-align:right">${tapeBadge(t.s)}</span></div>`;}).join("");
+  const l=$("dTapeList");
+  if(l) l.innerHTML=`<div style="display:flex;padding:2px 0;color:var(--pp-mut);font-size:12px"><span style="width:70px">${esc(L.time)}</span><span style="width:76px;text-align:right">${esc(L.price)}</span><span style="width:70px;text-align:right">+/−</span><span style="flex:1;text-align:right">${esc(L.vol)}</span><span style="width:34px;text-align:right">${esc(L.side)}</span></div>`+(rows||'<div class="hint">—</div>');
+  const n=$("dTapeNote");
+  if(n) n.textContent=L.note+(_tape.partial?" "+L.partial:"");
+}
+
 async function loadNews(sym){
   try{
     const j=await api("/news?symbol="+encodeURIComponent(sym));
