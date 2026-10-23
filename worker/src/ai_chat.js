@@ -159,9 +159,15 @@ async function geminiCall(env, keys, state, body, deadlineMs, perAttemptMs) {
   const endAt = Date.now() + deadlineMs;
   let lastErr = null;
   let tried = 0; // ngan sach 4 lan thu ap cho TUNG luot goi
+  // Khoa chet trong PHAM VI 1 LUOT HOI (429/400/503): cac pass sau
+  // (ep chon tool, viet cau dan) bo qua, khong dot lai khoa da chet
+  // — do that 23/10 keys_tried toi 7 vi moi pass chay lai tu khoa 1.
+  if (!state.dead) state.dead = new Set();
   while (tried < 4 && Date.now() < endAt - 300) {
     const key = keys[state.idx % keys.length];
-    state.idx++; tried++; state.keysTried++;
+    state.idx++;
+    if (state.dead.has(key)) continue;
+    tried++; state.keysTried++;
     // Moi lan thu co tran rieng: mot khoa treo khong an het ngan
     // sach cua cac khoa con lai (do that 23/10: luot song 8-13s,
     // luot chet fail nhanh ~200ms/khoa theo dot).
@@ -184,12 +190,14 @@ async function geminiCall(env, keys, state, body, deadlineMs, perAttemptMs) {
           det = (ej && ej.error && ej.error.status) || '';
         } catch (e2) { /* body loi khong doc duoc */ }
         state.saw400 = true;
+        state.dead.add(key);
         if (det) state.errDetail = det;
         lastErr = new Error('gemini_http_400');
         continue;
       }
       if (r.status === 429 || r.status === 503 || !r.ok) {
         state.errDetail = 'http_' + r.status;
+        state.dead.add(key);
         lastErr = new Error('gemini_http_' + r.status);
         continue;
       }
