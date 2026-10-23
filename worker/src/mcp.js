@@ -61,6 +61,8 @@ const INSTRUCTIONS = SCOPE_NOTE +
   'dong tien khoi ngoai/tu doanh -> get_flow, tong hop theo dich den -> get_flow_summary; ' +
   'PHAN TICH 1 nganh -> analyze_sector; PHAN TICH 1 ma -> analyze_symbol; ' +
   'SO SANH 2 ma/2 nganh -> analyze_compare; TOAN CANH thi truong -> analyze_market; ' +
+  'CO DONG/SO HUU 1 ma (co dac, room ngoai, lanh dao) -> analyze_holders; ' +
+  'THAY DOI nam giu cua 1 co dong qua 2 ky -> get_holder_portfolio_changes; ' +
   'vi mo -> get_macro; bang nganh/P-E nganh -> get_sector; dong thuan -> get_consensus; ' +
   'loc co phieu -> get_screener; ty so -> get_fundamentals; BCTC -> get_statements; ' +
   'su kien -> get_events; tin -> get_news; cong thuc/chi bao -> get_analysis_catalog; ' +
@@ -197,7 +199,7 @@ function envResult(data, o) {
 // > 60 dong, hoac tool thuoc nhom analyze_*/calc_*/screen_advanced.
 const HANDLE_TOOLS = new Set([
   'analyze_sector', 'analyze_symbol', 'analyze_compare', 'analyze_market',
-  'calc_flow_sum', 'get_analysis_catalog',
+  'analyze_holders', 'calc_flow_sum', 'get_analysis_catalog',
 ]);
 function newResultId() {
   const d = dateICT(Date.now()).replace(/-/g, '');
@@ -1669,7 +1671,11 @@ async function tAnalyzeMarket(env, a) {
   }
   const trin = advN && decN && decV ? _r4((advN / decN) / (advV / decV)) : null;
   if (trin == null) missing.push('trin');
-  missing.push('market_cap_weights'); // kho chua co von hoa tung ma -> khong tinh CW/divergence vo
+  // Divergence CW vs EW (O-2, mo schema G6 — B.0): snapshot tien tinh
+  // publish_divergence.py tu screener_history (von hoa tung ma).
+  const dvDoc = await sGet(env, 'market/divergence.json');
+  const dvSessions = dvDoc && Array.isArray(dvDoc.sessions) ? dvDoc.sessions : [];
+  if (!dvSessions.length) missing.push('market_cap_weights');
   // Dong tien toan san + tach san
   const fSnap = await sGet(env, 'market/foreign_flow.json');
   const pSnap = await sGet(env, 'market/proprietary_flow.json');
@@ -1711,10 +1717,28 @@ async function tAnalyzeMarket(env, a) {
     indices,
     regime: regimeD ? stripStamps(regimeD) : null,
     breadth: { by_exchange: byEx, turnover_total: Math.round(turnTotal) },
-    divergence: {
+    divergence: dvSessions.length ? (() => {
+      const last = dvSessions[dvSessions.length - 1];
+      return {
+        session_date: last.date,
+        index_pct: last.index_pct,
+        ew_pct: last.ew_pct,
+        cw_self_pct: last.cw_self_pct,
+        cw_ew_spread_pp: last.cw_ew_spread_pp,
+        pct_advancers: last.pct_advancers,
+        equal_weight_pct_advancers: last.pct_advancers,
+        leader_laggard_spread_pp: last.leader_laggard_spread_pp,
+        sectors_up: last.sectors_up, sectors_total: last.sectors_total,
+        top_sector: last.top_sector, bottom_sector: last.bottom_sector,
+        universe: dvDoc.universe || 'HOSE (screener_history)',
+        mcap_coverage_pct: last.mcap_coverage_pct,
+        series: dvSessions.slice(-days),
+        note: 'cw_ew_spread = index_pct - ew_pct (diem %); cw_self la ban tu tinh xap xi full-mcap (thieu f_i/c_i cua HOSE) — lech giua cw_self va index_pct chinh thuc la mot phan cua ket qua',
+      };
+    })() : {
       equal_weight_pct_advancers: (advN + decN) ? _r2(advN / (advN + decN) * 100) : null,
       cap_weighted: null,
-      note: 'chua co trong so von hoa tung ma trong kho — khong tinh ban vo hoa, chi tra phien ban trong so deu',
+      note: 'chua co snapshot divergence trong kho — khong tinh ban vo hoa, chi tra phien ban trong so deu',
     },
     trin: trin != null ? { value: trin, formula_ref: 'trin_arms', note: 'TRIN = (Adv/Dec)/(AdvVol/DecVol), mau so la khoi luong CP' } : null,
     flow_totals: flowTotals, macro, trend,
@@ -1727,6 +1751,324 @@ async function tAnalyzeMarket(env, a) {
       updated: idx.updated, prov: idx._prov, verification: 'verified',
       staleKind: 'market', missing,
       coverage: { returned: indices.length, universe: 1519, note: notes.join('; ') || null },
+    }),
+  };
+}
+
+
+/* ---------------- O-1: ho tool co dong (Phu luc K + ban nap A) ---------------- */
+const _pct1 = (frac) => (frac == null || !isFinite(frac) ? null : _r2(frac * 100));
+
+// Gop dong theo nguoi (norm): 1 nguoi co the co nhieu dong (ca nhan +
+// dai dien) — cong CP + ty le, ten/vi the lay theo dong lon nhat.
+function _aggHolders(rows) {
+  const m = new Map();
+  for (const r of rows || []) {
+    if (!r || !r.norm) continue;
+    let e = m.get(r.norm);
+    if (!e) {
+      e = { name: r.name, norm: r.norm, type: r.type || null,
+            position: r.position || null, qty: 0, pct: 0,
+            record_date: r.record_date || null, _q: -1 };
+      m.set(r.norm, e);
+    }
+    e.qty += r.qty || 0;
+    e.pct += r.pct || 0;
+    if ((r.qty || 0) > e._q) {
+      e._q = r.qty || 0; e.name = r.name;
+      if (r.type) e.type = r.type;
+      if (r.position) e.position = r.position;
+      if (r.record_date) e.record_date = r.record_date;
+    }
+  }
+  const out = [...m.values()];
+  for (const e of out) delete e._q;
+  return out.sort((a, b) => b.qty - a.qty);
+}
+
+function holderConcentration(rows) {
+  const agg = _aggHolders(rows);
+  const valid = agg.filter((e) => e.pct > 0);
+  const cov = valid.reduce((s, e) => s + e.pct, 0);
+  const hhi = valid.reduce((s, e) => s + e.pct * e.pct, 0);
+  const top = (k) => valid.slice(0, k).reduce((s, e) => s + e.pct, 0);
+  const byType = { individual: 0, corporate: 0, other: 0 };
+  for (const e of valid) {
+    if (e.type === 'INDIVIDUAL') byType.individual += e.pct;
+    else if (e.type === 'CORPORATE') byType.corporate += e.pct;
+    else byType.other += e.pct;
+  }
+  return {
+    cr1_pct: _pct1(top(1)), cr5_pct: _pct1(top(5)), cr10_pct: _pct1(top(10)),
+    hhi_partial: {
+      value: _r4(hhi), scale: '0-1',
+      coverage_shares_pct: _pct1(cov),
+      residual_pct: _pct1(Math.max(0, 1 - cov)),
+      note: 'HHI TINH TUNG PHAN tren co dong da cong bo — can duoi cua HHI that, khong trinh nhu HHI toan so',
+    },
+    n_eff: hhi > 0 ? _r2(1 / hhi) : null,
+    n_holders_listed: agg.length,
+    by_owner_type: {
+      individual_pct: _pct1(byType.individual),
+      corporate_pct: _pct1(byType.corporate),
+      other_pct: _pct1(byType.other),
+      note: 'tach theo owner_type cua nguon (INDIVIDUAL/CORPORATE); ngoai/Nha nuoc khong tach duoc tu truong nay',
+    },
+    top_holders: valid.slice(0, 10).map((e) => ({
+      name: e.name, pct: _pct1(e.pct), qty: e.qty,
+      type: e.type, position: e.position,
+    })),
+  };
+}
+
+function freeFloatUpper(rows) {
+  const agg = _aggHolders(rows);
+  let restricted = 0;
+  const applied = new Set();
+  for (const e of agg) {
+    if (!(e.pct > 0)) continue;
+    if (e.position) { restricted += e.pct; applied.add('leadership_related'); }
+    else if (e.type === 'INDIVIDUAL' && e.pct >= 0.10) { restricted += e.pct; applied.add('individual_ge_10pct'); }
+    else if (e.pct >= 0.30) { restricted += e.pct; applied.add('single_holder_ge_30pct'); }
+  }
+  return {
+    pct_upper_bound: _pct1(Math.max(0, 1 - restricted)),
+    restricted_pct: _pct1(restricted),
+    method: 'FTSE-style restrictions — CAN TREN: tru lanh dao/nguoi lien quan (dong co position), ca nhan >= 10%, chu the don le >= 30% (quy tac co hoc cua he thong, ghi ro); phan chua cong bo coi nhu tu do nen ket qua la can tren',
+    rules_applied: [...applied],
+    missing: ['lock_in_status', 'concert_parties'],
+  };
+}
+
+// Phan loai thay doi 1 co dong giua 2 ky (p/c la ban gop kem rank).
+// Tra {kind: 'entry'|'unchanged'|'deduped', entry?} — H-2/H-11/H-13.
+function _changeEntry(p, c) {
+  if (p && c) {
+    if (p.record_date && c.record_date && p.record_date === c.record_date) {
+      return { kind: 'deduped' }; // H-13: trung record_date = 1 ky hieu dung
+    }
+    const dShares = c.qty - p.qty;
+    const dPp = _r2((c.pct - p.pct) * 100);
+    if (dShares !== 0) {
+      return { kind: 'entry', entry: {
+        holder: c.name, class: dShares > 0 ? 'INCREASE' : 'DECREASE',
+        d_shares: dShares, d_pp: dPp,
+        d_pct_own_position: p.qty > 0 ? _r2(dShares / p.qty * 100) : null,
+        rank_prev: p.rank != null ? p.rank : null,
+        rank_cur: c.rank != null ? c.rank : null,
+        d_rank: (p.rank != null && c.rank != null) ? p.rank - c.rank : null,
+        record_date_prev: p.record_date, record_date_cur: c.record_date,
+        passive_dilution_flag: false } };
+    }
+    if (dPp !== 0) {
+      // H-11: CP khong doi ma ty le doi = thay doi THU DONG (mau so)
+      return { kind: 'entry', entry: {
+        holder: c.name, class: 'UNCHANGED',
+        d_shares: 0, d_pp: dPp, d_pct_own_position: 0,
+        rank_prev: p.rank != null ? p.rank : null,
+        rank_cur: c.rank != null ? c.rank : null,
+        d_rank: (p.rank != null && c.rank != null) ? p.rank - c.rank : null,
+        record_date_prev: p.record_date, record_date_cur: c.record_date,
+        passive_dilution_flag: true } };
+    }
+    return { kind: 'unchanged' };
+  }
+  if (c) {
+    return { kind: 'entry', entry: {
+      holder: c.name, class: 'NEW', d_shares: c.qty, d_pp: _pct1(c.pct),
+      d_pct_own_position: null, rank_prev: null,
+      rank_cur: c.rank != null ? c.rank : null, d_rank: null,
+      record_date_prev: null, record_date_cur: c.record_date,
+      passive_dilution_flag: false } };
+  }
+  return { kind: 'entry', entry: {
+    holder: p.name, class: 'EXIT', d_shares: -p.qty, d_pp: _pct1(-p.pct),
+    d_pct_own_position: -100, rank_prev: p.rank != null ? p.rank : null,
+    rank_cur: null, d_rank: null,
+    record_date_prev: p.record_date, record_date_cur: null,
+    passive_dilution_flag: false } };
+}
+
+function classifyChanges(prevRows, curRows) {
+  const prev = _aggHolders(prevRows), cur = _aggHolders(curRows);
+  const pMap = new Map(prev.map((e, i) => [e.norm, { ...e, rank: i + 1 }]));
+  const cMap = new Map(cur.map((e, i) => [e.norm, { ...e, rank: i + 1 }]));
+  const entries = [];
+  let unchanged = 0, deduped = 0;
+  for (const norm of new Set([...pMap.keys(), ...cMap.keys()])) {
+    const r = _changeEntry(pMap.get(norm) || null, cMap.get(norm) || null);
+    if (r.kind === 'entry') entries.push(r.entry);
+    else if (r.kind === 'deduped') deduped++;
+    else unchanged++;
+  }
+  const order = { NEW: 0, INCREASE: 1, DECREASE: 2, EXIT: 3, UNCHANGED: 4 };
+  entries.sort((a, b) => (order[a.class] - order[b.class]) ||
+    (Math.abs(b.d_shares) - Math.abs(a.d_shares)));
+  return { entries, unchanged_count: unchanged, deduped_same_record_date: deduped };
+}
+
+async function tAnalyzeHolders(env, a) {
+  const sym = await symbolOrThrow(env, a.symbol);
+  const d = await sGet(env, 'market/holders_detail/' + sym + '.json');
+  if (!d || !d.current || !Array.isArray(d.current.rows)) throw await notFound(env, sym);
+  const missing = [];
+  const cur = d.current.rows;
+  const concentration = holderConcentration(cur);
+  const ff = freeFloatUpper(cur);
+  for (const m of ff.missing) missing.push(m);
+  // Lanh dao gom nguoi lien quan (dong co position trong so co dong)
+  const agg = _aggHolders(cur);
+  const leaders = agg.filter((e) => e.position);
+  const leadPct = leaders.reduce((s, e) => s + e.pct, 0);
+  const findPos = (re, anchored) => {
+    const e = leaders.find((x) => {
+      const np = normName(x.position || '');
+      return anchored ? re.test(np) : re.test(np);
+    });
+    return e ? _pct1(e.pct) : null;
+  };
+  let leadDelta = null;
+  if (d.previous && Array.isArray(d.previous.rows)) {
+    const pAgg = _aggHolders(d.previous.rows);
+    const pPct = pAgg.filter((e) => e.position).reduce((s, e) => s + e.pct, 0);
+    leadDelta = _r2((leadPct - pPct) * 100);
+  }
+  const leadership = {
+    ownership_pct_incl_related: _pct1(leadPct),
+    holders_count: leaders.length,
+    chair_pct: findPos(/^CHU TICH/, true),
+    ceo_pct: findPos(/TONG GIAM DOC|GIAM DOC DIEU HANH/, false),
+    holders: leaders.slice(0, 15).map((e) => ({
+      name: e.name, position: e.position, pct: _pct1(e.pct), qty: e.qty })),
+    d_pp_vs_prev_period: leadDelta,
+    note: 'gom cac dong co position (lanh dao va nguoi lien quan nhu nguon liet ke); so mo ta cau truc — khong cham diem quan tri, khong suy nhan qua (quan he so huu lanh dao ↔ hieu qua la phi tuyen trong van lieu, chua kiem dinh cho VN)',
+  };
+  // Room ngoai: tran THEO MA tu bang gia san (cam suy tu nganh — H-3/H-8)
+  let foreignRoom = null;
+  const fr = await sGet(env, 'market/foreign_room.json');
+  const rr = fr && fr.rows ? fr.rows[sym] : null;
+  if (rr) {
+    const roomPp = _r2(rr.fol_max_pct - rr.foreign_owned_pct);
+    foreignRoom = {
+      fol_max_pct: rr.fol_max_pct,
+      foreign_owned_pct: rr.foreign_owned_pct,
+      room_shares: rr.room_shares,
+      room_pp: roomPp,
+      room_msci_ratio: rr.limit_shares > 0 ? _r4(rr.room_shares / rr.limit_shares) : null,
+      owned_shares: rr.owned_shares,
+      limit_shares: rr.limit_shares,
+      shares_outstanding: rr.shares_outstanding,
+      fol_max_basis: 'tran theo MA da thong bao: han muc so huu NN (CP) tren bang gia san (KBS FO) / co phieu luu hanh cua chinh ma — khong suy tu nganh hay luat chung',
+      status: roomPp != null && roomPp < 1 ? 'tight' : 'open',
+      status_note: 'tight = room con lai < 1 diem % — nguong quy uoc cua he thong, khong phai dinh nghia luat',
+      as_of: fr.as_of || null,
+    };
+  } else missing.push('fol_max_pct');
+  // Thay doi giua 2 ky chot (can >= 2 snapshot — K2)
+  let changes = null;
+  if (d.previous && Array.isArray(d.previous.rows)) {
+    const cc = classifyChanges(d.previous.rows, cur);
+    changes = {
+      period_pair: { from_snapshot: d.previous.snapshot_date || null,
+                     to_snapshot: d.current.snapshot_date || null },
+      dating: 'interval',
+      entries: cc.entries.slice(0, 50),
+      counts: { changed: cc.entries.length, unchanged: cc.unchanged_count,
+                deduped_same_record_date: cc.deduped_same_record_date },
+      note: 'thay doi giua 2 lan chot lien tiep; dating=interval: thay doi xay ra trong khoang 2 moc, khong gan ngay cong bo/ngay thu lam ngay giao dich; d_pp tinh bang DIEM % (khong dung % tuong doi tren ty le)',
+    };
+  } else missing.push('record_date');
+  // Su kien noi bo/co dong lon: kho chua co nguon Dieu 31/33
+  missing.push('insider_transactions');
+  const data = {
+    symbol: sym, concentration, free_float: ff,
+    foreign_room: foreignRoom, changes,
+    insider_events: null, leadership,
+  };
+  return {
+    rows: cur.length,
+    env: envResult(data, {
+      dataset: 'market/holders_detail/' + sym + '.json + market/foreign_room.json',
+      route: '/api/mcp (analyze_holders)',
+      updated: d.updated, prov: d._prov, verification: 'verified',
+      staleKind: 'daily', missing,
+      coverage: { returned: cur.length, universe: 1519,
+        note: 'insider_events: kho chua co nguon giao dich noi bo/co dong lon (Dieu 31/33 TT 96/2020) — tra missing, khong suy dien' },
+    }),
+  };
+}
+
+async function tGetHolderPortfolioChanges(env, a) {
+  const name = String(a.name || '').trim();
+  if (!name) throw new ToolError('invalid_params', 'Thieu tham so name.');
+  const notes = [];
+  const limit = clampLimit(a.limit, 50, 200, null, notes);
+  const idx = await sGet(env, 'market/holders_index.json');
+  if (!idx || !Array.isArray(idx.rows)) throw new ToolError('data_unavailable', 'Chua co dao chi muc co dong.');
+  const q = normName(name);
+  const ql = name.toLowerCase();
+  const matches = idx.rows.filter((r) => (r.q && r.q.includes(q)) || (r.name && r.name.toLowerCase().includes(ql)));
+  if (!matches.length) {
+    return {
+      rows: 0,
+      env: envResult({ holder: null, entries: [] }, {
+        dataset: 'market/holders_index.json + market/holders_detail/<SYM>.json',
+        route: '/api/mcp (get_holder_portfolio_changes)',
+        updated: idx.updated, prov: idx._prov, verification: 'verified',
+        staleKind: 'daily', missing: ['record_date'],
+        coverage: { returned: 0, universe: idx.rows.length,
+          note: 'khong tim thay co dong khop ten trong dao chi muc' },
+      }),
+    };
+  }
+  matches.sort((x, y) => (y.n || 0) - (x.n || 0));
+  const holder = matches[0];
+  const sh = String(holder.id || '').slice(0, 2);
+  const shard = sh ? await sGet(env, 'market/holders/' + sh + '.json') : null;
+  const det = shard && holder.id ? shard[holder.id] : null;
+  const holds = det && Array.isArray(det.holds) ? det.holds : [];
+  const entries = [];
+  let withPrev = 0, symChecked = 0;
+  for (const h of holds.slice(0, limit)) {
+    const sym = String(h.symbol || '').toUpperCase();
+    if (!sym) continue;
+    const d = await sGet(env, 'market/holders_detail/' + sym + '.json');
+    if (!d || !d.current || !Array.isArray(d.current.rows)) continue;
+    symChecked++;
+    const curAgg = _aggHolders(d.current.rows);
+    const cIdx = curAgg.findIndex((e) => e.norm === holder.q);
+    const c = cIdx >= 0 ? { ...curAgg[cIdx], rank: cIdx + 1 } : null;
+    let p = null;
+    if (d.previous && Array.isArray(d.previous.rows)) {
+      withPrev++;
+      const prevAgg = _aggHolders(d.previous.rows);
+      const pIdx = prevAgg.findIndex((e) => e.norm === holder.q);
+      p = pIdx >= 0 ? { ...prevAgg[pIdx], rank: pIdx + 1 } : null;
+    }
+    if (!p && !d.previous) continue; // chua co ky truoc: khong ket luan
+    const r = _changeEntry(p, c);
+    if (r.kind === 'entry') entries.push({ symbol: sym, ...r.entry });
+  }
+  const missing = withPrev ? [] : ['record_date'];
+  const order = { NEW: 0, INCREASE: 1, DECREASE: 2, EXIT: 3, UNCHANGED: 4 };
+  entries.sort((x, y) => (order[x.class] - order[y.class]) ||
+    (Math.abs(y.d_shares) - Math.abs(x.d_shares)));
+  return {
+    rows: entries.length,
+    env: envResult({
+      holder: { name: holder.name, type: holder.t || null,
+                symbols_held: holds.length, symbols_checked: symChecked,
+                symbols_with_prev_period: withPrev },
+      entries, dating: 'interval',
+    }, {
+      dataset: 'market/holders_index.json + market/holders_detail/<SYM>.json',
+      route: '/api/mcp (get_holder_portfolio_changes)',
+      updated: idx.updated, prov: idx._prov, verification: 'verified',
+      staleKind: 'daily', missing,
+      coverage: { returned: entries.length, universe: holds.length,
+        note: withPrev
+          ? 'so sanh 2 ky chot lien tiep theo tung ma; dating=interval'
+          : 'kho moi co 1 ky chot cho cac ma co dong nay nam — chua du ky thu hai de ket luan thay doi (khong suy dien)' },
     }),
   };
 }
@@ -1943,6 +2285,19 @@ const TOOLS = [
       kind: { type: 'string', enum: ['foreign', 'proprietary', 'both'] },
       days: { type: 'integer', description: 'So phien (chi voi symbol), mac dinh 20, toi da 500' },
     }),
+  },
+  {
+    name: 'analyze_holders', minTier: 2, run: tAnalyzeHolders, rest: null,
+    description: 'Chu de: Co dong va so huu cua mot ma — co dac, room ngoai, thay doi ky, noi bo. analyze_holders(symbol): 6 khoi — co dac (CR1/5/10 + HHI tung phan kem coverage), free float can tren, room theo tran da thong bao, thay doi co dong lon giua 2 ky chot, su kien noi bo 30/60/90 ngay, so huu lanh dao gom nguoi lien quan. Thieu record_date, khoi thay doi tra missing. Khong cham diem, khong nhan blackout.',
+    inputSchema: S({ ...SYM, window_days: { type: 'integer', description: 'Cua so su kien noi bo (30/60/90), mac dinh 90' } }, ['symbol']),
+  },
+  {
+    name: 'get_holder_portfolio_changes', minTier: 3, run: tGetHolderPortfolioChanges, rest: null,
+    description: 'Chu de: Danh muc cua mot co dong da thay doi the nao giua hai ky chot. get_holder_portfolio_changes(name): liet ke NEW/EXIT/INCREASE/DECREASE theo ma, kem delta co phan + delta diem % + thay doi hang cua co dong. name tra o find_holder. Chi tinh duoc khi kho co tu 2 ky chot tro len; thieu ky thu hai thi tra missing, khong suy dien tu tin tuc.',
+    inputSchema: S({
+      name: { type: 'string', description: 'Ten co dong (nhu find_holder)' },
+      limit: { type: 'integer', description: 'So ma toi da quet, mac dinh 50' },
+    }, ['name']),
   },
   {
     name: 'get_analysis_catalog', minTier: 1, run: tGetAnalysisCatalog, rest: null,

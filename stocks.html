@@ -1263,6 +1263,7 @@ async function loadTape(sym){
   const sec=$("dTapeSec"),card=$("dTapeCard");
   try{
     const j=await api("/trades?symbol="+encodeURIComponent(sym)+"&limit=300");
+    if(j.empty){ if(sec)sec.style.display="none"; if(card)card.style.display="none"; return; }
     if(j.trades) j.trades.sort((a,b)=>(a.ts||0)-(b.ts||0));
     _tape=j;
     if(sec)sec.style.display=""; if(card)card.style.display="";
@@ -2591,11 +2592,45 @@ function chatRender(route,p){
     const bx=(d.breadth||{}).by_exchange||{};
     for(const ex of Object.keys(bx)) h+=chatRow(ex,`${fmtN(bx[ex].advancers)} ${esc(T("mã tăng"))} · ${fmtN(bx[ex].decliners)} ${esc(T("mã giảm"))}`);
     if(d.trin&&d.trin.value!=null) h+=chatRow("TRIN",Number(d.trin.value).toFixed(2).replace(".",","));
+    const dv=d.divergence||{};
+    if(dv.cw_ew_spread_pp!=null){
+      h+=chatRow(T("Phân kỳ CW−EW"),`<span class="${dv.cw_ew_spread_pp>=0?"up":"dn"}"><b>${dv.cw_ew_spread_pp>0?"+":""}${Number(dv.cw_ew_spread_pp).toFixed(2).replace(".",",")} pp</b></span> · EW ${dv.ew_pct!=null?(dv.ew_pct>0?"+":"")+Number(dv.ew_pct).toFixed(2).replace(".",",")+"%":"—"} · ${dv.pct_advancers!=null?Number(dv.pct_advancers).toFixed(1).replace(".",",")+"% "+esc(T("mã tăng")):""}`);
+      if(dv.leader_laggard_spread_pp!=null) h+=chatRow(T("Ngành dẫn dắt − lùi sau"),`${Number(dv.leader_laggard_spread_pp).toFixed(2).replace(".",",")} pp · ${fmtN(dv.sectors_up||0)}/${fmtN(dv.sectors_total||0)} ${esc(T("ngành tăng"))}`);
+    }
     const ft=d.flow_totals||{};
     if(ft.foreign_net!=null) h+=chatRow(T("Ròng khối ngoại"),`<span class="${cls(ft.foreign_net)}"><b>${ty(ft.foreign_net)}</b></span>`);
     if(ft.proprietary_net!=null) h+=chatRow(T("Ròng tự doanh"),`<span class="${cls(ft.proprietary_net)}"><b>${ty(ft.proprietary_net)}</b></span>`);
     if(d.regime) h+=chatRow(T("Trạng thái thị trường"),esc(typeof d.regime==="string"?d.regime:(d.regime.regime||"")));
     follow=[{label:T("Dòng tiền đổ về đâu"),tool:"get_flow_summary",args:{kind:"both",group_by:"sector"}}];
+  } else if(tool==="analyze_holders"){
+    const sym=d.symbol||a.symbol||"", cz=d.concentration||{}, hh=cz.hhi_partial||{}, ff=d.free_float||{}, fr=d.foreign_room, ld=d.leadership||{}, ch=d.changes;
+    const pc=v=>v==null?"—":Number(v).toFixed(2).replace(".",",")+"%";
+    h=`<b>${esc(T("Cổ đông & sở hữu"))} ${esc(sym)}</b>`;
+    if(cz.cr1_pct!=null) h+=chatRow(T("Cô đặc")+" CR1/CR5/CR10",`${pc(cz.cr1_pct)} · ${pc(cz.cr5_pct)} · ${pc(cz.cr10_pct)}`);
+    if(hh.value!=null) h+=chatRow(T("HHI từng phần"),`${Number(hh.value).toFixed(3).replace(".",",")} · ${esc(T("Độ phủ"))} ${pc(hh.coverage_shares_pct)} · ${esc(T("Phần chưa công bố"))} ${pc(hh.residual_pct)}`);
+    if(cz.top_holders&&cz.top_holders.length) h+=chatRow(T("Cổ đông lớn nhất"),`${esc(cz.top_holders[0].name||"")} — ${pc(cz.top_holders[0].pct)}`);
+    if(ff.pct_upper_bound!=null) h+=chatRow(T("Free float (cận trên)"),pc(ff.pct_upper_bound));
+    if(fr) h+=chatRow(T("Room ngoại"),`${esc(T("Trần"))} ${pc(fr.fol_max_pct)} · ${esc(T("đang giữ"))} ${pc(fr.foreign_owned_pct)} · ${esc(T("còn lại"))} ${fr.room_pp!=null?Number(fr.room_pp).toFixed(2).replace(".",",")+" pp":"—"} (${fmtN(fr.room_shares)} CP)${fr.status==="tight"?" · "+esc(T("kín room")):""}`);
+    else h+=chatRow(T("Room ngoại"),esc(T("chưa có dữ liệu")));
+    if(ld.ownership_pct_incl_related!=null) h+=chatRow(T("Lãnh đạo nắm giữ"),`${pc(ld.ownership_pct_incl_related)} · ${fmtN(ld.holders_count||0)} ${esc(T("người"))}${ld.chair_pct!=null?" · "+esc(T("Chủ tịch"))+" "+pc(ld.chair_pct):""}`);
+    if(ch&&ch.counts) h+=chatRow(T("Thay đổi giữa 2 kỳ chốt"),`${fmtN(ch.counts.changed||0)} ${esc(T("thay đổi"))} · ${fmtN(ch.counts.unchanged||0)} ${esc(T("giữ nguyên"))}`);
+    else h+=chatRow(T("Thay đổi giữa 2 kỳ chốt"),esc(T("chưa có dữ liệu")));
+    if(ch&&ch.entries&&ch.entries.length) h+='<table class="chatft">'+ch.entries.slice(0,6).map(e=>`<tr><td>${esc(e.holder||"")}</td><td>${esc(e.class||"")}</td><td style="text-align:right" class="${(e.d_shares||0)>=0?"up":"dn"}">${e.d_shares!=null?((e.d_shares>0?"+":"")+fmtN(e.d_shares)):""}</td><td style="text-align:right">${e.d_pp!=null?((e.d_pp>0?"+":"")+Number(e.d_pp).toFixed(2).replace(".",","))+" pp":""}</td></tr>`).join("")+"</table>";
+    h+=chatRow(T("Sự kiện nội bộ"),esc(T("chưa có dữ liệu")));
+    follow=sym?[{label:`${T("Phân tích")} ${sym}`,tool:"analyze_symbol",args:{symbol:sym}},{label:T("Hồ sơ công ty"),tool:"get_company_profile",args:{symbol:sym}}]:[];
+  } else if(tool==="get_holder_portfolio_changes"){
+    const hd=d.holder||{};
+    h=`<b>${esc(T("Thay đổi nắm giữ"))} — ${esc(hd.name||a.name||"")}</b>`;
+    if(hd.symbols_with_prev_period!=null) h+=chatRow(T("Số mã có 2 kỳ chốt"),`${fmtN(hd.symbols_with_prev_period)}/${fmtN(hd.symbols_held||0)}`);
+    if((d.entries||[]).length) h+='<table class="chatft">'+d.entries.slice(0,15).map(e=>`<tr><td>${e.symbol?symLink(e.symbol):""}</td><td>${esc(e.class||"")}</td><td style="text-align:right" class="${(e.d_shares||0)>=0?"up":"dn"}">${e.d_shares!=null?((e.d_shares>0?"+":"")+fmtN(e.d_shares)):""}</td><td style="text-align:right">${e.d_pp!=null?((e.d_pp>0?"+":"")+Number(e.d_pp).toFixed(2).replace(".",","))+" pp":""}</td></tr>`).join("")+"</table>";
+    else h+=`<div style="font-size:11px;color:var(--pp-mut);margin-top:4px">${esc(T("Chưa đủ 2 kỳ chốt để kết luận thay đổi"))}</div>`;
+    follow=[];
+  } else if(tool==="get_analysis_catalog"){
+    const ents=(d&&d.entries)||[];
+    h=`<b>${esc(T("Danh mục phân tích"))}</b>`;
+    if(ents.length) h+='<table class="chatft">'+ents.slice(0,8).map(e=>`<tr><td><b>${esc(e.name||"")}</b></td><td>${esc(e.label||"")}</td></tr>`).join("")+"</table>"+(ents[0].definition?`<div style="font-size:11px;color:var(--pp-mut);margin-top:4px">${esc(ents[0].definition)}</div>`:"");
+    else h+=`<div style="font-size:11px;color:var(--pp-mut);margin-top:4px">${esc(T("chưa có dữ liệu"))}</div>`;
+    follow=[];
   } else if(tool==="calc_flow_sum"){
     h=`<b>${esc(a.symbol||"")} — ${esc(T("Tổng dòng tiền"))}</b>`;
     if(d.foreign) h+=chatRow(T("Khối ngoại"),`<span class="${cls(d.foreign.net)}"><b>${ty(d.foreign.net)}</b></span> · ${fmtN(d.foreign.sessions)} ${esc(T("phiên"))}`);
@@ -2610,12 +2645,12 @@ function chatRoute(qRaw){
   // trong tu tieng Viet co dau, vd "NGO" trong "NGOẠI" — loi 23/10) va
   // doi chieu danh muc ma that SS_ROWS neu da tai (chan not "NAY" trong
   // "hom nay"); chua tai thi dung danh sach tu dung tieng Viet/chi so.
-  const symM=q.match(/(?:^|\s)([A-Za-z]{3,4})(?=[\s?.!,]|$)/);
   let sym=null;
-  if(symM){ const t=symM[1], up=t.toUpperCase();
-    const STOP=new Set(["ROE","EPS","NAY","MUA","BAN","XEM","CHO","HOM","QUA","SAU","MAI","MOT","HAI","BON","BAY","TAM","CHI","PHI","VON","LAI","TOT","XAU","CAO","MOI","THE","AND","FOR","HOW"]);
-    const inUni=(typeof SS_ROWS!=="undefined"&&SS_ROWS&&SS_ROWS.length)?SS_ROWS.some(r=>r.s===up):null;
-    if((t===t.toUpperCase()||t===t.toLowerCase())&&!STOP.has(up)&&(inUni===null||inUni)) sym=up; }
+  { const STOP=new Set(["ROE","EPS","NAY","MUA","BAN","XEM","CHO","HOM","QUA","SAU","MAI","MOT","HAI","BON","BAY","TAM","CHI","PHI","VON","LAI","TOT","XAU","CAO","MOI","THE","AND","FOR","HOW","ROOM","FREE","FLOAT"]);
+    const cands=q.match(/(?:^|\s)([A-Za-z]{3,4})(?=[\s?.!,]|$)/g)||[];
+    for(const cm of cands){ const t=cm.trim(), up=t.toUpperCase();
+      const inUni=(typeof SS_ROWS!=="undefined"&&SS_ROWS&&SS_ROWS.length)?SS_ROWS.some(r=>r.s===up):null;
+      if((t===t.toUpperCase()||t===t.toLowerCase())&&!STOP.has(up)&&(inUni===null||inUni)){ sym=up; break; } } }
   const low=q.toLowerCase();
   const has=(re)=>re.test(low);
   if(has(/lãi suất điều hành|tái cấp vốn|tái chiết khấu/)) return {tool:"get_macro",args:{},label:q};
@@ -2631,6 +2666,11 @@ function chatRoute(qRaw){
   if(has(/đồng thuận|khuyến nghị|giá mục tiêu/)) return {tool:"get_consensus",args:sym?{symbol:sym}:{},label:q};
   if(has(/tự doanh/)) return {tool:"get_flow",args:sym?{kind:"proprietary",symbol:sym,days:30}:{kind:"proprietary"},label:q};
   if(has(/khối ngoại|nước ngoài/)){ const dm=low.match(/(\d+)\s*ngày/); return {tool:"get_flow",args:sym?{kind:"foreign",symbol:sym,days:dm?Number(dm[1]):30}:{kind:"foreign"},label:q}; }
+  if(has(/thay đổi nắm giữ|tăng hay giảm nắm|kỳ này.*(tăng|giảm).*nắm/)){
+    const name=q.replace(/ông|bà|anh|chị/gi," ").replace(/kỳ này.*$/i,"").replace(/thay đổi nắm giữ.*$/i,"").replace(/tăng hay giảm nắm.*$/i,"").replace(/[?？]/g,"").trim();
+    if(name.split(/\s+/).length>=2) return {tool:"get_holder_portfolio_changes",args:{name},label:q};
+  }
+  if(sym&&has(/cô đặc|room ngoại|room của|trần.*ngoại|free float|tự do chuyển nhượng|lãnh đạo.*(nắm|giữ|sở hữu)/)) return {tool:"analyze_holders",args:{symbol:sym},label:q};
   if(has(/nắm/)&&!has(/cổ đông lớn/)){
     const name=q.replace(/ông|bà|anh|chị/gi," ").replace(/đang\s*nắm.*$/i,"").replace(/nắm.*$/i,"").replace(/[?？]/g,"").trim();
     if(name.split(/\s+/).length>=2) return {tool:"find_holder",args:{name},label:q};
@@ -2848,6 +2888,32 @@ const I18N_FULL = {
 "Trạng thái thị trường":["Market state","市场状态","시장 상태"],
 "Chỉ số ngành":["Sector indices","行业指数","업종 지수"],
 "Cổ đông lớn nhất":["Largest shareholder","最大股东","최대 주주"],
+"Cổ đông & sở hữu":["Shareholders & ownership","股东与持股","주주 및 지분"],
+"Cô đặc":["Concentration","集中度","집중도"],
+"HHI từng phần":["Partial HHI","部分HHI","부분 HHI"],
+"Độ phủ":["Coverage","覆盖率","커버리지"],
+"Phần chưa công bố":["Undisclosed part","未披露部分","미공개 부분"],
+"Free float (cận trên)":["Free float (upper bound)","自由流通 (上限)","유통주식 (상한)"],
+"Room ngoại":["Foreign room","外资空间","외국인 한도 여유"],
+"Trần":["Cap","上限","한도"],
+"đang giữ":["held","持有","보유 중"],
+"còn lại":["remaining","剩余","잔여"],
+"kín room":["room full","满仓","한도 소진"],
+"Lãnh đạo nắm giữ":["Leadership holdings","管理层持股","경영진 보유"],
+"người":["people","人","명"],
+"Chủ tịch":["Chairman","董事长","회장"],
+"Thay đổi giữa 2 kỳ chốt":["Change between 2 record dates","两个记录日之间变化","두 기준일 사이 변동"],
+"thay đổi":["changed","变动","변동"],
+"giữ nguyên":["unchanged","不变","불변"],
+"Sự kiện nội bộ":["Insider events","内部人交易","내부자 거래"],
+"Hồ sơ công ty":["Company profile","公司档案","회사 프로필"],
+"Thay đổi nắm giữ":["Holdings changes","持股变化","보유 변동"],
+"Số mã có 2 kỳ chốt":["Symbols with 2 record dates","有2个记录日的股票","기준일 2회 종목 수"],
+"Chưa đủ 2 kỳ chốt để kết luận thay đổi":["Not enough record dates to conclude changes","记录日不足，无法得出变化结论","변동을 결론짓기엔 기준일이 부족합니다"],
+"Phân kỳ CW−EW":["CW−EW divergence","市值加权−等权背离","시총가중−동일가중 괴리"],
+"Ngành dẫn dắt − lùi sau":["Leading − lagging sector","领涨−垫底行业","선도 − 후행 업종"],
+"ngành tăng":["sectors up","上涨行业","상승 업종"],
+"Danh mục phân tích":["Analysis catalog","分析目录","분석 카탈로그"],
 "Phân tích ngành":["Sector analysis","行业分析","섹터 분석"],
 "Ròng khối ngoại":["Foreign net","外资净额","외국인 순매매"],
 "Ròng tự doanh":["Proprietary net","自营净额","자기자본 순매매"],

@@ -62,6 +62,8 @@ function _buildDecls() {
     { name: 'analyze_symbol', description: 'PHAN TICH 1 ma (ky hon): gia so duong trung binh + chi bao + rong ngoai/tu doanh 5/20/60 phien + phan tan dong thuan + co dong lon. Dung cho "phan tich (ky) ma X", "xem ky X".', parameters: OBJ({ symbol: SYM, days: INT('So phien nhin lai, mac dinh 20') }, ['symbol']) },
     { name: 'analyze_compare', description: 'SO SANH 2 ma hoac 2 nganh tren cung bo tieu chi + chenh lech so. Dung cho "so sanh X voi Y", "X va Y cai nao tien vao manh hon".', parameters: OBJ({ kind: { type: 'STRING', enum: ['symbols', 'sectors'], description: 'symbols = 2 ma; sectors = 2 nganh' }, items: { type: 'ARRAY', items: { type: 'STRING' }, description: 'Dung 2 phan tu: 2 ma hoac 2 ma nganh ICB' }, days: INT('Cua so tinh, mac dinh 20') }, ['kind', 'items']) },
     { name: 'analyze_market', description: 'TOAN CANH thi truong: chi so + do rong 3 san + TRIN + tong rong ngoai/tu doanh + vi mo tom tat. Dung cho "thi truong hom nay the nao", "tong quan phien".', parameters: OBJ({ days: INT('So phien cho khoi xu huong, mac dinh 20') }) },
+    { name: 'analyze_holders', description: 'CO DONG & SO HUU cua 1 ma (BB-5): co dac CR1/5/10 + HHI tung phan, free float can tren, room ngoai theo tran da thong bao cua ma, thay doi co dong lon giua 2 ky chot, so huu lanh dao. Dung cho "co dong FPT co dac khong", "room ngoai MWG", "lanh dao VCB nam bao nhieu".', parameters: OBJ({ symbol: SYM, window_days: INT('Cua so su kien noi bo 30/60/90, mac dinh 90') }, ['symbol']) },
+    { name: 'get_holder_portfolio_changes', description: 'THAY DOI nam giu cua MOT co dong giua 2 ky chot (BB-5): NEW/EXIT/INCREASE/DECREASE theo ma kem delta CP + diem %. Dung cho "ong Truong Gia Binh ky nay tang giam nam giu ma nao". name lay tu find_holder.', parameters: OBJ({ name: STR('Ten co dong (vd Truong Gia Binh)'), limit: INT('So ma toi da quet, mac dinh 50') }, ['name']) },
     { name: 'calc_flow_sum', description: 'Tong dong tien rong cua 1 ma theo cua so phien (server tinh san). symbol + days, kind foreign/proprietary/both.', parameters: OBJ({ symbol: SYM, kind: { type: 'STRING', enum: ['foreign', 'proprietary', 'both'] }, days: INT('So phien, mac dinh 20, toi da 500') }, ['symbol']) },
     { name: 'get_analysis_catalog', description: 'Danh muc cong thuc/chi bao he thong dung (tra cuu khi can giai thich cach tinh).', parameters: OBJ({ kind: { type: 'STRING', enum: ['indicators', 'ratios', 'formulas'] }, name: STR('Ten chinh xac (tuy chon)'), query: STR('Tu khoa (tuy chon)') }, ['kind']) },
   ];
@@ -270,6 +272,7 @@ const SYSTEM_PROMPT = [
   '9. SO SANH (BB-3): "so sanh X voi Y" -> analyze_compare: 2 ma thi kind=symbols, 2 ten nganh thi kind=sectors kem 2 ma ICB tuong ung.',
   '10. TOAN CANH (BB-4): "thi truong hom nay the nao", "tong quan phien/thi truong" -> analyze_market.',
   '11. Cau hoi DU BAO ("nganh X sap toi co tang khong", "ma Y ngay mai the nao") -> VAN goi tool phan tich tuong ung (BB-1/BB-2/BB-4) de lay phan mo ta hien trang; he thong khong du bao va se noi ro dieu do — khong tu choi trong, khong tra loi van xuoi du bao.',
+  '12. CO DONG & SO HUU (BB-5): hoi ve co dong/co dac so huu/room ngoai/lanh dao nam giu CUA 1 MA -> analyze_holders(symbol). Hoi MOT CO DONG cu the ky nay tang giam nam giu nhung ma nao -> get_holder_portfolio_changes(name). Ranh gioi cung cua BB-5: khong goi bat ky so nao la "tin hieu", khong dung khai niem blackout (TT 96/2020 khong co), tran room chi theo ma da thong bao, thay doi theo ky ke kem loai dinh ngay (interval), so huu lanh dao khong suy ra chat luong quan tri.',
 ].join('\n');
 
 export async function hAiChat(request, env) {
@@ -334,7 +337,7 @@ export async function hAiChat(request, env) {
   let j1;
   try {
     j1 = await geminiCall(env, keys, state, {
-      systemInstruction: { parts: [{ text: SYSTEM_PROMPT + '\n12. Tra loi bang ngon ngu: ' + lang + '.' }] },
+      systemInstruction: { parts: [{ text: SYSTEM_PROMPT + '\n13. Tra loi bang ngon ngu: ' + lang + '.' }] },
       contents,
       tools: [{ functionDeclarations: _buildDecls() }],
       toolConfig: { functionCallingConfig: { mode: 'AUTO' } },
@@ -359,7 +362,7 @@ export async function hAiChat(request, env) {
     // chua so -> fallback:no_tool lap 2 lan du prompt da co luat.
     try {
       const j1b = await geminiCall(env, keys, state, {
-        systemInstruction: { parts: [{ text: SYSTEM_PROMPT + '\n12. Tra loi bang ngon ngu: ' + lang + '.' }] },
+        systemInstruction: { parts: [{ text: SYSTEM_PROMPT + '\n13. Tra loi bang ngon ngu: ' + lang + '.' }] },
         contents,
         tools: [{ functionDeclarations: _buildDecls() }],
         toolConfig: { functionCallingConfig: { mode: 'ANY' } },

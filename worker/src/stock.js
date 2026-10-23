@@ -348,7 +348,10 @@ export async function hStockTrades(request, env){
   if(!sym) return jerr("Symbol required", 400);
   const limit = Math.max(10, Math.min(parseInt(u.searchParams.get("limit")||"120",10)||120, 1000));
   const d = await sGet(env, "market/tape/"+sym+".json");
-  if(!d) return jerr("No tape data for "+sym, 404);
+  // Chua co bang khop lenh (vd truoc phien dau tien co du lieu):
+  // 200 + empty de frontend an khoi sach (khong phai loi mang 404).
+  if(!d) return sJson({symbol: sym, empty: true, trades: [], levels: [],
+    total_vol: 0, buy_vol: 0, sell_vol: 0, unknown_vol: 0, n_trades: 0});
   // Gia trong tape la NGHIN dong (quy uoc chan DNSE) -> doi sang
   // dong de khop thang gia quote o frontend.
   const trades = (d.trades || []).slice(-limit).map(t => ({
@@ -1026,6 +1029,15 @@ export async function hStockPublish(request, env){
   if(body.market_flow_history) await put1("market_flow_history", body.market_flow_history);
   if(body.sector_breadth) await put1("sector_breadth", body.sector_breadth);
   if(body.rs_universe) await put1("rs_universe", body.rs_universe);
+  // O-1/O-2 (Chot 19:05 23/10): du lieu cho analyze_holders +
+  // divergence cua analyze_market — publisher publish_holders_detail.py
+  // / publish_foreign_room.py / publish_divergence.py.
+  if(body.holders_detail) for(const sym of Object.keys(body.holders_detail)){
+    await sPut(env, "market/holders_detail/"+sym+".json", doc(body.holders_detail[sym]));
+    n++;
+  }
+  if(body.foreign_room) await put1("foreign_room", body.foreign_room);
+  if(body.divergence) await put1("divergence", body.divergence);
   if(body.holders_shards) for(const sh of Object.keys(body.holders_shards)){
     if(!/^[0-9a-f]{2}$/.test(sh)) continue;
     await sPut(env, "market/holders/"+sh+".json", doc(body.holders_shards[sh]));
