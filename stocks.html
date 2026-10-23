@@ -37,16 +37,19 @@ body{font-family:var(--pp-font);background:var(--pp-bg);color:var(--pp-ink);max-
 .tab.on{background:var(--pp-accent);color:#fff;border-color:var(--pp-accent)}
 .idx{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:4px 16px}
 .idxcard{min-width:0;background:var(--pp-card);border:1px solid var(--pp-line);border-radius:10px;padding:10px}
-.mgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:stretch}
-.mcard{margin:0;padding:12px;cursor:pointer;display:flex;flex-direction:column;height:100%;box-sizing:border-box;text-align:left}
+.mgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;align-items:stretch;padding:4px 16px}
+.mgrid .mcard,.mgrid .mcpol{margin:0}
+.mcard{margin:0;padding:12px;cursor:pointer;display:flex;flex-direction:column;height:100%;box-sizing:border-box;text-align:left;min-width:0}
 .mct{font-size:13px;color:var(--pp-mut);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;height:18px;line-height:1.35;flex:none}
-.mcv{font-size:17px;font-weight:700;margin-top:2px;line-height:1.3;height:45px;overflow:hidden;display:flex;align-items:baseline;gap:6px;white-space:nowrap;flex:none}
+.mcv{font-size:17px;font-weight:700;margin-top:2px;line-height:1.3;height:28px;overflow:hidden;display:flex;align-items:baseline;gap:6px;white-space:nowrap;flex:none}
 .mcv .mv{white-space:nowrap}
 .mcv .mu{font-size:11px;color:var(--pp-mut);font-weight:600;white-space:nowrap}
 .mcv .md{flex:none;white-space:nowrap}
 .mcspark{height:30px;margin-top:8px;flex:none}
+.mcspark svg{width:100%;height:100%;display:block}
 .mcsub{font-size:12.5px;color:var(--pp-mut);margin-top:8px;height:32px;overflow:hidden}
 .mcsrc{font-size:11.5px;color:var(--pp-mut);margin-top:auto;padding-top:6px}
+.mcard .mcsrc{display:flex;flex-direction:column;justify-content:flex-end;height:34px;line-height:17px;flex:none;overflow:hidden}
 .mcsrc .nw{white-space:nowrap}
 .mcpol{margin:0;padding:12px;grid-column:1/-1;text-align:left}
 .mcpol .vals{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:8px}
@@ -132,7 +135,7 @@ input,select{background:var(--pp-bg2);border:1px solid var(--pp-line);color:var(
 #v-market,#macroWrap{container-type:inline-size}
 @container (max-width:339px){
 .idx,.mgrid{grid-template-columns:1fr}
-.mcv{font-size:15px;height:auto;min-height:40px}
+.mcv{font-size:15px;height:26px}
 .mcspark{height:24px}
 }
 @container (min-width:560px){
@@ -143,7 +146,7 @@ input,select{background:var(--pp-bg2);border:1px solid var(--pp-line);color:var(
 @supports not (container-type:inline-size){
 @media (max-width:359px){
 .idx,.mgrid{grid-template-columns:1fr}
-.mcv{font-size:15px;height:auto;min-height:40px}
+.mcv{font-size:15px;height:26px}
 .mcspark{height:24px}
 }
 }
@@ -602,8 +605,10 @@ const MAC_SRC={sbv:"NHNN",vcb:"Vietcombank",sjc:"SJC",nyfed:"NY Fed",treasury:"U
 let MAC=null, MACOPEN=null, MACFC="USD", MACUT="y10", MACHIST={};
 function macSpark(vals,color){
   if(!vals||vals.length<2) return '<svg width="100%" height="30" viewBox="0 0 120 30" preserveAspectRatio="none" aria-hidden="true"></svg>';
-  const w=120,h=30,mn=Math.min(...vals),mx=Math.max(...vals),rg=(mx-mn)||1;
-  const pts=vals.map((v,i)=>`${(i/(vals.length-1)*w).toFixed(1)},${(h-3-((v-mn)/rg)*(h-6)).toFixed(1)}`).join(" ");
+  const w=120,h=30,mn=Math.min(...vals),mx=Math.max(...vals),rg=mx-mn;
+  if(rg===0){ const y=(h/2).toFixed(1); return `<svg width="100%" height="${h}" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><polyline points="0,${y} ${w},${y}" fill="none" stroke="${color}" stroke-width="1.6"/></svg>`; }
+  const pad=rg*0.08, lo=mn-pad, span=rg+2*pad;
+  const pts=vals.map((v,i)=>`${(i/(vals.length-1)*w).toFixed(1)},${(h-3-((v-lo)/span)*(h-6)).toFixed(1)}`).join(" ");
   return `<svg width="100%" height="${h}" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.6"/></svg>`;
 }
 function macChg(ch,fmt){
@@ -625,7 +630,7 @@ function renderMacro(){
     <div class="mcv"><span class="mv">${val}</span><span class="md">${chg||""}</span></div>
     <div class="mcspark">${spark||""}</div>
     <div class="mcsub">${sub||""}</div>
-    <div class="mcsrc">${L.src}: ${src} · <span class="nw">${date||""}</span></div></div>`;
+    <div class="mcsrc"><span>${L.src}: ${src} <span class="nw">· ${date||""}</span></span></div></div>`;
   let h=`<div class="mgrid">`;
   const c=S.fx_center;
   if(c) h+=card("fx_center",L.fxC,fVnd(c.last.rate)+" ₫",macChg(c.change,v=>fVnd(v)+" ₫"),macSpark(c.spark,"#38bdf8"),"",MAC_SRC[c.source],c.date);
@@ -2008,11 +2013,12 @@ function renderIndChips(studies){
   studies.forEach((st,i)=>{
     const spec=studySpec(st.name);
     const label=(spec&&spec.short?spec.short:st.name)+indParamSummary(st);
-    h+=`<button data-ind="${i}" style="font-size:12px;padding:5px 9px;border-radius:6px;background:var(--pp-bg2);border:1px solid var(--pp-line);cursor:pointer;margin:0 6px 6px 0">${esc(label)}</button>`;
+    h+=`<span style="display:inline-flex;margin:0 6px 6px 0"><button data-ind="${i}" style="font-size:12px;padding:5px 9px;border-radius:6px 0 0 6px;background:var(--pp-bg2);border:1px solid var(--pp-line);border-right:none;cursor:pointer">${esc(label)}</button><button data-indx="${i}" aria-label="${esc(T("Xoá chỉ báo"))}" style="font-size:12px;padding:5px 7px;border-radius:0 6px 6px 0;background:var(--pp-bg2);border:1px solid var(--pp-line);cursor:pointer;color:var(--pp-mut)">×</button></span>`;
   });
   h+=`<button data-indadd="1" style="font-size:12px;padding:5px 9px;border-radius:6px;background:var(--pp-accent);color:#fff;border:1px solid var(--pp-accent);cursor:pointer;margin:0 6px 6px 0">${esc(T("+ Chỉ báo"))}</button>`;
   el.innerHTML=h;
   el.querySelectorAll("button[data-ind]").forEach(b=>b.onclick=()=>openIndEdit(Number(b.dataset.ind)));
+  el.querySelectorAll("button[data-indx]").forEach(b=>b.onclick=()=>{ const sts=getStudies(); sts.splice(Number(b.dataset.indx),1); saveStudies(sts); const p=$("dIndPanel"); if(p) p.style.display="none"; renderIndChart(); });
   const add=el.querySelector("button[data-indadd]"); if(add) add.onclick=openIndList;
 }
 function openIndList(){
@@ -2020,14 +2026,21 @@ function openIndList(){
   const impl=(window.PP_IND&&PP_IND.implemented)||[];
   const btnStyle="font-size:12px;padding:5px 9px;border-radius:6px;background:var(--pp-bg2);border:1px solid var(--pp-line);cursor:pointer";
   p.innerHTML=`<div style="display:flex;gap:6px;align-items:center"><input id="indSearch" type="text" placeholder="${esc(T("Tìm chỉ báo…"))}" style="flex:1;padding:6px 8px;border-radius:6px;border:1px solid var(--pp-line);background:var(--pp-bg2);color:inherit;font-size:13px"><button id="indClose" style="${btnStyle}">${esc(T("Đóng"))}</button></div><div id="indList" style="max-height:260px;overflow:auto;margin-top:6px"></div>`;
+  const sameAsFresh=(st,spec)=>{ if(!spec||!spec.inputs) return false; for(const inp of spec.inputs){ if(inp.type==="symbol") continue; if(String(indInputVal(st.inputs,inp))!==String(indInputVal({},inp))) return false; } return true; };
   const draw=q=>{
     const list=(window.PP_STUDIES||[]).filter(s=>!q||s.name.toLowerCase().includes(q)||(s.short||"").toLowerCase().includes(q));
     const box=$("indList"); if(!box) return;
+    const stsNow=getStudies();
     box.innerHTML=list.map(s=>{
       const ok=impl.includes(s.name);
-      return `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 2px;border-bottom:1px solid var(--pp-line)"><span style="font-size:13px">${esc(s.name)}${s.short&&s.short!==s.name?` <span style="color:var(--pp-mut);font-size:11px">${esc(s.short)}</span>`:""}</span>${ok?`<button data-add="${esc(s.name)}" style="${btnStyle}">${esc(T("Thêm"))}</button>`:`<span style="font-size:11px;color:var(--pp-mut)">${esc(T("Sắp có"))}</span>`}</div>`;
+      const act=stsNow.filter(x=>x.name===s.name);
+      const dup=ok&&act.some(x=>sameAsFresh(x,studySpec(s.name)));
+      const state=act.length?` <span style="color:var(--pp-mut);font-size:11px">· ${esc(T("đang bật"))}${act.length>1?" ×"+act.length:""}</span>`:"";
+      const btn=!ok?`<span style="font-size:11px;color:var(--pp-mut)">${esc(T("Sắp có"))}</span>`:dup?`<button data-del="${esc(s.name)}" style="${btnStyle};color:#dc2626">${esc(T("Tắt"))}</button>`:`<button data-add="${esc(s.name)}" style="${btnStyle}">${esc(T("Thêm"))}</button>`;
+      return `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 2px;border-bottom:1px solid var(--pp-line)"><span style="font-size:13px">${esc(s.name)}${s.short&&s.short!==s.name?` <span style="color:var(--pp-mut);font-size:11px">${esc(s.short)}</span>`:""}${state}</span>${btn}</div>`;
     }).join("")||`<div class="hint">${esc(T("Không tìm thấy"))}</div>`;
     box.querySelectorAll("button[data-add]").forEach(b=>b.onclick=()=>{ const sts=getStudies(); sts.push({name:b.dataset.add, inputs:{}}); saveStudies(sts); renderIndChart(); draw(($("indSearch").value||"").trim().toLowerCase()); });
+    box.querySelectorAll("button[data-del]").forEach(b=>b.onclick=()=>{ const nm=b.dataset.del; const sp=studySpec(nm); const sts=getStudies().filter(x=>!(x.name===nm&&sameAsFresh(x,sp))); saveStudies(sts); renderIndChart(); draw(($("indSearch").value||"").trim().toLowerCase()); });
   };
   draw("");
   $("indSearch").oninput=e=>draw(e.target.value.trim().toLowerCase());
@@ -2164,6 +2177,9 @@ async function mcpCall(name,args){
 }
 function chatDsLabel(ds){
   const s=String(ds||"");
+  // get_flow_summary: dataset gop nhieu snapshot — nhan tong hop rieng,
+  // tranh dinh nhan "khoi ngoai" khi gom ca tu doanh
+  if(s.includes("screener")&&(s.includes("foreign_flow")||s.includes("proprietary_flow"))) return "Dòng tiền (tổng hợp)";
   const M=[["foreign_flow","Dòng tiền khối ngoại"],["prop_flow","Dòng tiền tự doanh"],["company_profile","Hồ sơ công ty"],["quotes","Bảng giá"],["ohlcv","Nến ngày"],["indices","Chỉ số thị trường"],["screener","Bảng sàng lọc"],["fundamentals","Chỉ số tài chính"],["statements","Báo cáo tài chính"],["holders","Sổ cổ đông"],["consensus","Đồng thuận các công ty chứng khoán"],["sectors","Ngành"],["macro","Số liệu vĩ mô"],["events","Sự kiện"],["news","Tin tức"]];
   for(const [k,v] of M) if(s.includes(k)) return v;
   return "Dữ liệu thị trường";
@@ -2265,12 +2281,48 @@ function chatRender(route,p){
     } else {
       let rows=d.rows||[];
       if(!rows.length&&d.by_symbol) rows=Object.keys(d.by_symbol).map(k=>({symbol:k,...(d.by_symbol[k]||{})}));
-      const netOf=r=>{ const v=pickV(r,"net_value_vnd","net_value_est","net_value","net"); return v==null?0:v; };
+      const netOf=r=>{ const v=pickV(r,"net_value_vnd","net_value_est","net_value","net"); if(v!=null) return v; const b=pickV(r,"buy_value_vnd","buy_value"), s=pickV(r,"sell_value_vnd","sell_value"); return (b!=null&&s!=null)?b-s:0; };
       rows=rows.slice().sort((x,y)=>Math.abs(netOf(y))-Math.abs(netOf(x))).slice(0,10);
       h=`<b>${kind} — ${esc(T("hôm nay"))}</b>`;
       if(rows.length) h+='<table class="chatft">'+rows.map(r=>`<tr><td>${r.symbol?symLink(r.symbol):""}</td><td style="text-align:right" class="${netOf(r)>=0?"up":"dn"}"><b>${fmtTyAbs(netOf(r))}</b></td></tr>`).join("")+"</table>";
       else h+=`<br>${esc(T("Chưa có dữ liệu"))}`;
     }
+  } else if(tool==="get_flow_summary"){
+    const kind=a.kind||"both", gb=a.group_by||"sector";
+    const ty=v=>v==null?"—":fmtTyAbs(v);
+    const cls=v=>v==null?"":(v>=0?"up":"dn");
+    const colF=kind!=="proprietary", colP=kind!=="foreign";
+    if(d.sector){
+      const s=d.sector;
+      h=`<b>${esc(s.name||a.sector_code||"")}</b> — ${esc(T("Dòng tiền"))}`;
+      h+=chatRow(T("Ròng gộp"),`<span class="${cls(s.net_total)}"><b>${ty(s.net_total)}</b></span>`);
+      if(colF) h+=chatRow(T("Khối ngoại"),`<span class="${cls(s.net_foreign)}">${ty(s.net_foreign)}</span>`);
+      if(colP) h+=chatRow(T("Tự doanh"),`<span class="${cls(s.net_proprietary)}">${ty(s.net_proprietary)}</span>`);
+      if(s.n_symbols!=null) h+=chatRow(T("Số mã có dòng tiền"),fmtN(s.n_symbols));
+      const tops=d.top_symbols||[];
+      if(tops.length) h+='<table class="chatft">'+tops.map(r=>`<tr><td>${r.symbol?symLink(r.symbol):""}</td>${colF?`<td style="text-align:right" class="${cls(r.net_foreign)}">${ty(r.net_foreign)}</td>`:""}${colP?`<td style="text-align:right" class="${cls(r.net_proprietary)}">${ty(r.net_proprietary)}</td>`:""}<td style="text-align:right" class="${cls(r.net_total)}"><b>${ty(r.net_total)}</b></td></tr>`).join("")+"</table>";
+    } else if(gb==="market"){
+      const t=d.total||{};
+      h=`<b>${esc(T("Dòng tiền"))} — ${esc(T("Toàn thị trường"))}</b>`;
+      if(colF) h+=chatRow(T("Khối ngoại"),`<span class="${cls(t.net_foreign)}"><b>${ty(t.net_foreign)}</b></span>`);
+      if(colP) h+=chatRow(T("Tự doanh"),`<span class="${cls(t.net_proprietary)}"><b>${ty(t.net_proprietary)}</b></span>`);
+      h+=chatRow(T("Ròng gộp"),`<span class="${cls(t.net_total)}"><b>${ty(t.net_total)}</b></span>`);
+      if(t.n_symbols!=null) h+=chatRow(T("Số mã có dòng tiền"),fmtN(t.n_symbols));
+    } else {
+      const groups=d.groups||[];
+      h=`<b>${esc(T("Dòng tiền đổ về đâu"))}</b>`;
+      if(groups.length){
+        const head=`<tr><td>${esc(T(gb==="exchange"?"Sàn":"Ngành"))}</td>${colF?`<td style="text-align:right">${esc(T("Khối ngoại"))}</td>`:""}${colP?`<td style="text-align:right">${esc(T("Tự doanh"))}</td>`:""}<td style="text-align:right">${esc(T("Gộp"))}</td></tr>`;
+        h+='<table class="chatft">'+head+groups.map(g=>`<tr><td>${esc(g.name||g.key||"")}</td>${colF?`<td style="text-align:right" class="${cls(g.net_foreign)}">${ty(g.net_foreign)}</td>`:""}${colP?`<td style="text-align:right" class="${cls(g.net_proprietary)}">${ty(g.net_proprietary)}</td>`:""}<td style="text-align:right" class="${cls(g.net_total)}"><b>${ty(g.net_total)}</b></td></tr>`).join("")+"</table>";
+      } else h+=`<br>${esc(T("Chưa có dữ liệu"))}`;
+      if(d.total) h+=`<div style="margin-top:4px">${esc(T("Tổng toàn thị trường"))}: <b class="${cls(d.total.net_total)}">${ty(d.total.net_total)}</b></div>`;
+    }
+    follow=[
+      {label:T("Theo ngành"),tool:"get_flow_summary",args:{kind:"both",group_by:"sector"}},
+      {label:T("Theo sàn"),tool:"get_flow_summary",args:{kind:"both",group_by:"exchange"}},
+      {label:T("Chỉ khối ngoại"),tool:"get_flow_summary",args:{kind:"foreign",group_by:"sector"}},
+      {label:T("Chỉ tự doanh"),tool:"get_flow_summary",args:{kind:"proprietary",group_by:"sector"}},
+    ];
   } else if(tool==="get_sector"){
     if(a.code){
       h=`<b>${esc(d.name||a.code)}</b> — ${esc(T("Ngành"))}`;
@@ -2384,8 +2436,16 @@ function chatRender(route,p){
 }
 function chatRoute(qRaw){
   const q=qRaw||"";
-  const symM=q.toUpperCase().match(/\b[A-Z]{3,4}\b/);
-  const sym=symM?symM[0]:null;
+  // Ma chung khoan: chi nhan TOKEN dung mot minh (tranh bat manh ASCII
+  // trong tu tieng Viet co dau, vd "NGO" trong "NGOẠI" — loi 23/10) va
+  // doi chieu danh muc ma that SS_ROWS neu da tai (chan not "NAY" trong
+  // "hom nay"); chua tai thi dung danh sach tu dung tieng Viet/chi so.
+  const symM=q.match(/(?:^|\s)([A-Za-z]{3,4})(?=[\s?.!,]|$)/);
+  let sym=null;
+  if(symM){ const t=symM[1], up=t.toUpperCase();
+    const STOP=new Set(["ROE","EPS","NAY","MUA","BAN","XEM","CHO","HOM","QUA","SAU","MAI","MOT","HAI","BON","BAY","TAM","CHI","PHI","VON","LAI","TOT","XAU","CAO","MOI","THE","AND","FOR","HOW"]);
+    const inUni=(typeof SS_ROWS!=="undefined"&&SS_ROWS&&SS_ROWS.length)?SS_ROWS.some(r=>r.s===up):null;
+    if((t===t.toUpperCase()||t===t.toLowerCase())&&!STOP.has(up)&&(inUni===null||inUni)) sym=up; }
   const low=q.toLowerCase();
   const has=(re)=>re.test(low);
   if(has(/lãi suất điều hành|tái cấp vốn|tái chiết khấu/)) return {tool:"get_macro",args:{},label:q};
@@ -2393,6 +2453,10 @@ function chatRoute(qRaw){
   if(has(/tỷ giá trung tâm/)) return {tool:"get_macro",args:{series:"fx_center"},label:q};
   if(has(/giá vàng|vàng sjc/)) return {tool:"get_macro",args:{series:"gold_sjc"},label:q};
   if(has(/vĩ mô/)) return {tool:"get_macro",args:{},label:q};
+  // Dong tien theo dich den PHAI dung truoc luat /nganh/: "do ve dau"
+  // la cau tong hop dong tien, khong phai bang P/E nganh (ca loi goc
+  // anh Henrry 07:40 23/10).
+  if(has(/đổ về|đổ vào|tiền.*(vào|ra|đâu)|dòng tiền.*(ngành|sàn|đâu)/)) return {tool:"get_flow_summary",args:{kind:has(/tự doanh/)?"proprietary":has(/khối ngoại|nước ngoài/)?"foreign":"both",group_by:has(/sàn|hose|hnx|upcom/)?"exchange":"sector"},label:q};
   if(has(/ngành/)){ if(has(/ngân hàng/)) return {tool:"get_sector",args:{code:"8300"},label:q}; return {tool:"get_sector",args:{},label:q}; }
   if(has(/đồng thuận|khuyến nghị|giá mục tiêu/)) return {tool:"get_consensus",args:sym?{symbol:sym}:{},label:q};
   if(has(/tự doanh/)) return {tool:"get_flow",args:sym?{kind:"proprietary",symbol:sym,days:30}:{kind:"proprietary"},label:q};
@@ -2416,21 +2480,66 @@ function chatRoute(qRaw){
   if(sym) return {tool:"get_quote",args:{symbol:sym},label:q};
   return null;
 }
+// ---- Dot B: lich su hoi thoai + tang dieu phoi LLM ----
+// _chatHist: toi da 8 luot {u, tool, args}; tool=null khi luot truoc
+// khong goi tool (tra loi text). Chen vao ngu canh gui len
+// /api/ai/chat de LLM giai quyet cau sua y / khuyet chu ngu.
+const _chatHist=[];
+function chatPushHist(q,route){
+  if(!q) return;
+  _chatHist.push({u:q,tool:route?route.tool:null,args:(route&&route.args)||{}});
+  while(_chatHist.length>8) _chatHist.shift();
+}
+async function _chatFill(inner,label,route,pre){
+  try{
+    if(pre&&pre.errorText){ inner.innerHTML=`<b>${esc(pre.errorText)}</b>`; chatPushHist(label,route); return; }
+    if(pre&&pre.textOnly){ inner.innerHTML=esc(pre.textOnly); chatPushHist(label,null); return; }
+    if(!route){ inner.innerHTML=`<b>${esc(T("Câu hỏi này em chưa trả lời được."))}</b><br>${esc(T("Thử các câu gợi ý ở đầu trang, hoặc hỏi theo mã cổ phiếu, ngành, vĩ mô, dòng tiền…"))}`; return; }
+    const p=(pre&&pre.envelope)||await mcpCall(route.tool,route.args);
+    let html=chatRender({...route,label},p);
+    if(pre&&pre.lead) html=`<div style="font-style:italic;margin-bottom:6px">${esc(pre.lead)}</div>`+html;
+    inner.innerHTML=html;
+    chatPushHist(label,route);
+  }catch(e){ inner.textContent=T("Lỗi tải dữ liệu. Thử lại sau."); }
+  $("chatBox").scrollTop=$("chatBox").scrollHeight;
+}
 async function chatRun(label,route){
   chatAdd("u",label);
   const d=chatAdd("a",esc(T("Đang tìm…")));
   const inner=d.querySelector("div>div");
+  await _chatFill(inner,label,route,null);
+}
+// Cau goi tay: LLM dieu phoi truoc (hieu y + ngu canh); moi loi mem
+// tu worker (fallback) hoac loi mang -> roi ve bo khop Dot A.
+async function chatSmart(q){
+  if(typeof ssLoad==="function"&&!SS_ROWS){ try{ await ssLoad(); }catch(e){} }
+  chatAdd("u",q);
+  const d=chatAdd("a",esc(T("Đang tìm…")));
+  const inner=d.querySelector("div>div");
+  const msgs=[];
+  for(const it of _chatHist){
+    msgs.push({role:"user",text:it.u});
+    if(it.tool) msgs.push({role:"assistant",text:"TOOL "+it.tool+" "+JSON.stringify(it.args||{})});
+  }
+  msgs.push({role:"user",text:q});
+  const tok=localStorage.getItem("elab_authToken")||"";
+  const ctl=("AbortController" in window)?new AbortController():null;
+  const timer=ctl?setTimeout(()=>ctl.abort(),15000):null;
+  let j=null;
   try{
-    if(!route){ inner.innerHTML=`<b>${esc(T("Câu hỏi này em chưa trả lời được."))}</b><br>${esc(T("Thử các câu gợi ý ở đầu trang, hoặc hỏi theo mã cổ phiếu, ngành, vĩ mô, dòng tiền…"))}`; return; }
-    const p=await mcpCall(route.tool,route.args);
-    inner.innerHTML=chatRender({...route,label},p);
-  }catch(e){ inner.textContent=T("Lỗi tải dữ liệu. Thử lại sau."); }
-  $("chatBox").scrollTop=$("chatBox").scrollHeight;
+    const r=await fetch("/api/ai/chat",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+tok},
+      body:JSON.stringify({messages:msgs,lang:curLang}),signal:ctl?ctl.signal:undefined});
+    j=await r.json().catch(()=>null);
+  }catch(e){ j=null; }
+  if(timer) clearTimeout(timer);
+  if(!j||j.fallback||!j.ok){ await _chatFill(inner,q,chatRoute(q),null); return; }
+  const route=j.tool?{tool:j.tool,args:j.args||{},label:q}:null;
+  await _chatFill(inner,q,route,{envelope:j.envelope,lead:j.lead||null,errorText:j.errorText||null,textOnly:j.tool?null:(j.text||"")});
 }
 function chatAsk(){
   const q=$("chatIn").value.trim(); if(!q) return;
   $("chatIn").value="";
-  chatRun(q,chatRoute(q));
+  chatSmart(q);
 }
 $("chatSend").onclick=chatAsk;
 $("chatIn").onkeydown=e=>{if(e.key==="Enter")chatAsk();};
@@ -2534,6 +2643,17 @@ const I18N_FULL = {
 "Vốn hoá":["Market cap","市值","시가총액"],
 "CP lưu hành":["Shares outstanding","流通股","유통주식수"],
 "Nguồn":["Source","来源","출처"],
+"Dòng tiền đổ về đâu":["Where the money flows","资金流向","자금 흐름 방향"],
+"Sàn":["Exchange","交易所","거래소"],
+"Gộp":["Combined","合计","합계"],
+"Tổng toàn thị trường":["Market total","全市场合计","시장 전체 합계"],
+"Toàn thị trường":["Whole market","全市场","시장 전체"],
+"Ròng gộp":["Combined net","合计净额","합산 순매매"],
+"Theo ngành":["By sector","按行业","업종별"],
+"Theo sàn":["By exchange","按交易所","거래소별"],
+"Chỉ khối ngoại":["Foreign only","仅外资","외국인만"],
+"Chỉ tự doanh":["Proprietary only","仅自营","자기자본만"],
+"Số mã có dòng tiền":["Symbols with flow","有资金流的股票数","자금 흐름 있는 종목 수"],
 "Dữ liệu tại":["Data as of","数据截至","기준 시각"],
 "dữ liệu có thể đã cũ":["data may be stale","数据可能已过时","데이터가 오래되었을 수 있음"],
 "Số đang được đối chiếu chéo, chưa chốt":["Figures are being cross-checked, not final","数据正在交叉核对,尚未定稿","수치 교차 검증 중, 미확정"],
@@ -2604,6 +2724,8 @@ const I18N_FULL = {
 "Xoá chỉ báo":["Remove indicator","删除指标","지표 삭제"],
 "Không tìm thấy":["Not found","未找到","찾을 수 없음"],
 "Thêm":["Add","添加","추가"],
+"Tắt":["Off","关闭","끄기"],
+"đang bật":["active","已启用","사용 중"],
 "Đóng":["Close","关闭","닫기"],
 "Bán 1/2/3":["Ask 1/2/3","卖 1/2/3","매도 1/2/3"],
 "Báo cáo tài chính":["Financial statements","财务报表","재무제표"],

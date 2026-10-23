@@ -927,6 +927,11 @@ export async function hStockPublish(request, env){
     n++;
   };
   if(body.indices) await put1("indices", {rows:body.indices});
+  // Chi so nganh (engine chi so Dot B, Chot 22/10): publish_snapshot gui
+  // kem khoa sector_indices de ghi file R2 rieng — dai chi so chinh cua
+  // frontend khong doc khoa nay (giu nguyen 4 the). Thieu nhanh nay thi
+  // Worker bo qua khoa im lang (written khong dem), du lieu nganh mat.
+  if(body.sector_indices) await put1("sector_indices", {rows:body.sector_indices});
   if(body.quotes) await put1("quotes", {by_symbol:body.quotes});
   if(body.quotes_patch){
     // Merge vao quotes.json hien co thay vi ghi de toan bo (22/10):
@@ -961,6 +966,14 @@ export async function hStockPublish(request, env){
   if(body.consensus) await put1("consensus", body.consensus);
   if(body.consensus_detail) for(const sym of Object.keys(body.consensus_detail)){
     await sPut(env, "market/consensus/"+sym+".json", doc(body.consensus_detail[sym]));
+    n++;
+  }
+  // PA2 runlog (Chot 06:38 23/10): ban ghi chu trinh dong thuan co cau
+  // truc do consensus_runlog.py publish — khoa R2 rieng theo cycle_id,
+  // frontend khong doc; phuc vu bao cao van hanh (failover/by_connector).
+  if(body.consensus_runs) for(const cyc of Object.keys(body.consensus_runs)){
+    if(!/^\d{8}_\d{6}$/.test(cyc)) continue;
+    await sPut(env, "market/consensus_runs/"+cyc+".json", doc(body.consensus_runs[cyc]));
     n++;
   }
   if(body.sectors) await put1("sectors", body.sectors);

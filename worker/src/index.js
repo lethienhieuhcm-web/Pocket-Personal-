@@ -7,6 +7,7 @@ import {handleAnalytics, handleInsights, handleBankGet, handleBankPost, handleRe
 import {handleRegister, handleSendCode, handleVerifyCode, handleLogin, handleLogout, handleMe, handleGoogleLogin, handleGoogleCallback, handleGoogleIdToken, handleListSessions, handleRevokeSession, handleVerifyEmail, handleResendVerification, handleForgotPassword, handleResetPassword, handleResetPasswordPage } from './auth.js';
 import {handleGetPlan, handleGetUsage, handleSetPlan} from './billing.js';
 import {hMcp, hMcpGet, hMcpLogAdmin} from './mcp.js';
+import {hAiChat} from './ai_chat.js';
 import {handleDriveAuthUrl, handleDriveCallback, handleDriveStatus, handleDriveDisconnect, handleDriveMusic, handleDriveStream, handleDriveUpload} from './drive.js';
 import {handleDacMusic, handleDacStream, handleDacStreamTest, handleDacDriveToken, handleDacAudio, handleDacAudioSign, handleDacAudioToken, handleDacResolve, handleDacCopy, handleDacFolders, handleDacSync, handleDacSearch, handleDacLibrary, handleDacPlaylistList, handleDacPlaylistCreate, handleDacPlaylistDelete, handleDacPlaylistGet, handleDacPlaylistSetItems, handleDacAuthLogin, handleDacAuthRefresh, handleDacAuthLogout} from './dac.js';
 import {handleSpotifyAuthUrl, handleSpotifyCallback, handleSpotifyStatus, handleSpotifySearch} from './spotify.js';
@@ -88,6 +89,8 @@ const ROUTES = [
   // --- MCP khai thac kho tu chu, GD1 (Chot thiet ke 22/10/2026) ---
   ['POST',   '/api/mcp',           hMcp,                   'user'],
   ['GET',    '/api/mcp',           hMcpGet,                'user'],
+  // --- AI Chat Dot B: tang dieu phoi LLM tren MCP (ai_chat.js) ---
+  ['POST',   '/api/ai/chat',       hAiChat,                'user'],
   // --- drive ---
   ['GET',    '/api/drive/auth-url',  handleDriveAuthUrl,     'user'],
   ['GET',    '/api/drive/callback',  handleDriveCallback,    'custom'],

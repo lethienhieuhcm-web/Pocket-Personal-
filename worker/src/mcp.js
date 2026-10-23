@@ -529,6 +529,257 @@ async function tGetFlow(env, a) {
   };
 }
 
+/* ---------------- tool 15: tong hop dong tien theo dich den ---------------- */
+// Chuan hoa rows cua snapshot dong tien: rows[] hoac by_symbol{}.
+function flowRowsOf(d) {
+  if (!d) return [];
+  if (Array.isArray(d.rows)) return d.rows;
+  if (d.by_symbol && typeof d.by_symbol === 'object') {
+    return Object.keys(d.by_symbol).map((k) => ({ symbol: k, ...(d.by_symbol[k] || {}) }));
+  }
+  return [];
+}
+function flowNetOf(r) {
+  const ks = ['net_value_vnd', 'net_value_est', 'net_value', 'net'];
+  for (const k of ks) {
+    if (r[k] != null && isFinite(parseFloat(r[k]))) return parseFloat(r[k]);
+  }
+  // Snapshot khoi ngoai khong co truong net va khong hau to _vnd:
+  // net = buy_value - sell_value (dung hinh dang tai market/foreign_flow.json).
+  const b = r.buy_value_vnd != null ? parseFloat(r.buy_value_vnd)
+    : (r.buy_value != null ? parseFloat(r.buy_value) : null);
+  const s = r.sell_value_vnd != null ? parseFloat(r.sell_value_vnd)
+    : (r.sell_value != null ? parseFloat(r.sell_value) : null);
+  if (b != null && s != null && isFinite(b) && isFinite(s)) return b - s;
+  return null;
+}
+
+async function tGetFlowSummary(env, a) {
+  const kind = String(a.kind || 'both').toLowerCase();
+  if (!['foreign', 'proprietary', 'both'].includes(kind)) {
+    throw new ToolError('invalid_params', "kind phai la 'foreign', 'proprietary' hoac 'both'.");
+  }
+  const groupBy = String(a.group_by || 'sector').toLowerCase();
+  if (!['sector', 'exchange', 'market'].includes(groupBy)) {
+    throw new ToolError('invalid_params', "group_by phai la 'sector', 'exchange' hoac 'market'.");
+  }
+  const sectorCode = String(a.sector_code || '').trim();
+  if (sectorCode && !/^[0-9]{4}$/.test(sectorCode)) {
+    throw new ToolError('invalid_params', 'sector_code phai la ma ICB 4 chu so (vd 8300).');
+  }
+  const useF = kind !== 'proprietary';
+  const useP = kind !== 'foreign';
+  const snaps = {};
+  if (useF) {
+    snaps.foreign = await sGet(env, 'market/foreign_flow.json');
+    if (!snaps.foreign) throw new ToolError('data_unavailable', 'Chua co snapshot dong tien khoi ngoai.');
+  }
+  if (useP) {
+    snaps.proprietary = await sGet(env, 'market/proprietary_flow.json');
+    if (!snaps.proprietary) throw new ToolError('data_unavailable', 'Chua co snapshot dong tien tu doanh.');
+  }
+  const scr = await sGet(env, 'market/screener.json');
+  if (!scr || !Array.isArray(scr.rows)) throw new ToolError('data_unavailable', 'Chua co snapshot screener.');
+  const scrMap = {};
+  for (const r of scr.rows) {
+    if (r && r.symbol) scrMap[String(r.symbol).toUpperCase()] = r;
+  }
+  // Anh xa ma -> nganh: screener KHONG co truong nganh; thanh vien nganh
+  // nam o market/sectors/<code>.json (truong members). Chi tai khi can.
+  const effGroupBy = sectorCode ? 'sector' : groupBy;
+  let sectorMap = null; // sym -> {code, name}
+  let sectorMembers = null; // code -> [sym]
+  if (effGroupBy === 'sector') {
+    const ovS = await sGet(env, 'market/sectors.json');
+    if (!ovS || !Array.isArray(ovS.rows)) {
+      throw new ToolError('data_unavailable', 'Chua co snapshot nganh (market/sectors.json).');
+    }
+    sectorMap = {};
+    sectorMembers = {};
+    for (const row of ovS.rows) {
+      const code = String(row.code || '');
+      if (!/^[0-9]{4}$/.test(code)) continue;
+      const det = await sGet(env, 'market/sectors/' + code + '.json');
+      const mem = det && Array.isArray(det.members) ? det.members : [];
+      sectorMembers[code] = [];
+      for (const m of mem) {
+        const s = String((m && m.symbol) || '').toUpperCase();
+        if (!s) continue;
+        sectorMembers[code].push(s);
+        if (!sectorMap[s]) sectorMap[s] = { code, name: row.name || (det && det.name) || code };
+      }
+    }
+  }
+  // Gop net theo ma tu cac snapshot da chon (phien gan nhat)
+  const perSym = {}; // sym -> {f: net khoi ngoai|null, p: net tu doanh|null}
+  const addRows = (rows, slot) => {
+    for (const r of rows) {
+      const sym = String((r && r.symbol) || '').toUpperCase();
+      if (!sym) continue;
+      const net = flowNetOf(r);
+      if (net == null) continue;
+      if (!perSym[sym]) perSym[sym] = { f: null, p: null };
+      perSym[sym][slot] = (perSym[sym][slot] || 0) + net;
+    }
+  };
+  if (useF) addRows(flowRowsOf(snaps.foreign), 'f');
+  if (useP) addRows(flowRowsOf(snaps.proprietary), 'p');
+  const syms = Object.keys(perSym);
+  if (!syms.length) throw new ToolError('data_unavailable', 'Snapshot dong tien khong co ma nao co so net.');
+
+  // Loc 1 nganh: ma ICB -> ten nganh (sectors.json, fallback snapshot
+  // chi tiet nhu tGetSector); screener gan ma theo TEN nganh nen phai
+  // doi chieu bang ten da chuan hoa.
+  let sectorName = null;
+  if (sectorCode) {
+    const ov = await sGet(env, 'market/sectors.json');
+    const row = ov && Array.isArray(ov.rows)
+      ? ov.rows.find((r) => String(r.code) === sectorCode) : null;
+    if (row) sectorName = row.name;
+    if (!sectorName) {
+      const det = await sGet(env, 'market/sectors/' + sectorCode + '.json');
+      if (det && det.name) sectorName = det.name;
+    }
+    if (!sectorName) {
+      const codes = ov && Array.isArray(ov.rows) ? ov.rows.map((r) => `${r.code} ${r.name}`) : [];
+      throw new ToolError('series_not_found', `Khong co nganh ${sectorCode}.`, { available: codes });
+    }
+  }
+
+  const NONE_KEY = '__none';
+  const NONE_NAME = effGroupBy === 'exchange' ? 'Chua phan san' : 'Chua phan nganh';
+  const newGroup = (key, name) => ({
+    key, name, net_foreign: null, net_proprietary: null, net_total: 0,
+    value_vnd: 0, n_symbols: 0,
+  });
+  const accNet = (g, slot, net) => {
+    if (slot === 'f') g.net_foreign = (g.net_foreign || 0) + net;
+    else g.net_proprietary = (g.net_proprietary || 0) + net;
+  };
+  const sectorOfSym = (sym) => (sectorMap ? sectorMap[sym] || null : null);
+  const valOfSym = (sym) => {
+    const sr = scrMap[sym];
+    const v = sr ? parseFloat(sr.value_vnd) : NaN;
+    return isFinite(v) ? v : 0;
+  };
+  const groups = {};
+  const flowVal = {};
+  let nNone = 0;
+  const total = newGroup('ALL', 'Toan thi truong');
+  for (const sym of syms) {
+    const rec = perSym[sym];
+    const netT = (rec.f || 0) + (rec.p || 0);
+    let key, name;
+    if (effGroupBy === 'market') { key = 'ALL'; name = 'Toan thi truong'; }
+    else if (effGroupBy === 'exchange') {
+      const sr = scrMap[sym];
+      const ex = sr && sr.exchange ? String(sr.exchange).toUpperCase() : null;
+      key = ex || NONE_KEY; name = ex || NONE_NAME;
+    } else {
+      const sec = sectorOfSym(sym);
+      key = sec ? sec.code : NONE_KEY; name = sec ? sec.name : NONE_NAME;
+    }
+    if (key === NONE_KEY) nNone++;
+    if (!groups[key]) groups[key] = newGroup(key, name);
+    const g = groups[key];
+    if (rec.f != null) { accNet(g, 'f', rec.f); accNet(total, 'f', rec.f); }
+    if (rec.p != null) { accNet(g, 'p', rec.p); accNet(total, 'p', rec.p); }
+    g.net_total += netT; total.net_total += netT;
+    flowVal[key] = (flowVal[key] || 0) + valOfSym(sym);
+    g.n_symbols++; total.n_symbols++;
+  }
+  const groupList = Object.values(groups).sort((x, y) => y.net_total - x.net_total);
+  // value_vnd cua nhom = tong GTGD cua TOAN BO thanh vien nhom (tu screener),
+  // khong chi cac ma co dong tien; nhom __none giu tong cua cac ma co dong tien.
+  const scrVal = (r) => { const v = parseFloat(r && r.value_vnd); return isFinite(v) ? v : 0; };
+  if (effGroupBy === 'market') {
+    total.value_vnd = scr.rows.reduce((acc, r) => acc + scrVal(r), 0);
+    if (groups.ALL) groups.ALL.value_vnd = total.value_vnd;
+  } else if (effGroupBy === 'exchange') {
+    const exVal = {};
+    for (const r of scr.rows) {
+      const ex = r.exchange ? String(r.exchange).toUpperCase() : NONE_KEY;
+      exVal[ex] = (exVal[ex] || 0) + scrVal(r);
+    }
+    for (const g of groupList) g.value_vnd = exVal[g.key] != null ? exVal[g.key] : (flowVal[g.key] || 0);
+    total.value_vnd = groupList.reduce((acc, g) => acc + g.value_vnd, 0);
+  } else {
+    for (const g of groupList) {
+      if (g.key !== NONE_KEY && sectorMembers[g.key]) {
+        g.value_vnd = sectorMembers[g.key].reduce((acc, s) => acc + valOfSym(s), 0);
+      } else g.value_vnd = flowVal[g.key] || 0;
+    }
+    total.value_vnd = groupList.reduce((acc, g) => acc + g.value_vnd, 0);
+  }
+
+  const parts = [];
+  if (useF) parts.push('market/foreign_flow.json');
+  if (useP) parts.push('market/proprietary_flow.json');
+  parts.push('market/screener.json');
+  if (effGroupBy === 'sector') parts.push('market/sectors.json + market/sectors/<code>.json (thanh vien nganh)');
+  let updated = null, updatedMs = -Infinity;
+  for (const d of [snaps.foreign, snaps.proprietary, scr]) {
+    if (d && d.updated) {
+      const t = Date.parse(d.updated);
+      if (!isNaN(t) && t > updatedMs) { updatedMs = t; updated = d.updated; }
+      else if (isNaN(t) && !updated) updated = d.updated;
+    }
+  }
+  const prov = (snaps.foreign && snaps.foreign._prov)
+    || (snaps.proprietary && snaps.proprietary._prov) || scr._prov || null;
+  const notes = [];
+  if (nNone) notes.push(`${nNone} ma chua noi duoc ${effGroupBy === 'exchange' ? 'san' : 'nganh'} (gom nhom ${NONE_NAME})`);
+  const metaBase = {
+    dataset: parts.join(' + '), route: '/api/stock/flow-summary',
+    updated, prov, verification: 'verified', staleKind: 'market',
+    chain: 'FINFO -> VCI Trading / Vietstock (snapshot dong tien phien gan nhat)',
+  };
+
+  if (sectorCode) {
+    const g = groupList.find((x) => x.key === sectorCode);
+    if (!g) {
+      throw new ToolError('series_not_found',
+        `Nganh ${sectorCode} (${sectorName}) khong co ma nao co dong tien phien gan nhat.`);
+    }
+    const topSymbols = syms
+      .filter((sym) => { const sc2 = sectorOfSym(sym); return sc2 && sc2.code === sectorCode; })
+      .map((sym) => ({
+        symbol: sym,
+        net_foreign: perSym[sym].f,
+        net_proprietary: perSym[sym].p,
+        net_total: (perSym[sym].f || 0) + (perSym[sym].p || 0),
+      }))
+      .sort((x, y) => Math.abs(y.net_total) - Math.abs(x.net_total))
+      .slice(0, 15);
+    const data = {
+      kind, group_by: 'sector', sector_code: sectorCode,
+      sector: {
+        code: sectorCode, name: sectorName,
+        net_foreign: g.net_foreign, net_proprietary: g.net_proprietary,
+        net_total: g.net_total, value_vnd: g.value_vnd, n_symbols: g.n_symbols,
+      },
+      top_symbols: topSymbols,
+      total,
+    };
+    return {
+      rows: topSymbols.length,
+      env: envResult(data, {
+        ...metaBase,
+        coverage: { returned: 1, universe: syms.length, note: notes.join('; ') || null },
+      }),
+    };
+  }
+
+  const data = { kind, group_by: effGroupBy, sector_code: null, groups: groupList, total };
+  return {
+    rows: groupList.length,
+    env: envResult(data, {
+      ...metaBase,
+      coverage: { returned: groupList.length, universe: syms.length, note: notes.join('; ') || null },
+    }),
+  };
+}
+
 const MACRO_ALIAS = { vm_omo: 'omo', omo: 'omo' };
 async function tGetMacro(env, a) {
   const sid = String(a.series || '').toLowerCase().trim();
@@ -715,6 +966,15 @@ const TOOLS = [
     }, ['kind']),
   },
   {
+    name: 'get_flow_summary', minTier: 2, run: tGetFlowSummary,
+    description: 'Tong hop dong tien theo DICH DEN (phien gan nhat): cong rong khoi ngoai + tu doanh theo nganh ICB / theo san / toan thi truong, kem GTGD tung nhom. sector_code = chi tiet 1 nganh + top ma trong nganh. Dung cho cau hoi "tien do ve dau / dong tien theo nganh".',
+    inputSchema: S({
+      kind: { type: 'string', enum: ['foreign', 'proprietary', 'both'], description: 'Loai dong tien, mac dinh both' },
+      group_by: { type: 'string', enum: ['sector', 'exchange', 'market'], description: 'Chieu tong hop, mac dinh sector' },
+      sector_code: { type: 'string', description: 'Ma nganh ICB 4 chu so (tuy chon, vd 8300)' },
+    }),
+  },
+  {
     name: 'get_consensus', minTier: 2, run: tGetConsensus,
     description: 'Dong thuan CTCK (chi ban verified): co symbol = tung hang (khuyen nghi, gia muc tieu, ngay bao cao, link nguon) + trung binh/min/max/upside da tinh san; khong symbol = bang toan thi truong. Khong tra van phan tich cua hang.',
     inputSchema: S({ symbol: { type: 'string', description: 'Ma (tuy chon)' } }),
@@ -754,6 +1014,18 @@ const TOOLS = [
     inputSchema: S({ symbol: { type: 'string', description: 'Ma (tuy chon)' }, limit: { type: 'integer' } }),
   },
 ];
+
+/* ---------------- chay tool noi bo cho AI Chat (Dot B) ---------------- */
+// Tang dieu phoi LLM trong ai_chat.js goi thang ham tool o day
+// (khong qua JSON-RPC, khong tru quota agent_calls — luot chat ghi
+// log rieng o ai_chat_log). ToolError nem nguyen trang de tang tren
+// xu ly theo code.
+export async function chatToolRun(env, name, args) {
+  const tool = TOOLS.find((t) => t.name === name);
+  if (!tool) throw new ToolError('unknown_tool', `Tool '${name}' khong ton tai.`);
+  const r = await tool.run(env, args || {});
+  return r.env;
+}
 
 /* ---------------- mcp_log (D1) ---------------- */
 let _logReady = false;
@@ -810,7 +1082,7 @@ function toolResult(payload, isError) {
   };
 }
 
-async function resolveCaller(request, env) {
+export async function resolveCaller(request, env) {
   const s = await getSession(request, env);
   if (!s) return null;
   const u = await getUser(env, s.email);

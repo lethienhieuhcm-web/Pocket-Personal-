@@ -8,28 +8,86 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:var(--pp-font);background:var(--pp-bg);color:var(--pp-ink);max-width:480px;margin:0 auto}
-.hdr{padding:16px 16px 8px;display:flex;align-items:center;gap:12px}
-.hdr h1{font-size:20px;font-weight:800;letter-spacing:-0.3px;flex:1}
-.src{font-size:12px;color:var(--pp-mut)}
-.regime{margin:8px 16px;padding:12px;border-radius:12px;background:linear-gradient(135deg,#14532d,#166534);border:1px solid #22c55e}
-.regime.warn{background:linear-gradient(135deg,#713f12,#854d0e);border-color:#f59e0b}
-.regime.danger{background:linear-gradient(135deg,#7f1d1d,#991b1b);border-color:var(--pp-danger)}
-.regime .t{font-size:14px;font-weight:700;color:#bbf7d0}
-.regime.warn .t{color:#fde68a}.regime.danger .t{color:#fecaca}
-.regime .d{font-size:12px;color:#86efac;margin-top:4px;line-height:1.5}
-.regime.warn .d{color:#fcd34d}.regime.danger .d{color:#fca5a5}
-.tabs{display:flex;gap:6px;padding:10px 16px;overflow-x:auto}
+.hdr{padding:20px 16px 12px;display:flex;align-items:center;gap:14px}
+.hdr h1{font-size:var(--pp-text-2xl);font-weight:800;letter-spacing:-0.3px;flex:none;white-space:nowrap}
+.hdr .pp-langdrop-btn{min-height:0;min-width:0;padding:4px 9px;gap:5px}
+.src{font-size:12px;color:var(--pp-mut);flex:1;min-width:0;text-align:right;line-height:1.45}
+.regime{margin:4px 16px 12px;padding:14px;border-radius:12px;background:var(--pp-card);border:1px solid var(--pp-line);border-left:3px solid var(--pp-accent)}
+.regime.warn{background:color-mix(in srgb,#f59e0b 6%,var(--pp-card));border-left-color:#f59e0b}
+.regime.danger{background:color-mix(in srgb,var(--pp-danger) 6%,var(--pp-card));border-left-color:var(--pp-danger)}
+.regime .t{font-size:14px;font-weight:700;color:var(--pp-ink)}
+.regime .d{font-size:12px;color:var(--pp-mut);margin-top:4px;line-height:1.5}
+.tabs{display:flex;gap:8px;padding:12px 16px;overflow-x:auto}
 .tab{font-size:12px;padding:7px 12px;border-radius:20px;background:var(--pp-card);color:var(--pp-mut);white-space:nowrap;border:1px solid var(--pp-line);cursor:pointer}
 .tabs.main{overflow:hidden}
-.tabs.main .tab{flex:1;display:flex;align-items:center;justify-content:center;padding:8px 4px;font-size:12px;min-height:44px;line-height:1.2;gap:4px}
+.tabs.main .tab{flex:1;display:flex;align-items:center;justify-content:center;padding:10px 4px;font-size:12px;min-height:44px;line-height:1.25;gap:4px}
+.tabs.wrap{flex-wrap:wrap;overflow:visible}
+.navgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:12px 16px 2px}
+.navcard{display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--pp-card);border:1px solid var(--pp-line);border-radius:12px;padding:14px 12px;min-height:52px;box-sizing:border-box;font-size:14px;font-weight:600;color:var(--pp-ink);cursor:pointer}
+.navcard .nchev{color:var(--pp-mut);font-size:18px;flex:none}
+.pagebar{padding:10px 16px 0}
+.backrow{display:inline-flex;align-items:center;font-size:14px;font-weight:600;color:var(--pp-accent);cursor:pointer;padding:4px 0}
+.insight{margin:10px 16px 2px;background:var(--pp-card);border:1px solid var(--pp-line);border-left:3px solid var(--pp-accent);border-radius:12px;padding:12px 14px}
+.insight .ins-t{font-size:12px;font-weight:700;color:var(--pp-accent);letter-spacing:.02em;text-transform:uppercase}
+.insight .ins-b{font-size:13.5px;line-height:1.55;margin-top:4px}
+.insight .ins-f{font-size:11.5px;color:var(--pp-mut);margin-top:6px}
+.scrfilt{display:flex;gap:6px;flex-wrap:wrap;padding:10px 16px 0}
+.scrfilt .fchip{font-size:12.5px;padding:6px 12px;border-radius:99px;border:1px solid var(--pp-line);background:var(--pp-card);color:var(--pp-mut);cursor:pointer}
+.scrfilt .fchip.on{background:var(--pp-accent);color:#fff;border-color:var(--pp-accent)}
 .tab.on{background:var(--pp-accent);color:#fff;border-color:var(--pp-accent)}
 .idx{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:4px 16px}
 .idxcard{min-width:0;background:var(--pp-card);border:1px solid var(--pp-line);border-radius:10px;padding:10px}
+.mgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:stretch}
+.mcard{margin:0;padding:12px;cursor:pointer;display:flex;flex-direction:column;height:100%;box-sizing:border-box;text-align:left}
+.mct{font-size:13px;color:var(--pp-mut);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;height:18px;line-height:1.35;flex:none}
+.mcv{font-size:17px;font-weight:700;margin-top:2px;line-height:1.3;height:45px;overflow:hidden;display:flex;align-items:baseline;gap:6px;white-space:nowrap;flex:none}
+.mcv .mv{white-space:nowrap}
+.mcv .mu{font-size:11px;color:var(--pp-mut);font-weight:600;white-space:nowrap}
+.mcv .md{flex:none;white-space:nowrap}
+.mcspark{height:30px;margin-top:8px;flex:none}
+.mcsub{font-size:12.5px;color:var(--pp-mut);margin-top:8px;height:32px;overflow:hidden}
+.mcsrc{font-size:11.5px;color:var(--pp-mut);margin-top:auto;padding-top:6px}
+.mcsrc .nw{white-space:nowrap}
+.mcpol{margin:0;padding:12px;grid-column:1/-1;text-align:left}
+.mcpol .vals{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:8px}
+.mcpol .cell .k{font-size:12.5px;color:var(--pp-mut);height:34px;line-height:1.3;display:flex;align-items:flex-end}
+.mcpol .cell .v{font-size:16px;font-weight:700;margin-top:2px}
+.faleg{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:11.5px;color:var(--pp-mut)}
+.faleg .fi{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.faleg .dot{width:8px;height:8px;border-radius:2px;display:inline-block;flex:none}
+.faleg b{color:var(--pp-ink);font-weight:600}
+.fapct{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.fapct .pc{flex:1;min-width:48px;text-align:center;background:var(--pp-bg2);border:1px solid var(--pp-line);border-radius:8px;padding:5px 2px}
+.fapct .pc .k{display:block;font-size:10.5px;color:var(--pp-mut);font-weight:600}
+.fapct .pc .v{display:block;font-size:12.5px;font-weight:700;margin-top:1px}
+.fagrid{display:grid;grid-template-columns:1fr 1fr;gap:0 18px;margin-top:10px;border-top:1px solid var(--pp-line);padding-top:4px}
+.fagrid .fr{display:flex;justify-content:space-between;align-items:baseline;font-size:12.5px;padding:6px 0;border-bottom:1px solid var(--pp-line)}
+.fagrid .fr .k{color:var(--pp-mut)}
+.fagrid .fr .v{font-weight:600;white-space:nowrap}
+.chatsug .sg{margin-bottom:10px}
+.chatsug .sgt{font-size:12px;font-weight:700;color:var(--pp-mut);margin:0 0 6px}
+.chipq{display:inline-block;margin:0 6px 6px 0;padding:7px 11px;border-radius:999px;background:var(--pp-bg2);border:1px solid var(--pp-line);font-size:12.5px;cursor:pointer;color:var(--pp-ink);text-align:left}
+.chatmeta{font-size:11px;color:var(--pp-mut);margin-top:8px;border-top:1px dashed var(--pp-line);padding-top:6px;line-height:1.5}
+.chatfollow{margin-top:8px;display:flex;flex-wrap:wrap;gap:0}
+.chatft{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:4px}
+.chatft td{padding:5px 4px;border-bottom:1px solid var(--pp-line)}
+.symlink{color:var(--pp-accent);font-weight:700;cursor:pointer}
 .idxcard .s{font-size:12px;color:var(--pp-mut)}
-.idxcard .p{font-size:16px;font-weight:700;margin:2px 0}
+.idxcard .p{font-size:17px;font-weight:700;margin:2px 0}
 .idxcard .c{font-size:12px}
 .up{color:var(--pp-accent)}.down{color:var(--pp-danger)}
 .sec{padding:14px 16px 4px;font-size:14px;font-weight:700;color:var(--pp-ink)}
+.symsearch{position:relative;margin:12px 16px 0}
+.symsearch input{width:100%;box-sizing:border-box;background:var(--pp-bg2);color:var(--pp-ink);border:1px solid var(--pp-line);border-radius:10px;padding:11px 12px;font-size:14px;min-height:44px}
+.ss-results{position:absolute;left:0;right:0;top:calc(100% + 4px);background:var(--pp-bg2);border:1px solid var(--pp-line);border-radius:10px;z-index:60;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.35)}
+.ss-row{display:flex;align-items:baseline;gap:8px;padding:10px 12px;cursor:pointer}
+.ss-row:hover,.ss-row.on{background:rgba(127,127,127,.14)}
+.ss-sym{font-weight:700;font-size:14px}
+.ss-ex{font-size:12px;color:var(--pp-mut);border:1px solid var(--pp-line);padding:1px 5px;border-radius:6px;white-space:nowrap}
+.ss-name{color:var(--pp-mut);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.ss-px{font-size:12px;white-space:nowrap}
+.ss-none{padding:10px 12px;color:var(--pp-mut);font-size:14px}
+
 .card{margin:8px 16px;background:var(--pp-card);border:1px solid var(--pp-line);border-radius:16px;padding:14px;box-shadow:var(--pp-shadow)}
 .row{display:flex;justify-content:space-between;align-items:center;font-size:14px;padding:8px 0;border-bottom:1px solid var(--pp-line)}
 .row:last-child{border:none}
@@ -64,6 +122,31 @@ input,select{background:var(--pp-bg2);border:1px solid var(--pp-line);color:var(
 <style>
 .tic{width:16px;height:16px;vertical-align:-3px;margin-right:4px}
 .sec,.src,.note{letter-spacing:var(--pp-track-xs,0.01em)}
+/* Container queries (2026-10-22): lưới thẻ Chỉ số (.idx) + Vĩ mô (.mgrid) tự co
+   theo bề ngang THẬT của khung chứa (#v-market / #macroWrap), không chỉ theo
+   màn hình — hết cảnh thẻ bị ép khi khung hẹp. Safari < 16 không hỗ trợ thì
+   @supports not giữ luật @media dự phòng theo bề ngang màn hình.
+   Lưu ý: body app chốt max-width:480px nên nhánh >=560px chỉ kích hoạt nếu
+   sau này bỏ cap; nhánh <339px là nhánh đang sống trên điện thoại rất nhỏ. */
+@supports (container-type:inline-size){
+#v-market,#macroWrap{container-type:inline-size}
+@container (max-width:339px){
+.idx,.mgrid{grid-template-columns:1fr}
+.mcv{font-size:15px;height:auto;min-height:40px}
+.mcspark{height:24px}
+}
+@container (min-width:560px){
+.idx{grid-template-columns:repeat(4,1fr)}
+.mgrid{grid-template-columns:repeat(3,1fr)}
+}
+}
+@supports not (container-type:inline-size){
+@media (max-width:359px){
+.idx,.mgrid{grid-template-columns:1fr}
+.mcv{font-size:15px;height:auto;min-height:40px}
+.mcspark{height:24px}
+}
+}
 </style>
 </head>
 <body>
@@ -88,31 +171,75 @@ input,select{background:var(--pp-bg2);border:1px solid var(--pp-line);color:var(
   </div>
 </div><span class="src" id="mktSrc">Nguồn: VCI trực tiếp</span></div>
 <div class="regime" id="regimeBox" style="display:none"><div class="t" id="regimeT"></div><div class="d" id="regimeD"></div></div>
-<div class="tabs main" id="mainTabs"></div>
+<div class="navgrid" id="mainTabs"></div>
+<div class="symsearch"><input id="symSearch" type="text" autocomplete="off" spellcheck="false" placeholder="Tìm mã hoặc tên công ty…"><div class="ss-results" id="ssResults" style="display:none"></div></div>
+
 <div class="sec">Chỉ số</div>
 <div class="idx" id="idxRow"><div class="hint">Đang tải…</div></div>
 <div class="sec">Tăng mạnh nhất HOSE</div>
 <div class="card"><table><tr><th>Mã</th><th>Giá</th><th>+/−</th><th>NN ròng</th></tr><tbody id="topMovers"><tr><td colspan="4"><div class="hint">Đang tải…</div></td></tr></tbody></table></div>
 <div class="sec">Khối ngoại hôm nay</div>
 <div class="card" id="ffCard"><div class="hint">Đang tải…</div></div>
+<div class="sec">Tự doanh hôm nay</div>
+<div class="card" id="pfCard"><div class="hint">Đang tải…</div></div>
+<div class="sec">Vĩ mô</div>
+<div id="macroWrap"><div class="hint">Đang tải…</div></div>
+<div class="sec">Tin thị trường</div>
+<div class="card" id="mnCard"><div class="hint">Đang tải…</div></div>
 <div class="hint" id="verLine" style="text-align:center;margin:14px 0 4px"></div>
 </div>
 
 <!-- ===== MÀN 4: Sàng lọc + Tín hiệu ===== -->
 <div class="view" id="v-screen">
 <div class="hdr"><a href="/hub" class="pp-back" style="text-decoration:none;font-size:20px" title="Về Pocket Personal" aria-label="Về Pocket Personal">‹</a><h1><svg class="tic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg> Sàng lọc</h1><span class="src">Nguồn: tự tính</span></div>
-<div class="tabs main" id="screenTabs"></div>
+<div class="pagebar" id="screenTabs"></div>
+<div class="scrfilt" id="scrFilt"></div>
+<div id="scrInsight"></div>
 <div class="card"><table><tr><th>Mã</th><th>Trend</th><th>P/E</th><th>P/B</th><th>ROE</th></tr><tbody id="screenerBody"><tr><td colspan="5"><div class="hint">Đang tải…</div></td></tr></tbody></table></div>
 <div class="sec">So sánh biến động (%)</div>
-<div class="card"><div style="display:flex;gap:8px"><input id="cmpInp" placeholder="Tối đa 5 mã, cách nhau dấu phẩy — vd: FPT,HPG,VCB" style="flex:1;background:var(--pp-bg2);color:var(--pp-ink);border:1px solid var(--pp-line);border-radius:8px;padding:8px;font-size:13px;text-transform:uppercase"><button id="cmpBtn" style="padding:8px 14px;border-radius:8px;background:var(--pp-accent);color:#fff;border:none;font-size:13px;font-weight:600;cursor:pointer">So sánh</button></div><div class="iv" id="cmpIv" style="margin-top:8px"><button data-cnt="22">1T</button><button data-cnt="66">3T</button><button class="on" data-cnt="120">6T</button><button data-cnt="250">1N</button><button data-cnt="500">2N</button></div><div id="cmpOut" style="margin-top:8px"></div></div>
+<div class="card"><div style="display:flex;gap:8px"><input id="cmpInp" placeholder="Tối đa 5 mã, cách nhau dấu phẩy — vd: FPT,HPG,VCB" style="flex:1;background:var(--pp-bg2);color:var(--pp-ink);border:1px solid var(--pp-line);border-radius:8px;padding:8px;font-size:14px;text-transform:uppercase"><button id="cmpBtn" style="padding:8px 14px;border-radius:8px;background:var(--pp-accent);color:#fff;border:none;font-size:14px;font-weight:600;cursor:pointer">So sánh</button></div><div class="iv" id="cmpIv" style="margin-top:8px"><button data-cnt="22">1T</button><button data-cnt="66">3T</button><button class="on" data-cnt="120">6T</button><button data-cnt="250">1N</button><button data-cnt="500">2N</button></div><div id="cmpOut" style="margin-top:8px"></div></div>
 <div class="sec">⚡ Tín hiệu mới nhất</div>
 <div id="signalsList"><div class="hint">Đang tải…</div></div>
+</div>
+
+
+<!-- ===== MAN 5B: Dong thuan ===== -->
+<div class="view" id="v-consensus">
+<div class="hdr"><a href="/hub" class="pp-back" style="text-decoration:none;font-size:20px" title="Về Pocket Personal" aria-label="Về Pocket Personal">‹</a><h1>Đồng thuận</h1><span class="src"></span></div>
+<div class="pagebar" id="consTabs"></div>
+<div class="hint" id="consNote" style="padding:8px 16px 0"></div>
+<div id="consInsight"></div>
+<div class="card" style="margin-top:8px"><table><thead id="consHead"></thead><tbody id="consBody"><tr><td colspan="7"><div class="hint">Đang tải…</div></td></tr></tbody></table></div>
+</div>
+
+
+<!-- ===== MAN 5C: Co dong ===== -->
+<div class="view" id="v-holders">
+<div class="hdr"><a href="/hub" class="pp-back" style="text-decoration:none;font-size:20px" title="Về Pocket Personal" aria-label="Về Pocket Personal">‹</a><h1>Cổ đông</h1><span class="src"></span></div>
+<div class="pagebar" id="holdTabs"></div>
+<div style="padding:12px 16px 0"><input id="holdQ" type="text" autocomplete="off" style="width:100%;box-sizing:border-box;background:var(--pp-bg2);color:var(--pp-ink);border:1px solid var(--pp-line);border-radius:10px;padding:10px 12px;font-size:14px"></div>
+<div class="hint" id="holdCov" style="padding:8px 16px 0"></div>
+<div id="holdListWrap"><div class="card" id="holdList" style="margin-top:8px"><div class="hint">Đang tải…</div></div></div>
+<div id="holdDetail" style="display:none"></div>
+</div>
+
+
+<!-- ===== MAN 5D: Nganh ===== -->
+<div class="view" id="v-sectors">
+<div class="hdr"><a href="/hub" class="pp-back" style="text-decoration:none;font-size:20px" title="Về Pocket Personal" aria-label="Về Pocket Personal">‹</a><h1>Ngành</h1><span class="src"></span></div>
+<div class="pagebar" id="secTabs"></div>
+<div id="secListWrap">
+<div class="hint" id="secNote" style="padding:8px 16px 0"></div>
+<div id="secInsight"></div>
+<div class="card" style="margin-top:8px"><table><thead id="secHead"></thead><tbody id="secBody"><tr><td colspan="6"><div class="hint">Đang tải…</div></td></tr></tbody></table></div>
+</div>
+<div id="secDetail" style="display:none"></div>
 </div>
 
 <!-- ===== MÀN 6: Cảnh báo ===== -->
 <div class="view" id="v-alert">
 <div class="hdr"><a href="/hub" class="pp-back" style="text-decoration:none;font-size:20px" title="Về Pocket Personal" aria-label="Về Pocket Personal">‹</a><h1><svg class="tic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg> Cảnh báo</h1><span class="src"></span></div>
-<div class="tabs main" id="alertTabs"></div>
+<div class="pagebar" id="alertTabs"></div>
 <div class="sec">Cảnh báo của tôi</div>
 <div id="alertCards"></div>
 <div class="sec">+ Thêm cảnh báo mới</div>
@@ -124,23 +251,24 @@ input,select{background:var(--pp-bg2);border:1px solid var(--pp-line);color:var(
 </div>
 </div>
 
-<!-- ===== AI Chat (dùng MCP backend) ===== -->
+<!-- ===== AI Chat (trang rieng, Dot A) ===== -->
 <div class="view" id="v-chat">
-<div class="hdr"><a href="/hub" class="pp-back" style="text-decoration:none;font-size:20px" title="Về Pocket Personal" aria-label="Về Pocket Personal">‹</a><h1><svg class="tic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> AI Chat</h1><span class="src">MCP</span></div>
-<div class="tabs main" id="chatTabs"></div>
-<div class="card" id="chatBox" style="height:50vh;overflow-y:auto"></div>
+<div class="hdr"><a href="/hub" class="pp-back" style="text-decoration:none;font-size:20px" title="Về Pocket Personal" aria-label="Về Pocket Personal">‹</a><h1><svg class="tic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> AI Chat</h1><span class="src"></span></div>
+<div class="pagebar" id="chatTabs"></div>
+<div id="chatSug" style="padding:10px 16px 0"></div>
+<div class="card" id="chatBox" style="height:46vh;overflow-y:auto"></div>
 <div style="display:flex;gap:8px;margin:8px 16px">
 <input id="chatIn" placeholder="Hỏi về cổ phiếu… (vd: FPT giá bao nhiêu)" style="flex:1">
 <button style="padding:9px 16px;border-radius:8px;background:var(--pp-accent);color:#fff;border:none;font-size:14px;font-weight:600;cursor:pointer" id="chatSend">Gửi</button>
 </div>
-<div class="note">AI trả lời dựa trên dữ liệu thật từ MCP server (giá, sàng lọc, tín hiệu, regime).</div>
+<div class="note">Trả lời từ dữ liệu thị trường đã công bố trong ứng dụng; mỗi câu trả lời kèm nguồn và thời điểm của dữ liệu.</div>
 </div>
 
 <!-- ===== Của tôi: Danh mục + Sổ lệnh + Rủi ro ===== -->
 <div class="view" id="v-mine">
 <div class="hdr"><a href="/hub" class="pp-back" style="text-decoration:none;font-size:20px" title="Về Pocket Personal" aria-label="Về Pocket Personal">‹</a><h1><svg class="tic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> Của tôi</h1><span class="src"></span></div>
-<div class="tabs main" id="mineMainTabs"></div>
-<div class="tabs main" id="mineTabs">
+<div class="pagebar" id="mineMainTabs"></div>
+<div class="tabs wrap" id="mineTabs">
 <div class="tab on" data-mt="port"><svg class="tic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg> Danh mục</div>
 <div class="tab" data-mt="journal"><svg class="tic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg> Sổ lệnh</div>
 <div class="tab" data-mt="risk"><svg class="tic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> Rủi ro</div>
@@ -159,12 +287,12 @@ input,select{background:var(--pp-bg2);border:1px solid var(--pp-line);color:var(
 <div id="pfPasteBox" style="display:none;margin-top:10px;text-align:left">
 <div class="hint" style="padding:0 0 6px">Dán bảng sao kê (cột: Mã · Số lượng · Giá vốn). Mỗi dòng 1 mã, phân cách bằng Tab/dấu phẩy/chấm phẩy.</div>
 <textarea id="pfPasteTxt" rows="5" style="width:100%;box-sizing:border-box;background:var(--pp-bg2);color:var(--pp-ink);border:1px solid var(--pp-line);border-radius:8px;padding:8px;font-size:12px" placeholder="FPT	1000	120000"></textarea>
-<button id="pfPasteGo" style="width:100%;margin-top:8px;padding:9px;border-radius:8px;background:var(--pp-accent);color:#fff;border:none;font-size:13px;font-weight:600;cursor:pointer">Nhập danh mục</button>
+<button id="pfPasteGo" style="width:100%;margin-top:8px;padding:9px;border-radius:8px;background:var(--pp-accent);color:#fff;border:none;font-size:14px;font-weight:600;cursor:pointer">Nhập danh mục</button>
 <div class="hint" id="pfImportMsg" style="padding-top:6px"></div>
 </div></div>
 <div class="sec">Mã theo dõi</div>
 <div class="card"><div id="wlList"><div class="hint">Đang tải…</div></div>
-<div style="display:flex;gap:8px;margin-top:10px"><input id="wlAddInp" placeholder="Nhập mã, vd: FPT" style="flex:1;background:var(--pp-bg2);color:var(--pp-ink);border:1px solid var(--pp-line);border-radius:8px;padding:8px;font-size:13px;text-transform:uppercase"><button id="wlAddBtn" style="padding:8px 14px;border-radius:8px;background:var(--pp-accent);color:#fff;border:none;font-size:13px;font-weight:600;cursor:pointer">Theo dõi</button></div>
+<div style="display:flex;gap:8px;margin-top:10px"><input id="wlAddInp" placeholder="Nhập mã, vd: FPT" style="flex:1;background:var(--pp-bg2);color:var(--pp-ink);border:1px solid var(--pp-line);border-radius:8px;padding:8px;font-size:14px;text-transform:uppercase"><button id="wlAddBtn" style="padding:8px 14px;border-radius:8px;background:var(--pp-accent);color:#fff;border:none;font-size:14px;font-weight:600;cursor:pointer">Theo dõi</button></div>
 <div class="hint" id="wlMsg" style="padding-top:6px"></div></div>
 <div class="sec">Tổng quan rủi ro </div>
 <div class="card" id="pfRisk"><div class="hint">Nhập danh mục để xem.</div></div>
@@ -176,7 +304,7 @@ input,select{background:var(--pp-bg2);border:1px solid var(--pp-line);color:var(
 <div class="row"><span class="k">% rủi ro / lệnh</span><span><input id="psRisk" type="number" value="1" step="0.1" style="width:130px"></span></div>
 <div class="row"><span class="k">Giá vào (đ)</span><span><input id="psEntry" type="number" placeholder="100000" style="width:130px"></span></div>
 <div class="row"><span class="k">Giá cắt lỗ (đ)</span><span><input id="psStop" type="number" placeholder="93000" style="width:130px"></span></div>
-<button id="psGo" style="width:100%;margin-top:8px;padding:9px;border-radius:8px;background:var(--pp-accent);color:#fff;border:none;font-size:13px;font-weight:600;cursor:pointer">Tính</button>
+<button id="psGo" style="width:100%;margin-top:8px;padding:9px;border-radius:8px;background:var(--pp-accent);color:#fff;border:none;font-size:14px;font-weight:600;cursor:pointer">Tính</button>
 <div id="psOut" style="margin-top:8px"></div>
 </div></div>
 </div>
@@ -208,11 +336,12 @@ input,select{background:var(--pp-bg2);border:1px solid var(--pp-line);color:var(
 <div class="sec"><svg class="tic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg> Khóa AI của tôi</div>
 <div class="card">
 <div class="hint" style="padding:0 0 8px;font-size:12px">Dùng chung với Talk và English Lab. Key lưu trên máy anh, không gửi lên server.</div>
+<div class="row" style="gap:8px;margin-bottom:8px"><select id="bkPreset" style="flex:1;padding:9px;border-radius:8px;background:var(--pp-bg2);color:var(--pp-ink);border:1px solid var(--pp-line);font-size:12px;min-width:0"><option value="">Chọn nhà cung cấp có sẵn…</option></select></div>
 <div class="row" style="gap:8px"><input id="bkEp" placeholder="https://api.../v1" style="flex:1" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
 <div class="row" style="gap:8px;margin-top:8px"><input id="bkKey" type="password" placeholder="Dán khóa API…" style="flex:1" autocomplete="off">
 <button id="bkTest" style="padding:9px 12px;border-radius:8px;background:var(--pp-bg2);color:var(--pp-ink);border:1px solid var(--pp-line);font-size:12px;cursor:pointer">Kiểm tra</button>
 <button id="bkDel" style="padding:9px 12px;border-radius:8px;background:var(--pp-bg2);color:var(--pp-ink);border:1px solid var(--pp-line);font-size:12px;cursor:pointer">Xoá</button></div>
-<div class="row" style="gap:8px;margin-top:8px"><span class="k">Model</span><input id="bkModel" placeholder="vd: gemini-2.0-flash" style="flex:1"></div>
+<div class="row" style="gap:8px;margin-top:8px"><span class="k">Model</span><input id="bkModel" placeholder="Model ID" style="flex:1"></div>
 <div class="hint" id="bkStatus" style="padding:8px 0 0;font-size:12px"></div>
 </div>
 <div class="sec">Ngôn ngữ / Language</div>
@@ -232,30 +361,29 @@ input,select{background:var(--pp-bg2);border:1px solid var(--pp-line);color:var(
 <!-- ===== Chi tiết mã: MÀN 2/3/5 ===== -->
 <div class="view" id="v-detail">
 <div class="hdr"><button onclick="go('v-market')" style="background:none;border:none;color:var(--pp-mut);font-size:20px;cursor:pointer;padding:0 6px 0 0">‹</button><h1 id="dSym">—</h1><button id="dWatch" title="Theo dõi mã này" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--pp-mut);padding:0 4px">☆</button><span class="src" id="dSrc">Nguồn: KBS trực tiếp</span></div>
-<div class="tabs" id="dTabs">
-<div class="tab on" data-dt="ov">Tổng quan</div>
-<div class="tab" data-dt="flow">Dòng tiền</div>
-<div class="tab" data-dt="news">Tin tức</div>
-<div class="tab" data-dt="fund">Cơ bản</div>
-</div>
 <div id="dOv">
+<div class="sec" id="dNavTitle">Mục lục</div>
+<div class="navgrid" id="dNav" style="padding-top:2px"></div>
 <div class="card" id="dQuote"><div class="hint">Đang tải…</div></div>
 <div class="sec">Biểu đồ</div>
-<div class="card"><div class="iv" id="dIv"><button>15m</button><button>1H</button><button class="on">1D</button></div><div id="dChart" style="min-height:150px;margin-top:8px"><div class="hint">Đang tải…</div></div></div>
-<div class="sec">Chốt lời / Cắt lỗ (%)</div>
+<div class="card"><div class="iv" id="dIdxBar" style="display:none;margin-top:0"></div><div class="iv" id="dIv"><button>15m</button><button>1H</button><button class="on">1D</button></div><div id="dFaLegend" style="margin-top:6px"></div><div id="dChart" style="min-height:150px;margin-top:8px"><div class="hint">Đang tải…</div></div><div id="dFaPct"></div><div id="dIndChips" style="margin-top:8px"></div><div id="dIndPanes"></div><div id="dIndPanel" style="display:none;margin-top:8px"></div><div id="dFaGrid"></div></div>
+<div class="sec" id="dTargetSec">Chốt lời / Cắt lỗ (%)</div>
 <div class="card" id="dTarget"><div class="hint">Đang tải…</div></div>
 <div class="sec" id="dCostSec" style="display:none">Giá vốn của bạn vs thị trường</div>
 <div class="card" id="dCost" style="display:none"></div>
-<div class="sec">Sự kiện</div>
-<div class="card"><div id="dEvents"><div class="hint">Đang tải…</div></div></div>
+<div class="sec" id="dEventsSec">Sự kiện</div>
+<div class="card" id="dEventsCard"><div id="dEvents"><div class="hint">Đang tải…</div></div></div>
 </div>
+<div id="dFlowH" style="display:none"><div class="pagebar"><span class="backrow" onclick="dBack()">‹ <span class="dbacksym"></span></span></div><div class="sec dtitle" data-k="flow"></div></div>
 <div id="dFlow" style="display:none">
 <div class="sec">Khối ngoại mua/bán ròng — 20 phiên (tỷ đồng)</div>
 <div class="card"><div class="bars" id="dFf"></div><div class="barlbl" id="dFfLbl"></div><div class="row" style="margin-top:8px"><span class="k">Tổng 20 phiên</span><span class="v" id="dFfSum">—</span></div></div>
 <div class="sec">Tự doanh mua/bán ròng — 20 phiên (tỷ đồng)</div>
 <div class="card"><div class="bars" id="dPf"></div><div class="barlbl" id="dPfLbl"></div><div class="row" style="margin-top:8px"><span class="k">Tổng 20 phiên</span><span class="v" id="dPfSum">—</span></div></div>
 </div>
+<div id="dNewsH" style="display:none"><div class="pagebar"><span class="backrow" onclick="dBack()">‹ <span class="dbacksym"></span></span></div><div class="sec dtitle" data-k="news"></div></div>
 <div id="dNews" style="display:none"><div class="card"><div id="dNewsList"><div class="hint">Đang tải…</div></div></div></div>
+<div id="dFundH" style="display:none"><div class="pagebar"><span class="backrow" onclick="dBack()">‹ <span class="dbacksym"></span></span></div><div class="sec dtitle" data-k="fund"></div></div>
 <div id="dFund" style="display:none">
 <div class="sec">Chỉ số tự tính (TTM)</div>
 <div class="card" id="dRatios"><div class="hint">Đang tải…</div></div>
@@ -266,14 +394,18 @@ input,select{background:var(--pp-bg2);border:1px solid var(--pp-line);color:var(
 <button style="flex:1;padding:9px;border-radius:8px;background:var(--pp-bg2);color:var(--pp-ink);border:1px solid var(--pp-line);font-size:12px;cursor:pointer" id="dlCsv">Tải CSV</button>
 </div></div>
 </div>
+<div id="dProfH" style="display:none"><div class="pagebar"><span class="backrow" onclick="dBack()">‹ <span class="dbacksym"></span></span></div><div class="sec dtitle" data-k="prof"></div></div>
+<div id="dProf" style="display:none"></div>
+<div id="dConsH" style="display:none"><div class="pagebar"><span class="backrow" onclick="dBack()">‹ <span class="dbacksym"></span></span></div><div class="sec dtitle" data-k="cons"></div></div>
+<div id="dCons" style="display:none"></div>
 </div>
 
 <script>
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-const fmtN=n=>n==null?"—":Number(n).toLocaleString("vi-VN");
-const fmtPct=p=>p==null?"—":(p>0?"+":"")+Number(p).toFixed(2)+"%";
-const fmtTy=n=>n==null?"—":(n>0?"+":"")+(n/1e9).toFixed(0)+" tỷ";
+const fmtN=n=>{ if(n==null) return "—"; const v=Number(n); return isFinite(v)? v.toLocaleString("vi-VN") : "—"; };
+const fmtPct=p=>{ if(p==null) return "—"; const v=Number(p); return isFinite(v)? (v>0?"+":"")+v.toFixed(2)+"%" : "—"; };
+const fmtTy=n=>{ if(n==null) return "—"; const v=Number(n); return isFinite(v)? (v>0?"+":"")+(v/1e9).toFixed(0)+" tỷ" : "—"; };
 const _tok=localStorage.getItem("elab_authToken");
 async function api(p){
   const h={"Content-Type":"application/json"};
@@ -284,10 +416,18 @@ async function api(p){
   return r.json();
 }
 // Nav pill trên đầu — theo mockup
-const NAV=[["v-market","Thị trường"],["v-screen","Sàng lọc"],["v-alert","Cảnh báo"],["v-mine","Của tôi"]];
-const NAVLBL={ "v-market":"Thị trường","v-screen":'Sàng lọc',"v-alert":"Cảnh báo","v-mine":'Của tôi'};
+const NAV=[["v-market","Thị trường"],["v-screen","Sàng lọc"],["v-consensus","Đồng thuận"],["v-holders","Cổ đông"],["v-sectors","Ngành"],["v-alert","Cảnh báo"],["v-mine","Của tôi"],["v-chat","AI Chat"]];
+const NAVLBL=Object.fromEntries(NAV);
+// Trang lien ket (Chot 08:41 + phan hoi 09:06 22/10): bo thanh tab
+// chen chuc; trang Thi truong la muc luc cac muc, trang con chi co
+// hang quay lai — chu khong bao gio tran/cat.
 function buildNav(el,cur){
-  $(el).innerHTML=NAV.map(([v,l])=>`<div class="tab${v===cur?" on":""}" onclick="go('${v}')">${NAVLBL[v]}</div>`).join("");
+  const e=$(el); if(!e) return;
+  if(el==="mainTabs"){
+    e.innerHTML=NAV.filter(([v])=>v!=="v-market").map(([v])=>`<div class="navcard" onclick="go('${v}')"><span>${NAVLBL[v]}</span><span class="nchev">›</span></div>`).join("");
+  } else {
+    e.innerHTML=`<div class="backrow" onclick="go('v-market')">‹&nbsp;<span>${NAVLBL["v-market"]}</span></div>`;
+  }
 }
 
 function openChat(){
@@ -299,13 +439,17 @@ function openChat(){
 function go(v){
   document.querySelectorAll(".view").forEach(s=>s.classList.remove("on"));
   $(v).classList.add("on");window.scrollTo(0,0);
-  $("aiFab").style.display="";
-  ["mainTabs","screenTabs","alertTabs","mineMainTabs","chatTabs"].forEach(e=>{if($(e))buildNav(e,v);});
+  $("aiFab").style.display=(v==="v-chat")?"none":"";
+  if(v==="v-chat")renderChatSug();
+  ["mainTabs","screenTabs","consTabs","holdTabs","secTabs","alertTabs","mineMainTabs","chatTabs"].forEach(e=>{if($(e))buildNav(e,v);});
   if(v==="v-screen")loadScreener();
+  if(v==="v-consensus")loadConsensus();
+  if(v==="v-holders")loadHolders();
+  if(v==="v-sectors")loadSectors();
   if(v==="v-alert")loadAlerts();
   if(v==="v-mine")loadMine();
 }
-["mainTabs","screenTabs","alertTabs","mineMainTabs","chatTabs"].forEach(e=>{if($(e))buildNav(e,"v-market");});
+["mainTabs","screenTabs","consTabs","holdTabs","secTabs","alertTabs","mineMainTabs","chatTabs"].forEach(e=>{if($(e))buildNav(e,"v-market");});
 document.querySelectorAll("#mineTabs .tab").forEach(t=>t.onclick=()=>{
   document.querySelectorAll("#mineTabs .tab").forEach(x=>x.classList.remove("on"));t.classList.add("on");
   ["mPort","mJournal","mRisk","mSettings"].forEach(k=>$(k).style.display="none");
@@ -338,8 +482,8 @@ function renderRegime(){
 async function loadMarket(){
   try{
     const j=await api("/indices");const rows=j.rows||[];
-    $("idxRow").innerHTML=rows.map(r=>{const pc=r.pct_change,cls=pc>0?"up":pc<0?"down":"";
-      return `<div class="idxcard"><div class="s">${esc(r.symbol)}</div><div class="p">${fmtN(r.close)}</div><div class="c ${cls}">${pc>0?"▲":pc<0?"▼":""} ${fmtPct(pc)}</div></div>`;}).join("")||'<div class="hint">Chưa có dữ liệu</div>';
+    $("idxRow").innerHTML=rows.map(r=>{const pc=r.pct_change,cls=pc>0?"up":pc<0?"down":"";const fs=idxFileSym(r.symbol);
+      return `<div class="idxcard"${fs?` style="cursor:pointer" onclick="openIndex('${fs}')" title="${esc(r.symbol)}"`:""}><div class="s">${esc(r.symbol)}</div><div class="p">${fmtN(r.close)}</div><div class="c ${cls}">${pc>0?"▲":pc<0?"▼":""} ${fmtPct(pc)}</div></div>`;}).join("")||'<div class="hint">Chưa có dữ liệu</div>';
     if(j._prov){_lastMktSrc=j._prov.source;refreshSrc();}
   }catch(e){$("idxRow").innerHTML='<div class="hint">Lỗi tải chỉ số</div>';}
   try{
@@ -352,12 +496,16 @@ async function loadMarket(){
   }catch(e){}
   try{
     const j=await api("/screener?sort=pct_change&order=desc&exchange=HOSE&min_value=1000000000");
+    (j.rows||[]).forEach(r=>{try{SS_PX[r.symbol]={c:r.close,p:r.pct_change};}catch(e){}});
     const rows=(j.rows||[]).filter(r=>r.pct_change!=null).slice(0,8);
     $("topMovers").innerHTML=rows.map(r=>{const pc=r.pct_change,cls=pc>0?"up":pc<0?"down":"";
       const ff=r.foreign_net_value,ffc=ff>0?"up":ff<0?"down":"";
       return `<tr><td><b onclick="openSym('${esc(r.symbol)}')" style="cursor:pointer">${esc(r.symbol)}</b></td><td>${fmtN(r.close)}</td><td class="${cls}">${fmtPct(pc)}</td><td class="${ffc}">${fmtTy(ff)}</td></tr>`;}).join("")||'<tr><td colspan="4"><div class="hint">Chưa có dữ liệu</div></td></tr>';
   }catch(e){$("topMovers").innerHTML='<tr><td colspan="4"><div class="hint">Lỗi tải</div></td></tr>';}
   loadFF();
+  loadPF();
+  loadMacro();
+  loadMN();
 }
 
 // ---- Khoi ngoai hom nay (GET /foreign-flow): du lieu publish gom 30 ma
@@ -370,6 +518,8 @@ const FF_I18N={
   ko:{net:"순매수 · 유동성 상위 30종목",buy:"매수",sell:"매도",topBuy:"순매수 상위",topSell:"순매도 상위",empty:"이번 세션 데이터 없음",ty:"십억",tr:"백만"},
 };
 function fmtTyF(v,L,signed){
+  if(v==null||!isFinite(Number(v))) return "—";
+  v=Number(v);
   const a=Math.abs(v), s=v<0?"−":(signed?"+":"");
   if(a>=1e9) return s+(a/1e9).toFixed(1).replace(".",",")+" "+L.ty;
   if(a>=1e6) return s+Math.round(a/1e6)+" "+L.tr;
@@ -396,15 +546,312 @@ function renderFF(j){
     (buy.length?`<div class="hint" style="padding:4px 0">${L.topBuy}</div><table>${list(buy)}</table>`:"")+
     (sell.length?`<div class="hint" style="padding:8px 0 4px">${L.topSell}</div><table>${list(sell)}</table>`:"");
 }
+// ---- Tu doanh hom nay (GET /proprietary-flow): cung khuon the Khoi
+// ngoai, truong gia tri *_value_vnd; pham vi = cac ma co giao dich
+// tu doanh trong phien (dem dong tai cho, khong tu nhan toan thi
+// truong neu thieu).
+const PF_I18N={
+  vi:{net:"Ròng",syms:"mã có giao dịch",buy:"Mua",sell:"Bán",topBuy:"Mua ròng mạnh nhất",topSell:"Bán ròng mạnh nhất",empty:"Chưa có dữ liệu phiên này"},
+  en:{net:"Net",syms:"symbols traded",buy:"Buy",sell:"Sell",topBuy:"Top net buys",topSell:"Top net sells",empty:"No data for this session yet"},
+  zh:{net:"净额",syms:"只有交易的股票",buy:"买入",sell:"卖出",topBuy:"净买入前五",topSell:"净卖出前五",empty:"本时段暂无数据"},
+  ko:{net:"순매수",syms:"거래 종목",buy:"매수",sell:"매도",topBuy:"순매수 상위",topSell:"순매도 상위",empty:"이번 세션 데이터 없음"},
+};
+async function loadPF(){
+  try{ renderPF(await api("/proprietary-flow")); }
+  catch(e){ /* giu nguyen khung */ }
+}
+function renderPF(j){
+  const card=$("pfCard"); if(!card) return;
+  const L=PF_I18N[curLang]||PF_I18N.vi;
+  const F=FF_I18N[curLang]||FF_I18N.vi;
+  const by=(j&&j.by_symbol)||{};
+  const rows=Object.keys(by).map(s=>{const d=by[s]||{};const bv=d.buy_value_vnd||0,sv=d.sell_value_vnd||0;return{s,bv,sv,net:bv-sv};});
+  if(!rows.length){ card.innerHTML=`<div class="hint">${L.empty}</div>`; return; }
+  const tot=rows.reduce((a,r)=>({bv:a.bv+r.bv,sv:a.sv+r.sv,net:a.net+r.net}),{bv:0,sv:0,net:0});
+  const cls=tot.net>0?"up":tot.net<0?"down":"";
+  const list=(arr)=>arr.map(r=>`<tr><td><a href="#" onclick="openSym('${r.s}');return false"><b>${r.s}</b></a></td><td class="${r.net>0?"up":"down"}" style="text-align:right">${fmtTyF(r.net,F,true)}</td></tr>`).join("");
+  const buy=rows.filter(r=>r.net>0).sort((a,b)=>b.net-a.net).slice(0,5);
+  const sell=rows.filter(r=>r.net<0).sort((a,b)=>a.net-b.net).slice(0,5);
+  card.innerHTML=
+    `<div style="display:flex;justify-content:space-between;padding:2px 0 8px"><span>${L.net} · ${rows.length} ${L.syms}</span><b class="${cls}">${fmtTyF(tot.net,F,true)}</b></div>`+
+    `<div class="hint" style="padding-bottom:8px">${L.buy}: ${fmtTyF(tot.bv,F,false)} · ${L.sell}: ${fmtTyF(tot.sv,F,false)}</div>`+
+    (buy.length?`<div class="hint" style="padding:4px 0">${L.topBuy}</div><table>${list(buy)}</table>`:"")+
+    (sell.length?`<div class="hint" style="padding:8px 0 4px">${L.topSell}</div><table>${list(sell)}</table>`:"");
+}
+// ---- Tin thi truong (GET /news/market) ----
+async function loadMN(){
+  try{ renderMN(await api("/news/market")); }
+  catch(e){ /* giu nguyen khung */ }
+}
+function renderMN(j){
+  const card=$("mnCard"); if(!card) return;
+  const items=(j&&j.items)||[];
+  if(!items.length){ card.innerHTML='<div class="hint">Chưa có tin</div>'; return; }
+  card.innerHTML=items.slice(0,10).map(n=>`<div style="padding:8px 0;border-bottom:1px solid var(--pp-line)"><a href="${esc(n.url||"#")}" target="_blank" rel="noopener" style="display:flex;flex-direction:column;justify-content:center;min-height:44px;color:var(--pp-ink);text-decoration:none;font-size:14px;font-weight:600">${esc(n.title||"")}<div style="font-size:12px;color:var(--pp-mut);margin-top:2px;font-weight:400">${n.symbol?esc(n.symbol)+" · ":""}${esc((n.publish_time||"").slice(0,10))}</div></a></div>`).join("");
+}
+// ---- Vi mo (Tier 2-1): GET /macro (overview + spark) va /macro/history
+// khi mo chi tiet. Nguon chinh thong: NHNN, Vietcombank, SJC, NY Fed,
+// Bo Tai chinh My — nhan nguon hien duoi moi the.
+const MAC_I18N={
+  vi:{src:"Nguồn",fxC:"Tỷ giá trung tâm USD/VND",fxV:"Tỷ giá Vietcombank",gold:"Vàng SJC",fed:"Lãi suất FED (EFFR)",omo:"Thị trường mở OMO (NHNN)",omoUnit:"tỷ ₫",omoNone:"Không có trúng thầu",omoDay:"ngày",ust:"Lợi suất TP Mỹ 10Y",pol:"Lãi suất điều hành NHNN",tgt:"Mục tiêu",refi:"Tái cấp vốn",redisc:"Tái chiết khấu",dep:"Huy động bình quân",buy:"Mua",sell:"Bán",buyTr:"Mua CK",usdSell:"USD bán",from:"Hiệu lực",dec:"theo",perL:"tr ₫/lượng",empty:"Chưa có dữ liệu vĩ mô"},
+  en:{src:"Source",fxC:"SBV central rate USD/VND",fxV:"Vietcombank FX",gold:"SJC gold",fed:"Fed funds rate (EFFR)",omo:"Open market ops (SBV)",omoUnit:"₫bn",omoNone:"No winning bids",omoDay:"d",ust:"US Treasury 10Y",pol:"SBV policy rates",tgt:"Target",refi:"Refinancing",redisc:"Rediscount",dep:"Avg deposit rate",buy:"Buy",sell:"Sell",buyTr:"Buy (transfer)",usdSell:"USD sell",from:"Effective",dec:"per",perL:"M ₫/tael",empty:"No macro data yet"},
+  zh:{src:"来源",fxC:"央行中心汇率 USD/VND",fxV:"Vietcombank 汇率",gold:"SJC 黄金",fed:"美联储利率 (EFFR)",omo:"公开市场操作 (央行)",omoUnit:"十亿₫",omoNone:"无中标",omoDay:"天",ust:"美国10年期国债收益率",pol:"央行政策利率",tgt:"目标",refi:"再融资",redisc:"再贴现",dep:"平均存款利率",buy:"买入",sell:"卖出",buyTr:"买入(转账)",usdSell:"美元卖出",from:"生效",dec:"依据",perL:"百万₫/两",empty:"暂无宏观数据"},
+  ko:{src:"출처",fxC:"중앙환율 USD/VND",fxV:"Vietcombank 환율",gold:"SJC 금",fed:"연준 금리 (EFFR)",omo:"공개시장운영 (중앙은행)",omoUnit:"십억₫",omoNone:"낙찰 없음",omoDay:"일",ust:"미국 국채 10년",pol:"중앙은행 정책금리",tgt:"목표",refi:"재융자",redisc:"재할인",dep:"평균 예금금리",buy:"매수",sell:"매도",buyTr:"매수(송금)",usdSell:"USD 매도",from:"시행",dec:"근거",perL:"백만₫/량",empty:"거시 데이터 없음"},
+};
+const MAC_SRC={sbv:"NHNN",vcb:"Vietcombank",sjc:"SJC",nyfed:"NY Fed",treasury:"U.S. Treasury","sbv-curated":"NHNN"};
+let MAC=null, MACOPEN=null, MACFC="USD", MACUT="y10", MACHIST={};
+function macSpark(vals,color){
+  if(!vals||vals.length<2) return '<svg width="100%" height="30" viewBox="0 0 120 30" preserveAspectRatio="none" aria-hidden="true"></svg>';
+  const w=120,h=30,mn=Math.min(...vals),mx=Math.max(...vals),rg=(mx-mn)||1;
+  const pts=vals.map((v,i)=>`${(i/(vals.length-1)*w).toFixed(1)},${(h-3-((v-mn)/rg)*(h-6)).toFixed(1)}`).join(" ");
+  return `<svg width="100%" height="${h}" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.6"/></svg>`;
+}
+function macChg(ch,fmt){
+  if(ch==null||ch===0) return `<span style="color:var(--pp-mut)">—</span>`;
+  const cls=ch>0?"up":"down", ar=ch>0?"▲":"▼";
+  return `<span class="${cls}" style="font-size:12px">${ar} ${fmt(Math.abs(ch))}</span>`;
+}
+async function loadMacro(){
+  try{ MAC=await api("/macro"); renderMacro(); }
+  catch(e){ /* giu khung, khong lam hong man thi truong */ }
+}
+function renderMacro(){
+  const w=$("macroWrap"); if(!w||!MAC) return;
+  const L=MAC_I18N[curLang]||MAC_I18N.vi, S=MAC.series||{};
+  const fVnd=v=>Math.round(v).toLocaleString("vi-VN");
+  const fPct=v=>v==null?"—":Number(v).toFixed(2).replace(".",",")+"%";
+  const card=(sid,name,val,chg,spark,sub,src,date)=>`<div class="card mcard" onclick="macOpen('${sid}')">
+    <div class="mct">${name}</div>
+    <div class="mcv"><span class="mv">${val}</span><span class="md">${chg||""}</span></div>
+    <div class="mcspark">${spark||""}</div>
+    <div class="mcsub">${sub||""}</div>
+    <div class="mcsrc">${L.src}: ${src} · <span class="nw">${date||""}</span></div></div>`;
+  let h=`<div class="mgrid">`;
+  const c=S.fx_center;
+  if(c) h+=card("fx_center",L.fxC,fVnd(c.last.rate)+" ₫",macChg(c.change,v=>fVnd(v)+" ₫"),macSpark(c.spark,"#38bdf8"),"",MAC_SRC[c.source],c.date);
+  const v=S.fx_vcb;
+  if(v&&v.usd) h+=card("fx_vcb",L.fxV,fVnd(v.usd.sell||0)+" ₫",macChg(v.change,x=>fVnd(x)+" ₫"),macSpark(v.spark,"#38bdf8"),`${L.usdSell} · ${L.buyTr} ${fVnd(v.usd.buy_transfer||0)} ₫`,MAC_SRC[v.source],v.date);
+  const g=S.gold_sjc;
+  if(g) h+=card("gold_sjc",L.gold,(g.last.sell/1e6).toFixed(1).replace(".",",")+' <span class="mu">'+L.perL+"</span>",macChg(g.change,x=>(x/1e6).toFixed(2).replace(".",",")),macSpark(g.spark,"#e8c56a"),`${L.buy} ${(g.last.buy/1e6).toFixed(1).replace(".",",")} · ${L.sell} ${(g.last.sell/1e6).toFixed(1).replace(".",",")}`,MAC_SRC[g.source],g.date);
+  const f=S.fed_effr;
+  if(f) h+=card("fed_effr",L.fed,fPct(f.last.effr),macChg(f.change,x=>x.toFixed(2).replace(".",",")),macSpark(f.spark,"#a78bfa"),`${L.tgt} ${fPct(f.last.target_from)}–${fPct(f.last.target_to)}`,MAC_SRC[f.source],f.date);
+  const u=S.ust;
+  if(u) h+=card("ust",L.ust,fPct(u.last.y10),macChg(u.change,x=>x.toFixed(2).replace(".",",")),macSpark(u.spark,"#a78bfa"),`2Y ${fPct(u.last.y2)} · 30Y ${fPct(u.last.y30)}`,MAC_SRC[u.source],u.date);
+  const o=S.omo;
+  if(o&&o.last){ const fTy=v=>Number(v||0).toLocaleString("vi-VN",{maximumFractionDigits:1});
+    const tt=(o.last.tenors||[]).filter(t=>t.volume>0);
+    const sub=tt.length?tt.map(t=>`${t.days}${L.omoDay} ${fPct(t.rate)}`).join(" · "):L.omoNone;
+    h+=card("omo",L.omo,fTy(o.last.total)+" "+L.omoUnit,macChg(o.change,v=>fTy(v)),macSpark(o.spark,"#34d399"),sub,MAC_SRC[o.source],o.date); }
+  const p=MAC.policy_rates;
+  if(p) h+=`<div class="card mcpol">
+    <div class="mct">${L.pol}</div>
+    <div class="vals">
+      <div class="cell"><div class="k">${L.refi}</div><div class="v">${fPct(p.refinancing)}</div></div>
+      <div class="cell"><div class="k">${L.redisc}</div><div class="v">${fPct(p.rediscount)}</div></div>
+      <div class="cell"><div class="k">${L.dep}</div><div class="v">${fPct(p.deposit_avg)}</div></div></div>
+    <div class="mcsrc" style="margin-top:8px">${L.from} ${p.effective} · ${L.dec} ${esc(p.decision||"")} · ${L.src}: NHNN</div></div>`;
+  h+="</div>"+(MACOPEN?`<div class="card" style="margin-top:8px;padding:10px" id="macroDetail"><div class="hint">…</div></div>`:"");
+  w.innerHTML=h||`<div class="hint">${L.empty}</div>`;
+  if(MACOPEN) macDrawDetail();
+}
+function macSeriesVal(sid,row){
+  if(sid==="fx_center") return row.rate;
+  if(sid==="gold_sjc") return row.sell;
+  if(sid==="fed_effr") return row.effr;
+  if(sid==="omo") return row.total;
+  if(sid==="ust") return row[MACUT];
+  if(sid==="fx_vcb"){ const r=(row.rates||[]).find(x=>x.code===MACFC); return r?r.sell:null; }
+  return null;
+}
+function macChartSvg(rows,sid){
+  const pts=rows.map(r=>({d:r.date,v:macSeriesVal(sid,r)})).filter(p=>p.v!=null);
+  if(pts.length<2) return '<div class="hint">—</div>';
+  const w=330,h=120,vs=pts.map(p=>p.v),mn=Math.min(...vs),mx=Math.max(...vs),rg=(mx-mn)||1;
+  const X=i=>(i/(pts.length-1)*w).toFixed(1), Y=v=>(h-14-((v-mn)/rg)*(h-28)).toFixed(1);
+  const line=pts.map((p,i)=>`${X(i)},${Y(p.v)}`).join(" ");
+  const fN=v=>v>=1000?Math.round(v).toLocaleString("vi-VN"):Number(v).toFixed(2).replace(".",",");
+  return `<svg width="100%" viewBox="0 0 ${w} ${h}"><polyline points="${line}" fill="none" stroke="#38bdf8" stroke-width="1.6"/>
+    <text x="2" y="10" fill="#9db8a9" font-size="9">${fN(mx)}</text><text x="2" y="${h-2}" fill="#9db8a9" font-size="9">${fN(mn)}</text>
+    <text x="${w-2}" y="10" text-anchor="end" fill="#9db8a9" font-size="9">${pts[0].d}</text><text x="${w-2}" y="${h-2}" text-anchor="end" fill="#9db8a9" font-size="9">${pts[pts.length-1].d}</text></svg>`;
+}
+async function macOpen(sid){
+  MACOPEN=(MACOPEN===sid)?null:sid;
+  renderMacro();
+  if(!MACOPEN) return;
+  if(!MACHIST[sid]){
+    try{ const j=await api("/macro/history?series="+sid+"&limit=500"); MACHIST[sid]=j.rows||[]; }
+    catch(e){ MACHIST[sid]=[]; }
+  }
+  macDrawDetail();
+}
+function macDrawDetail(){
+  const box=$("macroDetail"); if(!box||!MACOPEN) return;
+  const L=MAC_I18N[curLang]||MAC_I18N.vi, rows=MACHIST[MACOPEN]||[];
+  let extra="";
+  if(MACOPEN==="fx_vcb"&&MAC.series.fx_vcb){
+    const codes=MAC.series.fx_vcb.codes||["USD"];
+    extra=`<div style="display:flex;gap:6px;flex-wrap:wrap;margin:6px 0">${codes.slice(0,10).map(c=>`<button onclick="MACFC='${c}';macDrawDetail()" style="padding:3px 9px;border-radius:99px;border:1px solid var(--pp-line);background:${c===MACFC?"var(--pp-accent)":"var(--pp-bg2)"};color:${c===MACFC?"#fff":"var(--pp-ink)"};font-size:12px;cursor:pointer">${c}</button>`).join("")}</div>`;
+    const last=rows[rows.length-1];
+    if(last) extra+=`<table>${last.rates.map(r=>`<tr><td><b>${r.code}</b></td><td style="text-align:right">${Math.round(r.buy_cash||0).toLocaleString("vi-VN")}</td><td style="text-align:right">${Math.round(r.buy_transfer||0).toLocaleString("vi-VN")}</td><td style="text-align:right">${Math.round(r.sell||0).toLocaleString("vi-VN")}</td></tr>`).join("")}</table>`;
+  }
+  if(MACOPEN==="omo"){
+    const last=rows[rows.length-1];
+    const fPct=v=>v==null?"—":Number(v).toFixed(2).replace(".",",")+"%";
+    if(last&&last.tenors&&last.tenors.length) extra=`<table>${last.tenors.map(t=>`<tr><td><b>${t.days} ${L.omoDay}</b></td><td style="text-align:right">${Number(t.volume||0).toLocaleString("vi-VN",{maximumFractionDigits:1})} ${L.omoUnit}</td><td style="text-align:right">${fPct(t.rate)}</td><td style="text-align:right">${t.members_won||0}/${t.members_bid||0}</td></tr>`).join("")}</table>`;
+  }
+  if(MACOPEN==="ust"){
+    extra=`<div style="display:flex;gap:6px;margin:6px 0">${["y2","y10","y30"].map(t=>`<button onclick="MACUT='${t}';macDrawDetail()" style="padding:3px 9px;border-radius:99px;border:1px solid var(--pp-line);background:${t===MACUT?"var(--pp-accent)":"var(--pp-bg2)"};color:${t===MACUT?"#fff":"var(--pp-ink)"};font-size:12px;cursor:pointer">${t.toUpperCase()}</button>`).join("")}</div>`;
+  }
+  box.innerHTML=extra+macChartSvg(rows.slice(-250),MACOPEN);
+}
 // ---- Màn 4 ----
 const patName={trend_crossover:"Trend Crossover",bollinger_squeeze:"Bollinger Squeeze",episodic_pivot:"Episodic Pivot",momentum_pullback:"Momentum Pullback"};
 const patIcon={trend_crossover:"<svg class='tic' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2'><path d='M3 3v18h18'/><path d='M7 14l4-4 3 3 5-6'/></svg>",bollinger_squeeze:"<svg class='tic' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2'><path d='M3 3v18h18'/><path d='M7 15l4-6 4 3 5-8'/></svg>",episodic_pivot:"<svg class='tic' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2'><path d='M13 2L3 14h9l-1 8 10-12h-9l1-8z'/></svg>",momentum_pullback:"<svg class='tic' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2'><path d='M23 4v6h-6M1 20v-6h6'/><path d='M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15'/></svg>"};
+// ===== Khoi Nhan dinh tu dong (Chot 09:34 22/10) =====
+// Nganh/Dong thuan/Co dong: van ban tinh san tai publish (server,
+// 4 ngon ngu) — client chi chon ngon ngu. Sang loc: tinh tai client
+// tren dung tap dang loc bang mau SCR_TPL tuong ung.
+const INS_I18N={
+  vi:{t:"Nhận định tự động từ dữ liệu",src:"Nguồn"},
+  en:{t:"Automated data insight",src:"Source"},
+  zh:{t:"自动数据解读",src:"来源"},
+  ko:{t:"자동 데이터 분석",src:"출처"}};
+const INS_SRC={
+  cons:{vi:"Báo cáo phân tích các hãng (đã kiểm chứng)",en:"Broker research (verified reports)",zh:"机构研报（已核实）",ko:"증권사 리포트(검증 완료)"},
+  sec:{vi:"Báo cáo tài chính các doanh nghiệp trong ngành",en:"Member companies' financial statements",zh:"行业成分公司财务报表",ko:"업종 구성 기업의 재무제표"},
+  hold:{vi:"Công bố cổ đông (chỉ mục đảo cổ đông)",en:"Shareholder disclosures (reverse index)",zh:"股东披露（反向索引）",ko:"주주 공시(역인덱스)"},
+  scr:{vi:"Dữ liệu sàng lọc + cơ bản cuối phiên",en:"End-of-day screener & fundamentals",zh:"日终筛选与基本面数据",ko:"일일 스크리너·펀더멘털 데이터"}};
+function insBox(insight, srcText, asOf){
+  if(!insight) return "";
+  const L=INS_I18N[curLang]||INS_I18N.vi;
+  const txt=insight[curLang]||insight.vi||"";
+  if(!txt) return "";
+  let f="";
+  if(srcText) f+=L.src+": "+esc(srcText);
+  if(asOf) f+=(f?" · ":"")+String(asOf).slice(0,10);
+  return `<div class="insight"><div class="ins-t">${L.t}</div><div class="ins-b">${esc(txt)}</div>${f?`<div class="ins-f">${f}</div>`:""}</div>`;
+}
+const SCR_TPL={
+  vi:{all:"Tất cả sàn",trendAll:"Mọi xu hướng",trendYes:"Đạt trend",trendNo:"Chưa đạt trend",
+    low:"Tập lọc chỉ có {n} mã — mẫu quá nhỏ, nhận định có độ tin cậy thấp.",
+    s1:"Tập đang lọc gồm {n} mã; sàn đông nhất: {ex} ({pe}%).",
+    s1b:" Ngành đông nhất: {ind} ({pi}%).",
+    s2:"Động lượng phiên gần nhất: {up}% mã tăng, {down}% mã giảm; {tr}% đạt mẫu hình xu hướng (trend template).",
+    s3:"Định giá: P/E trung vị {pe} lần, P/B trung vị {pb} lần.",
+    s4:"Chất lượng: ROE trung vị {roe}%; {pio}% mã đạt Piotroski ≥ 7; {alt}% mã có Altman Z trong vùng an toàn theo thang VN (>1,5).",
+    s5:"Thanh khoản: tổng giá trị giao dịch {tv}; mã chiếm tỉ trọng lớn nhất: {sym} ({s}%).",
+    s6:"Rủi ro: {de}% mã đòn bẩy cao (D/E > 2 hoặc âm); {ad}% mã có Altman Z vùng nguy hiểm theo thang VN (<0,45)."},
+  en:{all:"All exchanges",trendAll:"Any trend",trendYes:"Trend met",trendNo:"Trend not met",
+    low:"The filtered set has only {n} symbols — too small a sample; this insight has low reliability.",
+    s1:"The filtered set has {n} symbols; largest exchange: {ex} ({pe}%).",
+    s1b:" Largest industry: {ind} ({pi}%).",
+    s2:"Latest-session momentum: {up}% advancers, {down}% decliners; {tr}% meet the trend template.",
+    s3:"Valuation: median P/E {pe}x, median P/B {pb}x.",
+    s4:"Quality: median ROE {roe}%; {pio}% score Piotroski ≥ 7; {alt}% have Altman Z in the safe zone on the VN-calibrated scale (>1.5).",
+    s5:"Liquidity: total traded value {tv}; largest contributor: {sym} ({s}%).",
+    s6:"Risk: {de}% are highly leveraged (D/E > 2 or negative); {ad}% have Altman Z in the distress zone on the VN-calibrated scale (<0.45)."},
+  zh:{all:"全部交易所",trendAll:"全部趋势",trendYes:"符合趋势",trendNo:"未符合趋势",
+    low:"筛选集仅有{n}只股票——样本过小，本解读可靠性低。",
+    s1:"当前筛选集共{n}只股票；最多的交易所：{ex}（{pe}%）。",
+    s1b:" 最多的行业：{ind}（{pi}%）。",
+    s2:"最近一期动量：{up}%上涨，{down}%下跌；{tr}%符合趋势模板。",
+    s3:"估值：市盈率中位数{pe}倍，市净率中位数{pb}倍。",
+    s4:"质量：ROE中位数{roe}%；{pio}%的股票Piotroski ≥ 7；{alt}%的股票Altman Z按越南校准标准处于安全区（>1.5）。",
+    s5:"流动性：总成交额{tv}；占比最大：{sym}（{s}%）。",
+    s6:"风险：{de}%的股票杠杆高（D/E > 2或为负）；{ad}%的股票Altman Z按越南校准标准处于危险区（<0.45）。"},
+  ko:{all:"전체 거래소",trendAll:"모든 추세",trendYes:"추세 충족",trendNo:"추세 미충족",
+    low:"필터 집합에 {n}개 종목뿐입니다 — 표본이 너무 작아 이 분석의 신뢰도가 낮습니다.",
+    s1:"현재 필터 집합은 {n}개 종목; 가장 큰 거래소: {ex}({pe}%).",
+    s1b:" 가장 큰 업종: {ind}({pi}%).",
+    s2:"최근 세션 모멘텀: {up}% 상승, {down}% 하락; {tr}%가 추세 템플릿을 충족합니다.",
+    s3:"밸류에이션: P/E 중앙값 {pe}배, P/B 중앙값 {pb}배.",
+    s4:"퀄리티: ROE 중앙값 {roe}%; {pio}%가 Piotroski ≥ 7; {alt}%가 베트남 보정 기준 Altman Z 안전 구간(>1.5)입니다.",
+    s5:"유동성: 총 거래대금 {tv}; 비중이 가장 큰 종목: {sym}({s}%).",
+    s6:"리스크: {de}%가 고레버리지(D/E > 2 또는 음수); {ad}%가 베트남 보정 기준 Altman Z 위험 구간(<0.45)입니다."}};
+const _med=a=>{if(!a.length)return null;const s=[...a].sort((x,y)=>x-y);const m=s.length>>1;return s.length%2?s[m]:(s[m-1]+s[m])/2;};
+// Thang Altman HIEU CHUAN cho du lieu VN (22/10/2026, do tren phan bo Z cua
+// fundamentals_cache + neo proxy ket cuc von am/lo TTM): an toan > 1.5,
+// nguy hiem < 0.45. KHONG phai nguong Altman goc (2.99/1.81) — Z luu trong kho
+// la ban 4 nhan to (thieu so hang loi nhuan giu lai) nen nguong goc lam 89%
+// toan thi truong roi vao vung nguy hiem, khong con gia tri phan biet.
+const AZ_SAFE=1.5, AZ_DIST=0.45;
+const _pc=(v,d=0)=>v==null?"—":Number(v).toFixed(d).replace(".",",");
+function scrInsightText(rows){
+  const T=SCR_TPL[curLang]||SCR_TPL.vi;
+  const n=rows.length;
+  const out={};
+  for(const lang of ["vi","en","zh","ko"]){
+    const t=SCR_TPL[lang];
+    if(!n){ out[lang]=""; continue; }
+    const s=[];
+    const exc={}; rows.forEach(r=>{const e=(r.exchange||"—").toUpperCase();exc[e]=(exc[e]||0)+1;});
+    const topEx=Object.entries(exc).sort((a,b)=>b[1]-a[1])[0];
+    let s1=t.s1.replace("{n}",n).replace("{ex}",topEx[0]).replace("{pe}",_pc(topEx[1]/n*100,0));
+    const ind={}; rows.forEach(r=>{if(r.industry)ind[r.industry]=(ind[r.industry]||0)+1;});
+    const topInd=Object.entries(ind).sort((a,b)=>b[1]-a[1])[0];
+    if(topInd) s1+=t.s1b.replace("{ind}",topInd[0]).replace("{pi}",_pc(topInd[1]/n*100,0));
+    s.push(s1);
+    if(n<5){ s.push(t.low.replace("{n}",n)); out[lang]=s.join(" "); continue; }
+    const up=rows.filter(r=>(r.pct_change||0)>0).length/n*100, dn=rows.filter(r=>(r.pct_change||0)<0).length/n*100;
+    const tr=rows.filter(r=>r.trend_template).length/n*100;
+    s.push(t.s2.replace("{up}",_pc(up,0)).replace("{down}",_pc(dn,0)).replace("{tr}",_pc(tr,0)));
+    const pes=rows.map(r=>(r.eps>0&&r.close)?r.close*1000/r.eps:null).filter(v=>v!=null&&isFinite(v));
+    const pbs=rows.map(r=>(r.bvps>0&&r.close)?r.close*1000/r.bvps:null).filter(v=>v!=null&&isFinite(v));
+    if(pes.length||pbs.length) s.push(t.s3.replace("{pe}",_pc(_med(pes),1)).replace("{pb}",_pc(_med(pbs),1)));
+    const roes=rows.map(r=>r.roe_ttm).filter(v=>v!=null&&isFinite(v)&&Math.abs(v)<500);
+    const pio=rows.filter(r=>r.piotroski!=null);
+    const alt=rows.filter(r=>r.altman_z!=null&&r.altman_z!==0);
+    let s4=t.s4.replace("{roe}",_pc(_med(roes),1));
+    s4=s4.replace("{pio}",pio.length?_pc(pio.filter(r=>r.piotroski>=7).length/pio.length*100,0):"—");
+    s4=s4.replace("{alt}",alt.length?_pc(alt.filter(r=>r.altman_z>AZ_SAFE).length/alt.length*100,0):"—");
+    if(roes.length||pio.length||alt.length) s.push(s4);
+    const tv=rows.reduce((a,r)=>a+(r.value_vnd||0),0);
+    if(tv>0){
+      const top=rows.reduce((a,r)=>(r.value_vnd||0)>(a.value_vnd||0)?r:a,rows[0]);
+      const tvs=tv>=1e12?(tv/1e12).toFixed(2).replace(".",",")+" "+(lang==="vi"?"nghìn tỷ đồng":lang==="en"?"trillion VND":lang==="zh"?"万亿越南盾":"조 동")
+        :(tv/1e9).toFixed(1).replace(".",",")+" "+(lang==="vi"?"tỷ đồng":lang==="en"?"billion VND":lang==="zh"?"十亿越南盾":"십억 동");
+      s.push(t.s5.replace("{tv}",tvs).replace("{sym}",top.symbol).replace("{s}",_pc((top.value_vnd||0)/tv*100,1)));
+    }
+    const de=rows.filter(r=>r.debt_to_equity!=null);
+    const ad=alt.length?alt.filter(r=>r.altman_z<AZ_DIST).length/alt.length*100:null;
+    if(de.length||ad!=null) s.push(t.s6.replace("{de}",de.length?_pc(de.filter(r=>r.debt_to_equity>2||r.debt_to_equity<0).length/de.length*100,0):"—").replace("{ad}",ad==null?"—":_pc(ad,0)));
+    out[lang]=s.join(" ");
+  }
+  return out;
+}
+let SCR_ROWS=[], SCR_EX="", SCR_TREND="", SCR_UPDATED=null;
+function renderScrFilt(){
+  const T=SCR_TPL[curLang]||SCR_TPL.vi;
+  const chip=(v,lbl,on)=>`<span class="fchip${on?" on":""}" onclick="scrSetFilt('${v}')">${lbl}</span>`;
+  $("scrFilt").innerHTML=
+    chip("",T.all,!SCR_EX)+chip("HOSE","HOSE",SCR_EX==="HOSE")+chip("HNX","HNX",SCR_EX==="HNX")+chip("UPCOM","UPCOM",SCR_EX==="UPCOM")+
+    chip("T1",T.trendYes,SCR_TREND==="1")+chip("T0",T.trendNo,SCR_TREND==="0");
+}
+function scrSetFilt(v){
+  if(v==="T1"||v==="T0"){ SCR_TREND=SCR_TREND===v.slice(1)?"":v.slice(1); }
+  else SCR_EX=SCR_EX===v?"":v;
+  renderScrFilt(); renderScreen();
+}
+function scrFiltered(){
+  let rows=SCR_ROWS;
+  if(SCR_EX) rows=rows.filter(r=>(r.exchange||"").toUpperCase()===SCR_EX);
+  if(SCR_TREND==="1") rows=rows.filter(r=>!!r.trend_template);
+  if(SCR_TREND==="0") rows=rows.filter(r=>!r.trend_template);
+  return rows;
+}
+function renderScreen(){
+  const rows=scrFiltered();
+  $("screenerBody").innerHTML=rows.slice(0,30).map(r=>{
+    const tr=(r.trend_template===null||r.trend_template===undefined)?"—":(r.trend_template?'<span class="up">✓ Đạt</span>':'<span class="down">✗ Chưa</span>');
+    return `<tr><td><b onclick="openSym('${esc(r.symbol)}')" style="cursor:pointer">${esc(r.symbol)}</b></td><td>${tr}</td><td>${r.pe_ttm!=null?Number(r.pe_ttm).toFixed(1):"—"}</td><td>${r.pb!=null?Number(r.pb).toFixed(1):"—"}</td><td>${r.roe_ttm!=null?'<span class="up">'+Number(r.roe_ttm).toFixed(1)+"%</span>":"—"}</td></tr>`;}).join("")||'<tr><td colspan="5"><div class="hint">Chưa có dữ liệu</div></td></tr>';
+  const ib=$("scrInsight");
+  if(ib) ib.innerHTML=insBox(scrInsightText(rows), INS_SRC.scr[curLang]||INS_SRC.scr.vi, SCR_UPDATED);
+}
 async function loadScreener(){
   try{
-    const j=await api("/screener");const rows=j.rows||[];
-    $("screenerBody").innerHTML=rows.slice(0,30).map(r=>{
-      const tr=(r.trend_template===null||r.trend_template===undefined)?"—":(r.trend_template?'<span class="up">✓ Đạt</span>':'<span class="down">✗ Chưa</span>');
-      return `<tr><td><b onclick="openSym('${esc(r.symbol)}')" style="cursor:pointer">${esc(r.symbol)}</b></td><td>${tr}</td><td>${r.pe_ttm!=null?Number(r.pe_ttm).toFixed(1):"—"}</td><td>${r.pb!=null?Number(r.pb).toFixed(1):"—"}</td><td>${r.roe_ttm!=null?'<span class="up">'+Number(r.roe_ttm).toFixed(1)+"%</span>":"—"}</td></tr>`;}).join("")||'<tr><td colspan="5"><div class="hint">Chưa có dữ liệu</div></td></tr>';
+    const j=await api("/screener?all=1");
+    SCR_ROWS=j.rows||[]; SCR_UPDATED=j.updated||null;
+    renderScrFilt(); renderScreen();
   }catch(e){}
   try{
     const j=await api("/signals");const sigs=j.signals||[];
@@ -471,9 +918,9 @@ async function loadMine(){
     }catch(e){$("jStrat").innerHTML='<tr><td colspan="5"><div class="hint">Lỗi tải đánh giá chiến lược.</div></td></tr>';}
     const pr=rk.profile||{};
     const PROF_LBL={than_trong:"Thận trọng",can_bang:"Cân bằng",tang_truong:"Tăng trưởng",mao_hiem:"Mạo hiểm"};
-    $("riskProfile").innerHTML=pr.profile?`<div class="row"><span class="k">Hồ sơ</span><span class="v" style="font-size:15px">${esc(PROF_LBL[pr.profile]||pr.profile)} · ${pr.score}/100</span></div><div class="hint" style="padding:6px 0">${esc(pr.mo_ta||"")}</div>${(pr.ly_do||[]).map(x=>`<div class="hint" style="padding:2px 0">• ${esc(x)}</div>`).join("")}${pr.goi_y_gioi_han?`<div class="row" style="margin-top:6px"><span class="k">Giới hạn gợi ý</span><span class="v">Mã ≤ ${pr.goi_y_gioi_han.max_position_pct}% · Cắt lỗ ${pr.goi_y_gioi_han.stop_loss_pct}%</span></div><div class="hint" style="padding:2px 0">${esc(pr.goi_y_gioi_han.note||"")}</div>`:""}`:'<div class="hint">Chưa đủ dữ liệu.</div>';
+    $("riskProfile").innerHTML=pr.profile?`<div class="row"><span class="k">Hồ sơ</span><span class="v" style="font-size:17px">${esc(PROF_LBL[pr.profile]||pr.profile)} · ${pr.score}/100</span></div><div class="hint" style="padding:6px 0">${esc(pr.mo_ta||"")}</div>${(pr.ly_do||[]).map(x=>`<div class="hint" style="padding:2px 0">• ${esc(x)}</div>`).join("")}${pr.goi_y_gioi_han?`<div class="row" style="margin-top:6px"><span class="k">Giới hạn gợi ý</span><span class="v">Mã ≤ ${pr.goi_y_gioi_han.max_position_pct}% · Cắt lỗ ${pr.goi_y_gioi_han.stop_loss_pct}%</span></div><div class="hint" style="padding:2px 0">${esc(pr.goi_y_gioi_han.note||"")}</div>`:""}`:'<div class="hint">Chưa đủ dữ liệu.</div>';
     const vs=rk.violations||[];
-    $("riskWatch").innerHTML=vs.length?vs.map(v=>`<div class="card" style="margin-bottom:8px;border-left:3px solid ${v.severity==="high"?"var(--pp-danger)":v.severity==="medium"?"#f0b429":"var(--pp-mut)"}"><div style="font-size:13px">${esc(v.message)}</div></div>`).join(""):'<div class="card"><div class="hint">Không có cảnh báo rủi ro. Danh mục đang trong giới hạn an toàn.</div></div>';
+    $("riskWatch").innerHTML=vs.length?vs.map(v=>`<div class="card" style="margin-bottom:8px;border-left:3px solid ${v.severity==="high"?"var(--pp-danger)":v.severity==="medium"?"#f0b429":"var(--pp-mut)"}"><div style="font-size:14px">${esc(v.message)}</div></div>`).join(""):'<div class="card"><div class="hint">Không có cảnh báo rủi ro. Danh mục đang trong giới hạn an toàn.</div></div>';
   }catch(e){$("jStats").innerHTML='<div class="hint">Lỗi tải rủi ro (cần đăng nhập).</div>';$("riskProfile").innerHTML='<div class="hint">Đăng nhập để xem hồ sơ rủi ro.</div>';$("riskWatch").innerHTML='<div class="hint">Đăng nhập để xem cảnh báo rủi ro.</div>';}
 }
 // Import: parse bảng (port portfolio_parse.py: doan cot + parse so Viet)
@@ -556,7 +1003,7 @@ $("psGo").onclick=()=>{
   const cap=parseFloat($("psCap").value),rp=parseFloat($("psRisk").value),en=parseFloat($("psEntry").value),st=parseFloat($("psStop").value);
   if(!(cap>0&&rp>0&&en>0&&st>0&&en>st)){$("psOut").innerHTML='<div class="hint">Kiểm tra lại: cần Vốn, % rủi ro, Giá vào &gt; Giá cắt lỗ &gt; 0.</div>';return;}
   const riskAmt=cap*rp/100, per=en-st, qty=Math.floor(riskAmt/per/100)*100, val=qty*en;
-  $("psOut").innerHTML=`<div class="row"><span class="k">Số tiền rủi ro</span><span class="v">${fmtD(riskAmt)} đ</span></div><div class="row"><span class="k">Khối lượng mua</span><span class="v" style="font-size:15px">${fmtN(qty)} cp</span></div><div class="row"><span class="k">Giá trị vị thế</span><span class="v">${fmtD(val)} đ (${(val/cap*100).toFixed(1)}% vốn)</span></div><div class="hint" style="padding-top:4px">Lô chẵn 100 cp (HOSE). Nếu giá chạm cắt lỗ, lỗ đúng ${fmtD(riskAmt)} đ = ${rp}% vốn.</div>`;
+  $("psOut").innerHTML=`<div class="row"><span class="k">Số tiền rủi ro</span><span class="v">${fmtD(riskAmt)} đ</span></div><div class="row"><span class="k">Khối lượng mua</span><span class="v" style="font-size:17px">${fmtN(qty)} cp</span></div><div class="row"><span class="k">Giá trị vị thế</span><span class="v">${fmtD(val)} đ (${(val/cap*100).toFixed(1)}% vốn)</span></div><div class="hint" style="padding-top:4px">Lô chẵn 100 cp (HOSE). Nếu giá chạm cắt lỗ, lỗ đúng ${fmtD(riskAmt)} đ = ${rp}% vốn.</div>`;
 };
 $("pfExportBtn").onclick=()=>{
   const pos=(_pfCache&&_pfCache.positions)||[];
@@ -565,45 +1012,179 @@ $("pfExportBtn").onclick=()=>{
   const a=document.createElement("a");a.href=URL.createObjectURL(new Blob(["\ufeff"+csv],{type:"text/csv"}));a.download="danh-muc.csv";a.click();URL.revokeObjectURL(a.href);
 };
 
+
+// ---- Tim ma (o tim o dau tab Thi truong, Chot 21/10) ----
+// Danh sach 1.519 ma tai LUOI khi nguoi dung cham vao o tim (khong
+// tai luc mo app). Gia/% chi hien neu ma da co san trong du lieu
+// trang da tai (SS_PX tu luot screener cua top movers) - khong goi
+// API rieng cho tung ket qua.
+const SS_I18N={vi:{ph:"Tìm mã hoặc tên công ty…",none:"Không tìm thấy mã phù hợp"},en:{ph:"Search symbol or company name…",none:"No matching symbol"},zh:{ph:"搜索代码或公司名称…",none:"未找到匹配代码"},ko:{ph:"종목 코드 또는 회사명 검색…",none:"일치하는 종목이 없습니다"}};
+let SS_ROWS=null; const SS_PX={};
+function ssT(k){const L=SS_I18N[curLang]||SS_I18N.vi;return L[k];}
+function ssFold(s){return (s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/đ/g,"d");}
+async function ssLoad(){
+  if(SS_ROWS)return;
+  try{const j=await api("/listing");
+    SS_ROWS=(j.rows||[]).map(r=>({s:r.s,n:r.n,e:r.e,f:ssFold(r.n)}));
+  }catch(e){SS_ROWS=[];}
+}
+function ssMatch(q){
+  const qs=q.trim().toUpperCase(), qf=ssFold(q.trim());
+  if(!qs||!SS_ROWS)return [];
+  const t0=[],t1=[],t2=[];
+  for(const r of SS_ROWS){
+    if(r.s.startsWith(qs))t0.push(r);
+    else if(r.s.includes(qs))t1.push(r);
+    else if(qf&&r.f.includes(qf))t2.push(r);
+    if(t0.length>=8)break;
+  }
+  return t0.concat(t1,t2).slice(0,8);
+}
+function ssRender(){
+  const inp=$("symSearch"), box=$("ssResults");
+  if(!inp||!box)return;
+  const ms=ssMatch(inp.value);
+  if(!inp.value.trim()){box.style.display="none";return;}
+  if(!ms.length){box.innerHTML='<div class="ss-none">'+esc(ssT("none"))+"</div>";box.style.display="";return;}
+  box.innerHTML=ms.map(r=>{const px=SS_PX[r.s];
+    const pxh=px&&px.c!=null?'<span class="ss-px">'+fmtN(px.c)+(px.p!=null?' <span class="'+(px.p>0?"up":px.p<0?"down":"")+'">'+fmtPct(px.p)+"</span>":"")+"</span>":"";
+    return '<div class="ss-row" data-sym="'+esc(r.s)+'"><span class="ss-sym">'+esc(r.s)+'</span><span class="ss-ex">'+esc(r.e)+'</span><span class="ss-name">'+esc(r.n)+"</span>"+pxh+"</div>";}).join("");
+  box.style.display="";
+  box.querySelectorAll(".ss-row").forEach(el=>{
+    el.addEventListener("mousedown",ev=>{ev.preventDefault();ssPick(el.dataset.sym);});
+  });
+}
+function ssPick(sym){
+  const box=$("ssResults"); if(box)box.style.display="none";
+  const inp=$("symSearch"); if(inp)inp.value=sym;
+  openSym(sym);
+}
+(function ssInit(){
+  const inp=$("symSearch"); if(!inp)return;
+  inp.addEventListener("focus",async()=>{inp.placeholder=ssT("ph");await ssLoad();ssRender();});
+  inp.addEventListener("input",async()=>{await ssLoad();ssRender();});
+  inp.addEventListener("keydown",ev=>{
+    if(ev.key==="Enter"){const ms=ssMatch(inp.value);if(ms.length)ssPick(ms[0].s);}
+    else if(ev.key==="Escape"){$("ssResults").style.display="none";}
+  });
+  inp.addEventListener("blur",()=>setTimeout(()=>{const b=$("ssResults");if(b)b.style.display="none";},150));
+})();
+
 // ---- Chi tiết mã ----
 let curSym=null;
 function openSym(sym){
   curSym=sym;
+  _lastQuote=null; _lastFund=null; _lastProfile=null;
+  _idxMode=false; curIdx=null;
+  $("dWatch").style.display="";
+  if($("dNav"))$("dNav").style.display=""; if($("dNavTitle"))$("dNavTitle").style.display="";
+  ["dTargetSec","dTarget","dEventsSec","dEventsCard"].forEach(k=>{if($(k))$(k).style.display="";});
+  if($("dIdxBar"))$("dIdxBar").style.display="none";
+  document.querySelectorAll("#dIv button").forEach(b=>b.style.display="");
   document.querySelectorAll(".view").forEach(s=>s.classList.remove("on"));
   $("v-detail").classList.add("on");window.scrollTo(0,0);
   $("aiFab").style.display="";
   $("dSym").innerHTML=esc(sym)+' <span style="font-size:12px;color:var(--pp-mut)">HOSE</span>';
-  document.querySelectorAll("#dTabs .tab").forEach(x=>x.classList.remove("on"));
-  document.querySelector("#dTabs .tab").classList.add("on");
-  ["dOv","dFlow","dNews","dFund"].forEach((k,i)=>$(k).style.display=i===0?"":"none");
+  renderDNav();
+  dShow(null);
   loadDetail(sym);
+}
+// ===== Bieu do chi so (22/10): bam the chi so o tab Thi truong mo
+// DUNG khung chi tiet/bieu do cua ma, du lieu qua /ohlcv nhu ma
+// (market/ohlcv/<IDX>.json, 320 phien). Che do chi so an cac muc
+// chi danh cho ma (watchlist, tab con, muc tieu, su kien) va khoa
+// khung thoi gian o 1D (chi so chi co nen ngay).
+const IDX_META={VNINDEX:"HOSE",VN30:"HOSE",HNX:"HNX",UPCOM:"UPCOM"};
+const IDX_LIST=["VNINDEX","VN30","HNX","UPCOM"];
+let _idxMode=false, curIdx=null;
+function idxFileSym(s){const m={VNINDEX:"VNINDEX",VN30:"VN30",HNXINDEX:"HNX",HNX:"HNX",UPCOMINDEX:"UPCOM",UPCOM:"UPCOM"};return m[String(s||"").toUpperCase()]||null;}
+function openIndex(fs){
+  if(!IDX_META[fs])return;
+  _lastQuote=null; _lastFund=null; _lastProfile=null;
+  _idxMode=true; curIdx=fs; curSym=null;
+  document.querySelectorAll(".view").forEach(s=>s.classList.remove("on"));
+  $("v-detail").classList.add("on");window.scrollTo(0,0);
+  $("aiFab").style.display="";
+  $("dSym").innerHTML=esc(fs)+' <span style="font-size:12px;color:var(--pp-mut)">'+IDX_META[fs]+'</span>';
+  $("dWatch").style.display="none";
+  dShow(null);
+  if($("dNav"))$("dNav").style.display="none"; if($("dNavTitle"))$("dNavTitle").style.display="none";
+  ["dTargetSec","dTarget","dCostSec","dCost","dEventsSec","dEventsCard"].forEach(k=>{if($(k))$(k).style.display="none";});
+  document.querySelectorAll("#dIv button").forEach(b=>{b.style.display=b.textContent==="1D"?"":"none";});
+  const bar=$("dIdxBar"); bar.style.display="";
+  bar.innerHTML=IDX_LIST.map(x=>`<button class="${x===fs?"on":""}" onclick="openIndex('${x}')">${x}</button>`).join("");
+  loadIndexQuote(fs);
+  loadChart(fs,"1D");
+}
+async function loadIndexQuote(fs){
+  const box=$("dQuote"); box.innerHTML='<div class="hint">Đang tải…</div>';
+  try{
+    const j=await api("/indices"); const rows=j.rows||[];
+    const r=rows.find(x=>idxFileSym(x.symbol)===fs);
+    if(!r){ box.innerHTML='<div class="hint">Chưa có dữ liệu</div>'; return; }
+    const pc=r.pct_change, cls=pc>0?"up":pc<0?"down":"";
+    let h=`<div class="row"><span class="k">Điểm</span><span class="v" style="font-size:17px">${fmtN(r.close)}</span></div>`;
+    h+=`<div class="row"><span class="k">Thay đổi</span><span class="v ${cls}">${r.change!=null?fmtN(r.change)+" ("+fmtPct(pc)+")":fmtPct(pc)}</span></div>`;
+    if(r.volume!=null) h+=`<div class="row"><span class="k">Khối lượng</span><span class="v">${fmtN(r.volume)}</span></div>`;
+    box.innerHTML=h;
+    if(j._prov){_lastDSrc=j._prov.source;refreshSrc();}
+  }catch(e){ box.innerHTML='<div class="hint">Lỗi tải</div>'; }
 }
 async function loadDetail(sym){
   $("dQuote").innerHTML='<div class="hint">Đang tải…</div>';
   try{
     const j=await api("/quote?symbol="+encodeURIComponent(sym));
-    const q=j.quote||j;const pc=q.pct_change,cls=pc>0?"up":pc<0?"down":"";
-    let h=`<div class="row"><span class="k">Giá khớp</span><span class="v" style="font-size:16px">${fmtN(q.close)}</span></div>`;
+    const q=j.quote||j; _lastQuote=q; renderFaPctGrid();
+    const pc=q.pct_change,cls=pc>0?"up":pc<0?"down":"";
+    let h=`<div class="row"><span class="k">Giá khớp</span><span class="v" style="font-size:17px">${fmtN(q.close)}</span></div>`;
     h+=`<div class="row"><span class="k">Thay đổi</span><span class="v ${cls}">${q.change!=null?fmtN(q.change)+" ("+fmtPct(pc)+")":fmtPct(pc)}</span></div>`;
     if(q.foreign_buy_value!=null||q.foreign_sell_value!=null){
       h+=`<div class="row"><span class="k">NN mua / bán (hôm nay)</span><span class="v"><span class="up">${fmtTy(q.foreign_buy_value)}</span> / <span class="down">−${fmtTy(q.foreign_sell_value).replace("-","")}</span></span></div>`;
     }
     if(q.bid||q.ask){
-      const bids=Array.isArray(q.bid)?q.bid:[q.bid],asks=Array.isArray(q.ask)?q.ask:[q.ask];
-      const bp=bids.slice(0,3).map(fmtN).join(" / "),ap=asks.slice(0,3).map(fmtN).join(" / ");
+      const stepP=x=>Array.isArray(x)?+x[0]:(x&&typeof x==="object"?+(x.price??x.p):+x);
+      const side=a=>{ if(!Array.isArray(a)) return "—";
+        const s=a.slice(0,3).map(x=>fmtN(stepP(x))).filter(t=>t!=="—");
+        return s.length? s.join(" / ") : "—"; };
+      const bp=side(q.bid),ap=side(q.ask);
       h+=`<div class="bidask"><div class="ba"><div class="t">Mua 1/2/3</div><div class="pr up">${bp}</div></div><div class="ba"><div class="t">Bán 1/2/3</div><div class="pr down">${ap}</div></div></div>`;
     }
     $("dQuote").innerHTML=h;
     if(q._prov){_lastDSrc=q._prov.source;refreshSrc();}
   }catch(e){$("dQuote").innerHTML='<div class="hint">Lỗi tải</div>';}
   loadFlow(sym);loadFund(sym);loadNews(sym);loadChart(sym);
-  loadEvents(sym);loadTarget(sym);loadCost(sym);wlLoad().then(paintWatchBtn);
+  loadEvents(sym);loadProfile(sym);loadConsDetail(sym);loadTarget(sym);loadCost(sym);wlLoad().then(paintWatchBtn);
 }
-document.querySelectorAll("#dTabs .tab").forEach(t=>t.onclick=()=>{
-  document.querySelectorAll("#dTabs .tab").forEach(x=>x.classList.remove("on"));t.classList.add("on");
-  ["dOv","dFlow","dNews","dFund"].forEach(k=>$(k).style.display="none");
-  $("d"+t.dataset.dt[0].toUpperCase()+t.dataset.dt.slice(1)).style.display="";
-});
+// ===== Trang con chi tiet ma: muc luc the lien ket thay thanh tab
+// (Lenh Henrry 11:03 22/10 — cung khuon trang Thi truong). Trang tong
+// quan la goc; moi muc con la trang rieng co back "< <Ma>".
+const DT_I18N={
+  flow:{vi:"Dòng tiền",en:"Money flow",zh:"资金流",ko:"자금 흐름"},
+  news:{vi:"Tin tức",en:"News",zh:"新闻",ko:"뉴스"},
+  fund:{vi:"Cơ bản",en:"Fundamentals",zh:"基本面",ko:"펀더멘털"},
+  prof:{vi:"Hồ sơ",en:"Profile",zh:"公司资料",ko:"기업 프로필"},
+  cons:{vi:"Đồng thuận",en:"Consensus",zh:"一致预期",ko:"컨센서스"},
+  idx:{vi:"Mục lục",en:"Contents",zh:"目录",ko:"목차"}};
+const DKEYMAP={flow:"Flow",news:"News",fund:"Fund",prof:"Prof",cons:"Cons"};
+const DKEYS=["Flow","News","Fund","Prof","Cons"];
+function dShow(key){
+  $("dOv").style.display=key?"none":"";
+  DKEYS.forEach(k=>{
+    const on=(k===key), h=$("d"+k+"H"), b=$("d"+k);
+    if(h)h.style.display=on?"":"none";
+    if(b)b.style.display=on?"":"none";
+  });
+  window.scrollTo(0,0);
+}
+function dOpen(k){ renderDNav(); dShow(k); }
+function dBack(){ dShow(null); }
+function renderDNav(){
+  const nav=$("dNav"); if(!nav) return;
+  nav.innerHTML=Object.keys(DKEYMAP).map(k=>`<div class="navcard" onclick="dOpen('${DKEYMAP[k]}')"><span>${DT_I18N[k][curLang]||DT_I18N[k].vi}</span><span class="nchev">›</span></div>`).join("");
+  const t=$("dNavTitle"); if(t) t.textContent=DT_I18N.idx[curLang]||DT_I18N.idx.vi;
+  document.querySelectorAll(".dtitle").forEach(e=>{ const d=DT_I18N[e.dataset.k]; if(d) e.textContent=d[curLang]||d.vi; });
+  document.querySelectorAll(".dbacksym").forEach(e=>{ e.textContent=curSym||""; });
+}
 function renderFlowBars(rows, valKey, barId, lblId, sumId){
   const vals=rows.map(r=>r[valKey]||0);
   const max=Math.max(...vals.map(v=>Math.abs(v)),1);
@@ -630,15 +1211,15 @@ async function loadNews(sym){
   try{
     const j=await api("/news?symbol="+encodeURIComponent(sym));
     const items=j.items||[];
-    $("dNewsList").innerHTML=items.length?items.slice(0,15).map(n=>`<div style="padding:8px 0;border-bottom:1px solid var(--pp-line)"><a href="${esc(n.url||"#")}" target="_blank" rel="noopener" style="color:var(--pp-ink);text-decoration:none;font-size:13px;font-weight:600">${esc(n.title||"")}</a><div style="font-size:11px;color:var(--pp-mut);margin-top:2px">${esc((n.publish_time||"").slice(0,10))}</div></div>`).join(""):'<div class="hint">Chưa có tin</div>';
+    $("dNewsList").innerHTML=items.length?items.slice(0,15).map(n=>`<div style="padding:8px 0;border-bottom:1px solid var(--pp-line)"><a href="${esc(n.url||"#")}" target="_blank" rel="noopener" style="color:var(--pp-ink);text-decoration:none;font-size:14px;font-weight:600">${esc(n.title||"")}</a><div style="font-size:12px;color:var(--pp-mut);margin-top:2px">${esc((n.publish_time||"").slice(0,10))}</div></div>`).join(""):'<div class="hint">Chưa có tin</div>';
   }catch(e){ $("dNewsList").innerHTML='<div class="hint">Chưa có tin</div>'; }
 }
 // ===== Dot B (20/10): watchlist · targets · events · compare · cost history =====
 const B_I18N={
-vi:{noEv:"Chưa có sự kiện",tpPh:"Chốt lời % (vd 15)",slPh:"Cắt lỗ % (vd 5)",save:"Lưu mục tiêu",del:"Xoá",curNone:"Chưa đặt mục tiêu cho mã này.",saved:"Đã lưu mục tiêu.",wlEmpty:"Chưa theo dõi mã nào. Mở trang chi tiết một mã và bấm ☆, hoặc nhập mã ở ô dưới.",avgCost:"Giá vốn TB",mktClose:"Giá đóng cửa",cmpNeed:"Nhập ít nhất 2 mã để so sánh.",cmpErr:"Chưa có dữ liệu so sánh."},
-en:{noEv:"No events yet",tpPh:"Take profit % (e.g. 15)",slPh:"Stop loss % (e.g. 5)",save:"Save target",del:"Delete",curNone:"No target set for this symbol.",saved:"Target saved.",wlEmpty:"No symbols watched yet. Open a symbol and tap ☆, or type one below.",avgCost:"Avg cost",mktClose:"Close",cmpNeed:"Enter at least 2 symbols.",cmpErr:"No comparison data."},
-zh:{noEv:"暂无事件",tpPh:"止盈 % (如 15)",slPh:"止损 % (如 5)",save:"保存目标",del:"删除",curNone:"尚未为此股设置目标。",saved:"已保存目标。",wlEmpty:"尚未关注任何股票。打开个股页面点击 ☆,或在下方输入。",avgCost:"平均成本",mktClose:"收盘价",cmpNeed:"至少输入 2 只股票。",cmpErr:"暂无对比数据。"},
-ko:{noEv:"이벤트가 없습니다",tpPh:"익절 % (예: 15)",slPh:"손절 % (예: 5)",save:"목표 저장",del:"삭제",curNone:"이 종목에 설정된 목표가 없습니다.",saved:"목표가 저장되었습니다.",wlEmpty:"아직 관심 종목이 없습니다. 종목 상세에서 ☆를 누르거나 아래에 입력하세요.",avgCost:"평균 단가",mktClose:"종가",cmpNeed:"최소 2개 종목을 입력하세요.",cmpErr:"비교 데이터가 없습니다."}};
+vi:{noEv:"Chưa có sự kiện",evAll:"Tất cả",evCorp:"Doanh nghiệp",evIns:"Nội bộ",evMore:"Xem thêm",evPay:"Chi trả",tpPh:"Chốt lời % (vd 15)",slPh:"Cắt lỗ % (vd 5)",save:"Lưu mục tiêu",del:"Xoá",curNone:"Chưa đặt mục tiêu cho mã này.",saved:"Đã lưu mục tiêu.",wlEmpty:"Chưa theo dõi mã nào. Mở trang chi tiết một mã và bấm ☆, hoặc nhập mã ở ô dưới.",avgCost:"Giá vốn TB",mktClose:"Giá đóng cửa",cmpNeed:"Nhập ít nhất 2 mã để so sánh.",cmpErr:"Chưa có dữ liệu so sánh."},
+en:{noEv:"No events yet",evAll:"All",evCorp:"Corporate",evIns:"Insider",evMore:"Show more",evPay:"Payout",tpPh:"Take profit % (e.g. 15)",slPh:"Stop loss % (e.g. 5)",save:"Save target",del:"Delete",curNone:"No target set for this symbol.",saved:"Target saved.",wlEmpty:"No symbols watched yet. Open a symbol and tap ☆, or type one below.",avgCost:"Avg cost",mktClose:"Close",cmpNeed:"Enter at least 2 symbols.",cmpErr:"No comparison data."},
+zh:{noEv:"暂无事件",evAll:"全部",evCorp:"公司",evIns:"内部交易",evMore:"查看更多",evPay:"派付",tpPh:"止盈 % (如 15)",slPh:"止损 % (如 5)",save:"保存目标",del:"删除",curNone:"尚未为此股设置目标。",saved:"已保存目标。",wlEmpty:"尚未关注任何股票。打开个股页面点击 ☆,或在下方输入。",avgCost:"平均成本",mktClose:"收盘价",cmpNeed:"至少输入 2 只股票。",cmpErr:"暂无对比数据。"},
+ko:{noEv:"이벤트가 없습니다",evAll:"전체",evCorp:"기업",evIns:"내부자",evMore:"더 보기",evPay:"지급",tpPh:"익절 % (예: 15)",slPh:"손절 % (예: 5)",save:"목표 저장",del:"삭제",curNone:"이 종목에 설정된 목표가 없습니다.",saved:"목표가 저장되었습니다.",wlEmpty:"아직 관심 종목이 없습니다. 종목 상세에서 ☆를 누르거나 아래에 입력하세요.",avgCost:"평균 단가",mktClose:"종가",cmpNeed:"최소 2개 종목을 입력하세요.",cmpErr:"비교 데이터가 없습니다."}};
 function BL(){return B_I18N[curLang]||B_I18N.vi;}
 let WLSET=null;
 async function wlLoad(force){
@@ -661,12 +1242,415 @@ $("dWatch").onclick=async()=>{
   }catch(e){}
   paintWatchBtn();
 };
+let EVST={items:[],f:"all",n:10};
+function evIsIns(n){return String(n.name||"").indexOf("Giao dịch nội bộ")===0;}
+function evFiltered(){
+  if(EVST.f==="corp")return EVST.items.filter(x=>!evIsIns(x));
+  if(EVST.f==="ins")return EVST.items.filter(x=>evIsIns(x));
+  return EVST.items;
+}
+function paintEvents(){
+  const box=$("dEvents");const L=BL();
+  const all=EVST.items;
+  const nCorp=all.filter(x=>!evIsIns(x)).length;
+  const nIns=all.length-nCorp;
+  const list=evFiltered();
+  const chip=(k,lb,cnt)=>`<button data-evf="${k}" style="padding:5px 11px;border-radius:99px;border:1px solid ${EVST.f===k?"var(--pp-accent)":"var(--pp-line)"};background:${EVST.f===k?"var(--pp-accent)":"var(--pp-bg2)"};color:${EVST.f===k?"#fff":"var(--pp-ink)"};font-size:12px;font-weight:600;cursor:pointer">${lb} · ${cnt}</button>`;
+  let h=`<div style="display:flex;gap:6px;flex-wrap:wrap;margin:2px 0 4px">${chip("all",L.evAll,all.length)}${chip("corp",L.evCorp,nCorp)}${chip("ins",L.evIns,nIns)}</div>`;
+  if(!list.length){box.innerHTML=h+'<div class="hint">'+L.noEv+'</div>';}
+  else{
+    h+=list.slice(0,EVST.n).map(n=>{
+      const pay=n.payout_date&&/^\d{4}-\d{2}-\d{2}/.test(String(n.payout_date))?String(n.payout_date).slice(0,10):"";
+      return `<div style="padding:7px 0;border-bottom:1px solid var(--pp-line)"><div style="font-size:14px;font-weight:600">${esc(n.title||n.name||"")}</div><div style="font-size:12px;color:var(--pp-mut);margin-top:2px">${esc(n.name||"")}${n.date?" · "+esc(String(n.date).slice(0,10)):""}${n.exright_date?" · Ex: "+esc(String(n.exright_date).slice(0,10)):""}${pay?" · "+L.evPay+": "+pay:""}</div></div>`;
+    }).join("");
+    if(list.length>EVST.n)h+=`<button id="evMore" style="width:100%;margin-top:8px;padding:8px;border-radius:8px;background:var(--pp-bg2);color:var(--pp-ink);border:1px solid var(--pp-line);font-size:12px;font-weight:600;cursor:pointer">${L.evMore} (${Math.min(EVST.n,list.length)}/${list.length})</button>`;
+    box.innerHTML=h;
+  }
+  box.querySelectorAll("[data-evf]").forEach(b=>{b.onclick=()=>{EVST.f=b.getAttribute("data-evf");EVST.n=10;paintEvents();};});
+  const m=$("evMore");if(m)m.onclick=()=>{EVST.n+=20;paintEvents();};
+}
+// ---- Ho so cong ty (GET /company/profile): co dong lon, lanh dao,
+// cong ty con/lien ket, von dieu le, co cau so huu.
+// ---- Dong thuan CTCK (GET /consensus + /consensus/detail) ----
+// Phuong phap: 1 phieu/hang = ban moi nhat cua hang trong 12 thang.
+const CONS_I18N={
+  vi:{avgT:"Giá MT TB",upside:"Upside",sources:"Nguồn",low:"Thấp nhất",high:"Cao nhất",spread:"Độ lệch",latest:"BC mới nhất",price:"Giá hiện tại",empty:"Chưa có dữ liệu đồng thuận",nodata:"Chưa có dữ liệu đồng thuận cho mã này",firms:"Theo hãng",dist:"Phân bố khuyến nghị",chart:"Diễn biến giá mục tiêu theo hãng",note:"Mỗi hãng tính 1 phiếu: báo cáo mới nhất trong 12 tháng. Chỉ số tổng hợp, không nội dung báo cáo."},
+  en:{avgT:"Avg target",upside:"Upside",sources:"Sources",low:"Lowest",high:"Highest",spread:"Spread",latest:"Latest report",price:"Current price",empty:"No consensus data yet",nodata:"No consensus data for this symbol yet",firms:"By firm",dist:"Recommendation mix",chart:"Target price history by firm",note:"One vote per firm: its latest report within 12 months. Aggregates only, no report content."},
+  zh:{avgT:"平均目标价",upside:"上涨空间",sources:"来源数",low:"最低",high:"最高",spread:"分歧度",latest:"最新报告",price:"现价",empty:"暂无共识数据",nodata:"该股票暂无共识数据",firms:"按机构",dist:"评级分布",chart:"各机构目标价走势",note:"每家机构 1 票:12 个月内最新报告。仅汇总数据,不含报告内容。"},
+  ko:{avgT:"평균 목표가",upside:"상승 여력",sources:"출처 수",low:"최저",high:"최고",spread:"괴리도",latest:"최신 보고서",price:"현재가",empty:"컨센서스 데이터 없음",nodata:"이 종목의 컨센서스 데이터가 없습니다",firms:"기관별",dist:"투자의견 분포",chart:"기관별 목표가 추이",note:"기관당 1표: 12개월 내 최신 보고서 기준. 집계 수치만 제공, 보고서 내용은 없습니다."},
+};
+const KN_LBL={
+  vi:{BUY:"Mua",POSITIVE:"Khả quan",NEUTRAL:"Trung lập",NEGATIVE:"Kém khả quan",SELL:"Bán"},
+  en:{BUY:"Buy",POSITIVE:"Positive",NEUTRAL:"Neutral",NEGATIVE:"Negative",SELL:"Sell"},
+  zh:{BUY:"买入",POSITIVE:"积极",NEUTRAL:"中立",NEGATIVE:"消极",SELL:"卖出"},
+  ko:{BUY:"매수",POSITIVE:"긍정",NEUTRAL:"중립",NEGATIVE:"부정",SELL:"매도"},
+};
+let CONS_ROWS=[], CONS_SORT={k:"upside",dir:-1}, CONS_INSIGHT=null;
+async function loadConsensus(){
+  try{
+    const j=await api("/consensus");
+    CONS_ROWS=j.rows||[];
+    CONS_INSIGHT=j.insight||null;
+    const L=CONS_I18N[curLang]||CONS_I18N.vi;
+    $("consNote").textContent=L.note+(j.updated?" · "+String(j.updated).slice(0,10):"");
+    renderCons();
+  }catch(e){ $("consBody").innerHTML='<tr><td colspan="7"><div class="hint">Lỗi tải</div></td></tr>'; }
+}
+function consSort(k){
+  if(CONS_SORT.k===k) CONS_SORT.dir*=-1; else CONS_SORT={k,dir:(k==="symbol"||k==="latest_report")?1:-1};
+  renderCons();
+}
+function renderCons(){
+  const L=CONS_I18N[curLang]||CONS_I18N.vi;
+  const tb=$("consBody"); if(!tb) return;
+  const ib=$("consInsight");
+  if(ib) ib.innerHTML=insBox(CONS_INSIGHT, INS_SRC.cons[curLang]||INS_SRC.cons.vi, null);
+  if(!CONS_ROWS.length){ tb.innerHTML=`<tr><td colspan="7"><div class="hint">${L.empty}</div></td></tr>`; return; }
+  const {k,dir}=CONS_SORT;
+  const rows=CONS_ROWS.slice().sort((a,b)=>{
+    const x=a[k],y=b[k];
+    if(x==null&&y==null) return 0; if(x==null) return 1; if(y==null) return -1;
+    return (typeof x==="string"?x.localeCompare(y):x-y)*dir;
+  });
+  const arrow=(kk)=>CONS_SORT.k===kk?(CONS_SORT.dir===1?" ↑":" ↓"):"";
+  $("consHead").innerHTML=`<tr>
+    <th onclick="consSort('symbol')" style="cursor:pointer">Mã${arrow('symbol')}</th>
+    <th onclick="consSort('mean_target')" style="cursor:pointer;text-align:right">${L.avgT}${arrow('mean_target')}</th>
+    <th onclick="consSort('upside')" style="cursor:pointer;text-align:right">${L.upside}${arrow('upside')}</th>
+    <th onclick="consSort('n_sources')" style="cursor:pointer;text-align:center">${L.sources}${arrow('n_sources')}</th>
+    <th onclick="consSort('min_target')" style="cursor:pointer;text-align:right">${L.low}${arrow('min_target')}</th>
+    <th onclick="consSort('max_target')" style="cursor:pointer;text-align:right">${L.high}${arrow('max_target')}</th>
+    <th onclick="consSort('spread_pct')" style="cursor:pointer;text-align:right">${L.spread}${arrow('spread_pct')}</th></tr>`;
+  tb.innerHTML=rows.map(r=>{
+    const up=r.upside==null?null:r.upside*100;
+    const cls=up==null?"":up>0?"up":up<0?"down":"";
+    return `<tr>
+      <td><a href="#" onclick="openSym('${r.symbol}');return false"><b>${r.symbol}</b></a><div style="font-size:12px;color:var(--pp-mut)">${L.latest}: ${(r.latest_report||"").slice(0,10)}</div></td>
+      <td style="text-align:right">${r.mean_target?fmtN(Math.round(r.mean_target)):"—"}</td>
+      <td class="${cls}" style="text-align:right">${up==null?"—":(up>0?"+":"")+up.toFixed(1).replace(".",",")+"%"}</td>
+      <td style="text-align:center">${r.n_sources}</td>
+      <td style="text-align:right">${r.min_target?fmtN(r.min_target):"—"}</td>
+      <td style="text-align:right">${r.max_target?fmtN(r.max_target):"—"}</td>
+      <td style="text-align:right">${r.spread_pct==null?"—":(r.spread_pct*100).toFixed(0)+"%"}</td></tr>`;
+  }).join("");
+}
+async function loadConsDetail(sym){
+  const box=$("dCons"); if(!box) return;
+  box.innerHTML='<div class="card"><div class="hint">Đang tải…</div></div>';
+  try{
+    const j=await api("/consensus/detail?symbol="+encodeURIComponent(sym));
+    renderConsDetail(j);
+  }catch(e){ box.innerHTML='<div class="card"><div class="hint">Lỗi tải</div></div>'; }
+}
+function renderConsDetail(j){
+  const box=$("dCons"); if(!box) return;
+  const L=CONS_I18N[curLang]||CONS_I18N.vi;
+  const KN=KN_LBL[curLang]||KN_LBL.vi;
+  const firms=j.firms||[];
+  if(!firms.length){ box.innerHTML=`<div class="card"><div class="hint">${L.nodata}</div></div>`; return; }
+  const up=j.upside==null?null:j.upside*100;
+  const cls=up==null?"":up>0?"up":up<0?"down":"";
+  let h=insBox(j.insight, INS_SRC.cons[curLang]||INS_SRC.cons.vi, j.latest_report);
+  h+=`<div class="card">
+    <div class="row"><span class="k">${L.avgT}</span><span class="v" style="font-size:17px">${j.mean_target?fmtN(Math.round(j.mean_target)):"—"}</span></div>
+    <div class="row"><span class="k">${L.price}</span><span class="v">${j.cur_price?fmtN(j.cur_price):"—"}</span></div>
+    <div class="row"><span class="k">${L.upside}</span><span class="v ${cls}">${up==null?"—":(up>0?"+":"")+up.toFixed(1).replace(".",",")+"%"}</span></div>
+    <div class="row"><span class="k">${L.sources}</span><span class="v">${j.n_sources} (${j.n_reports} BC)</span></div>
+    <div style="padding-top:6px"><span class="k" style="font-size:12px;color:var(--pp-mut)">${L.dist}: </span>${Object.entries(j.dist||{}).map(([k,v])=>`<span style="display:inline-block;padding:2px 8px;margin:2px;border:1px solid var(--pp-line);border-radius:99px;font-size:12px">${KN[k]||k} · ${v}</span>`).join("")}</div>
+  </div>`;
+  h+=`<div class="sec">${L.firms}</div><div class="card"><table>${firms.map(f=>`<tr><td>${f.link?`<a href="${esc(f.link)}" target="_blank" rel="noopener" style="color:var(--pp-accent);text-decoration:none"><b>${esc(f.src)}</b> ↗</a>`:`<b>${esc(f.src)}</b>`}</td><td>${f.kn?(KN[f.kn]||f.kn):"—"}</td><td style="text-align:right">${f.tgt?fmtN(f.tgt):"—"}</td><td style="text-align:right;color:var(--pp-mut)">${(f.date||"").slice(0,10)}</td></tr>`).join("")}</table></div>`;
+  const ser=j.series||{};
+  const srcs=Object.keys(ser).filter(s=>ser[s]&&ser[s].length);
+  if(srcs.length){
+    const PALETTE=["#38bdf8","#f0b429","#34d399","#f472b6","#a78bfa","#e8c56a"];
+    const all=srcs.flatMap(s=>ser[s]);
+    const t0=new Date(all.reduce((a,p)=>p[0]<a?p[0]:a,all[0][0])).getTime();
+    const t1=new Date(all.reduce((a,p)=>p[0]>a?p[0]:a,all[0][0])).getTime();
+    const vs=all.map(p=>p[1]); let mn=Math.min(...vs), mx=Math.max(...vs);
+    if(mx===mn){ mx=mn*1.05+1; }
+    const pad=(mx-mn)*0.08; mn-=pad; mx+=pad;
+    const W=340,H=150,PL=6,PR=6,PT=8,PB=16;
+    const X=t=>PL+(t1===t0?0.5:(t-t0)/(t1-t0))*(W-PL-PR);
+    const Y=v=>PT+(1-(v-mn)/(mx-mn))*(H-PT-PB);
+    let svg=`<svg width="100%" viewBox="0 0 ${W} ${H}">`;
+    svg+=`<text x="${PL}" y="${PT+4}" font-size="9" fill="var(--pp-mut)">${fmtN(Math.round(mx-pad))}</text>`;
+    svg+=`<text x="${PL}" y="${H-4}" font-size="9" fill="var(--pp-mut)">${fmtN(Math.round(mn+pad))}</text>`;
+    srcs.forEach((s,i)=>{
+      const pts=ser[s].map(p=>[new Date(p[0]).getTime(),p[1]]);
+      const c=PALETTE[i%PALETTE.length];
+      let d=`M ${X(pts[0][0]).toFixed(1)} ${Y(pts[0][1]).toFixed(1)}`;
+      for(let k2=1;k2<pts.length;k2++){ d+=` H ${X(pts[k2][0]).toFixed(1)} V ${Y(pts[k2][1]).toFixed(1)}`; }
+      if(pts.length===1||pts[pts.length-1][0]<t1) d+=` H ${X(t1).toFixed(1)}`;
+      svg+=`<path d="${d}" fill="none" stroke="${c}" stroke-width="1.8"/>`;
+      pts.forEach(p=>{ svg+=`<circle cx="${X(p[0]).toFixed(1)}" cy="${Y(p[1]).toFixed(1)}" r="2.6" fill="${c}"/>`; });
+    });
+    svg+=`<text x="${PL}" y="${H-4}" font-size="9" fill="var(--pp-mut)" text-anchor="start">${new Date(t0).toISOString().slice(0,10)}</text>`;
+    svg+=`<text x="${W-PR}" y="${H-4}" font-size="9" fill="var(--pp-mut)" text-anchor="end">${new Date(t1).toISOString().slice(0,10)}</text>`;
+    svg+="</svg>";
+    const legend=srcs.map((s,i)=>`<span style="margin-right:10px;font-size:12px"><span style="color:${PALETTE[i%PALETTE.length]}">●</span> ${esc(s)}</span>`).join("");
+    h+=`<div class="sec">${L.chart}</div><div class="card">${svg}<div style="margin-top:4px">${legend}</div></div>`;
+  }
+  box.innerHTML=h;
+}
+// ---- Co dong: tra cuu nguoc (GET /holders + /holders/shard) ----
+const HOLD_I18N={
+  vi:{searchPh:"Tìm theo tên cổ đông…",total:"Tổng cổ phần nắm giữ",symbols:"Số mã",holdings:"Các mã nắm giữ",back:"‹ Quay lại danh sách",empty:"Không tìm thấy cổ đông khớp",nodata:"Cổ đông này chưa có trong chỉ mục đã thu thập",updated:"Cập nhật",cov:(c,t)=>`Chỉ mục đã thu thập: ${c}/${t} mã có dữ liệu cổ đông`,found:n=>`${n} cổ đông`,top:"Nắm giữ lớn nhất",INDIVIDUAL:"Cá nhân",CORPORATE:"Tổ chức"},
+  en:{searchPh:"Search by shareholder name…",total:"Total shares held",symbols:"Symbols",holdings:"Holdings",back:"‹ Back to list",empty:"No matching shareholder",nodata:"This shareholder is not in the collected index yet",updated:"Updated",cov:(c,t)=>`Index coverage: ${c}/${t} symbols with shareholder data`,found:n=>`${n} shareholders`,top:"Largest holders",INDIVIDUAL:"Individual",CORPORATE:"Organization"},
+  zh:{searchPh:"按股东姓名搜索…",total:"持有股份总数",symbols:"股票数",holdings:"持股明细",back:"‹ 返回列表",empty:"未找到匹配的股东",nodata:"该股东尚未收录于已采集索引",updated:"更新于",cov:(c,t)=>`索引覆盖:${c}/${t} 只股票有股东数据`,found:n=>`${n} 位股东`,top:"持股最多",INDIVIDUAL:"个人",CORPORATE:"机构"},
+  ko:{searchPh:"주주 이름으로 검색…",total:"총 보유 주식",symbols:"종목 수",holdings:"보유 종목",back:"‹ 목록으로",empty:"일치하는 주주가 없습니다",nodata:"이 주주는 아직 수집된 인덱스에 없습니다",updated:"업데이트",cov:(c,t)=>`인덱스 커버리지: 주주 데이터가 있는 ${c}/${t} 종목`,found:n=>`주주 ${n}명`,top:"최다 보유",INDIVIDUAL:"개인",CORPORATE:"기관"},
+};
+function holdNorm(s){
+  return (s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+    .replace(/đ/g,"d").replace(/Đ/g,"D")
+    .replace(/\s+/g," ").trim().toUpperCase();
+}
+let HOLD_IDX=null, HOLD_SHARDS={}, HOLD_CUR=null, HOLD_LOADING=null;
+async function loadHolders(){
+  const L=HOLD_I18N[curLang]||HOLD_I18N.vi;
+  const q=$("holdQ");
+  if(q){ q.placeholder=L.searchPh;
+    if(!q.dataset.wired){ q.dataset.wired=1;
+      q.addEventListener("input",()=>renderHoldList()); } }
+  if(HOLD_IDX){ renderHoldList(); return; }
+  if(!HOLD_LOADING){
+    HOLD_LOADING=api("/holders").then(j=>{
+      HOLD_IDX=j; const m=j.meta||{};
+      const c=$("holdCov");
+      if(c) c.textContent=L.cov(fmtN(m.covered||0),fmtN(m.total||0));
+    }).catch(()=>{ const b=$("holdList");
+      if(b) b.innerHTML='<div class="hint">Lỗi tải</div>'; });
+  }
+  await HOLD_LOADING;
+  if(HOLD_IDX) renderHoldList();
+}
+function renderHoldList(){
+  const L=HOLD_I18N[curLang]||HOLD_I18N.vi;
+  const box=$("holdList"); if(!box||!HOLD_IDX) return;
+  $("holdDetail").style.display="none"; $("holdListWrap").style.display="";
+  const qn=holdNorm(($("holdQ")||{}).value||"");
+  let rows=HOLD_IDX.rows||[];
+  if(qn) rows=rows.filter(r=>r.q.includes(qn));
+  const total=rows.length;
+  rows=rows.slice(0,50);
+  const head=qn?L.found(total):L.top;
+  box.innerHTML=`<div class="hint" style="padding:4px 0 8px">${head}${total>rows.length?" · "+rows.length:""}</div>`+
+    (rows.length?`<table>${rows.map(r=>`<tr>
+      <td><a href="#" onclick="openHolder('${r.id}');return false" style="color:var(--pp-accent);text-decoration:none"><b>${esc(r.name)}</b></a><div style="font-size:12px;color:var(--pp-mut)">${L[r.t]||r.t||""}</div></td>
+      <td style="text-align:right">${fmtN(r.tot)}<div style="font-size:12px;color:var(--pp-mut)">${r.n} ${L.symbols}</div></td></tr>`).join("")}</table>`
+    :`<div class="hint">${L.empty}</div>`);
+}
+async function openHolder(id){
+  const L=HOLD_I18N[curLang]||HOLD_I18N.vi;
+  const sh=id.slice(0,2);
+  if(!HOLD_SHARDS[sh]){
+    try{ HOLD_SHARDS[sh]=await api("/holders/shard?s="+sh); }
+    catch(e){ HOLD_SHARDS[sh]={}; }
+  }
+  const h=(HOLD_SHARDS[sh]||{})[id];
+  const box=$("holdDetail");
+  $("holdListWrap").style.display="none"; box.style.display="";
+  if(!h){ box.innerHTML=`<div class="card"><div class="hint">${L.nodata}</div></div>`+
+    `<div style="padding:10px 2px"><a href="#" onclick="renderHoldList();return false" style="color:var(--pp-accent);text-decoration:none">${L.back}</a></div>`; return; }
+  HOLD_CUR=id;
+  let s=`<div style="padding:2px 2px 8px"><a href="#" onclick="renderHoldList();return false" style="color:var(--pp-accent);text-decoration:none">${L.back}</a></div>
+  <div class="card">
+    <div style="font-size:17px;font-weight:600">${esc(h.name)}</div>
+    <div style="font-size:12px;color:var(--pp-mut)">${L[h.t]||h.t||""}</div>
+    <div class="row" style="margin-top:6px"><span class="k">${L.total}</span><span class="v" style="font-size:17px">${fmtN(h.tot)}</span></div>
+    <div class="row"><span class="k">${L.symbols}</span><span class="v">${(h.holds||[]).length}</span></div>
+  </div>
+  ${insBox(h.insight, INS_SRC.hold[curLang]||INS_SRC.hold.vi, (h.holds||[]).map(x=>x.date||"").sort().slice(-1)[0]||null)}
+  <div class="sec">${L.holdings}</div>
+  <div class="card"><table>${(h.holds||[]).map(x=>`<tr>
+    <td><a href="#" onclick="openSym('${x.symbol}');return false"><b>${x.symbol}</b></a>${x.position?`<div style="font-size:12px;color:var(--pp-mut)">${esc(x.position)}</div>`:""}</td>
+    <td style="text-align:right">${fmtN(x.quantity)}<div style="font-size:12px;color:var(--pp-mut)">${x.pct==null?"—":(x.pct*100).toFixed(2).replace(".",",")+"%"}</div></td>
+    <td style="text-align:right;color:var(--pp-mut);font-size:12px">${(x.date||"").slice(0,10)}</td></tr>`).join("")}</table></div>`;
+  box.innerHTML=s;
+}
+async function openHolderByName(name){
+  go('v-holders');
+  const L=HOLD_I18N[curLang]||HOLD_I18N.vi;
+  if(!HOLD_IDX){ await loadHolders(); }
+  const qn=holdNorm(name);
+  const row=(HOLD_IDX.rows||[]).find(r=>r.q===qn);
+  if(row){ openHolder(row.id); }
+  else{
+    $("holdListWrap").style.display="none";
+    const box=$("holdDetail"); box.style.display="";
+    box.innerHTML=`<div class="card"><div style="font-size:17px;font-weight:600">${esc(name)}</div><div class="hint" style="padding-top:6px">${L.nodata}</div></div>`+
+    `<div style="padding:10px 2px"><a href="#" onclick="renderHoldList();return false" style="color:var(--pp-accent);text-decoration:none">${L.back}</a></div>`;
+  }
+}
+// ---- Nganh (GET /sectors + /sectors/detail) ----
+const SEC_I18N={
+  vi:{rev:"Doanh thu 4 quý",npat:"LNST 4 quý",roe:"ROE 4 quý",pe:"P/E",members:"Số mã",mcap:"Vốn hoá",chart:"Doanh thu & LNST theo quý (tỷ đồng)",series:"Chuỗi theo kỳ",period:"Kỳ",revQ:"Doanh thu",npatQ:"LNST",roeQ:"ROE quý",margin:"Biên LN",back:"‹ Quay lại danh sách",mem:"Mã thành viên",empty:"Chưa có dữ liệu ngành",kTy:"nghìn tỷ",ty:"tỷ",note:"P/E ngành = tổng vốn hoá / tổng LNST 4 quý của các mã có đủ dữ liệu EPS (số mã được tính ghi ở chi tiết). ROE 4 quý = LNST 4 quý / vốn chủ sở hữu kỳ mới nhất."},
+  en:{rev:"Revenue (TTM)",npat:"Net profit (TTM)",roe:"ROE (TTM)",pe:"P/E",members:"Symbols",mcap:"Market cap",chart:"Quarterly revenue & net profit (VND bn)",series:"History by quarter",period:"Period",revQ:"Revenue",npatQ:"Net profit",roeQ:"Quarterly ROE",margin:"Net margin",back:"‹ Back to list",mem:"Member symbols",empty:"No sector data yet",kTy:"tn",ty:"bn",note:"Sector P/E = total market cap / total TTM net profit over symbols with sufficient EPS data (count shown in detail). TTM ROE = TTM net profit / latest equity."},
+  zh:{rev:"营收(近4季)",npat:"净利润(近4季)",roe:"ROE(近4季)",pe:"市盈率",members:"股票数",mcap:"总市值",chart:"季度营收与净利润(十亿越盾)",series:"分季度序列",period:"期间",revQ:"营收",npatQ:"净利润",roeQ:"季度ROE",margin:"净利率",back:"‹ 返回列表",mem:"成分股",empty:"暂无行业数据",kTy:"万亿",ty:"十亿",note:"行业市盈率 = 有足够 EPS 数据股票的总市值 / 近4季净利润总额(样本数见详情)。近4季 ROE = 近4季净利润 / 最新净资产。"},
+  ko:{rev:"매출(최근 4분기)",npat:"순이익(최근 4분기)",roe:"ROE(최근 4분기)",pe:"P/E",members:"종목 수",mcap:"시가총액",chart:"분기 매출 및 순이익(십억 동)",series:"분기별 추이",period:"기간",revQ:"매출",npatQ:"순이익",roeQ:"분기 ROE",margin:"순이익률",back:"‹ 목록으로",mem:"구성 종목",empty:"업종 데이터 없음",kTy:"조",ty:"십억",note:"업종 P/E = EPS 데이터가 충분한 종목들의 시가총액 합계 / 최근 4분기 순이익 합계(표본 수는 상세에 표시). 최근 4분기 ROE = 최근 4분기 순이익 / 최신 자본."},
+};
+function fmtMoney(v){
+  const L=SEC_I18N[curLang]||SEC_I18N.vi;
+  if(v==null) return "—";
+  const a=Math.abs(v);
+  if(a>=1e12) return (v/1e12).toFixed(2).replace(".",",")+" "+L.kTy;
+  if(a>=1e9) return Math.round(v/1e9).toLocaleString("vi-VN")+" "+L.ty;
+  return fmtN(Math.round(v));
+}
+let SEC_ROWS=[], SEC_SORT={k:"rev_ttm",dir:-1}, SEC_INSIGHT=null;
+async function loadSectors(){
+  try{
+    const j=await api("/sectors");
+    SEC_ROWS=j.rows||[];
+    SEC_INSIGHT=j.insight||null;
+    renderSec();
+  }catch(e){ const b=$("secBody"); if(b) b.innerHTML='<tr><td colspan="6"><div class="hint">Lỗi tải</div></td></tr>'; }
+}
+function secSort(k){
+  if(SEC_SORT.k===k) SEC_SORT.dir*=-1; else SEC_SORT={k,dir:k==="name"?1:-1};
+  renderSec();
+}
+function renderSec(){
+  const L=SEC_I18N[curLang]||SEC_I18N.vi;
+  const tb=$("secBody"); if(!tb) return;
+  const ib=$("secInsight");
+  if(ib) ib.innerHTML=insBox(SEC_INSIGHT, INS_SRC.sec[curLang]||INS_SRC.sec.vi, null);
+  $("secNote").textContent=L.note;
+  if(!SEC_ROWS.length){ tb.innerHTML=`<tr><td colspan="6"><div class="hint">${L.empty}</div></td></tr>`; return; }
+  const {k,dir}=SEC_SORT;
+  const rows=SEC_ROWS.slice().sort((a,b)=>{
+    const x=a[k],y=b[k];
+    if(x==null&&y==null) return 0; if(x==null) return 1; if(y==null) return -1;
+    return (typeof x==="string"?x.localeCompare(y):x-y)*dir;
+  });
+  const arrow=(kk)=>SEC_SORT.k===kk?(SEC_SORT.dir===1?" ↑":" ↓"):"";
+  $("secHead").innerHTML=`<tr>
+    <th onclick="secSort('name')" style="cursor:pointer">Ngành${arrow('name')}</th>
+    <th onclick="secSort('rev_ttm')" style="cursor:pointer;text-align:right">${L.rev}${arrow('rev_ttm')}</th>
+    <th onclick="secSort('npat_ttm')" style="cursor:pointer;text-align:right">${L.npat}${arrow('npat_ttm')}</th>
+    <th onclick="secSort('roe_ttm')" style="cursor:pointer;text-align:right">${L.roe}${arrow('roe_ttm')}</th>
+    <th onclick="secSort('pe')" style="cursor:pointer;text-align:right">${L.pe}${arrow('pe')}</th>
+    <th onclick="secSort('n_members')" style="cursor:pointer;text-align:center">${L.members}${arrow('n_members')}</th></tr>`;
+  tb.innerHTML=rows.map(r=>`<tr>
+    <td><a href="#" onclick="openSector('${r.code}');return false" style="color:var(--pp-accent);text-decoration:none"><b>${esc(r.name)}</b></a><div style="font-size:12px;color:var(--pp-mut)">${r.latest_period||""}</div></td>
+    <td style="text-align:right">${fmtMoney(r.rev_ttm)}</td>
+    <td style="text-align:right">${fmtMoney(r.npat_ttm)}</td>
+    <td style="text-align:right">${r.roe_ttm==null?"—":(r.roe_ttm*100).toFixed(1).replace(".",",")+"%"}</td>
+    <td style="text-align:right">${r.pe==null?"—":r.pe.toFixed(1).replace(".",",")}</td>
+    <td style="text-align:center">${r.n_members}</td></tr>`).join("");
+}
+async function openSector(code){
+  const L=SEC_I18N[curLang]||SEC_I18N.vi;
+  $("secListWrap").style.display="none";
+  const box=$("secDetail"); box.style.display="";
+  box.innerHTML='<div class="card"><div class="hint">Đang tải…</div></div>';
+  try{
+    const j=await api("/sectors/detail?code="+encodeURIComponent(code));
+    renderSector(j);
+  }catch(e){ box.innerHTML='<div class="card"><div class="hint">Lỗi tải</div></div>'; }
+}
+function renderSector(j){
+  const L=SEC_I18N[curLang]||SEC_I18N.vi;
+  const box=$("secDetail"); if(!box) return;
+  const ser=(j.series||[]).filter(p=>p.rev!=null||p.npat!=null);
+  let h=`<div style="padding:2px 2px 8px"><a href="#" onclick="backSectors();return false" style="color:var(--pp-accent);text-decoration:none">${L.back}</a></div>`;
+  h+=insBox(j.insight, INS_SRC.sec[curLang]||INS_SRC.sec.vi, j.latest_period);
+  h+=`<div class="card">
+    <div style="font-size:17px;font-weight:600">${esc(j.name||"")}</div>
+    <div class="row" style="margin-top:6px"><span class="k">${L.rev}</span><span class="v">${fmtMoney(j.rev_ttm)}</span></div>
+    <div class="row"><span class="k">${L.npat}</span><span class="v">${fmtMoney(j.npat_ttm)}</span></div>
+    <div class="row"><span class="k">${L.roe}</span><span class="v">${j.roe_ttm==null?"—":(j.roe_ttm*100).toFixed(1).replace(".",",")+"%"}</span></div>
+    <div class="row"><span class="k">${L.pe}</span><span class="v">${j.pe==null?"—":j.pe.toFixed(1).replace(".",",")+" ("+(j.n_pe||0)+"/"+(j.n_members||0)+" "+L.members+")"}</span></div>
+    <div class="row"><span class="k">${L.mcap}</span><span class="v">${fmtMoney(j.mcap)}</span></div>
+  </div>`;
+  if(ser.length>3){
+    const W=340,H=140,PL=4,PR=4,PT=10,PB=14,BW=(W-PL-PR)/ser.length;
+    const mx=Math.max(...ser.map(p=>Math.max(p.rev||0,p.npat||0)))*1.1||1;
+    const mn=Math.min(0,...ser.map(p=>Math.min(p.rev||0,p.npat||0)))*1.1;
+    const Y=v=>PT+(1-(v-mn)/(mx-mn))*(H-PT-PB);
+    let svg=`<svg width="100%" viewBox="0 0 ${W} ${H}">`;
+    svg+=`<line x1="${PL}" y1="${Y(0)}" x2="${W-PR}" y2="${Y(0)}" stroke="var(--pp-line)"/>`;
+    ser.forEach((p,i)=>{
+      const x=PL+i*BW+BW*0.15, w=BW*0.7;
+      if(p.rev!=null) svg+=`<rect x="${x.toFixed(1)}" y="${Y(Math.max(p.rev,0)).toFixed(1)}" width="${w.toFixed(1)}" height="${Math.abs(Y(p.rev)-Y(0)).toFixed(1)}" fill="#38bdf8" opacity="0.75"/>`;
+    });
+    let d="";
+    ser.forEach((p,i)=>{ if(p.npat!=null){ const x=PL+i*BW+BW/2; d+=(d?" L ":"M ")+x.toFixed(1)+" "+Y(p.npat).toFixed(1); } });
+    if(d) svg+=`<path d="${d}" fill="none" stroke="#f0b429" stroke-width="1.8"/>`;
+    svg+=`<text x="${PL}" y="${H-2}" font-size="9" fill="var(--pp-mut)">${ser[0].period}</text>`;
+    svg+=`<text x="${W-PR}" y="${H-2}" font-size="9" fill="var(--pp-mut)" text-anchor="end">${ser[ser.length-1].period}</text>`;
+    svg+="</svg>";
+    h+=`<div class="sec">${L.chart}</div><div class="card">${svg}<div style="font-size:12px"><span style="color:#38bdf8">■</span> ${L.revQ} · <span style="color:#f0b429">■</span> ${L.npatQ}</div></div>`;
+  }
+  const last=ser.slice(-8).reverse();
+  if(last.length){
+    h+=`<div class="sec">${L.series}</div><div class="card"><table>
+    <tr><th>${L.period}</th><th style="text-align:right">${L.revQ}</th><th style="text-align:right">${L.npatQ}</th><th style="text-align:right">${L.roeQ}</th><th style="text-align:right">${L.margin}</th></tr>
+    ${last.map(p=>`<tr><td>${p.period}</td><td style="text-align:right">${fmtMoney(p.rev)}</td><td style="text-align:right">${fmtMoney(p.npat)}</td><td style="text-align:right">${p.roe_q==null?"—":(p.roe_q*100).toFixed(1).replace(".",",")+"%"}</td><td style="text-align:right">${p.net_margin==null?"—":(p.net_margin*100).toFixed(1).replace(".",",")+"%"}</td></tr>`).join("")}</table></div>`;
+  }
+  const mem=j.members||[];
+  if(mem.length){
+    h+=`<div class="sec">${L.mem} (${mem.length})</div><div class="card"><div style="display:flex;flex-wrap:wrap;gap:6px">${mem.map(m=>{
+      const pc=m.pct==null?null:m.pct;
+      const cls=pc==null?"":pc>0?"up":pc<0?"down":"";
+      return `<a href="#" onclick="openSym('${m.symbol}');return false" style="display:inline-block;padding:5px 9px;border:1px solid var(--pp-line);border-radius:99px;text-decoration:none;color:var(--pp-ink);font-size:12px"><b>${m.symbol}</b>${m.price?" · "+fmtN(m.price):""}${pc!=null?` <span class="${cls}">${pc>0?"+":""}${Number(pc).toFixed(1).replace(".",",")}%</span>`:""}</a>`;
+    }).join("")}</div></div>`;
+  }
+  box.innerHTML=h;
+}
+function backSectors(){
+  $("secDetail").style.display="none";
+  $("secListWrap").style.display="";
+}
+const PROF_I18N={
+  vi:{holders:"Cổ đông lớn",officers:"Ban lãnh đạo",subs:"Công ty con / liên kết",capital:"Vốn điều lệ",own:"Cơ cấu sở hữu",shares:"CP",empty:"Chưa có dữ liệu hồ sơ",ty:"tỷ"},
+  en:{holders:"Major shareholders",officers:"Management",subs:"Subsidiaries / affiliates",capital:"Charter capital",own:"Ownership structure",shares:"shares",empty:"No profile data yet",ty:"B"},
+  zh:{holders:"主要股东",officers:"管理层",subs:"子公司 / 关联公司",capital:"注册资本",own:"股权结构",shares:"股",empty:"暂无档案数据",ty:"十亿"},
+  ko:{holders:"주요 주주",officers:"경영진",subs:"자회사 / 관계사",capital:"자본금",own:"지분 구조",shares:"주",empty:"프로필 데이터 없음",ty:"십억"},
+};
+async function loadProfile(sym){
+  const box=$("dProf"); if(!box) return;
+  box.innerHTML='<div class="card"><div class="hint">Đang tải…</div></div>';
+  try{
+    const j=await api("/company/profile?symbol="+encodeURIComponent(sym));
+    renderProfile(j);
+  }catch(e){ box.innerHTML='<div class="card"><div class="hint">Lỗi tải</div></div>'; }
+}
+function renderProfile(j){
+  const box=$("dProf"); if(!box) return;
+  _lastProfile=j; renderFaPctGrid();
+  const L=PROF_I18N[curLang]||PROF_I18N.vi;
+  const pct=v=>v==null?"—":Number(v).toFixed(2).replace(".",",")+"%";
+  const pctF=v=>v==null?"—":pct(v<=1?v*100:v);
+  let h="";
+  const sh=(j.shareholders||[]).slice().sort((a,b)=>(b.shares_owned||0)-(a.shares_owned||0)).slice(0,10);
+  if(sh.length) h+=`<div class="sec">${L.holders}</div><div class="card"><table>${sh.map(r=>`<tr><td><a href="#" onclick="openHolderByName('${(r.name||"").replace(/\\/g,"").replace(/'/g,"\\'")}');return false" style="color:var(--pp-accent);text-decoration:none">${esc(r.name||"")}</a></td><td style="text-align:right">${fmtN(r.shares_owned)} ${L.shares}</td><td style="text-align:right">${pct(r.ownership_percentage)}</td></tr>`).join("")}</table></div>`;
+  h+=`<div id="dHoldIns"></div>`;
+  const of=j.officers||[];
+  if(of.length) h+=`<div class="sec">${L.officers}</div><div class="card"><table>${of.map(r=>`<tr><td>${esc(r.name||"")}</td><td style="text-align:right;color:var(--pp-mut)">${esc(r.position||"")}</td><td style="text-align:right">${r.total_shares?fmtN(r.total_shares)+" "+L.shares:"—"}</td></tr>`).join("")}</table></div>`;
+  const sb=j.subsidiaries||[];
+  if(sb.length) h+=`<div class="sec">${L.subs}</div><div class="card"><table>${sb.map(r=>`<tr><td>${esc(r.name||"")}${r.sub_symbol?' <span style="color:var(--pp-mut)">('+esc(r.sub_symbol)+")</span>":""}</td><td style="text-align:right">${pctF(r.rate)}</td></tr>`).join("")}</table></div>`;
+  const ow=(j.ownership||[]).filter(r=>r&&(r.name||r.shareholder_type||r.type)&&(r.percentage!=null||r.rate!=null));
+  if(ow.length) h+=`<div class="sec">${L.own}</div><div class="card"><table>${ow.map(r=>`<tr><td>${esc(r.name||r.shareholder_type||r.type||"")}</td><td style="text-align:right">${pctF(r.percentage!=null?r.percentage:r.rate)}</td></tr>`).join("")}</table></div>`;
+  const ch=(j.capital_history||[]).slice(0,5);
+  if(ch.length) h+=`<div class="sec">${L.capital}</div><div class="card"><table>${ch.map(r=>`<tr><td>${esc(r.date||"")}</td><td style="text-align:right">${r.charter_capital?(Number(r.charter_capital)/1e9).toLocaleString("vi-VN",{maximumFractionDigits:0})+" "+L.ty:"—"}</td></tr>`).join("")}</table></div>`;
+  box.innerHTML=h||`<div class="card"><div class="hint">${L.empty}</div></div>`;
+  loadHolderSymInsight(curSym);
+}
+async function loadHolderSymInsight(sym){
+  const el=$("dHoldIns"); if(!el||!sym) return;
+  try{
+    const j=await api("/holders/symbol?symbol="+encodeURIComponent(sym));
+    el.innerHTML=insBox(j.insight, INS_SRC.hold[curLang]||INS_SRC.hold.vi, j.as_of);
+  }catch(e){ el.innerHTML=""; }
+}
 async function loadEvents(sym){
   const box=$("dEvents");box.innerHTML='<div class="hint">Đang tải…</div>';
+  EVST={items:[],f:"all",n:10};
   try{
     const j=await api("/events?symbol="+encodeURIComponent(sym));
-    const items=j.items||[];
-    box.innerHTML=items.length?items.slice(0,10).map(n=>`<div style="padding:7px 0;border-bottom:1px solid var(--pp-line)"><div style="font-size:13px;font-weight:600">${esc(n.title||n.name||"")}</div><div style="font-size:11px;color:var(--pp-mut);margin-top:2px">${esc(n.name||"")}${n.date?" · "+esc(String(n.date).slice(0,10)):""}${n.exright_date?" · Ex: "+esc(String(n.exright_date).slice(0,10)):""}</div></div>`).join(""):'<div class="hint">'+BL().noEv+'</div>';
+    EVST.items=j.items||[];
+    if(!EVST.items.length){box.innerHTML='<div class="hint">'+BL().noEv+'</div>';return;}
+    paintEvents();
   }catch(e){box.innerHTML='<div class="hint">'+BL().noEv+'</div>';}
 }
 async function loadTarget(sym){
@@ -677,12 +1661,12 @@ async function loadTarget(sym){
     const cur=t?((t.take_profit_pct!=null?("TP +"+t.take_profit_pct+"%"):"")+(t.take_profit_pct!=null&&t.stop_loss_pct!=null?" · ":"")+(t.stop_loss_pct!=null?("SL −"+t.stop_loss_pct+"%"):"")):L.curNone;
     box.innerHTML=`<div class="row"><span class="k">${esc(cur)}</span>${t&&t.unrealized_pct!=null?`<span class="v ${t.unrealized_pct>0?"up":t.unrealized_pct<0?"down":""}">${t.unrealized_pct>0?"+":""}${t.unrealized_pct}%</span>`:""}</div>
     <div style="display:flex;gap:8px;margin-top:8px">
-    <input id="tgTp" type="number" min="0" step="0.5" placeholder="${L.tpPh}" value="${t&&t.take_profit_pct!=null?t.take_profit_pct:""}" style="flex:1;background:var(--pp-bg2);color:var(--pp-ink);border:1px solid var(--pp-line);border-radius:8px;padding:8px;font-size:13px">
-    <input id="tgSl" type="number" min="0" step="0.5" placeholder="${L.slPh}" value="${t&&t.stop_loss_pct!=null?t.stop_loss_pct:""}" style="flex:1;background:var(--pp-bg2);color:var(--pp-ink);border:1px solid var(--pp-line);border-radius:8px;padding:8px;font-size:13px">
+    <input id="tgTp" type="number" min="0" step="0.5" placeholder="${L.tpPh}" value="${t&&t.take_profit_pct!=null?t.take_profit_pct:""}" style="flex:1;background:var(--pp-bg2);color:var(--pp-ink);border:1px solid var(--pp-line);border-radius:8px;padding:8px;font-size:14px">
+    <input id="tgSl" type="number" min="0" step="0.5" placeholder="${L.slPh}" value="${t&&t.stop_loss_pct!=null?t.stop_loss_pct:""}" style="flex:1;background:var(--pp-bg2);color:var(--pp-ink);border:1px solid var(--pp-line);border-radius:8px;padding:8px;font-size:14px">
     </div>
     <div style="display:flex;gap:8px;margin-top:8px">
-    <button id="tgSave" style="flex:1;padding:9px;border-radius:8px;background:var(--pp-accent);color:#fff;border:none;font-size:13px;font-weight:600;cursor:pointer">${L.save}</button>
-    ${t?`<button id="tgDel" style="padding:9px 14px;border-radius:8px;background:var(--pp-bg2);color:var(--pp-ink);border:1px solid var(--pp-line);font-size:13px;cursor:pointer">${L.del}</button>`:""}
+    <button id="tgSave" style="flex:1;padding:9px;border-radius:8px;background:var(--pp-accent);color:#fff;border:none;font-size:14px;font-weight:600;cursor:pointer">${L.save}</button>
+    ${t?`<button id="tgDel" style="padding:9px 14px;border-radius:8px;background:var(--pp-bg2);color:var(--pp-ink);border:1px solid var(--pp-line);font-size:14px;cursor:pointer">${L.del}</button>`:""}
     </div><div class="hint" id="tgMsg" style="padding-top:6px"></div>`;
     $("tgSave").onclick=async()=>{
       const tp=parseFloat($("tgTp").value),sl=parseFloat($("tgSl").value);
@@ -714,7 +1698,7 @@ async function loadCost(sym){
     const s=j.series||[];
     if(s.length<2){sec.style.display="none";box.style.display="none";return;}
     sec.style.display="";box.style.display="";
-    box.innerHTML=twoLineSvg(s)+`<div style="font-size:11px;color:var(--pp-mut);margin-top:4px"><span style="color:#f59e0b">- - ${BL().avgCost}</span> · <span style="color:#2563eb">— ${BL().mktClose}</span> · ${esc(s[0].time)} → ${esc(s[s.length-1].time)}</div>`;
+    box.innerHTML=twoLineSvg(s)+`<div style="font-size:12px;color:var(--pp-mut);margin-top:4px"><span style="color:#f59e0b">- - ${BL().avgCost}</span> · <span style="color:#2563eb">— ${BL().mktClose}</span> · ${esc(s[0].time)} → ${esc(s[s.length-1].time)}</div>`;
   }catch(e){sec.style.display="none";box.style.display="none";}
 }
 async function loadWatchlist(){
@@ -771,13 +1755,13 @@ async function doCompare(){
       return `<span style="color:${CMP_COLORS[si%5]};font-weight:700">${esc(s)}</span> <span class="${last.v>0?"up":last.v<0?"down":""}">${last.v>0?"+":""}${Number(last.v.toFixed(2))}%</span>`;
     }).join(" · ");
     const s0=series[syms[0]];
-    out.innerHTML=svg+`<div style="font-size:12px;margin-top:4px">${legend}</div><div style="font-size:11px;color:var(--pp-mut)">${esc(s0[0].t)} → ${esc(s0[s0.length-1].t)}</div>`;
+    out.innerHTML=svg+`<div style="font-size:12px;margin-top:4px">${legend}</div><div style="font-size:12px;color:var(--pp-mut)">${esc(s0[0].t)} → ${esc(s0[s0.length-1].t)}</div>`;
   }catch(e){out.innerHTML='<div class="hint">'+L.cmpErr+'</div>';}
 }
 $("cmpBtn").onclick=doCompare;
 // ---- Bieu do nen (SVG nhe, du lieu /ohlcv) ----
 let _chartSym="";
-function chartSvg(rows){
+function chartSvg(rows,scale){
   const W=340,H=150,volH=26,priceH=H-volH-2;
   let hi=-1e18,lo=1e18,vmax=0;
   for(const r of rows){hi=Math.max(hi,r.h);lo=Math.min(lo,r.l);vmax=Math.max(vmax,r.v||0);}
@@ -793,27 +1777,330 @@ function chartSvg(rows){
     const vh=vmax?(r.v||0)/vmax*volH:0;
     s+=`<rect x="${(i*xw+1).toFixed(1)}" y="${(H-vh).toFixed(1)}" width="${Math.max(2,xw-2).toFixed(1)}" height="${vh.toFixed(1)}" fill="${col}" opacity=".5"/>`;
   });
-  s+=`<text x="2" y="10" font-size="8" fill="var(--pp-mut)">${fmtN(rawHi*1000)}</text><text x="2" y="${priceH}" font-size="8" fill="var(--pp-mut)">${fmtN(rawLo*1000)}</text>`;
-  return s+"</svg>"+`<div style="font-size:11px;color:var(--pp-mut);margin-top:4px">${esc(rows[0].t)} → ${esc(rows[rows.length-1].t)}</div>`;
+  const lastR=rows[rows.length-1];
+  if(lastR){ const ly=Y(lastR.c), lc=lastR.c>=lastR.o?"#16a34a":"#dc2626";
+    s+=`<line x1="0" y1="${ly.toFixed(1)}" x2="${W}" y2="${ly.toFixed(1)}" stroke="${lc}" stroke-width="0.7" stroke-dasharray="4 3" opacity="0.85"/><text x="${W-3}" y="${(ly-3).toFixed(1)}" font-size="8.5" text-anchor="end" font-weight="700" fill="${lc}">${fmtN(lastR.c*(scale||1000))}</text>`;
+  }
+  s+=`<text x="2" y="10" font-size="8" fill="var(--pp-mut)">${fmtN(rawHi*(scale||1000))}</text><text x="2" y="${priceH}" font-size="8" fill="var(--pp-mut)">${fmtN(rawLo*(scale||1000))}</text>`;
+  return s+"</svg>"+`<div style="font-size:12px;color:var(--pp-mut);margin-top:4px">${esc(rows[0].t)} → ${esc(rows[rows.length-1].t)}</div>`;
 }
 async function loadChart(sym, iv){
-  _chartSym=sym; iv=iv||"1D";
+  _chartSym=sym; iv=iv||"1D"; _chartIv=iv;
   document.querySelectorAll("#dIv button").forEach(b=>b.classList.toggle("on", b.textContent===iv));
-  const box=$("dChart"); box.innerHTML='<div class="hint">Đang tải…</div>';
+  const box=$("dChart"); if(window.PP_CHART)PP_CHART.destroy(); box.innerHTML='<div class="hint">Đang tải…</div>';
+  ["dFaLegend","dFaPct","dFaGrid"].forEach(k=>{ const e=$(k); if(e) e.innerHTML=""; });
+  const pnl=$("dIndPanel"); if(pnl) pnl.style.display="none";
   try{
-    const j=await api("/ohlcv?symbol="+encodeURIComponent(sym)+"&count=90&interval="+iv);
-    const rows=(j.rows||[]).slice(-60);
-    if(rows.length<2){ box.innerHTML='<div class="hint">Chưa có dữ liệu biểu đồ</div>'; return; }
-    box.innerHTML=chartSvg(rows);
+    const cnt = iv==="1D" ? 400 : 200;
+    const j=await api("/ohlcv?symbol="+encodeURIComponent(sym)+"&count="+cnt+"&interval="+iv);
+    _chartRows=(j.rows||[]);
+    if(_chartRows.length<2){ box.innerHTML='<div class="hint">Chưa có dữ liệu biểu đồ</div>'; const pn=$("dIndPanes"); if(pn) pn.innerHTML=""; const cp=$("dIndChips"); if(cp) cp.innerHTML=""; return; }
+    renderIndChart();
   }catch(e){
-    box.innerHTML='<div class="hint">'+(String(e.message)==="402"?"Biểu đồ trong phiên cần gói trả phí":"Lỗi tải biểu đồ")+'</div>';
+    box.innerHTML='<div class="hint">'+(String(e.message)==="402"?"Biểu đồ trong phiên cần gói trả phí":String(e.message)==="404"?"Chưa có dữ liệu biểu đồ":"Lỗi tải biểu đồ")+'</div>';
   }
+}
+// ---- Chi bao ky thuat (engine client-side, spec theo TradingView/FireAnt) ----
+let _chartRows=[], _chartIv="1D";
+function studySpec(name){ if(!window.PP_STUDIES) return null; return PP_STUDIES.find(s=>s.name===name)||null; }
+function getStudies(){
+  try{ const v=JSON.parse(localStorage.getItem("pp_studies_v1")||"null"); if(Array.isArray(v)) return v.filter(x=>x&&x.name); }catch(e){}
+  return [{name:"Moving Average",inputs:{length:10}},{name:"Moving Average",inputs:{length:50}}];
+}
+function saveStudies(list){ try{ localStorage.setItem("pp_studies_v1", JSON.stringify(list)); }catch(e){} }
+function indInputVal(inputs, inp){ const v=inputs?inputs[inp.id]:undefined; return (v===undefined||v===null)?inp.defval:v; }
+function indParamSummary(st){
+  const spec=studySpec(st.name); if(!spec) return "";
+  const nums=[];
+  for(const inp of spec.inputs){ if(inp.id==="offset"||inp.id.indexOf("smoothing")===0) continue; if(inp.type==="integer"||inp.type==="float") nums.push(indInputVal(st.inputs, inp)); if(nums.length>=3) break; }
+  return nums.length?(" ("+nums.join(", ")+")"):"";
+}
+function fmtIndVal(v, mul){ const x=v*mul; return Math.abs(x)>=1000?fmtN(Math.round(x)):String(Math.round(x*100)/100); }
+function indLastText(res, mul){
+  if(!res||!res.plots) return "";
+  const parts=[];
+  for(const p of res.plots.slice(0,3)){
+    let v=null; for(let i=p.values.length-1;i>=0;i--){ if(p.values[i]!=null){ v=p.values[i]; break; } }
+    if(v!=null) parts.push('<span style="color:'+(p.color||"#888")+'">'+esc(p.title||p.id)+": "+fmtIndVal(v, mul)+"</span>");
+  }
+  return parts.join(" ");
+}
+const VOL_MA5_COL="#f59e0b",VOL_MA10_COL="#c084fc";
+function chartSvgInd(disp, overlays, off, scale, volLines){
+  const W=340,H=150,volH=26,priceH=H-volH-2;
+  let hi=-1e18,lo=1e18,vmax=0;
+  for(const r of disp){hi=Math.max(hi,r.h);lo=Math.min(lo,r.l);vmax=Math.max(vmax,r.v||0);}
+  for(const L of (volLines||[])) for(const v of L.vals){ if(v!=null&&v>vmax) vmax=v; }
+  for(const ov of overlays){ for(const p of ov.res.plots){ if(p.kind==="histogram") continue; for(let i=0;i<disp.length;i++){ const v=p.values[off+i]; if(v!=null){ if(v>hi)hi=v; if(v<lo)lo=v; } } } }
+  const rawHi=hi,rawLo=lo,pad=(hi-lo)*0.06||1; hi+=pad; lo-=pad;
+  const xw=W/disp.length, Y=v=>priceH-(v-lo)/(hi-lo)*priceH;
+  let s=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block">`;
+  for(let i=1;i<4;i++){const y=(priceH*i/4).toFixed(1); s+=`<line x1="0" y1="${y}" x2="${W}" y2="${y}" stroke="rgba(140,140,140,.25)" stroke-width="1"/>`;}
+  disp.forEach((r,i)=>{
+    const x=i*xw+xw/2, up=r.c>=r.o, col=up?"#16a34a":"#dc2626";
+    s+=`<line x1="${x.toFixed(1)}" y1="${Y(r.h).toFixed(1)}" x2="${x.toFixed(1)}" y2="${Y(r.l).toFixed(1)}" stroke="${col}" stroke-width="1"/>`;
+    const yO=Y(r.o),yC=Y(r.c);
+    s+=`<rect x="${(i*xw+1).toFixed(1)}" y="${Math.min(yO,yC).toFixed(1)}" width="${Math.max(2,xw-2).toFixed(1)}" height="${Math.max(1,Math.abs(yC-yO)).toFixed(1)}" fill="${col}"/>`;
+    const vh=vmax?(r.v||0)/vmax*volH:0;
+    s+=`<rect x="${(i*xw+1).toFixed(1)}" y="${(H-vh).toFixed(1)}" width="${Math.max(2,xw-2).toFixed(1)}" height="${vh.toFixed(1)}" fill="${col}" opacity=".5"/>`;
+  });
+  for(const ov of overlays){
+    for(const p of ov.res.plots){
+      if(p.kind==="histogram") continue;
+      const col=p.color||"#2962FF";
+      if(ov.st.name==="Parabolic SAR"){
+        for(let i=0;i<disp.length;i++){ const v=p.values[off+i]; if(v!=null) s+=`<circle cx="${(i*xw+xw/2).toFixed(1)}" cy="${Y(v).toFixed(1)}" r="1.3" fill="${col}"/>`; }
+        continue;
+      }
+      let d="",pen=false;
+      for(let i=0;i<disp.length;i++){ const v=p.values[off+i]; if(v==null){ pen=false; continue; } d+=(pen?"L":"M")+(i*xw+xw/2).toFixed(1)+" "+Y(v).toFixed(1)+" "; pen=true; }
+      if(d) s+=`<path d="${d}" fill="none" stroke="${col}" stroke-width="1.2"/>`;
+    }
+  }
+  for(const L of (volLines||[])){
+    let run=[];
+    const flush=()=>{ if(run.length>1) s+=`<polyline points="${run.join(" ")}" fill="none" stroke="${L.color}" stroke-width="1"/>`; run=[]; };
+    L.vals.forEach((v,i)=>{ if(v==null||!vmax){ flush(); return; } run.push((i*xw+xw/2).toFixed(1)+","+(H-(v/vmax)*volH).toFixed(1)); });
+    flush();
+  }
+  const lastR=disp[disp.length-1];
+  if(lastR){ const ly=Y(lastR.c), lc=lastR.c>=lastR.o?"#16a34a":"#dc2626";
+    s+=`<line x1="0" y1="${ly.toFixed(1)}" x2="${W}" y2="${ly.toFixed(1)}" stroke="${lc}" stroke-width="0.7" stroke-dasharray="4 3" opacity="0.85"/><text x="${W-3}" y="${(ly-3).toFixed(1)}" font-size="8.5" text-anchor="end" font-weight="700" fill="${lc}">${fmtN(lastR.c*scale)}</text>`;
+  }
+  s+=`<text x="2" y="10" font-size="8" fill="var(--pp-mut)">${fmtN(rawHi*scale)}</text><text x="2" y="${priceH}" font-size="8" fill="var(--pp-mut)">${fmtN(rawLo*scale)}</text>`;
+  return s+"</svg>"+`<div style="font-size:12px;color:var(--pp-mut);margin-top:4px">${esc(disp[0].t)} → ${esc(disp[disp.length-1].t)}</div>`;
+}
+const IND_PRICE_UNIT={"Average True Range":1,"Standard Deviation":1,"Detrended Price Oscillator":1,"Price Oscillator":1,"Linear Regression Slope":1};
+function paneSvgInd(item, off, dispLen, scale){
+  const W=340,H=64,padT=4,plotH=H-8;
+  let mn=1e18,mx=-1e18;
+  const bands=item.res.bands||[];
+  for(const p of item.res.plots){ for(let i=0;i<dispLen;i++){ const v=p.values[off+i]; if(v!=null){ if(v<mn)mn=v; if(v>mx)mx=v; } } }
+  for(const b of bands){ if(b.value<mn)mn=b.value; if(b.value>mx)mx=b.value; }
+  if(mx<mn) return "";
+  if(mx===mn){ mx+=1; mn-=1; }
+  const pd=(mx-mn)*0.08; mx+=pd; mn-=pd;
+  const xw=W/dispLen, Y=v=>padT+plotH-(v-mn)/(mx-mn)*plotH;
+  let s=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block">`;
+  if(mn<0&&mx>0){ const y=Y(0).toFixed(1); s+=`<line x1="0" y1="${y}" x2="${W}" y2="${y}" stroke="rgba(140,140,140,.4)" stroke-width="1"/>`; }
+  for(const b of bands){ const y=Y(b.value); s+=`<line x1="0" y1="${y.toFixed(1)}" x2="${W}" y2="${y.toFixed(1)}" stroke="${b.color||"#787B86"}" stroke-width="1" stroke-dasharray="3 3"/><text x="2" y="${Math.max(8,y-2).toFixed(1)}" font-size="7" fill="var(--pp-mut)">${b.value}</text>`; }
+  for(const p of item.res.plots){
+    const col=p.color||"#2962FF";
+    if(p.kind==="histogram"){
+      const base=(mn<0&&mx>0)?0:mn;
+      for(let i=0;i<dispLen;i++){ const v=p.values[off+i]; if(v==null) continue; const y1=Y(Math.max(v,base)), y2=Y(Math.min(v,base)); s+=`<rect x="${(i*xw+0.5).toFixed(1)}" y="${y1.toFixed(1)}" width="${Math.max(1.5,xw-1).toFixed(1)}" height="${Math.max(1,y2-y1).toFixed(1)}" fill="${col}" opacity=".75"/>`; }
+    } else {
+      let d="",pen=false;
+      for(let i=0;i<dispLen;i++){ const v=p.values[off+i]; if(v==null){ pen=false; continue; } d+=(pen?"L":"M")+(i*xw+xw/2).toFixed(1)+" "+Y(v).toFixed(1)+" "; pen=true; }
+      if(d) s+=`<path d="${d}" fill="none" stroke="${col}" stroke-width="1.2"/>`;
+    }
+  }
+  s+="</svg>";
+  const mul=IND_PRICE_UNIT[item.st.name]?scale:1;
+  const legend=`<div style="font-size:11px;margin:6px 0 2px"><b>${esc(item.spec&&item.spec.short?item.spec.short:item.st.name)}${esc(indParamSummary(item.st))}</b> ${indLastText(item.res, mul)}</div>`;
+  return legend+s;
+}
+function smaSeries(vals,n){
+  const out=new Array(vals.length).fill(null); let sum=0;
+  for(let i=0;i<vals.length;i++){ sum+=vals[i]||0; if(i>=n) sum-=vals[i-n]||0; if(i>=n-1) out[i]=sum/n; }
+  return out;
+}
+let _lastQuote=null,_lastFund=null,_lastProfile=null;
+function renderFaLegend(overlays,volLines,scale){
+  const el=$("dFaLegend"); if(!el) return;
+  const items=[];
+  (overlays||[]).forEach(ov=>{
+    ov.res.plots.forEach(p=>{
+      if(p.kind==="histogram") return;
+      let last=null; for(let i=p.values.length-1;i>=0;i--){ if(p.values[i]!=null){ last=p.values[i]; break; } }
+      const lbl=(ov.spec&&ov.spec.short?ov.spec.short:ov.st.name)+indParamSummary(ov.st);
+      items.push(`<span class="fi"><span class="dot" style="background:${p.color||"#2962FF"}"></span>${esc(lbl)}${last!=null?` <b>${fmtIndVal(last,scale)}</b>`:""}</span>`);
+    });
+  });
+  (volLines||[]).forEach((L,i)=>{
+    let last=null; for(let j=L.vals.length-1;j>=0;j--){ if(L.vals[j]!=null){ last=L.vals[j]; break; } }
+    items.push(`<span class="fi"><span class="dot" style="background:${L.color}"></span>${i===0?"MA5":"MA10"} KL${last!=null?` <b>${fmtN(last)}</b>`:""}</span>`);
+  });
+  el.innerHTML=items.length?`<div class="faleg">${items.join("")}</div>`:"";
+}
+function fmtTyAbs(v){
+  if(v==null||!isFinite(v)) return "—";
+  const a=Math.abs(v);
+  if(a>=1e12) return (v/1e12).toLocaleString("vi-VN",{maximumFractionDigits:2})+" nghìn tỷ";
+  if(a>=1e9) return (v/1e9).toLocaleString("vi-VN",{maximumFractionDigits:1})+" tỷ";
+  if(a>=1e6) return (v/1e6).toLocaleString("vi-VN",{maximumFractionDigits:1})+" triệu";
+  return fmtN(v);
+}
+function renderFaPctGrid(){
+  const pctEl=$("dFaPct"), gridEl=$("dFaGrid");
+  if(pctEl){
+    let h="";
+    if(_chartIv==="1D"&&_chartRows.length>=2){
+      const rows=_chartRows, last=rows[rows.length-1], scale=IDX_LIST.includes(_chartSym)?1:1000;
+      const defs=[["1D",1],["1W",5],["1M",21],["3M",63],["6M",126],["1Y",252]];
+      h='<div class="fapct">'+defs.map(([k,n])=>{
+        const ref=rows[rows.length-1-n];
+        const v=(ref&&ref.c)?(last.c/ref.c-1)*100:null;
+        return `<span class="pc"><span class="k">${k}</span><span class="v">${v==null?"—":`<span class="${v>=0?"up":"dn"}">${fmtPct(v)}</span>`}</span></span>`;
+      }).join("")+"</div>";
+    }
+    pctEl.innerHTML=h;
+  }
+  if(gridEl){
+    let h="";
+    if(_chartIv==="1D"&&!IDX_LIST.includes(_chartSym)&&_chartRows.length>=2){
+      const rows=_chartRows, last=rows[rows.length-1], prev=rows[rows.length-2];
+      const q=_lastQuote||{}, f=_lastFund||{};
+      let shares=null;
+      const ch=(_lastProfile&&_lastProfile.capital_history)||[];
+      if(ch.length){ const cc=Number(ch[0].charter_capital); if(cc>0) shares=cc/10000; }
+      const mcap=(shares!=null)?shares*last.c*1000:null;
+      const val=(q.value_vnd!=null)?q.value_vnd:(last.v||0)*last.c*1000;
+      const cell=(k,v)=>`<div class="fr"><span class="k">${esc(T(k))}</span><span class="v">${v}</span></div>`;
+      h='<div class="fagrid">'
+        +cell("Tham chiếu",fmtN(prev.c*1000))
+        +cell("Mở cửa",fmtN(last.o*1000))
+        +cell("Cao nhất",fmtN(last.h*1000))
+        +cell("Thấp nhất",fmtN(last.l*1000))
+        +cell("Khối lượng",fmtN(last.v||0))
+        +cell("Giá trị",fmtTyAbs(val))
+        +cell("Vốn hoá",fmtTyAbs(mcap))
+        +cell("CP lưu hành",shares!=null?fmtN(shares):"—")
+        +cell("P/E",f.pe_ttm!=null?Number(f.pe_ttm).toFixed(2).replace(".",","):"—")
+        +cell("EPS",f.eps!=null?fmtN(Math.round(f.eps)):"—")
+        +"</div>";
+    }
+    gridEl.innerHTML=h;
+  }
+}
+function renderIndChart(){
+  const box=$("dChart"), panes=$("dIndPanes"), chips=$("dIndChips");
+  if(!box) return;
+  const full=_chartRows, scale=IDX_LIST.includes(_chartSym)?1:1000;
+  const disp=full.slice(-60), off=full.length-disp.length;
+  const volFull=full.map(r=>r.v||0);
+  const volLines=[
+    {color:VOL_MA5_COL, vals:smaSeries(volFull,5).slice(off)},
+    {color:VOL_MA10_COL, vals:smaSeries(volFull,10).slice(off)},
+  ];
+  const studies=getStudies();
+  if(!window.PP_IND||!window.PP_STUDIES){
+    if(window.PP_CHART)PP_CHART.destroy();
+    box.innerHTML=chartSvg(disp, scale); if(panes)panes.innerHTML=""; if(chips)chips.innerHTML="";
+    renderFaLegend([], volLines, scale); renderFaPctGrid(); return;
+  }
+  const bars=full.map(r=>({t:r.t,o:r.o,h:r.h,l:r.l,c:r.c,v:r.v||0}));
+  const results=studies.map(st=>{
+    let res=null;
+    try{ res=PP_IND.compute(st.name, bars, st.inputs||{}); }catch(e){ res=null; }
+    return {st, res, spec:studySpec(st.name)};
+  });
+  const overlays=results.filter(x=>x.res&&x.res.plots&&x.res.plots.length&&x.spec&&x.spec.priceStudy);
+  const paneItems=results.filter(x=>x.res&&x.res.plots&&x.res.plots.length&&x.spec&&!x.spec.priceStudy);
+  // GĐ1 bieu do the he 2 (staging v2): ve bang PP_CHART/Lightweight Charts;
+  // loi tai thu vien hoac adapter -> roi ve SVG nhu ban live.
+  if(window.PP_CHART&&window.LightweightCharts){
+    let ok=false;
+    try{
+      ok=PP_CHART.render(box,{bars:full,scale:scale,pricePrecision:IDX_LIST.includes(_chartSym)?2:0,intraday:_chartIv!=="1D",studies:results,volLines:[
+        {color:VOL_MA5_COL, vals:smaSeries(volFull,5)},
+        {color:VOL_MA10_COL, vals:smaSeries(volFull,10)},
+      ]});
+    }catch(e){ ok=false; }
+    if(ok){
+      if(panes)panes.innerHTML="";
+      renderIndChips(studies);
+      renderFaLegend(overlays, volLines, scale);
+      renderFaPctGrid();
+      return;
+    }
+  }
+  box.innerHTML=chartSvgInd(disp, overlays, off, scale, volLines);
+  if(panes) panes.innerHTML=paneItems.map(p=>paneSvgInd(p, off, disp.length, scale)).join("");
+  renderIndChips(studies);
+  renderFaLegend(overlays, volLines, scale);
+  renderFaPctGrid();
+}
+function renderIndChips(studies){
+  const el=$("dIndChips"); if(!el) return;
+  let h="";
+  studies.forEach((st,i)=>{
+    const spec=studySpec(st.name);
+    const label=(spec&&spec.short?spec.short:st.name)+indParamSummary(st);
+    h+=`<span style="display:inline-flex;margin:0 6px 6px 0"><button data-ind="${i}" style="font-size:12px;padding:5px 9px;border-radius:6px 0 0 6px;background:var(--pp-bg2);border:1px solid var(--pp-line);border-right:none;cursor:pointer">${esc(label)}</button><button data-indx="${i}" aria-label="${esc(T("Xoá chỉ báo"))}" style="font-size:12px;padding:5px 7px;border-radius:0 6px 6px 0;background:var(--pp-bg2);border:1px solid var(--pp-line);cursor:pointer;color:var(--pp-mut)">×</button></span>`;
+  });
+  h+=`<button data-indadd="1" style="font-size:12px;padding:5px 9px;border-radius:6px;background:var(--pp-accent);color:#fff;border:1px solid var(--pp-accent);cursor:pointer;margin:0 6px 6px 0">${esc(T("+ Chỉ báo"))}</button>`;
+  el.innerHTML=h;
+  el.querySelectorAll("button[data-ind]").forEach(b=>b.onclick=()=>openIndEdit(Number(b.dataset.ind)));
+  el.querySelectorAll("button[data-indx]").forEach(b=>b.onclick=()=>{ const sts=getStudies(); sts.splice(Number(b.dataset.indx),1); saveStudies(sts); const p=$("dIndPanel"); if(p) p.style.display="none"; renderIndChart(); });
+  const add=el.querySelector("button[data-indadd]"); if(add) add.onclick=openIndList;
+}
+function openIndList(){
+  const p=$("dIndPanel"); if(!p) return; p.style.display="";
+  const impl=(window.PP_IND&&PP_IND.implemented)||[];
+  const btnStyle="font-size:12px;padding:5px 9px;border-radius:6px;background:var(--pp-bg2);border:1px solid var(--pp-line);cursor:pointer";
+  p.innerHTML=`<div style="display:flex;gap:6px;align-items:center"><input id="indSearch" type="text" placeholder="${esc(T("Tìm chỉ báo…"))}" style="flex:1;padding:6px 8px;border-radius:6px;border:1px solid var(--pp-line);background:var(--pp-bg2);color:inherit;font-size:13px"><button id="indClose" style="${btnStyle}">${esc(T("Đóng"))}</button></div><div id="indList" style="max-height:260px;overflow:auto;margin-top:6px"></div>`;
+  const sameAsFresh=(st,spec)=>{ if(!spec||!spec.inputs) return false; for(const inp of spec.inputs){ if(inp.type==="symbol") continue; if(String(indInputVal(st.inputs,inp))!==String(indInputVal({},inp))) return false; } return true; };
+  const draw=q=>{
+    const list=(window.PP_STUDIES||[]).filter(s=>!q||s.name.toLowerCase().includes(q)||(s.short||"").toLowerCase().includes(q));
+    const box=$("indList"); if(!box) return;
+    const stsNow=getStudies();
+    box.innerHTML=list.map(s=>{
+      const ok=impl.includes(s.name);
+      const act=stsNow.filter(x=>x.name===s.name);
+      const dup=ok&&act.some(x=>sameAsFresh(x,studySpec(s.name)));
+      const state=act.length?` <span style="color:var(--pp-mut);font-size:11px">· ${esc(T("đang bật"))}${act.length>1?" ×"+act.length:""}</span>`:"";
+      const btn=!ok?`<span style="font-size:11px;color:var(--pp-mut)">${esc(T("Sắp có"))}</span>`:dup?`<button data-del="${esc(s.name)}" style="${btnStyle};color:#dc2626">${esc(T("Tắt"))}</button>`:`<button data-add="${esc(s.name)}" style="${btnStyle}">${esc(T("Thêm"))}</button>`;
+      return `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 2px;border-bottom:1px solid var(--pp-line)"><span style="font-size:13px">${esc(s.name)}${s.short&&s.short!==s.name?` <span style="color:var(--pp-mut);font-size:11px">${esc(s.short)}</span>`:""}${state}</span>${btn}</div>`;
+    }).join("")||`<div class="hint">${esc(T("Không tìm thấy"))}</div>`;
+    box.querySelectorAll("button[data-add]").forEach(b=>b.onclick=()=>{ const sts=getStudies(); sts.push({name:b.dataset.add, inputs:{}}); saveStudies(sts); renderIndChart(); draw(($("indSearch").value||"").trim().toLowerCase()); });
+    box.querySelectorAll("button[data-del]").forEach(b=>b.onclick=()=>{ const nm=b.dataset.del; const sp=studySpec(nm); const sts=getStudies().filter(x=>!(x.name===nm&&sameAsFresh(x,sp))); saveStudies(sts); renderIndChart(); draw(($("indSearch").value||"").trim().toLowerCase()); });
+  };
+  draw("");
+  $("indSearch").oninput=e=>draw(e.target.value.trim().toLowerCase());
+  $("indClose").onclick=()=>{ p.style.display="none"; };
+}
+function openIndEdit(i){
+  const studies=getStudies(); const st=studies[i]; if(!st) return;
+  const spec=studySpec(st.name); const p=$("dIndPanel"); if(!p) return; p.style.display="";
+  const inputs=(spec?spec.inputs:[]).filter(inp=>inp.type!=="symbol");
+  const inStyle="width:100px;padding:4px 6px;border-radius:6px;border:1px solid var(--pp-line);background:var(--pp-bg2);color:inherit";
+  let h=`<div style="font-weight:700;font-size:13px">${esc(st.name)}${spec&&spec.short?" — "+esc(spec.short):""}</div>`;
+  for(const inp of inputs){
+    const v=indInputVal(st.inputs, inp);
+    if(inp.type==="integer"||inp.type==="float"){
+      h+=`<div class="row"><span class="k">${esc(inp.name)}</span><span class="v"><input data-inp="${esc(inp.id)}" type="number" step="${inp.type==="integer"?"1":"any"}" value="${v}" style="${inStyle}"></span></div>`;
+    } else if(inp.options){
+      h+=`<div class="row"><span class="k">${esc(inp.name)}</span><span class="v"><select data-inp="${esc(inp.id)}" style="${inStyle}">${inp.options.map(o=>`<option value="${esc(o)}" ${String(o)===String(v)?"selected":""}>${esc(o)}</option>`).join("")}</select></span></div>`;
+    } else if(inp.type==="bool"||inp.type==="boolean"){
+      h+=`<div class="row"><span class="k">${esc(inp.name)}</span><span class="v"><input data-inp="${esc(inp.id)}" type="checkbox" ${v?"checked":""}></span></div>`;
+    } else {
+      h+=`<div class="row"><span class="k">${esc(inp.name)}</span><span class="v"><input data-inp="${esc(inp.id)}" type="text" value="${esc(String(v))}" style="${inStyle}"></span></div>`;
+    }
+  }
+  h+=`<div style="margin-top:8px;display:flex;gap:6px"><button id="indDel" style="font-size:12px;padding:5px 9px;border-radius:6px;background:var(--pp-bg2);border:1px solid var(--pp-line);cursor:pointer;color:#dc2626">${esc(T("Xoá chỉ báo"))}</button><button id="indDone" style="font-size:12px;padding:5px 9px;border-radius:6px;background:var(--pp-bg2);border:1px solid var(--pp-line);cursor:pointer">${esc(T("Đóng"))}</button></div>`;
+  p.innerHTML=h;
+  p.querySelectorAll("[data-inp]").forEach(el2=>{
+    el2.onchange=()=>{
+      const inp=inputs.find(x=>x.id===el2.dataset.inp);
+      let val;
+      if(el2.type==="checkbox") val=el2.checked;
+      else if(inp&&inp.type==="integer") val=parseInt(el2.value,10);
+      else if(inp&&inp.type==="float") val=parseFloat(el2.value);
+      else val=el2.value;
+      if(typeof val==="number"&&isNaN(val)) return;
+      st.inputs=st.inputs||{}; st.inputs[el2.dataset.inp]=val;
+      studies[i]=st; saveStudies(studies); renderIndChart();
+    };
+  });
+  $("indDel").onclick=()=>{ studies.splice(i,1); saveStudies(studies); p.style.display="none"; renderIndChart(); };
+  $("indDone").onclick=()=>{ p.style.display="none"; };
 }
 document.querySelectorAll("#dIv button").forEach(b=>b.onclick=()=>{ if(_chartSym) loadChart(_chartSym, b.textContent); });
 async function loadFund(sym){
   try{
     const j=await api("/fundamentals?symbol="+encodeURIComponent(sym));
-    const f=j.fundamentals||j;
+    const f=j.fundamentals||j; _lastFund=f; renderFaPctGrid();
     const row=(k,v,cls)=>`<div class="row"><span class="k">${k}</span><span class="v ${cls||""}">${v}</span></div>`;
     $("dRatios").innerHTML=row("P/E",f.pe_ttm!=null?Number(f.pe_ttm).toFixed(1):"—")+row("P/B",f.pb!=null?Number(f.pb).toFixed(1):"—")+row("ROE",f.roe_ttm!=null?Number(f.roe_ttm).toFixed(1)+"%":"—","up")+row("ROA",f.roa_ttm!=null?Number(f.roa_ttm).toFixed(1)+"%":"—")+row("Nợ / Vốn chủ",f.de_ratio!=null?Number(f.de_ratio).toFixed(2):"—");
   }catch(e){}
@@ -879,50 +2166,350 @@ $("dlXls").onclick=()=>{
   dlBlob(h+'</table></body></html>', `${_fsSym}_${FS_TNAME[_fsType]}.xls`, "application/vnd.ms-excel");
 };
 
-// ---- AI Chat ----
+// ---- AI Chat (Dot A): trang rieng, hoi qua lop du lieu da cong bo,
+// tra loi the cau truc + dong nguon/as_of; khong chan goi/han muc
+// (worker mo full giai doan thu nghiem). ----
 function chatAdd(who,text){
   const d=document.createElement("div");
-  d.style.cssText="margin:8px 0;font-size:12px;line-height:1.6";
-  d.innerHTML=(who==="u"?'<div style="text-align:right"><span style="background:var(--pp-accent);color:#fff;padding:8px 12px;border-radius:12px;display:inline-block;max-width:85%">'+esc(text)+'</span></div>':'<div><span style="background:var(--pp-bg2);padding:8px 12px;border-radius:12px;display:inline-block;max-width:90%">'+text+'</span></div>');
+  d.style.cssText="margin:8px 0;font-size:12.5px;line-height:1.6";
+  d.innerHTML=(who==="u"?'<div style="text-align:right"><span style="background:var(--pp-accent);color:#fff;padding:8px 12px;border-radius:12px;display:inline-block;max-width:85%">'+esc(text)+'</span></div>':'<div><div style="background:var(--pp-bg2);padding:10px 12px;border-radius:12px;display:inline-block;max-width:94%;width:94%;box-sizing:border-box">'+text+'</div></div>');
   $("chatBox").appendChild(d);$("chatBox").scrollTop=$("chatBox").scrollHeight;
+  return d;
 }
-async function chatAsk(){
-  const q=$("chatIn").value.trim();if(!q)return;
-  $("chatIn").value="";chatAdd("u",q);chatAdd("a","Đang tìm…");
-  const box=$("chatBox");const loading=box.lastChild;
-  try{
-    const sym=(q.toUpperCase().match(/\b[A-Z]{3,4}\b/)||[])[0];
-    let ans="";
-    if(sym){
-      const j=await api("/quote?symbol="+sym);const qq=j.quote||j;
-      ans=`<b>${esc(sym)}</b>: ${fmtN(qq.close)} (${fmtPct(qq.pct_change)})`;
-      if(qq.foreign_buy_value!=null)ans+=`<br>NN mua/bán: ${fmtTy(qq.foreign_buy_value)} / ${fmtTy(qq.foreign_sell_value)}`;
-    }else if(/sàng lọc|trend/i.test(q)){
-      const j=await api("/screener");const rows=(j.rows||[]).filter(r=>!!r.trend_template).slice(0,5);
-      ans="Mã đạt Trend Template: "+rows.map(r=>`<b style="cursor:pointer" onclick="openSym('${esc(r.symbol)}')">${esc(r.symbol)}</b>`).join(", ");
-    }else if(/tín hiệu|signal/i.test(q)){
-      const j=await api("/signals");const sigs=j.signals||[];
-      ans=sigs.length?sigs.slice(0,3).map(s=>`${esc(s.symbol)} — ${esc(s.pattern)}`).join("<br>"):"Hôm nay chưa có tín hiệu mới.";
-    }else if(/thị trường|regime/i.test(q)){
-      const j=await api("/regime");
-      ans=j.regime?`Chế độ: <b>${esc(j.regime)}</b> — ${esc(j.desc||"")}`:"Chưa có dữ liệu regime.";
-    }else{
-      ans="Em trả lời được: giá mã (gõ tên mã, vd FPT), sàng lọc trend, tín hiệu, chế độ thị trường.";
+let _mcpId=0;
+async function mcpCall(name,args){
+  const tok=localStorage.getItem("elab_authToken")||"";
+  const r=await fetch("/api/mcp",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+tok},
+    body:JSON.stringify({jsonrpc:"2.0",id:++_mcpId,method:"tools/call",params:{name,arguments:args||{}}})});
+  const j=await r.json().catch(()=>null);
+  if(!j||j.error) throw new Error((j&&j.error&&j.error.message)||"mcp");
+  const res=j.result||{};
+  let p=res.structuredContent;
+  if(!p&&res.content&&res.content[0]&&res.content[0].text){ try{ p=JSON.parse(res.content[0].text); }catch(e){} }
+  if(!p) throw new Error("mcp-empty");
+  return p;
+}
+function chatDsLabel(ds){
+  const s=String(ds||"");
+  const M=[["foreign_flow","Dòng tiền khối ngoại"],["prop_flow","Dòng tiền tự doanh"],["company_profile","Hồ sơ công ty"],["quotes","Bảng giá"],["ohlcv","Nến ngày"],["indices","Chỉ số thị trường"],["screener","Bảng sàng lọc"],["fundamentals","Chỉ số tài chính"],["statements","Báo cáo tài chính"],["holders","Sổ cổ đông"],["consensus","Đồng thuận các công ty chứng khoán"],["sectors","Ngành"],["macro","Số liệu vĩ mô"],["events","Sự kiện"],["news","Tin tức"]];
+  for(const [k,v] of M) if(s.includes(k)) return v;
+  return "Dữ liệu thị trường";
+}
+function chatAsOf(s){
+  if(!s) return "";
+  const str=String(s);
+  if(str.includes("T")){ const [d,t]=str.split("T"); return d+" "+(t||"").slice(0,5); }
+  return str;
+}
+function chatMetaHtml(p){
+  const m=p&&p.meta; if(!m) return "";
+  let h=`<div class="chatmeta">${esc(T("Nguồn"))}: ${esc(chatDsLabel(m.source&&m.source.dataset))}`;
+  if(m.as_of) h+=` · ${esc(T("Dữ liệu tại"))}: ${esc(chatAsOf(m.as_of))}`;
+  if(m.stale) h+=` · <span class="down">${esc(T("dữ liệu có thể đã cũ"))}</span>`;
+  if(m.verification==="parity_pending") h+=`<br><span class="down">${esc(T("Số đang được đối chiếu chéo, chưa chốt"))}</span>`;
+  if(m.coverage&&m.coverage.note) h+=`<br>${esc(m.coverage.note)}`;
+  return h+"</div>";
+}
+const CHAT_ROUTES=[];
+function chatReg(label,tool,args){ CHAT_ROUTES.push({label,tool,args}); return CHAT_ROUTES.length-1; }
+function chatChipTap(i){ const r=CHAT_ROUTES[i]; if(!r) return; chatRun(r.label,{tool:r.tool,args:r.args}); }
+function chatFollowHtml(items){
+  if(!items||!items.length) return "";
+  return `<div class="chatfollow">${items.map(it=>`<button class="chipq" onclick="chatChipTap(${chatReg(it.label,it.tool,it.args)})">${esc(it.label)}</button>`).join("")}</div>`;
+}
+function symLink(sym){ return `<span class="symlink" onclick="openSym('${esc(sym)}')">${esc(sym)}</span>`; }
+function chatRow(k,v){ return `<div class="row"><span class="k">${esc(k)}</span><span class="v">${v}</span></div>`; }
+function chatRender(route,p){
+  if(!p) return esc(T("Chưa có dữ liệu"));
+  if(p.error) return `<b>${esc(p.error.message||T("Chưa có dữ liệu"))}</b>`+chatMetaHtml(p);
+  const d=p.data||{}, tool=route.tool, a=route.args||{};
+  let h="", follow=[];
+  const symFollow=(s)=>[
+    {label:`${T("Giá")} ${s}`,tool:"get_quote",args:{symbol:s}},
+    {label:`${T("Biểu đồ 20 phiên")} ${s}`,tool:"get_ohlcv",args:{symbol:s,limit:20}},
+    {label:`${T("Hồ sơ & cổ đông")} ${s}`,tool:"get_company_profile",args:{symbol:s}},
+    {label:`${T("Đồng thuận")} ${s}`,tool:"get_consensus",args:{symbol:s}},
+    {label:`${T("Khối ngoại")} ${s}`,tool:"get_flow",args:{kind:"foreign",symbol:s,days:30}},
+  ];
+  if(tool==="get_quote"){
+    const pc=d.pct_change, cls=pc>0?"up":pc<0?"down":"";
+    h=`<div style="font-size:15px"><b>${esc(d.symbol||a.symbol||"")}</b> <span style="font-size:12px;color:var(--pp-mut)">${esc(d.exchange||"")}</span></div>`
+      +`<div style="font-size:22px;font-weight:800;margin:2px 0">${fmtN(d.close)} <span class="${cls}" style="font-size:13px">${fmtPct(pc)}</span></div>`;
+    if(d.volume!=null) h+=chatRow(T("Khối lượng"),fmtN(d.volume));
+    if(d.value_vnd!=null) h+=chatRow(T("Giá trị"),fmtTyAbs(d.value_vnd));
+    if(d.foreign_buy_value!=null||d.foreign_sell_value!=null) h+=chatRow(T("NN mua / bán"),`<span class="up">${fmtTyAbs(d.foreign_buy_value||0)}</span> / <span class="down">${fmtTyAbs(d.foreign_sell_value||0)}</span>`);
+    follow=symFollow(d.symbol||a.symbol);
+  } else if(tool==="get_ohlcv"){
+    const rows=d.rows||[], sym=d.symbol||a.symbol, isIdx=IDX_LIST.includes(sym);
+    const mult=isIdx?1:1000;
+    if(!rows.length) h=esc(T("Chưa có dữ liệu"));
+    else{
+      const last=rows[rows.length-1];
+      h=`<b>${esc(sym)}</b> — ${esc(T("Đóng cửa phiên gần nhất"))}: <b>${fmtN(last.c*mult)}</b> (${esc(last.t||"")})`;
+      h+='<table class="chatft">'+rows.slice(-6).reverse().map(r=>`<tr><td>${esc(r.t||"")}</td><td style="text-align:right">${fmtN(r.o*mult)}</td><td style="text-align:right">${fmtN(r.h*mult)}</td><td style="text-align:right">${fmtN(r.l*mult)}</td><td style="text-align:right"><b>${fmtN(r.c*mult)}</b></td><td style="text-align:right">${fmtN(r.v||0)}</td></tr>`).join("")+"</table>";
+      h+=`<div style="font-size:11px;color:var(--pp-mut)">${esc(T("Ngày · Mở · Cao · Thấp · Đóng · Khối lượng"))}</div>`;
     }
-    loading.querySelector("span").innerHTML=ans;
-  }catch(e){loading.querySelector("span").textContent="Lỗi tải dữ liệu. Thử lại sau.";}
-  box.scrollTop=box.scrollHeight;
+    if(!isIdx) follow=symFollow(sym);
+  } else if(tool==="get_indices"){
+    const ix=d.indices||{};
+    if(d.regime) h+=`<div style="margin-bottom:6px">${esc(T("Trạng thái thị trường"))}: <b>${esc(typeof d.regime==="string"?d.regime:(d.regime.regime||""))}</b>${d.regime&&d.regime.desc?` — ${esc(d.regime.desc)}`:""}</div>`;
+    const tbl=(arr,tap)=>'<table class="chatft">'+(arr||[]).map(e=>{ const code=e.symbol||e.code||e.name||""; const pc=e.pct_change!=null?e.pct_change:e.pct; return `<tr><td>${tap&&IDX_LIST.includes(code)?`<span class="symlink" onclick="openIndex('${esc(code)}')">${esc(e.name||code)}</span>`:esc(e.name||code)}</td><td style="text-align:right"><b>${fmtN(e.close)}</b></td><td style="text-align:right" class="${(pc||0)>=0?"up":"dn"}">${pc!=null?fmtPct(pc):""}</td></tr>`; }).join("")+"</table>";
+    h+=tbl(ix.main,true);
+    if(ix.sectors&&ix.sectors.length) h+=`<div style="margin-top:8px;font-weight:700">${esc(T("Chỉ số ngành"))}</div>`+tbl(ix.sectors,false);
+    follow=[{label:"VNINDEX 20 phiên",tool:"get_ohlcv",args:{symbol:"VNINDEX",limit:20}}];
+  } else if(tool==="get_company_profile"){
+    const sym=a.symbol||"", sh=(d.shareholders||[]).slice().sort((x,y)=>(y.shares_owned||0)-(x.shares_owned||0));
+    h=`<b>${esc(sym)}</b> — ${esc(T("Hồ sơ & cổ đông"))}`;
+    if(sh.length){
+      const top=sh[0];
+      h+=`<div style="margin-top:4px">${esc(T("Cổ đông lớn nhất"))}: <b>${esc(top.name||"")}</b> — ${fmtN(top.shares_owned)} ${esc(T("cổ phiếu"))} (${top.ownership_percentage!=null?Number(top.ownership_percentage).toFixed(2).replace(".",",")+"%":""})</div>`;
+      h+='<table class="chatft">'+sh.slice(0,5).map(r=>`<tr><td>${esc(r.name||"")}</td><td style="text-align:right">${fmtN(r.shares_owned)}</td><td style="text-align:right">${r.ownership_percentage!=null?Number(r.ownership_percentage).toFixed(2).replace(".",",")+"%":"—"}</td></tr>`).join("")+"</table>";
+    } else h+=`<br>${esc(T("Chưa có dữ liệu"))}`;
+    follow=symFollow(sym);
+  } else if(tool==="find_holder"){
+    const hs=d.holders||[];
+    if(!hs.length) h=esc(T("Không tìm thấy cổ đông khớp tên này trong chỉ mục đã công bố."));
+    else h=hs.map(hd=>{
+      const rows=(hd.holdings||[]).slice().sort((x,y)=>(y.quantity||0)-(x.quantity||0));
+      let s=`<b>${esc(hd.name||"")}</b>${hd.tot?` — ${esc(T("tổng"))} ${fmtN(hd.tot)} ${esc(T("cổ phiếu"))}`:""}`;
+      s+='<table class="chatft">'+rows.slice(0,10).map(r=>`<tr><td>${symLink(r.symbol)}${r.position?`<div style="font-size:11px;color:var(--pp-mut)">${esc(r.position)}</div>`:""}</td><td style="text-align:right">${fmtN(r.quantity)}</td><td style="text-align:right">${r.pct!=null?(r.pct*100).toFixed(2).replace(".",",")+"%":"—"}</td></tr>`).join("")+"</table>";
+      return s;
+    }).join("");
+  } else if(tool==="get_flow"){
+    const kind=a.kind==="proprietary"?T("Tự doanh"):T("Khối ngoại");
+    const pickV=(r,...ks)=>{ for(const k of ks){ if(r[k]!=null) return r[k]; } return null; };
+    if(a.symbol){
+      const rows=d.rows||[];
+      h=`<b>${esc(a.symbol)}</b> — ${kind} (${esc(T("mua/bán ròng theo phiên"))})`;
+      if(rows.length){
+        const rowsDesc=rows.slice().sort((x,y)=>String(y.trade_date||y.date||"").localeCompare(String(x.trade_date||x.date||"")));
+        h+='<table class="chatft">'+rowsDesc.slice(0,8).map(r=>{
+          const bv=pickV(r,"buy_value_est","buy_value_vnd","buy_value"), sv=pickV(r,"sell_value_est","sell_value_vnd","sell_value"), net=pickV(r,"net_value_est","net_value_vnd","net_value");
+          return `<tr><td>${esc(r.trade_date||r.date||"")}</td><td style="text-align:right">${bv==null?"—":fmtTyAbs(bv)}</td><td style="text-align:right">${sv==null?"—":fmtTyAbs(sv)}</td><td style="text-align:right" class="${net==null?"":net>=0?"up":"dn"}"><b>${net==null?"—":fmtTyAbs(net)}</b></td></tr>`; }).join("")+"</table>";
+        h+=`<div style="font-size:11px;color:var(--pp-mut)">${esc(T("Ngày · Mua · Bán · Ròng (đồng)"))}</div>`;
+      } else h+=`<br>${esc(T("Chưa có dữ liệu"))}`;
+      follow=symFollow(a.symbol);
+    } else {
+      let rows=d.rows||[];
+      if(!rows.length&&d.by_symbol) rows=Object.keys(d.by_symbol).map(k=>({symbol:k,...(d.by_symbol[k]||{})}));
+      const netOf=r=>{ const v=pickV(r,"net_value_vnd","net_value_est","net_value","net"); return v==null?0:v; };
+      rows=rows.slice().sort((x,y)=>Math.abs(netOf(y))-Math.abs(netOf(x))).slice(0,10);
+      h=`<b>${kind} — ${esc(T("hôm nay"))}</b>`;
+      if(rows.length) h+='<table class="chatft">'+rows.map(r=>`<tr><td>${r.symbol?symLink(r.symbol):""}</td><td style="text-align:right" class="${netOf(r)>=0?"up":"dn"}"><b>${fmtTyAbs(netOf(r))}</b></td></tr>`).join("")+"</table>";
+      else h+=`<br>${esc(T("Chưa có dữ liệu"))}`;
+    }
+  } else if(tool==="get_sector"){
+    if(a.code){
+      h=`<b>${esc(d.name||a.code)}</b> — ${esc(T("Ngành"))}`;
+      const roePct=v=>v==null?null:((Math.abs(v)<=1.5?v*100:v).toFixed(2).replace(".",",")+"%");
+      if(d.pe!=null) h+=chatRow("P/E",Number(d.pe).toFixed(2).replace(".",","));
+      if(d.roe_ttm!=null) h+=chatRow("ROE (TTM)",roePct(d.roe_ttm));
+      if(d.npat_ttm!=null) h+=chatRow(T("LNST (TTM)"),fmtTyAbs(d.npat_ttm));
+      if(d.mcap!=null) h+=chatRow(T("Vốn hoá ngành"),fmtTyAbs(d.mcap));
+      if(d.n_members!=null) h+=chatRow(T("Số mã thành viên"),fmtN(d.n_members));
+      if(d.pe==null&&d.roe_ttm==null) h+=`<br>${esc(T("Chưa có dữ liệu"))}`;
+      h+=`<div style="font-size:11px;color:var(--pp-mut)">${esc(T("Kỳ"))}: ${esc(d.latest_period||"")}</div>`;
+    } else {
+      const rows=d.rows||[];
+      const roePct1=v=>v==null?"":("ROE "+(Math.abs(v)<=1.5?v*100:v).toFixed(1).replace(".",",")+"%");
+      h=`<b>${esc(T("Ngành"))}</b>`;
+      h+='<table class="chatft">'+rows.map(r=>{ const pe=(r.pe!=null?r.pe:r.pe_ttm); return `<tr><td>${esc(r.name||r.code||"")}</td><td style="text-align:right">${pe!=null?"P/E "+Number(pe).toFixed(1).replace(".",","):""}</td><td style="text-align:right">${roePct1(r.roe_ttm)}</td></tr>`; }).join("")+"</table>";
+    }
+    follow=[{label:T("Tất cả ngành"),tool:"get_sector",args:{}}];
+  } else if(tool==="get_macro"){
+    if(a.series){
+      const rows=d.rows||[];
+      const sLbl={omo:"OMO",fx_center:T("Tỷ giá trung tâm USD/VND"),fx_vcb:"Vietcombank",gold_sjc:T("Vàng SJC (bán)"),us10y:T("TP Mỹ 10 năm"),ust_yield:T("TP Mỹ 10 năm"),fed_funds:"Fed",fed_effr:"Fed"}[a.series]||a.series;
+      h=`<b>${esc(sLbl)}</b>`;
+      const last=rows.length?rows[rows.length-1]:((d.series&&d.series.last)||null);
+      if(last){
+        if(a.series==="omo"){
+          if(last.total!=null) h+=chatRow(T("Tổng trúng thầu"),fmtTyAbs(last.total));
+          if(last.total===0) h+=`<div style="margin-top:2px">${esc(T("Không có giao dịch trúng thầu trong ngày"))}</div>`;
+          (last.tenors||[]).filter(tn=>(tn.volume||0)>0).forEach(tn=>{ h+=chatRow(`${tn.days} ${esc(T("ngày"))}`,`${fmtTyAbs(tn.volume)} · ${tn.rate!=null?Number(tn.rate)+"%":""}`); });
+        } else {
+          const KLBL={rate:T("Tỷ giá"),buy:T("Mua"),sell:T("Bán"),yield:T("Lợi suất"),total:T("Tổng")};
+          h+=Object.keys(last).filter(k=>k!=="date"&&k!=="notice"&&typeof last[k]==="number").slice(0,5).map(k=>chatRow(KLBL[k]||k, Math.abs(last[k])>=1e9?fmtTyAbs(last[k]):fmtN(last[k]))).join("");
+          if(last.notice) h+=`<div style="font-size:11px;color:var(--pp-mut)">${esc(T("Thông báo"))}: ${esc(last.notice)}</div>`;
+        }
+        h+=`<div style="font-size:11px;color:var(--pp-mut)">${esc(T("Ngày"))}: ${esc(last.date||"")}</div>`;
+      } else h+=`<br>${esc(T("Chưa có dữ liệu"))}`;
+    } else {
+      const pr=d.policy_rates;
+      h=`<b>${esc(T("Vĩ mô"))}</b>`;
+      if(pr){
+        if(pr.refinancing!=null) h+=chatRow(T("Lãi suất tái cấp vốn"),Number(pr.refinancing).toFixed(2).replace(".",",")+"%");
+        if(pr.rediscount!=null) h+=chatRow(T("Lãi suất tái chiết khấu"),Number(pr.rediscount).toFixed(2).replace(".",",")+"%");
+        if(pr.deposit_avg!=null) h+=chatRow(T("Huy động bình quân"),Number(pr.deposit_avg).toFixed(2).replace(".",",")+"%");
+        if(pr.date) h+=`<div style="font-size:11px;color:var(--pp-mut)">${esc(T("Hiệu lực từ"))}: ${esc(pr.date)}</div>`;
+      }
+      const S=d.series||{};
+      const one=(lbl,sv,fmt)=>{ if(!sv||!sv.last) return ""; return chatRow(lbl,fmt(sv.last)); };
+      h+=one(T("Tỷ giá trung tâm USD/VND"),S.fx_center,l=>fmtN(l.rate)+" ₫");
+      h+=one(T("Vàng SJC (bán)"),S.gold_sjc,l=>fmtN(l.sell)+" ₫");
+      h+=one(T("TP Mỹ 10 năm"),S.us10y||S.ust_yield,l=>(l.yield!=null?Number(l.yield).toFixed(2).replace(".",","):"")+"%");
+      if(!pr&&!S.fx_center) h+=`<br>${esc(T("Chưa có dữ liệu"))}`;
+    }
+    follow=[{label:"OMO",tool:"get_macro",args:{series:"omo"}},{label:T("Tỷ giá trung tâm"),tool:"get_macro",args:{series:"fx_center"}}];
+  } else if(tool==="get_consensus"){
+    if(a.symbol){
+      h=`<b>${esc(a.symbol)}</b> — ${esc(T("Đồng thuận các công ty chứng khoán"))}`;
+      if(d.n_sources!=null) h+=chatRow(T("Số hãng có khuyến nghị"),fmtN(d.n_sources));
+      if(d.mean_target!=null) h+=chatRow(T("Giá mục tiêu trung bình"),fmtN(d.mean_target));
+      if(d.cur_price!=null) h+=chatRow(T("Giá hiện tại"),fmtN(d.cur_price));
+      if(d.upside!=null) h+=chatRow(T("Dư địa tăng"),`<span class="${d.upside>=0?"up":"dn"}">${fmtPct(d.upside*100)}</span>`);
+      const firms=d.firms||[];
+      if(firms.length) h+='<table class="chatft">'+firms.map(f=>`<tr><td>${f.link?`<a href="${esc(f.link)}" target="_blank" rel="noopener" style="color:var(--pp-accent);text-decoration:none">${esc(f.src||"")}</a>`:esc(f.src||"")}</td><td>${esc(f.kn||"")}</td><td style="text-align:right">${f.tgt!=null?fmtN(f.tgt):"—"}</td><td style="text-align:right">${esc(f.date||"")}</td></tr>`).join("")+"</table>";
+      follow=symFollow(a.symbol);
+    } else {
+      const rows=d.rows||[];
+      h=`<b>${esc(T("Đồng thuận — dư địa tăng cao nhất"))}</b>`;
+      h+='<table class="chatft">'+rows.slice(0,10).map(r=>`<tr><td>${symLink(r.symbol)}</td><td style="text-align:right">${r.n_sources!=null?fmtN(r.n_sources)+" "+esc(T("hãng")):""}</td><td style="text-align:right">${r.mean_target!=null?fmtN(r.mean_target):"—"}</td><td style="text-align:right" class="${(r.upside||0)>=0?"up":"dn"}">${r.upside!=null?fmtPct(r.upside*100):"—"}</td></tr>`).join("")+"</table>";
+    }
+  } else if(tool==="get_screener"){
+    const rows=d.rows||[];
+    h=`<b>${esc(route.label||T("Sàng lọc"))}</b>`;
+    h+='<table class="chatft">'+rows.map((r,i)=>`<tr><td style="color:var(--pp-mut)">${i+1}</td><td>${symLink(r.symbol)}</td><td style="text-align:right">${fmtN((r.close||0)*1000)}</td><td style="text-align:right" class="${(r.pct_change||0)>=0?"up":"dn"}">${r.pct_change!=null?fmtPct(r.pct_change):""}</td><td style="text-align:right">${r.pe_ttm!=null?"P/E "+Number(r.pe_ttm).toFixed(1).replace(".",","):""}</td><td style="text-align:right">${r.roe_ttm!=null?"ROE "+Number(r.roe_ttm).toFixed(1).replace(".",",")+"%":""}</td></tr>`).join("")+"</table>";
+    h+=`<div style="font-size:11px;color:var(--pp-mut)">${esc(T("Giá tính bằng đồng"))}</div>`;
+  } else if(tool==="get_fundamentals"){
+    h=`<b>${esc(a.symbol||"")}</b> — ${esc(T("Chỉ số tài chính"))}${d.quarter?` (${esc(d.quarter)})`:""}`;
+    if(d.pe_ttm!=null) h+=chatRow("P/E",Number(d.pe_ttm).toFixed(2).replace(".",","));
+    if(d.pb!=null) h+=chatRow("P/B",Number(d.pb).toFixed(2).replace(".",","));
+    if(d.roe_ttm!=null) h+=chatRow("ROE",Number(d.roe_ttm).toFixed(2).replace(".",",")+"%");
+    if(d.roa_ttm!=null) h+=chatRow("ROA",Number(d.roa_ttm).toFixed(2).replace(".",",")+"%");
+    if(d.de_ratio!=null) h+=chatRow(T("Nợ / Vốn chủ"),Number(d.de_ratio).toFixed(2).replace(".",","));
+    if(d.eps!=null) h+=chatRow("EPS",fmtN(d.eps)+" ₫");
+    if(d.bvps!=null) h+=chatRow("BVPS",fmtN(d.bvps)+" ₫");
+    follow=symFollow(a.symbol);
+  } else if(tool==="get_statements"){
+    const types=d.types||{}, IS=types.IS||[];
+    const byId=(id)=>IS.find(r=>r.id===id);
+    const findBest=(re,notRe)=>{ const cs=IS.filter(r=>re.test(r.name||"")&&!(notRe&&notRe.test(r.name||"")));
+      return cs.find(r=>{ const vs=Object.values(r.v||{}); return vs.some(v=>v!=null); })||cs[0]||null; };
+    const rev=byId("IS_NET_INTEREST_INCOME")||byId("IS_REVENUE")||byId("IS_NET_REVENUE")||findBest(/doanh thu/i,/tài chính/i);
+    const prf=byId("IS_NET_PROFIT_AFTER_TAX")||findBest(/^lợi nhuận sau thuế/i);
+    const pers=(d.periods||[]).slice(0,3);
+    h=`<b>${esc(a.symbol||"")}</b> — ${esc(T("Kết quả kinh doanh"))}`;
+    const line=(lbl,r)=>{ if(!r) return ""; return `<div style="margin-top:4px">${esc(lbl)}:<br>${pers.map(pp=>`${esc(pp)}: <b>${fmtTyAbs(r.v?r.v[pp]:null)}</b>`).join(" · ")}</div>`; };
+    h+=line(rev&&rev.id==="IS_NET_INTEREST_INCOME"?T("Thu nhập lãi thuần"):T("Doanh thu"),rev)+line(T("Lợi nhuận sau thuế"),prf);
+    if(!rev&&!prf) h+=`<br>${esc(T("Chưa có dữ liệu"))}`;
+    follow=symFollow(a.symbol);
+  } else if(tool==="get_events"){
+    const items=d.items||[];
+    h=`<b>${esc(a.symbol||"")}</b> — ${esc(T("Sự kiện"))}`;
+    if(items.length) h+='<table class="chatft">'+items.slice(0,8).map(e=>`<tr><td style="white-space:nowrap">${esc(e.date||e.event_date||"")}</td><td>${esc(e.title||e.name||e.event_type||"")}</td></tr>`).join("")+"</table>";
+    else h+=`<br>${esc(T("Chưa có dữ liệu"))}`;
+    follow=symFollow(a.symbol);
+  } else if(tool==="get_news"){
+    const items=d.items||[];
+    h=`<b>${esc(T("Tin tức"))}${a.symbol?" — "+esc(a.symbol):""}</b>`;
+    if(d.latest_published_at) h+=`<div style="margin-top:4px">${esc(T("Tin mới nhất"))}: <b>${esc(chatAsOf(d.latest_published_at))}</b></div>`;
+    if(items.length) h+='<div style="margin-top:4px">'+items.slice(0,6).map(n=>`<div style="padding:5px 0;border-bottom:1px solid var(--pp-line)">${n.url?`<a href="${esc(n.url)}" target="_blank" rel="noopener" style="color:var(--pp-ink);text-decoration:none">${esc(n.title||"")}</a>`:esc(n.title||"")}<div style="font-size:11px;color:var(--pp-mut)">${esc(chatAsOf(n.published_at||n.time||""))}${n.source?" · "+esc(n.source):""}</div></div>`).join("")+"</div>";
+    else h+=`<br>${esc(T("Chưa có dữ liệu"))}`;
+  }
+  return h+chatFollowHtml(follow)+chatMetaHtml(p);
+}
+function chatRoute(qRaw){
+  const q=qRaw||"";
+  const symM=q.toUpperCase().match(/\b[A-Z]{3,4}\b/);
+  const sym=symM?symM[0]:null;
+  const low=q.toLowerCase();
+  const has=(re)=>re.test(low);
+  if(has(/lãi suất điều hành|tái cấp vốn|tái chiết khấu/)) return {tool:"get_macro",args:{},label:q};
+  if(has(/omo/)) return {tool:"get_macro",args:{series:"omo"},label:q};
+  if(has(/tỷ giá trung tâm/)) return {tool:"get_macro",args:{series:"fx_center"},label:q};
+  if(has(/giá vàng|vàng sjc/)) return {tool:"get_macro",args:{series:"gold_sjc"},label:q};
+  if(has(/vĩ mô/)) return {tool:"get_macro",args:{},label:q};
+  if(has(/ngành/)){ if(has(/ngân hàng/)) return {tool:"get_sector",args:{code:"8300"},label:q}; return {tool:"get_sector",args:{},label:q}; }
+  if(has(/đồng thuận|khuyến nghị|giá mục tiêu/)) return {tool:"get_consensus",args:sym?{symbol:sym}:{},label:q};
+  if(has(/tự doanh/)) return {tool:"get_flow",args:sym?{kind:"proprietary",symbol:sym,days:30}:{kind:"proprietary"},label:q};
+  if(has(/khối ngoại|nước ngoài/)){ const dm=low.match(/(\d+)\s*ngày/); return {tool:"get_flow",args:sym?{kind:"foreign",symbol:sym,days:dm?Number(dm[1]):30}:{kind:"foreign"},label:q}; }
+  if(has(/nắm/)&&!has(/cổ đông lớn/)){
+    const name=q.replace(/ông|bà|anh|chị/gi," ").replace(/đang\s*nắm.*$/i,"").replace(/nắm.*$/i,"").replace(/[?？]/g,"").trim();
+    if(name.split(/\s+/).length>=2) return {tool:"find_holder",args:{name},label:q};
+  }
+  if(has(/p\/e thấp nhất|thấp nhất thị trường/)) return {tool:"get_screener",args:{sort_by:"pe_ttm",order:"asc",limit:10},label:T("P/E thấp nhất thị trường")};
+  if(has(/tăng mạnh nhất/)) return {tool:"get_screener",args:{sort_by:"pct_change",order:"desc",limit:10},label:T("Tăng mạnh nhất")};
+  if(has(/giá trị giao dịch|thanh khoản cao nhất|giá trị lớn nhất/)) return {tool:"get_screener",args:{sort_by:"value_vnd",order:"desc",limit:10},label:T("Giá trị giao dịch lớn nhất")};
+  if(has(/sàng lọc|xếp hạng/)) return {tool:"get_screener",args:{sort_by:"pct_change",order:"desc",limit:10},label:T("Sàng lọc")};
+  if(has(/cổ đông lớn|hồ sơ/)) { if(sym) return {tool:"get_company_profile",args:{symbol:sym},label:q}; }
+  if(has(/sự kiện|cổ tức|đại hội/)) { if(sym) return {tool:"get_events",args:{symbol:sym},label:q}; }
+  if(has(/doanh thu|lợi nhuận|kết quả kinh doanh|báo cáo tài chính/)) { if(sym) return {tool:"get_statements",args:{symbol:sym,periods:4},label:q}; }
+  if(has(/chỉ số tài chính|p\/e của|roe của|cơ bản/)) { if(sym) return {tool:"get_fundamentals",args:{symbol:sym},label:q}; }
+  if(has(/tin/)) return {tool:"get_news",args:sym?{symbol:sym}:{},label:q};
+  if(has(/chỉ số/)&&(has(/phiên|biểu đồ|diễn biến|nến/))) { const ix=["VNINDEX","VN30","HNX","UPCOM"].find(x=>q.toUpperCase().includes(x))||"VNINDEX"; const lm=low.match(/(\d+)\s*phiên/); return {tool:"get_ohlcv",args:{symbol:ix,limit:lm?Number(lm[1]):20},label:q}; }
+  if(has(/biểu đồ|nến|diễn biến|phiên gần/)) { if(sym&&!IDX_LIST.includes(sym)) return {tool:"get_ohlcv",args:{symbol:sym,limit:20},label:q}; if(sym) return {tool:"get_ohlcv",args:{symbol:sym,limit:20},label:q}; }
+  if(has(/chỉ số|thị trường hôm nay/)) return {tool:"get_indices",args:{},label:q};
+  if(sym) return {tool:"get_quote",args:{symbol:sym},label:q};
+  return null;
+}
+async function chatRun(label,route){
+  chatAdd("u",label);
+  const d=chatAdd("a",esc(T("Đang tìm…")));
+  const inner=d.querySelector("div>div");
+  try{
+    if(!route){ inner.innerHTML=`<b>${esc(T("Câu hỏi này em chưa trả lời được."))}</b><br>${esc(T("Thử các câu gợi ý ở đầu trang, hoặc hỏi theo mã cổ phiếu, ngành, vĩ mô, dòng tiền…"))}`; return; }
+    const p=await mcpCall(route.tool,route.args);
+    inner.innerHTML=chatRender({...route,label},p);
+  }catch(e){ inner.textContent=T("Lỗi tải dữ liệu. Thử lại sau."); }
+  $("chatBox").scrollTop=$("chatBox").scrollHeight;
+}
+function chatAsk(){
+  const q=$("chatIn").value.trim(); if(!q) return;
+  $("chatIn").value="";
+  chatRun(q,chatRoute(q));
 }
 $("chatSend").onclick=chatAsk;
 $("chatIn").onkeydown=e=>{if(e.key==="Enter")chatAsk();};
 
-
-// ---- i18n 4 ngôn ngữ ----
+// ---- Cau hoi goi y theo 7 nhom kha nang (Dot A) ----
+const CHAT_GROUPS=[
+ {t:{vi:"Giá & biểu đồ",en:"Price & charts",zh:"价格与图表",ko:"가격·차트"},qs:[
+  {q:{vi:"Giá FPT phiên gần nhất?",en:"Latest FPT price?",zh:"FPT最新价格?",ko:"FPT 최근 가격?"},tool:"get_quote",args:{symbol:"FPT"}},
+  {q:{vi:"VNINDEX 20 phiên gần đây diễn biến thế nào?",en:"How has VNINDEX moved over the last 20 sessions?",zh:"VNINDEX近20个交易日走势如何?",ko:"VNINDEX 최근 20거래일 흐름은?"},tool:"get_ohlcv",args:{symbol:"VNINDEX",limit:20}},
+  {q:{vi:"Chỉ số thị trường hôm nay",en:"Market indices today",zh:"今日市场指数",ko:"오늘 시장 지수"},tool:"get_indices",args:{}},
+ ]},
+ {t:{vi:"Hồ sơ & cổ đông",en:"Profile & shareholders",zh:"公司资料与股东",ko:"기업 정보·주주"},qs:[
+  {q:{vi:"Cổ đông lớn nhất của FPT là ai?",en:"Who is FPT's largest shareholder?",zh:"FPT的最大股东是谁?",ko:"FPT의 최대 주주는 누구인가요?"},tool:"get_company_profile",args:{symbol:"FPT"}},
+  {q:{vi:"Ông Trương Gia Bình đang nắm những mã nào?",en:"Which stocks does Mr. Truong Gia Binh hold?",zh:"张家平先生持有哪些股票?",ko:"쯔엉자빈 회장은 어떤 종목을 보유하고 있나요?"},tool:"find_holder",args:{name:"Trương Gia Bình"}},
+  {q:{vi:"Sự kiện sắp tới của VNM",en:"Upcoming VNM events",zh:"VNM近期事件",ko:"VNM 예정 이벤트"},tool:"get_events",args:{symbol:"VNM"}},
+ ]},
+ {t:{vi:"Dòng tiền",en:"Money flow",zh:"资金流",ko:"수급"},qs:[
+  {q:{vi:"Khối ngoại mua ròng VCB 30 ngày qua thế nào?",en:"Foreign net buying of VCB over the last 30 days?",zh:"近30日外资净买入VCB情况?",ko:"최근 30일 외국인 VCB 순매수는?"},tool:"get_flow",args:{kind:"foreign",symbol:"VCB",days:30}},
+  {q:{vi:"Tự doanh hôm nay mua ròng mạnh nhất mã nào?",en:"Which stock did proprietary desks net-buy most today?",zh:"今日自营净买入最多的股票?",ko:"오늘 자기자본 순매수 1위 종목은?"},tool:"get_flow",args:{kind:"proprietary"}},
+  {q:{vi:"Khối ngoại hôm nay mua/bán ròng ra sao?",en:"Foreign net flow today?",zh:"今日外资净买卖情况?",ko:"오늘 외국인 순매매는?"},tool:"get_flow",args:{kind:"foreign"}},
+ ]},
+ {t:{vi:"Đồng thuận CTCK",en:"Broker consensus",zh:"券商共识",ko:"증권사 컨센서스"},qs:[
+  {q:{vi:"FPT được mấy hãng khuyến nghị, giá mục tiêu trung bình bao nhiêu?",en:"How many brokers cover FPT and what is the average target?",zh:"有多少家券商覆盖FPT,平均目标价多少?",ko:"FPT를 커버하는 증권사는 몇 곳, 평균 목표가는?"},tool:"get_consensus",args:{symbol:"FPT"}},
+  {q:{vi:"Mã nào có dư địa tăng theo đồng thuận cao nhất?",en:"Which stock has the highest consensus upside?",zh:"共识上涨空间最大的股票?",ko:"컨센서스 상승 여력이 가장 큰 종목은?"},tool:"get_consensus",args:{}},
+ ]},
+ {t:{vi:"Vĩ mô",en:"Macro",zh:"宏观",ko:"거시경제"},qs:[
+  {q:{vi:"Lãi suất điều hành hiện nay bao nhiêu?",en:"Current policy interest rates?",zh:"当前政策利率是多少?",ko:"현재 정책금리는?"},tool:"get_macro",args:{}},
+  {q:{vi:"OMO hôm nay bơm/hút bao nhiêu?",en:"Today's open-market operations?",zh:"今日公开市场操作如何?",ko:"오늘 공개시장운영은?"},tool:"get_macro",args:{series:"omo"}},
+  {q:{vi:"Tỷ giá trung tâm USD/VND hôm nay?",en:"Today's USD/VND central rate?",zh:"今日美元/越盾中心汇率?",ko:"오늘 USD/VND 기준환율은?"},tool:"get_macro",args:{series:"fx_center"}},
+ ]},
+ {t:{vi:"Ngành",en:"Sectors",zh:"行业",ko:"업종"},qs:[
+  {q:{vi:"Ngành ngân hàng: P/E và ROE ra sao?",en:"Banking sector: P/E and ROE?",zh:"银行行业:市盈率和ROE如何?",ko:"은행 업종: P/E와 ROE는?"},tool:"get_sector",args:{code:"8300"}},
+  {q:{vi:"Tất cả ngành: P/E hiện tại",en:"All sectors: current P/E",zh:"全部行业:当前市盈率",ko:"전체 업종: 현재 P/E"},tool:"get_sector",args:{}},
+ ]},
+ {t:{vi:"Sàng lọc",en:"Screener",zh:"筛选",ko:"스크리너"},qs:[
+  {q:{vi:"Mã có P/E thấp nhất thị trường?",en:"Lowest P/E stocks?",zh:"市盈率最低的股票?",ko:"P/E가 가장 낮은 종목은?"},tool:"get_screener",args:{sort_by:"pe_ttm",order:"asc",limit:10}},
+  {q:{vi:"Mã tăng mạnh nhất hôm nay",en:"Top gainers today",zh:"今日涨幅最大的股票",ko:"오늘 상승률 상위 종목"},tool:"get_screener",args:{sort_by:"pct_change",order:"desc",limit:10}},
+  {q:{vi:"Mã có giá trị giao dịch lớn nhất",en:"Highest traded value",zh:"成交额最大的股票",ko:"거래대금 상위 종목"},tool:"get_screener",args:{sort_by:"value_vnd",order:"desc",limit:10}},
+ ]},
+];
+function renderChatSug(){
+  const el=$("chatSug"); if(!el) return;
+  const lg=["vi","en","zh","ko"].includes(curLang)?curLang:"vi";
+  el.innerHTML='<div class="chatsug">'+CHAT_GROUPS.map(g=>
+    `<div class="sg"><div class="sgt">${esc(g.t[lg]||g.t.vi)}</div>${g.qs.map(it=>`<button class="chipq" onclick="chatChipTap(${chatReg(it.q[lg]||it.q.vi,it.tool,it.args)})">${esc(it.q[lg]||it.q.vi)}</button>`).join("")}</div>`
+  ).join("")+"</div>";
+}
 const LANGS = {
-  vi: {market:"Thị trường",screen:"Sàng lọc",alert:"Cảnh báo",mine:"Của tôi",indices:"Chỉ số",gainers:"Tăng mạnh nhất HOSE",send:"Gửi",askPh:"Hỏi về cổ phiếu…"},
-  en: {market:"Market",screen:"Screener",alert:"Alerts",mine:"Mine",indices:"Indices",gainers:"Top gainers HOSE",send:"Send",askPh:"Ask about stocks…"},
-  zh: {market:"市场",screen:"筛选",alert:"提醒",mine:"我的",indices:"指数",gainers:"HOSE涨幅榜",send:"发送",askPh:"询问股票…"},
-  ko: {market:"시장",screen:"스크리너",alert:"알림",mine:"내 정보",indices:"지수",gainers:"HOSE 상승 상위",send:"보내기",askPh:"주식에 대해 질문…"}
+  vi: {market:"Thị trường",screen:"Sàng lọc",cons:"Đồng thuận",hold:"Cổ đông",sec:"Ngành",alert:"Cảnh báo",mine:"Của tôi",chat:"AI Chat",indices:"Chỉ số",gainers:"Tăng mạnh nhất HOSE",send:"Gửi",askPh:"Hỏi về cổ phiếu…"},
+  en: {market:"Market",screen:"Screener",cons:"Consensus",hold:"Shareholders",sec:"Sectors",alert:"Alerts",mine:"Mine",chat:"AI Chat",indices:"Indices",gainers:"Top gainers HOSE",send:"Send",askPh:"Ask about stocks…"},
+  zh: {market:"市场",screen:"筛选",cons:"共识",hold:"股东",sec:"行业",alert:"提醒",mine:"我的",chat:"AI Chat",indices:"指数",gainers:"HOSE涨幅榜",send:"发送",askPh:"询问股票…"},
+  ko: {market:"시장",screen:"스크리너",cons:"컨센서스",hold:"주주",sec:"업종",alert:"알림",mine:"내 정보",chat:"AI Chat",indices:"지수",gainers:"HOSE 상승 상위",send:"보내기",askPh:"주식에 대해 질문…"}
 };
 let curLang = (localStorage.getItem("elab_uiLang") || localStorage.getItem("stk_lang") || "vi").replace(/"/g, "");
 if(!["vi","en","zh","ko"].includes(curLang)) curLang = "vi";
@@ -950,9 +2537,9 @@ function setStkLang(l){
   try{ localStorage.setItem("elab_uiLang", l); }catch(e){}
   localStorage.setItem("stk_lang", l);
   const L = LANGS[curLang];
-  NAVLBL["v-market"] = L.market; NAVLBL["v-screen"] = L.screen;
+  NAVLBL["v-market"] = L.market; NAVLBL["v-screen"] = L.screen; NAVLBL["v-consensus"] = L.cons; NAVLBL["v-holders"] = L.hold; NAVLBL["v-sectors"] = L.sec;
   NAVLBL["v-alert"] = L.alert; NAVLBL["v-mine"] = L.mine;
-  ["mainTabs","screenTabs","alertTabs","mineMainTabs","chatTabs"].forEach(e=>{if($(e))buildNav(e, document.querySelector(".view.on")?.id || "v-market");});
+  ["mainTabs","screenTabs","consTabs","holdTabs","secTabs","alertTabs","mineMainTabs","chatTabs"].forEach(e=>{if($(e))buildNav(e, document.querySelector(".view.on")?.id || "v-market");});
   syncLangUI();
   applyLang();
   translateDOM();
@@ -966,6 +2553,87 @@ const I18N_FULL = {
 "+ Thêm cảnh báo":["+ Add alert","+ 添加提醒","+ 알림 추가"],
 "+ Thêm cảnh báo mới":["+ Add new alert","+ 添加新提醒","+ 새 알림 추가"],
 "Biểu đồ":["Chart","图表","차트"],
+"Tham chiếu":["Reference","参考价","기준가"],
+"Mở cửa":["Open","开盘","시가"],
+"Cao nhất":["High","最高","고가"],
+"Thấp nhất":["Low","最低","저가"],
+"Giá trị":["Value","成交额","거래대금"],
+"Vốn hoá":["Market cap","市值","시가총액"],
+"CP lưu hành":["Shares outstanding","流通股","유통주식수"],
+"Nguồn":["Source","来源","출처"],
+"Dữ liệu tại":["Data as of","数据截至","기준 시각"],
+"dữ liệu có thể đã cũ":["data may be stale","数据可能已过时","데이터가 오래되었을 수 있음"],
+"Số đang được đối chiếu chéo, chưa chốt":["Figures are being cross-checked, not final","数据正在交叉核对,尚未定稿","수치 교차 검증 중, 미확정"],
+"Biểu đồ 20 phiên":["20-session chart","近20日图表","20거래일 차트"],
+"Hồ sơ & cổ đông":["Profile & shareholders","公司资料与股东","기업 정보·주주"],
+"Khối ngoại":["Foreign investors","外资","외국인"],
+"Đóng cửa phiên gần nhất":["Latest close","最近收盘","최근 종가"],
+"Ngày · Mở · Cao · Thấp · Đóng · Khối lượng":["Date · Open · High · Low · Close · Volume","日期·开·高·低·收·量","날짜 · 시가 · 고가 · 저가 · 종가 · 거래량"],
+"Trạng thái thị trường":["Market state","市场状态","시장 상태"],
+"Chỉ số ngành":["Sector indices","行业指数","업종 지수"],
+"Cổ đông lớn nhất":["Largest shareholder","最大股东","최대 주주"],
+"cổ phiếu":["shares","股","주"],
+"Không tìm thấy cổ đông khớp tên này trong chỉ mục đã công bố.":["No shareholder matching this name in the published index.","已发布索引中未找到匹配该姓名的股东。","공개된 색인에서 해당 이름의 주주를 찾지 못했습니다."],
+"tổng":["total","合计","합계"],
+"Tự doanh":["Proprietary desks","自营","자기자본"],
+"mua/bán ròng theo phiên":["net buy/sell by session","按交易日净买卖","거래일별 순매매"],
+"Ngày · Mua · Bán · Ròng (đồng)":["Date · Buy · Sell · Net (VND)","日期·买·卖·净额(越盾)","날짜 · 매수 · 매도 · 순매매(동)"],
+"hôm nay":["today","今日","오늘"],
+"Kỳ":["Period","期间","기간"],
+"Doanh thu kỳ gần nhất":["Latest-quarter revenue","最近一期营收","최근 분기 매출"],
+"LNST kỳ gần nhất":["Latest-quarter net profit","最近一期净利润","최근 분기 순이익"],
+"Tất cả ngành":["All sectors","全部行业","전체 업종"],
+"Vĩ mô":["Macro","宏观","거시경제"],
+"Lãi suất tái cấp vốn":["Refinancing rate","再融资利率","재융자 금리"],
+"Lãi suất tái chiết khấu":["Rediscount rate","再贴现利率","재할인율"],
+"Huy động bình quân":["Average deposit rate","平均存款利率","평균 예금금리"],
+"Hiệu lực từ":["Effective from","生效日期","시행일"],
+"Tỷ giá trung tâm USD/VND":["USD/VND central rate","美元/越盾中心汇率","USD/VND 기준환율"],
+"Vàng SJC (bán)":["SJC gold (sell)","SJC金价(卖出)","SJC 금(매도)"],
+"TP Mỹ 10 năm":["US 10Y Treasury","美国10年期国债","미국 10년물 국채"],
+"Tỷ giá trung tâm":["Central rate","中心汇率","기준환율"],
+"Tỷ giá":["Exchange rate","汇率","환율"],
+"Đồng thuận các công ty chứng khoán":["Broker consensus","券商共识","증권사 컨센서스"],
+"Số hãng có khuyến nghị":["Brokers covering","覆盖券商数","커버 증권사 수"],
+"Giá mục tiêu trung bình":["Average target price","平均目标价","평균 목표가"],
+"Giá hiện tại":["Current price","当前价格","현재가"],
+"Dư địa tăng":["Upside","上涨空间","상승 여력"],
+"hãng":["brokers","家","곳"],
+"Đồng thuận — dư địa tăng cao nhất":["Consensus — highest upside","共识 — 上涨空间最大","컨센서스 — 상승 여력 상위"],
+"Giá tính bằng đồng":["Prices in VND","价格单位为越盾","가격 단위: 동"],
+"Chỉ số tài chính":["Financial ratios","财务指标","재무 지표"],
+"Nợ / Vốn chủ":["Debt / Equity","负债/权益","부채/자본"],
+"Kết quả kinh doanh":["Business results","经营业绩","경영 실적"],
+"Doanh thu":["Revenue","营收","매출"],
+"Lợi nhuận sau thuế":["Net profit after tax","净利润","순이익"],
+"Tin mới nhất":["Latest news","最新消息","최신 뉴스"],
+"P/E thấp nhất thị trường":["Lowest P/E in the market","全市场最低市盈率","시장 최저 P/E"],
+"Tăng mạnh nhất":["Top gainers","涨幅最大","상승률 상위"],
+"Giá trị giao dịch lớn nhất":["Highest traded value","成交额最大","거래대금 상위"],
+"Đang tìm…":["Searching…","查询中…","조회 중…"],
+"Lỗi tải dữ liệu. Thử lại sau.":["Failed to load data. Please try again later.","数据加载失败,请稍后重试。","데이터 로드 실패. 나중에 다시 시도하세요."],
+"Câu hỏi này em chưa trả lời được.":["I can't answer this question yet.","这个问题暂时无法回答。","이 질문에는 아직 답할 수 없습니다."],
+"Thử các câu gợi ý ở đầu trang, hoặc hỏi theo mã cổ phiếu, ngành, vĩ mô, dòng tiền…":["Try the suggested questions at the top of the page, or ask by stock symbol, sector, macro, money flow…","可尝试页面顶部的建议问题,或按股票代码、行业、宏观、资金流提问…","페이지 상단의 추천 질문을 시도하거나 종목, 업종, 거시, 수급으로 질문해 보세요…"],
+"Bán":["Sell","卖出","매도"],
+"Tổng":["Total","合计","합계"],
+"ngày":["days","天","일"],
+"Thông báo":["Notice","公告","공고"],
+"Lợi suất":["Yield","收益率","수익률"],
+"Tổng trúng thầu":["Total allotted","中标总量","총 낙찰액"],
+"Không có giao dịch trúng thầu trong ngày":["No successful bids today","今日无中标交易","오늘 낙찰 거래 없음"],
+"LNST (TTM)":["Net profit (TTM)","净利润(TTM)","순이익(TTM)"],
+"Vốn hoá ngành":["Sector market cap","行业市值","업종 시가총액"],
+"Số mã thành viên":["Member stocks","成分股数量","구성 종목 수"],
+"Thu nhập lãi thuần":["Net interest income","净利息收入","순이자이익"],
+"+ Chỉ báo":["+ Indicator","+ 指标","+ 지표"],
+"Tìm chỉ báo…":["Search indicators…","搜索指标…","지표 검색…"],
+"Sắp có":["Coming soon","即将推出","준비 중"],
+"Xoá chỉ báo":["Remove indicator","删除指标","지표 삭제"],
+"Không tìm thấy":["Not found","未找到","찾을 수 없음"],
+"Thêm":["Add","添加","추가"],
+"Tắt":["Off","关闭","끄기"],
+"đang bật":["active","已启用","사용 중"],
+"Đóng":["Close","关闭","닫기"],
 "Bán 1/2/3":["Ask 1/2/3","卖 1/2/3","매도 1/2/3"],
 "Báo cáo tài chính":["Financial statements","财务报表","재무제표"],
 "Chiến lược":["Strategy","策略","전략"],
@@ -990,6 +2658,8 @@ const I18N_FULL = {
 "Danh mục":["Portfolio","投资组合","포트폴리오"],
 "Dán":["Paste","粘贴","붙여넣기"],
 "Dòng tiền":["Money flow","资金流","자금 흐름"],
+"Điểm":["Points","点位","포인트"],
+"Khối lượng":["Volume","成交量","거래량"],
 "Giá":["Price","价格","가격"],
 "Giá chạm":["Price touch","价格触及","가격 터치"],
 "Giá khớp":["Matched price","成交价","체결가"],
@@ -999,6 +2669,7 @@ const I18N_FULL = {
 "Hôm nay chưa có tín hiệu mới":["No new signals today","今日暂无新信号","오늘 새 신호 없음"],
 "Hồ sơ rủi ro của anh (risk-profile)":["Your risk profile","您的风险档案","리스크 프로필"],
 "Khóa AI của tôi":["My AI key","我的 AI 密钥","내 AI 키"],
+"Chọn nhà cung cấp có sẵn…":["Choose a provider...","选择服务商…","제공업체 선택..."],
 "Khối ngoại mua/bán ròng — 20 phiên (tỷ đồng)":["Foreign net buy/sell — 20 sessions (B VND)","外资净买卖 — 20 个交易日 (十亿越盾)","외국인 순매수/매도 — 20일 (10억 동)"],
 "Kiểm tra":["Test","测试","테스트"],
 "Loại":["Type","类型","유형"],
@@ -1021,6 +2692,8 @@ const I18N_FULL = {
 "Sổ lệnh":["Order book","订单簿","주문 내역"],
 "Thay đổi":["Change","涨跌","변동"],
 "Thị trường":["Market","市场","시장"],
+"Tìm mã hoặc tên công ty…":["Search symbol or company name…","搜索代码或公司名称…","종목 코드 또는 회사명 검색…"],
+"Không tìm thấy mã phù hợp":["No matching symbol","未找到匹配代码","일치하는 종목이 없습니다"],
 "Thống kê (trade-journal)":["Statistics (trade journal)","统计 (交易日志)","통계 (거래 일지)"],
 "Tin tức":["News","新闻","뉴스"],
 "Trạng thái":["Status","状态","상태"],
@@ -1029,6 +2702,13 @@ const I18N_FULL = {
 "Tính cỡ vị thế cho lệnh mới":["Calculate position size","计算新订单仓位","포지션 크기 계산"],
 "Tăng mạnh nhất HOSE":["Top gainers HOSE","HOSE 涨幅最大","HOSE 상승 상위"],
 "Khối ngoại hôm nay":["Foreign flow today","今日外资动向","오늘 외국인 동향"],
+"Tự doanh hôm nay":["Proprietary flow today","今日自营动向","오늘 자전 동향"],
+"Tin thị trường":["Market news","市场新闻","시장 뉴스"],
+"Hồ sơ":["Profile","公司档案","회사 프로필"],
+"Đồng thuận":["Consensus","共识","컨센서스"],
+"Cổ đông":["Shareholders","股东","주주"],
+"Ngành":["Sectors","行业","업종"],
+"Vĩ mô":["Macro","宏观经济","거시경제"],
 "Mã theo dõi":["Watchlist","自选股","관심 종목"],
 "Theo dõi":["Watch","关注","관심 추가"],
 "Chốt lời / Cắt lỗ (%)":["Take profit / Stop loss (%)","止盈 / 止损 (%)","익절 / 손절 (%)"],
@@ -1108,7 +2788,7 @@ async function pollVersion(){
         else if(on.id==="v-screen")loadScreener();
         else if(on.id==="v-alert")loadAlerts();
         else if(on.id==="v-mine")loadMine();
-        else if(on.id==="v-detail"&&typeof curSym!=="undefined"&&curSym)loadDetail(curSym);
+        else if(on.id==="v-detail"){ if(_idxMode&&curIdx){loadIndexQuote(curIdx);loadChart(curIdx,"1D");} else if(typeof curSym!=="undefined"&&curSym)loadDetail(curSym); }
       }
     }
     _verKey=key;
@@ -1165,12 +2845,14 @@ function applyLang(){
   const L = LANGS[curLang] || LANGS.vi;
   document.querySelectorAll("#langPick button").forEach(b=>b.classList.toggle("on", b.dataset.lang===curLang));
   // Dịch nhãn tab chính
-  const lbl = {"v-market":L.market,"v-screen":L.screen,"v-alert":L.alert,"v-mine":L.mine};
+  const lbl = {"v-market":L.market,"v-screen":L.screen,"v-consensus":L.cons,"v-holders":L.hold,"v-sectors":L.sec,"v-alert":L.alert,"v-mine":L.mine,"v-chat":L.chat};
   document.querySelectorAll("[data-scr]").forEach(()=>{});
   if($("chatSend")) $("chatSend").textContent = L.send;
   if($("chatIn")) $("chatIn").placeholder = L.askPh;
   localStorage.setItem("stk_lang", curLang);
   try{ localStorage.setItem("elab_uiLang", curLang); }catch(e){}
+  if(typeof renderDNav==="function")renderDNav();
+  if(typeof renderChatSug==="function")renderChatSug();
   syncLangUI();
 }
 document.querySelectorAll("#langPick button").forEach(b=>b.onclick=()=>setStkLang(b.dataset.lang));
@@ -1198,7 +2880,7 @@ async function byokLoad(){
     const u = await idbOp("readonly","ai_base_url");
     if(k) $("bkKey").placeholder = "Đã lưu (ẩn)";
     if(m) $("bkModel").value = m;
-    if(u) $("bkEp").value = u;
+    if(u){ $("bkEp").value = u; const _ps = $("bkPreset"); if(_ps){ const _uu = String(u).replace(/\/+$/,""); _ps.value = BK_PRESETS.some(p=>p[1]===_uu) ? _uu : ""; } }
   }catch(e){}
 }
 async function byokSave(){
@@ -1214,21 +2896,79 @@ async function byokSave(){
     $("bkKey").value = ""; $("bkKey").placeholder = "Đã lưu (ẩn)";
   }catch(e){ $("bkStatus").textContent = "Lỗi: "+e.message; $("bkStatus").style.color = "var(--pp-danger)"; }
 }
+// 2026-10-22 (Henrry: nhieu kieu base URL, khong hardcode nha cung cap):
+// Kiem tra khoa theo FORMAT endpoint user nhap, khong theo ten nha cung
+// cap: tai danh sach model that — kieu OpenAI (Bearer) -> kieu Gemini
+// (x-goog-api-key) -> qua relay ca 2 kieu khi trinh duyet bi chan CORS.
+// Ban cu hardcode duong Gemini + model mac dinh doan san nen moi base
+// URL khac deu "Khóa lỗi".
+function bkParseModels(j){
+  const raw = (j && Array.isArray(j.data)) ? j.data : ((j && Array.isArray(j.models)) ? j.models : []);
+  const out = [];
+  for(const it of raw){
+    const id = typeof it === "string" ? it : (it && (it.id || it.name || it.model || it.model_name));
+    if(id) out.push(String(id).replace(/^models\//,""));
+  }
+  return [...new Set(out)];
+}
+async function bkErrDetail(r){
+  try{
+    const j = await r.json();
+    const m = (j.error && j.error.message) || j.message;
+    if(m) return String(m).slice(0,200);
+  }catch(e){}
+  return "";
+}
+async function bkModelsDirect(u,k,style){
+  const ctl = new AbortController(); const tm = setTimeout(()=>ctl.abort(),10000);
+  try{
+    const r = await fetch(u+"/models",{headers: style==="goog" ? {"x-goog-api-key":k} : {"Authorization":"Bearer "+k}, signal: ctl.signal});
+    if(!r.ok){ const e = new Error("HTTP "+r.status); e.status = r.status; e.detail = await bkErrDetail(r); throw e; }
+    return bkParseModels(await r.json());
+  }finally{ clearTimeout(tm); }
+}
+async function bkModelsRelay(u,k,style){
+  const h = {"Content-Type":"application/json"};
+  if(_tok) h["Authorization"] = "Bearer "+_tok;
+  const env = {baseUrl:u, key:k, path:"/models", method:"GET"};
+  if(style==="goog") env.auth = "goog";
+  const r = await fetch("/api/ai/relay",{method:"POST",headers:h,body:JSON.stringify(env)});
+  if(!r.ok){ const e = new Error("HTTP "+r.status); e.status = r.status; e.detail = await bkErrDetail(r); throw e; }
+  return bkParseModels(await r.json());
+}
 $("bkTest").onclick = async ()=>{
   await byokSave();
-  $("bkStatus").textContent = "Đang kiểm tra…"; $("bkStatus").style.color = "var(--pp-mut)";
+  const st = $("bkStatus");
+  st.textContent = "Đang kiểm tra…"; st.style.color = "var(--pp-mut)";
   try{
     const k = await idbOp("readonly","gemini_user_key");
-    const m = await idbOp("readonly","gemini_user_model") || "gemini-2.0-flash";
-    const u = await idbOp("readonly","ai_base_url");
-    if(!k || !u) throw new Error("Chưa có key hoặc endpoint");
-    const r = await fetch(u.replace(/\/+$/,"")+"/models/"+encodeURIComponent(m)+":generateContent?key="+encodeURIComponent(k),{
-      method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({contents:[{parts:[{text:"Hi"}]}]})
-    });
-    if(r.ok){ $("bkStatus").textContent = "Khóa hoạt động! ✓"; $("bkStatus").style.color = "var(--pp-accent)"; }
-    else{ $("bkStatus").textContent = "Khóa lỗi: "+r.status; $("bkStatus").style.color = "var(--pp-danger)"; }
-  }catch(e){ $("bkStatus").textContent = "Khóa lỗi: "+e.message; $("bkStatus").style.color = "var(--pp-danger)"; }
+    const u0 = await idbOp("readonly","ai_base_url");
+    if(!k || !u0) throw new Error("Chưa có key hoặc endpoint");
+    const u = String(u0).replace(/\/+$/,"");
+    let models = null, lastErr = null, googErr = null;
+    const attempts = [
+      ()=>bkModelsDirect(u,k,"bearer"),
+      ()=>bkModelsDirect(u,k,"goog"),
+      ()=>bkModelsRelay(u,k,"bearer"),
+      ()=>bkModelsRelay(u,k,"goog"),
+    ];
+    for(let i=0;i<attempts.length && !models;i++){
+      try{ const ms = await attempts[i](); if(ms && ms.length) models = ms; }
+      catch(e){ lastErr = e; if(i===1) googErr = e; }
+    }
+    if(!models) throw (googErr && googErr.status===400 ? googErr : (lastErr || new Error("Không tải được danh sách model")));
+    const cur = $("bkModel").value.trim();
+    if(!cur){
+      $("bkModel").value = models[0];
+      await idbOp("readwrite","gemini_user_model",models[0]);
+      st.textContent = "Khóa hoạt động! ✓ Endpoint có "+models.length+" model, đã chọn "+models[0];
+    }else if(!models.includes(cur)){
+      st.textContent = "Khóa hoạt động! ✓ Endpoint có "+models.length+" model, nhưng không có '"+cur+"'";
+    }else{
+      st.textContent = "Khóa hoạt động! ✓ Endpoint có "+models.length+" model";
+    }
+    st.style.color = "var(--pp-accent)";
+  }catch(e){ st.textContent = "Khóa lỗi: "+(e.detail || e.message); st.style.color = "var(--pp-danger)"; }
 };
 $("bkDel").onclick = async ()=>{
   await idbOp("readwrite","gemini_user_key",undefined);
@@ -1237,6 +2977,51 @@ $("bkDel").onclick = async ()=>{
   $("bkStatus").textContent = "Đã xoá khóa"; $("bkStatus").style.color = "var(--pp-mut)";
 };
 
+// 2026-10-22 (Henrry Chot): preset endpoint — cung danh sach
+// AI_ENDPOINT_PRESETS trong js/core/aiClient.js (34 endpoint, verify
+// that 2026-10-22 bang key gia). Chon la dien vao o endpoint; nhap
+// tay van nguyen nhu cu.
+const BK_PRESETS = [
+["OpenAI","https://api.openai.com/v1"],
+["Google Gemini","https://generativelanguage.googleapis.com/v1beta"],
+["Google Gemini (OpenAI mode)","https://generativelanguage.googleapis.com/v1beta/openai"],
+["Anthropic Claude","https://api.anthropic.com/v1"],
+["DeepSeek","https://api.deepseek.com/v1"],
+["Groq","https://api.groq.com/openai/v1"],
+["OpenRouter","https://openrouter.ai/api/v1"],
+["Mistral AI","https://api.mistral.ai/v1"],
+["xAI Grok","https://api.x.ai/v1"],
+["Together AI","https://api.together.xyz/v1"],
+["Fireworks AI","https://api.fireworks.ai/inference/v1"],
+["Cohere","https://api.cohere.com/compatibility/v1"],
+["Cerebras","https://api.cerebras.ai/v1"],
+["SambaNova","https://api.sambanova.ai/v1"],
+["NVIDIA NIM","https://integrate.api.nvidia.com/v1"],
+["Hugging Face","https://router.huggingface.co/v1"],
+["DeepInfra","https://api.deepinfra.com/v1/openai"],
+["Poe","https://api.poe.com/v1"],
+["Chutes","https://llm.chutes.ai/v1"],
+["Nebius","https://api.studio.nebius.ai/v1"],
+["Ollama Cloud","https://ollama.com/v1"],
+["Novita AI","https://api.novita.ai/openai/v1"],
+["Hyperbolic","https://api.hyperbolic.xyz/v1"],
+["Scaleway","https://api.scaleway.ai/v1"],
+["Kimi / Moonshot (Global)","https://api.moonshot.ai/v1"],
+["Kimi / Moonshot (China)","https://api.moonshot.cn/v1"],
+["Qwen / Alibaba (Global)","https://dashscope-intl.aliyuncs.com/compatible-mode/v1"],
+["Qwen / Alibaba (China)","https://dashscope.aliyuncs.com/compatible-mode/v1"],
+["GLM / Zhipu","https://open.bigmodel.cn/api/paas/v4"],
+["MiniMax (Global)","https://api.minimax.io/v1"],
+["Doubao / Volcengine","https://ark.cn-beijing.volces.com/api/v3"],
+["SiliconFlow","https://api.siliconflow.cn/v1"],
+["StepFun","https://api.stepfun.com/v1"],
+["Upstage Solar","https://api.upstage.ai/v1"]
+];
+(function(){
+  const sel = $("bkPreset"); if(!sel) return;
+  for(const pr of BK_PRESETS){ const o = document.createElement("option"); o.value = pr[1]; o.textContent = pr[0]; sel.appendChild(o); }
+  sel.addEventListener("change", ()=>{ if(sel.value) $("bkEp").value = sel.value; });
+})();
 byokLoad();
 applyLang();
 if(curLang!=="vi") translateDOM();
@@ -1258,6 +3043,10 @@ loadMarket();
 pollVersion(); setInterval(pollVersion, 5*60*1000);
 </script>
 <script src="/english/js/lang-dropdown.js?v=__BUILD__"></script>
+<script src="/english/js/vendor/lightweight-charts.js?v=__BUILD__"></script>
+<script src="/english/js/features/stock-indicators-spec.js?v=__BUILD__"></script>
+<script src="/english/js/features/stock-indicators.js?v=__BUILD__"></script>
+<script src="/english/js/features/stock-chart.js?v=__BUILD__"></script>
 
 <button id="aiFab" onclick="openChat()" style="position:fixed;right:16px;bottom:24px;width:52px;height:52px;border-radius:50%;background:var(--pp-accent);color:#fff;border:none;font-size:20px;box-shadow:0 4px 16px rgba(0,0,0,.5);cursor:pointer;z-index:200"><svg class="tic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></button>
 </body>
