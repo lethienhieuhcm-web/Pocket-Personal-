@@ -989,6 +989,14 @@ export async function hStockPublish(request, env){
     n++;
   }
   if(body.holders_index) await put1("holders_index", body.holders_index);
+  // Dot C (MCP GD2, Chot 12:11 23/10): snapshot tien tinh cho khoi
+  // xu huong nhieu phien cua analyze_sector/analyze_market — publisher
+  // publish_dotc_snapshots.py gui 4 khoa nay; thieu nhanh = Worker nuot
+  // im lang, trend mai la null (bai hoc sector_indices 23/10).
+  if(body.sector_flow_history) await put1("sector_flow_history", body.sector_flow_history);
+  if(body.market_flow_history) await put1("market_flow_history", body.market_flow_history);
+  if(body.sector_breadth) await put1("sector_breadth", body.sector_breadth);
+  if(body.rs_universe) await put1("rs_universe", body.rs_universe);
   if(body.holders_shards) for(const sh of Object.keys(body.holders_shards)){
     if(!/^[0-9a-f]{2}$/.test(sh)) continue;
     await sPut(env, "market/holders/"+sh+".json", doc(body.holders_shards[sh]));

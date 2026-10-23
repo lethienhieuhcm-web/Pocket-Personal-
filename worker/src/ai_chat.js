@@ -58,6 +58,12 @@ function _buildDecls() {
     { name: 'find_holder', description: 'Tra cuu nguoc co dong: nhap ten nguoi/to chuc -> cac ma dang nam giu, so co phieu, ty le, chuc danh.', parameters: OBJ({ name: STR('Ten co dong (co dau hoac khong dau)'), limit: INT('So ket qua toi da') }, ['name']) },
     { name: 'get_events', description: 'Su kien sap toi cua 1 ma (DHDCD, co tuc, phat hanh...) trong days_ahead ngay (mac dinh 90).', parameters: OBJ({ symbol: SYM, days_ahead: INT('So ngay sap toi, mac dinh 90') }, ['symbol']) },
     { name: 'get_news', description: 'Tin tuc: co symbol = tin theo ma; khong symbol = tin thi truong.', parameters: OBJ({ symbol: STR('Ma (tuy chon)'), limit: INT('So tin toi da') }) },
+    { name: 'analyze_sector', description: 'PHAN TICH 1 nganh (khoan sau): dong tien phien gan nhat theo ma trong nganh + do tap trung + do rong nganh + P/E va chi so nganh + xu huong nhieu phien. Dung cho "phan tich nganh X", "X de ro hon", "X thi sao".', parameters: OBJ({ code: STR('Ma nganh ICB 4 chu so (vd 8600)'), days: INT('So phien cho khoi xu huong, mac dinh 20'), top_n: INT('So ma keo chinh, mac dinh 15') }, ['code']) },
+    { name: 'analyze_symbol', description: 'PHAN TICH 1 ma (ky hon): gia so duong trung binh + chi bao + rong ngoai/tu doanh 5/20/60 phien + phan tan dong thuan + co dong lon. Dung cho "phan tich (ky) ma X", "xem ky X".', parameters: OBJ({ symbol: SYM, days: INT('So phien nhin lai, mac dinh 20') }, ['symbol']) },
+    { name: 'analyze_compare', description: 'SO SANH 2 ma hoac 2 nganh tren cung bo tieu chi + chenh lech so. Dung cho "so sanh X voi Y", "X va Y cai nao tien vao manh hon".', parameters: OBJ({ kind: { type: 'STRING', enum: ['symbols', 'sectors'], description: 'symbols = 2 ma; sectors = 2 nganh' }, items: { type: 'ARRAY', items: { type: 'STRING' }, description: 'Dung 2 phan tu: 2 ma hoac 2 ma nganh ICB' }, days: INT('Cua so tinh, mac dinh 20') }, ['kind', 'items']) },
+    { name: 'analyze_market', description: 'TOAN CANH thi truong: chi so + do rong 3 san + TRIN + tong rong ngoai/tu doanh + vi mo tom tat. Dung cho "thi truong hom nay the nao", "tong quan phien".', parameters: OBJ({ days: INT('So phien cho khoi xu huong, mac dinh 20') }) },
+    { name: 'calc_flow_sum', description: 'Tong dong tien rong cua 1 ma theo cua so phien (server tinh san). symbol + days, kind foreign/proprietary/both.', parameters: OBJ({ symbol: SYM, kind: { type: 'STRING', enum: ['foreign', 'proprietary', 'both'] }, days: INT('So phien, mac dinh 20, toi da 500') }, ['symbol']) },
+    { name: 'get_analysis_catalog', description: 'Danh muc cong thuc/chi bao he thong dung (tra cuu khi can giai thich cach tinh).', parameters: OBJ({ kind: { type: 'STRING', enum: ['indicators', 'ratios', 'formulas'] }, name: STR('Ten chinh xac (tuy chon)'), query: STR('Tu khoa (tuy chon)') }, ['kind']) },
   ];
 }
 
@@ -83,8 +89,27 @@ function _parseViNumber(tok) {
   }
   return neg ? -v : v;
 }
-export function _numericGuard(text, data) {
-  const tokens = String(text || '').match(
+/* ------------- cong gac mau cau cam (du bao/khuyen nghi) ------------- */
+// Lop phan tich chi MO TA bang so da do (thiet ke 4B, ranh gioi cung):
+// cau dan chua mau du bao huong tuong lai hoac khuyen nghi mua/ban
+// thi bi bo nhu truot gac so. Ap cho ca van xuoi khong-tool lan cau dan.
+const _BANNED_LEAD = [
+  /se\s+(tang|giam|phuc hoi|bung no|lao doc)/i,
+  /sap\s+(tang|giam|toi|dien ra)/i,
+  /ky vong\s+(dat|tang|se)/i,
+  /nen\s+(mua|ban|nam giu)/i,
+  /khuyen nghi\s+(mua|ban)/i,
+  /(dang|rat dang|nen)\s+mua\b/i,
+  /du bao\s+(la|se|rang)/i,
+  /se con\s+(tang|giam)/i,
+  /co kha nang\s+(tang|giam)\s+(trong|sap)/i,
+];
+export function _bannedLead(text) {
+  const t = String(text || '');
+  return _BANNED_LEAD.some((re) => re.test(t));
+}
+
+export function _numericGuard(text, data) {  const tokens = String(text || '').match(
     /(?<![A-Za-z0-9])-?\d{1,3}(?:\.\d{3})+(?:,\d+)?|(?<![A-Za-z0-9])-?\d+(?:,\d+)?/g);
   if (!tokens || !tokens.length) return true; // cau khong so: dat
   const raw = [];
@@ -239,8 +264,12 @@ const SYSTEM_PROMPT = [
   '3. "Do ve dau", "tien do ve dau", "dong tien theo nganh/san", "tien vao nganh nao" -> get_flow_summary (group_by=sector mac dinh; group_by=exchange khi hoi theo san; group_by=market khi chi hoi tong toan thi truong), TRU KHI dang bam mot ma cu the thi dung get_flow voi symbol do.',
   '4. P/E, ROE, doanh thu, loi nhuan CUA NGANH -> get_sector (khong phai dong tien). Hoi ve mot nguoi nam giu co phieu -> find_holder. Hoi co dong lon cua mot ma -> get_company_profile.',
   '5. Chi goi tool khi cau hoi can so lieu thi truong. Chao hoi xa giao thi tra loi text ngan gon, khong goi tool. Khong co tool nao phu hop thi tra loi text ngan noi chua co du lieu cho cau do. TUYET DOI khong bia so, khong tu tinh so, khong du doan gia, khong khuyen nghi mua/ban.',
-  '6. KHOAN SAU THEO NGANH: neu lich su co luot "TOOL get_flow_summary" va nguoi dung noi "phan tich <ten nganh> de ro hon", "xem them/khoan sau <ten nganh>", "<ten nganh> thi sao" -> goi get_flow_summary voi sector_code cua nganh do (giu kind cua luot truoc neu ro). Neu KHONG co ngu canh dong tien ma chi hoi "phan tich nganh X" chung chung -> get_sector voi code tuong ung. Bang ma ICB: 0500 Dau khi; 8600 Bat dong san; 1700 Tai nguyen Co ban; 3500 Thuc pham va do uong; 7500 Dien, nuoc & xang dau khi dot; 5300 Ban le; 2700 Hang & Dich vu Cong nghiep; 2300 Xay dung va Vat lieu; 5700 Du lich va Giai tri; 1300 Hoa chat; 3700 Hang ca nhan & Gia dung; 3300 O to va phu tung; 8700 Dich vu tai chinh; 9500 Cong nghe Thong tin; 6500 Vien thong; 4500 Y te; 5500 Truyen thong; 8300 Ngan hang; 8500 Bao hiem.',
+  '6. PHAN TICH NGANH (BB-1): "phan tich <ten nganh>", "<ten nganh> de ro hon", "xem them/khoan sau <ten nganh>", "<ten nganh> thi sao" -> analyze_sector voi code cua nganh do (ke ca khi lich su dang o the dong tien hay the nganh). Bang ma ICB: 0500 Dau khi; 8600 Bat dong san; 1700 Tai nguyen Co ban; 3500 Thuc pham va do uong; 7500 Dien, nuoc & xang dau khi dot; 5300 Ban le; 2700 Hang & Dich vu Cong nghiep; 2300 Xay dung va Vat lieu; 5700 Du lich va Giai tri; 1300 Hoa chat; 3700 Hang ca nhan & Gia dung; 3300 O to va phu tung; 8700 Dich vu tai chinh; 9500 Cong nghe Thong tin; 6500 Vien thong; 4500 Y te; 5500 Truyen thong; 8300 Ngan hang; 8500 Bao hiem.',
   '7. VI MO: hoi ty gia, lai suat, gia vang, OMO, chinh sach tien te -> get_macro (co series thi dat series tuong ung); khong tra loi van xuoi thay cho so lieu vi mo.',
+  '8. PHAN TICH MA (BB-2): "phan tich (ky) <ma>", "xem ky ma <ma>", "<ma> ky hon" -> analyze_symbol(symbol). Hoi nhanh gia/dong tien 1 ma thi van dung get_quote/get_flow nhu thuong.',
+  '9. SO SANH (BB-3): "so sanh X voi Y" -> analyze_compare: 2 ma thi kind=symbols, 2 ten nganh thi kind=sectors kem 2 ma ICB tuong ung.',
+  '10. TOAN CANH (BB-4): "thi truong hom nay the nao", "tong quan phien/thi truong" -> analyze_market.',
+  '11. Cau hoi DU BAO ("nganh X sap toi co tang khong", "ma Y ngay mai the nao") -> VAN goi tool phan tich tuong ung (BB-1/BB-2/BB-4) de lay phan mo ta hien trang; he thong khong du bao va se noi ro dieu do — khong tu choi trong, khong tra loi van xuoi du bao.',
 ].join('\n');
 
 export async function hAiChat(request, env) {
@@ -305,7 +334,7 @@ export async function hAiChat(request, env) {
   let j1;
   try {
     j1 = await geminiCall(env, keys, state, {
-      systemInstruction: { parts: [{ text: SYSTEM_PROMPT + '\n8. Tra loi bang ngon ngu: ' + lang + '.' }] },
+      systemInstruction: { parts: [{ text: SYSTEM_PROMPT + '\n12. Tra loi bang ngon ngu: ' + lang + '.' }] },
       contents,
       tools: [{ functionDeclarations: _buildDecls() }],
       toolConfig: { functionCallingConfig: { mode: 'AUTO' } },
@@ -321,7 +350,7 @@ export async function hAiChat(request, env) {
     // Khong can so lieu: chi chap nhan text neu khong chua con so
     // nao khong kiem chung duoc (khong co envelope de gac).
     const text = geminiText(j1);
-    if (text && _numericGuard(text, null)) {
+    if (text && _numericGuard(text, null) && !_bannedLead(text)) {
       return finish({ ok: true, tool: null, text }, 'ok', { keys_tried: state.keysTried });
     }
     // Van xuoi khong kiem chung duoc (hoac rong): ep model CHON
@@ -330,7 +359,7 @@ export async function hAiChat(request, env) {
     // chua so -> fallback:no_tool lap 2 lan du prompt da co luat.
     try {
       const j1b = await geminiCall(env, keys, state, {
-        systemInstruction: { parts: [{ text: SYSTEM_PROMPT + '\n8. Tra loi bang ngon ngu: ' + lang + '.' }] },
+        systemInstruction: { parts: [{ text: SYSTEM_PROMPT + '\n12. Tra loi bang ngon ngu: ' + lang + '.' }] },
         contents,
         tools: [{ functionDeclarations: _buildDecls() }],
         toolConfig: { functionCallingConfig: { mode: 'ANY' } },
@@ -375,7 +404,7 @@ export async function hAiChat(request, env) {
       generationConfig: { temperature: 0.3, maxOutputTokens: 1024 },
     }, 4000, 2000);
     const txt = geminiText(j2).replace(/\s+/g, ' ').slice(0, 400);
-    if (txt && _numericGuard(txt, envelope.data)) lead = txt;
+    if (txt && _numericGuard(txt, envelope.data) && !_bannedLead(txt)) lead = txt;
     }
   } catch (e) { /* cau dan loi/gac truot -> chi hien the du lieu */ }
 

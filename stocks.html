@@ -2229,6 +2229,8 @@ function chatRender(route,p){
   if(p.error) return `<b>${esc(p.error.message||T("Chưa có dữ liệu"))}</b>`+chatMetaHtml(p);
   const d=p.data||{}, tool=route.tool, a=route.args||{};
   let h="", follow=[];
+  const ty=v=>v==null?"—":fmtTyAbs(v);
+  const cls=v=>v==null?"":(v>=0?"up":"dn");
   const symFollow=(s)=>[
     {label:`${T("Giá")} ${s}`,tool:"get_quote",args:{symbol:s}},
     {label:`${T("Biểu đồ 20 phiên")} ${s}`,tool:"get_ohlcv",args:{symbol:s,limit:20}},
@@ -2349,8 +2351,8 @@ function chatRender(route,p){
       for(const g of tops){
         if(!g.key) continue;
         follow.push({label:`${T("Phân tích")} ${g.name||g.key} ${T("để rõ hơn")}`,
-          tool:"get_flow_summary",
-          args:{kind,group_by:"sector",sector_code:g.key}});
+          tool:"analyze_sector",
+          args:{code:g.key}});
       }
     }
   } else if(tool==="get_sector"){
@@ -2461,6 +2463,67 @@ function chatRender(route,p){
     if(d.latest_published_at) h+=`<div style="margin-top:4px">${esc(T("Tin mới nhất"))}: <b>${esc(chatAsOf(d.latest_published_at))}</b></div>`;
     if(items.length) h+='<div style="margin-top:4px">'+items.slice(0,6).map(n=>`<div style="padding:5px 0;border-bottom:1px solid var(--pp-line)">${n.url?`<a href="${esc(n.url)}" target="_blank" rel="noopener" style="color:var(--pp-ink);text-decoration:none">${esc(n.title||"")}</a>`:esc(n.title||"")}<div style="font-size:11px;color:var(--pp-mut)">${esc(chatAsOf(n.published_at||n.time||""))}${n.source?" · "+esc(n.source):""}</div></div>`).join("")+"</div>";
     else h+=`<br>${esc(T("Chưa có dữ liệu"))}`;
+  } else if(tool==="analyze_sector"){
+    const fl=d.flow_latest||{}, bl=d.breadth_latest||{}, cx=d.context||{};
+    h=`<b>${esc(T("Phân tích ngành"))} ${esc((d.sector||{}).name||a.code||"")}</b>`;
+    h+=chatRow(T("Ròng khối ngoại"),`<span class="${cls(fl.foreign_net_total)}"><b>${ty(fl.foreign_net_total)}</b></span>`);
+    h+=chatRow(T("Ròng tự doanh"),`<span class="${cls(fl.proprietary_net_total)}"><b>${ty(fl.proprietary_net_total)}</b></span>`);
+    if(fl.concentration_top3!=null) h+=chatRow(T("Độ tập trung top 3"),(fl.concentration_top3*100).toFixed(1).replace(".",",")+"%");
+    if(bl.advancers!=null) h+=chatRow(T("Độ rộng"),`${fmtN(bl.advancers)} ${esc(T("mã tăng"))} · ${fmtN(bl.decliners)} ${esc(T("mã giảm"))} · ${fmtN(bl.unchanged)} ${esc(T("đứng giá"))}${bl.pct_advancers!=null?" ("+Number(bl.pct_advancers).toFixed(1).replace(".",",")+"%)":""}`);
+    if(bl.turnover_value!=null) h+=chatRow(T("Giá trị"),`${fmtTyAbs(bl.turnover_value)}${bl.turnover_share_pct!=null?" · "+Number(bl.turnover_share_pct).toFixed(1).replace(".",",")+"% "+esc(T("toàn thị trường")):""}`);
+    if(cx.pe&&cx.pe.current!=null) h+=chatRow("P/E",Number(cx.pe.current).toFixed(2).replace(".",","));
+    if(cx.index) h+=chatRow(T("Chỉ số ngành"),`${esc(cx.index.code)} ${fmtN(cx.index.close)}${cx.index.pct_change!=null?` <span class="${cx.index.pct_change>=0?"up":"dn"}">${fmtPct(cx.index.pct_change)}</span>`:""}`);
+    const tops=fl.top_contributors||[];
+    if(tops.length) h+='<table class="chatft">'+tops.slice(0,8).map(r=>`<tr><td>${r.symbol?symLink(r.symbol):""}</td><td style="text-align:right" class="${cls(r.foreign_net)}">${ty(r.foreign_net)}</td><td style="text-align:right" class="${cls(r.proprietary_net)}">${ty(r.proprietary_net)}</td><td style="text-align:right" class="${cls(r.combined_net)}"><b>${ty(r.combined_net)}</b></td></tr>`).join("")+"</table>";
+    if(d.trend&&d.trend.flow&&d.trend.flow.sums){
+      const sm=d.trend.flow.sums;
+      h+=`<div style="margin-top:6px;font-weight:700">${esc(T("Xu hướng nhiều phiên"))}</div>`;
+      if(sm.foreign) h+=chatRow(T("Ròng khối ngoại")+" 5/20/60",`${ty(sm.foreign.d5)} · ${ty(sm.foreign.d20)} · ${ty(sm.foreign.d60)}`);
+      if(sm.proprietary) h+=chatRow(T("Ròng tự doanh")+" 5/20/60",`${ty(sm.proprietary.d5)} · ${ty(sm.proprietary.d20)} · ${ty(sm.proprietary.d60)}`);
+      if(d.trend.breadth&&d.trend.breadth.latest) h+=chatRow(T("Trên MA20/MA50"),`${d.trend.breadth.latest.pct_above_ma20!=null?Number(d.trend.breadth.latest.pct_above_ma20).toFixed(1).replace(".",",")+"%":"—"} / ${d.trend.breadth.latest.pct_above_ma50!=null?Number(d.trend.breadth.latest.pct_above_ma50).toFixed(1).replace(".",",")+"%":"—"}`);
+    } else {
+      h+=`<div style="font-size:11px;color:var(--pp-mut);margin-top:4px">${esc(T("Xu hướng nhiều phiên"))}: ${esc(T("chưa có dữ liệu"))}</div>`;
+    }
+    follow=[{label:T("Dòng tiền theo ngành"),tool:"get_flow_summary",args:{kind:"both",group_by:"sector"}}];
+  } else if(tool==="analyze_symbol"){
+    const sym=d.symbol||a.symbol||"", pp=d.price_position||{}, ma=pp.ma||{}, pv=pp.pct_vs_ma||{}, ind=d.indicators||{}, fl=d.flow||{};
+    h=`<b>${esc(T("Phân tích"))} ${esc(sym)}</b>`;
+    if(pp.close!=null) h+=chatRow(T("Đóng cửa"),`<b>${fmtN(pp.close)}</b>`);
+    if(ma.ma20!=null) h+=chatRow("MA20 / MA50",`${fmtN(ma.ma20)} / ${fmtN(ma.ma50)}${pv.ma20!=null?` <span class="${pv.ma20>=0?"up":"dn"}">(${pv.ma20>=0?"+":""}${Number(pv.ma20).toFixed(2).replace(".",",")}%)</span>`:""}`);
+    if(pp.range_52w&&pp.range_52w.low!=null) h+=chatRow(T("Biên 52 tuần"),`${fmtN(pp.range_52w.low)} – ${fmtN(pp.range_52w.high)}`);
+    if(ind.rsi_14!=null) h+=chatRow("RSI(14)",Number(ind.rsi_14).toFixed(1).replace(".",","));
+    if(d.trend_template) h+=chatRow(T("Tiêu chí xu hướng (Minervini)"),`${d.trend_template.met}/${d.trend_template.evaluable||8}`);
+    if(fl.foreign_net) h+=chatRow(T("Ròng khối ngoại")+" 5/20/60",`${ty(fl.foreign_net.d5)} · ${ty(fl.foreign_net.d20)} · ${ty(fl.foreign_net.d60)}`);
+    if(fl.proprietary_net) h+=chatRow(T("Ròng tự doanh")+" 5/20/60",`${ty(fl.proprietary_net.d5)} · ${ty(fl.proprietary_net.d20)} · ${ty(fl.proprietary_net.d60)}`);
+    const cs=d.consensus;
+    if(cs&&cs.target) h+=chatRow(T("Giá mục tiêu trung vị"),`${fmtN(cs.target.median)} <span class="${(cs.upside_median_pct||0)>=0?"up":"dn"}">(${cs.upside_median_pct!=null?fmtPct(cs.upside_median_pct):""})</span> · ${fmtN(cs.firms_12m)} ${esc(T("hãng"))}`);
+    else if(cs&&cs.targets) h+=chatRow(T("Đồng thuận"),cs.targets.map(t=>`${esc(t.firm||"")}: ${fmtN(t.target)}`).join(" · "));
+    const hd=d.holders;
+    if(hd&&hd.top&&hd.top.length) h+=chatRow(T("Cổ đông lớn nhất"),`${esc(hd.top[0].name||"")}${hd.top[0].pct!=null?" — "+Number(hd.top[0].pct).toFixed(2).replace(".",",")+"%":""}`);
+    follow=symFollow(sym);
+  } else if(tool==="analyze_compare"){
+    const nm=v=>{ if(v==null) return "—"; return esc(String(v)); };
+    h=`<b>${esc(T("So sánh"))} ${esc((a.items||[]).join(" · "))}</b>`;
+    const fmtU=(u,v)=>{ if(v==null) return "—"; if(u==="VND") return fmtTyAbs(v); if(u==="pp") return Number(v).toFixed(2).replace(".",","); if(u==="lan") return Number(v).toFixed(2).replace(".",","); return fmtN(v); };
+    if((d.criteria||[]).length) h+='<table class="chatft">'+d.criteria.map(c=>`<tr><td>${esc(c.label||c.key||"")}</td><td style="text-align:right">${fmtU(c.unit,c.a)}</td><td style="text-align:right">${fmtU(c.unit,c.b)}</td><td style="text-align:right" class="${(c.diff||0)>=0?"up":"dn"}">${c.diff!=null?(c.diff>0?"+":"")+fmtU(c.unit,c.diff):""}</td></tr>`).join("")+"</table>";
+    if((d.unilateral||[]).length) h+=`<div style="font-size:11px;color:var(--pp-mut)">${esc(T("Một số tiêu chí chỉ một phía có dữ liệu"))}</div>`;
+  } else if(tool==="analyze_market"){
+    h=`<b>${esc(T("Toàn cảnh thị trường"))}</b>`;
+    const ix=d.indices||[];
+    if(ix.length) h+='<table class="chatft">'+ix.slice(0,6).map(e=>`<tr><td>${esc(e.code||"")}</td><td style="text-align:right"><b>${fmtN(e.close)}</b></td><td style="text-align:right" class="${(e.pct_change||0)>=0?"up":"dn"}">${e.pct_change!=null?fmtPct(e.pct_change):""}</td></tr>`).join("")+"</table>";
+    const bx=(d.breadth||{}).by_exchange||{};
+    for(const ex of Object.keys(bx)) h+=chatRow(ex,`${fmtN(bx[ex].advancers)} ${esc(T("mã tăng"))} · ${fmtN(bx[ex].decliners)} ${esc(T("mã giảm"))}`);
+    if(d.trin&&d.trin.value!=null) h+=chatRow("TRIN",Number(d.trin.value).toFixed(2).replace(".",","));
+    const ft=d.flow_totals||{};
+    if(ft.foreign_net!=null) h+=chatRow(T("Ròng khối ngoại"),`<span class="${cls(ft.foreign_net)}"><b>${ty(ft.foreign_net)}</b></span>`);
+    if(ft.proprietary_net!=null) h+=chatRow(T("Ròng tự doanh"),`<span class="${cls(ft.proprietary_net)}"><b>${ty(ft.proprietary_net)}</b></span>`);
+    if(d.regime) h+=chatRow(T("Trạng thái thị trường"),esc(typeof d.regime==="string"?d.regime:(d.regime.regime||"")));
+    follow=[{label:T("Dòng tiền đổ về đâu"),tool:"get_flow_summary",args:{kind:"both",group_by:"sector"}}];
+  } else if(tool==="calc_flow_sum"){
+    h=`<b>${esc(a.symbol||"")} — ${esc(T("Tổng dòng tiền"))}</b>`;
+    if(d.foreign) h+=chatRow(T("Khối ngoại"),`<span class="${cls(d.foreign.net)}"><b>${ty(d.foreign.net)}</b></span> · ${fmtN(d.foreign.sessions)} ${esc(T("phiên"))}`);
+    if(d.proprietary) h+=chatRow(T("Tự doanh"),`<span class="${cls(d.proprietary.net)}"><b>${ty(d.proprietary.net)}</b></span> · ${fmtN(d.proprietary.sessions)} ${esc(T("phiên"))}`);
+    if(d.net_total!=null) h+=chatRow(T("Ròng gộp"),`<b>${ty(d.net_total)}</b> · ${fmtN(d.sessions)} ${esc(T("phiên"))}`);
   }
   return h+chatFollowHtml(follow)+chatMetaHtml(p);
 }
@@ -2708,6 +2771,28 @@ const I18N_FULL = {
 "Trạng thái thị trường":["Market state","市场状态","시장 상태"],
 "Chỉ số ngành":["Sector indices","行业指数","업종 지수"],
 "Cổ đông lớn nhất":["Largest shareholder","最大股东","최대 주주"],
+"Phân tích ngành":["Sector analysis","行业分析","섹터 분석"],
+"Ròng khối ngoại":["Foreign net","外资净额","외국인 순매매"],
+"Ròng tự doanh":["Proprietary net","自营净额","자기자본 순매매"],
+"Độ tập trung top 3":["Top-3 concentration","前三集中度","상위 3개 집중도"],
+"Độ rộng":["Breadth","市场广度","시장 폭"],
+"mã tăng":["advancers","上涨","상승 종목"],
+"mã giảm":["decliners","下跌","하락 종목"],
+"đứng giá":["unchanged","平盘","보합"],
+"Xu hướng nhiều phiên":["Multi-session trend","多日趋势","다중 세션 추세"],
+"chưa có dữ liệu":["no data yet","暂无数据","데이터 없음"],
+"Trên MA20/MA50":["Above MA20/MA50","站上MA20/MA50","MA20/MA50 상회"],
+"Đóng cửa":["Close","收盘","종가"],
+"Biên 52 tuần":["52-week range","52周区间","52주 범위"],
+"Tiêu chí xu hướng (Minervini)":["Trend criteria (Minervini)","趋势标准(Minervini)","추세 기준 (Minervini)"],
+"Giá mục tiêu trung vị":["Median target price","目标价中位数","목표가 중앙값"],
+"hãng":["firms","家机构","개사"],
+"So sánh":["Compare","对比","비교"],
+"Một số tiêu chí chỉ một phía có dữ liệu":["Some criteria have data on one side only","部分指标仅一侧有数据","일부 기준은 한쪽만 데이터 있음"],
+"Toàn cảnh thị trường":["Market overview","市场全景","시장 전경"],
+"Tổng dòng tiền":["Total flow","资金流合计","자금 흐름 합계"],
+"phiên":["sessions","个交易日","세션"],
+"Dòng tiền theo ngành":["Flow by sector","按行业资金流","업종별 자금 흐름"],
 "cổ phiếu":["shares","股","주"],
 "Không tìm thấy cổ đông khớp tên này trong chỉ mục đã công bố.":["No shareholder matching this name in the published index.","已发布索引中未找到匹配该姓名的股东。","공개된 색인에서 해당 이름의 주주를 찾지 못했습니다."],
 "tổng":["total","合计","합계"],
