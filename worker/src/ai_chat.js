@@ -30,6 +30,19 @@ import { chatToolRun, resolveCaller } from './mcp.js';
 
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models/';
 const DEFAULT_MODEL = 'gemini-3.5-flash';
+// Oxion (chan API du phong AI Chat, Chot 22:08 24/10 theo ban trinh
+// 21:38 + phan key 21:57: key free -> Oxion key 1 -> tab Plus).
+// Code chi doc 1 secret OXION_API_KEY (khong xoay vong); model
+// mac dinh gemini-3.6-flash, doi duoc qua env OXION_MODEL.
+const OXION_URL = 'https://oxionai.com/v1/chat/completions';
+const OXION_MODEL_DEFAULT = 'gemini-3.6-flash';
+// Cohere (staging-only, lenh Henrry 22:29 25/10, key TRIAL):
+// Chi chay khi co secret COHERE_FORCE (chi dat tren staging, gia tri
+// ngau nhien) + COHERE_API_KEY (chi tren staging). Production khong
+// co 2 secret nay nen nhanh nay chet han o prod, chain prod khong doi.
+// Khong dua Cohere vao fallback chain — chi nhanh ep-truoc staging.
+const COHERE_URL = 'https://api.cohere.ai/compatibility/v1/chat/completions';
+const COHERE_MODEL_DEFAULT = 'command-a-03-2025';
 const RATE_LIMIT_PER_HOUR = 30; // tam tat o giai doan test (xem handler)
 
 /* ---------------- khai bao ham cho Gemini (15 tool) ---------------- */
@@ -142,7 +155,12 @@ async function ensureAiLog(env) {
       'CREATE TABLE IF NOT EXISTS ai_chat_log (' +
       'id INTEGER PRIMARY KEY AUTOINCREMENT, ts INTEGER NOT NULL, ' +
       'user_email TEXT, lang TEXT, tool TEXT, status TEXT NOT NULL, ' +
-      'latency_ms INTEGER, keys_tried INTEGER, lead_kept INTEGER)').run();
+      'latency_ms INTEGER, keys_tried INTEGER, lead_kept INTEGER, ' +
+      'via TEXT)').run();
+    // Bang cu (truoc GĐ2) chua co cot via: them, loi thi bo qua.
+    try {
+      await env.DB.prepare('ALTER TABLE ai_chat_log ADD COLUMN via TEXT').run();
+    } catch (e2) { /* cot da ton tai */ }
     await env.DB.prepare(
       'CREATE INDEX IF NOT EXISTS idx_ai_chat_log_ts ON ai_chat_log(ts)').run();
     await env.DB.prepare(
@@ -155,9 +173,9 @@ async function aiLog(env, row) {
     await ensureAiLog(env);
     await env.DB.prepare(
       'INSERT INTO ai_chat_log (ts, user_email, lang, tool, status, ' +
-      'latency_ms, keys_tried, lead_kept) VALUES (?,?,?,?,?,?,?,?)')
+      'latency_ms, keys_tried, lead_kept, via) VALUES (?,?,?,?,?,?,?,?,?)')
       .bind(row.ts, row.user_email, row.lang, row.tool, row.status,
-        row.latency_ms, row.keys_tried, row.lead_kept).run();
+        row.latency_ms, row.keys_tried, row.lead_kept, row.via || null).run();
     const cutoff = Date.now() - 90 * 24 * 3600 * 1000;
     await env.DB.prepare('DELETE FROM ai_chat_log WHERE ts < ?')
       .bind(cutoff).run();
@@ -190,6 +208,7 @@ async function geminiCall(env, keys, state, body, deadlineMs, perAttemptMs) {
   // (ep chon tool, viet cau dan) bo qua, khong dot lai khoa da chet
   // — do that 23/10 keys_tried toi 7 vi moi pass chay lai tu khoa 1.
   if (!state.dead) state.dead = new Set();
+  if (!state.trace) state.trace = []; // nhat ky tung khoa: 200/400/429/503/net
   while (tried < 4 && Date.now() < endAt - 300) {
     const key = keys[state.idx % keys.length];
     state.idx++;
@@ -218,6 +237,7 @@ async function geminiCall(env, keys, state, body, deadlineMs, perAttemptMs) {
         } catch (e2) { /* body loi khong doc duoc */ }
         state.saw400 = true;
         state.dead.add(key);
+        state.trace.push('400');
         if (det) state.errDetail = det;
         lastErr = new Error('gemini_http_400');
         continue;
@@ -225,12 +245,15 @@ async function geminiCall(env, keys, state, body, deadlineMs, perAttemptMs) {
       if (r.status === 429 || r.status === 503 || !r.ok) {
         state.errDetail = 'http_' + r.status;
         state.dead.add(key);
+        state.trace.push('http_' + r.status);
         lastErr = new Error('gemini_http_' + r.status);
         continue;
       }
+      state.trace.push('200');
       return await r.json();
     } catch (e) {
       clearTimeout(timer);
+      state.trace.push('net');
       lastErr = e; // abort / loi mang -> khoa ke
     }
   }
@@ -255,6 +278,570 @@ function geminiFunctionCall(j) {
     }
   }
   return null;
+}
+
+// Gemini khai type HOA (STRING/OBJECT/...); endpoint OpenAI-
+// compatible doi type thuong (string/object/...). Chuan hoa de
+// quy qua properties/items; truong khac (description/enum/
+// required) giu nguyen. (Bai hoc 24/10: gui nguyen type HOA bi
+// aggregator tra 400 nhanh, chan Oxion chet ma khong ro ly do.)
+function _oxionSchema(node) {
+  if (!node || typeof node !== 'object') return { type: 'object', properties: {} };
+  const out = Array.isArray(node) ? [] : {};
+  for (const [k, v] of Object.entries(node)) {
+    if (k === 'type' && typeof v === 'string') out[k] = v.toLowerCase();
+    else if (k === 'properties' && v && typeof v === 'object') {
+      out[k] = {};
+      for (const [pk, pv] of Object.entries(v)) out[k][pk] = _oxionSchema(pv);
+    } else if (k === 'items' && v && typeof v === 'object') out[k] = _oxionSchema(v);
+    else out[k] = v;
+  }
+  return out;
+}
+
+/* ---------------- goi Oxion (chan API du phong) ---------------- */
+// Dich body dang Gemini sang OpenAI chat completions, tra ve dang
+// Gemini (candidates[0].content.parts) de tai su dung geminiText /
+// geminiFunctionCall / _numericGuard nhu luot key. Chi goi khi luot
+// key nem (pass-1 / pass-2); loi -> nem {reason:'oxion_down'} de
+// luong xu ly roi xuong engine (b) hoac bo cau dan nhu cu.
+async function oxionCall(env, geminiBody, timeoutMs) {
+  const key = env.OXION_API_KEY;
+  if (!key) {
+    const e = new Error('oxion_no_key');
+    e.reason = 'oxion_down';
+    throw e;
+  }
+  const messages = [];
+  const sys = geminiBody.systemInstruction
+    && geminiBody.systemInstruction.parts;
+  if (Array.isArray(sys)) {
+    const t = sys.filter((p) => typeof p.text === 'string')
+      .map((p) => p.text).join('\n');
+    if (t) messages.push({ role: 'system', content: t });
+  }
+  for (const c of (geminiBody.contents || [])) {
+    const t = (c.parts || []).filter((p) => typeof p.text === 'string')
+      .map((p) => p.text).join('\n');
+    messages.push({ role: c.role === 'model' ? 'assistant' : 'user', content: t });
+  }
+  const body = {
+    model: env.OXION_MODEL || OXION_MODEL_DEFAULT,
+    messages,
+    temperature: (geminiBody.generationConfig
+      && geminiBody.generationConfig.temperature) ?? 0.2,
+    max_tokens: (geminiBody.generationConfig
+      && geminiBody.generationConfig.maxOutputTokens) || 1024,
+  };
+  const decls = geminiBody.tools && geminiBody.tools[0]
+    && geminiBody.tools[0].functionDeclarations;
+  if (Array.isArray(decls) && decls.length) {
+    body.tools = decls.map((d) => ({
+      type: 'function',
+      function: {
+        name: d.name, description: d.description || '',
+        parameters: _oxionSchema(d.parameters),
+      },
+    }));
+    const mode = geminiBody.toolConfig
+      && geminiBody.toolConfig.functionCallingConfig
+      && geminiBody.toolConfig.functionCallingConfig.mode;
+    body.tool_choice = mode === 'ANY' ? 'required' : 'auto';
+  }
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), timeoutMs || 60000);
+  let r;
+  try {
+    r = await fetch(OXION_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer ' + key,
+      },
+      body: JSON.stringify(body),
+      signal: ctl.signal,
+    });
+  } catch (e) {
+    clearTimeout(timer);
+    const err = new Error('oxion_down');
+    err.reason = 'oxion_down';
+    throw err;
+  }
+  clearTimeout(timer);
+  if (!r.ok) {
+    const err = new Error('oxion_down');
+    err.reason = 'oxion_down';
+    err.detail = 'http_' + r.status;
+    throw err;
+  }
+  const j = await r.json();
+  const msg = j && j.choices && j.choices[0] && j.choices[0].message;
+  if (!msg) {
+    const err = new Error('oxion_down');
+    err.reason = 'oxion_down';
+    throw err;
+  }
+  const parts = [];
+  if (Array.isArray(msg.tool_calls)) {
+    for (const tc of msg.tool_calls) {
+      if (tc && tc.function && tc.function.name) {
+        let args = {};
+        try { args = JSON.parse(tc.function.arguments || '{}'); } catch (e2) { /* giu {} */ }
+        parts.push({ functionCall: { name: tc.function.name, args } });
+      }
+    }
+  }
+  if (typeof msg.content === 'string' && msg.content.trim()) {
+    parts.push({ text: msg.content });
+  }
+  if (!parts.length) {
+    const err = new Error('oxion_down');
+    err.reason = 'oxion_down';
+    throw err;
+  }
+  return { candidates: [{ content: { parts } }] };
+}
+
+// Cohere qua cong tuong thich OpenAI: cung shape request/response nhu
+// oxionCall (messages, tools, temperature, max_tokens; tra ve choices[0]
+// .message). Loi -> {reason:'cohere_down'} de caller roi ve luot key.
+async function cohereCall(env, geminiBody, timeoutMs) {
+  const key = env.COHERE_API_KEY;
+  if (!key) {
+    const e = new Error('cohere_no_key');
+    e.reason = 'cohere_down';
+    throw e;
+  }
+  const messages = [];
+  const sys = geminiBody.systemInstruction
+    && geminiBody.systemInstruction.parts;
+  if (Array.isArray(sys)) {
+    const t = sys.filter((pp) => typeof pp.text === 'string')
+      .map((pp) => pp.text).join('\n');
+    if (t) messages.push({ role: 'system', content: t });
+  }
+  for (const c of (geminiBody.contents || [])) {
+    const t = (c.parts || []).filter((pp) => typeof pp.text === 'string')
+      .map((pp) => pp.text).join('\n');
+    messages.push({ role: c.role === 'model' ? 'assistant' : 'user', content: t });
+  }
+  const body = {
+    model: env.COHERE_MODEL || COHERE_MODEL_DEFAULT,
+    messages,
+    temperature: (geminiBody.generationConfig
+      && geminiBody.generationConfig.temperature) ?? 0.2,
+    max_tokens: (geminiBody.generationConfig
+      && geminiBody.generationConfig.maxOutputTokens) || 1024,
+  };
+  const decls = geminiBody.tools && geminiBody.tools[0]
+    && geminiBody.tools[0].functionDeclarations;
+  if (Array.isArray(decls) && decls.length) {
+    body.tools = decls.map((d) => ({
+      type: 'function',
+      function: {
+        name: d.name, description: d.description || '',
+        parameters: _oxionSchema(d.parameters),
+      },
+    }));
+    const mode = geminiBody.toolConfig
+      && geminiBody.toolConfig.functionCallingConfig
+      && geminiBody.toolConfig.functionCallingConfig.mode;
+    body.tool_choice = mode === 'ANY' ? 'required' : 'auto';
+  }
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), timeoutMs || 60000);
+  let r;
+  try {
+    r = await fetch(COHERE_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + key,
+      },
+      body: JSON.stringify(body),
+      signal: ctl.signal,
+    });
+  } catch (e) {
+    clearTimeout(timer);
+    const err = new Error('cohere_down');
+    err.reason = 'cohere_down';
+    throw err;
+  }
+  clearTimeout(timer);
+  if (!r.ok) {
+    const err = new Error('cohere_down');
+    err.reason = 'cohere_down';
+    err.detail = 'http_' + r.status;
+    throw err;
+  }
+  const j = await r.json();
+  const msg = j && j.choices && j.choices[0] && j.choices[0].message;
+  if (!msg) {
+    const err = new Error('cohere_down');
+    err.reason = 'cohere_down';
+    throw err;
+  }
+  const parts = [];
+  if (Array.isArray(msg.tool_calls)) {
+    for (const tc of msg.tool_calls) {
+      if (tc && tc.function && tc.function.name) {
+        let args = {};
+        try { args = JSON.parse(tc.function.arguments || '{}'); } catch (e2) { /* giu {} */ }
+        parts.push({ functionCall: { name: tc.function.name, args } });
+      }
+    }
+  }
+  if (typeof msg.content === 'string' && msg.content.trim()) {
+    parts.push({ text: msg.content });
+  }
+  if (!parts.length) {
+    const err = new Error('cohere_down');
+    err.reason = 'cohere_down';
+    throw err;
+  }
+  return { candidates: [{ content: { parts } }] };
+}
+
+/* Bang nganh ICB cho fallback TAT DINH (giong bang rule 6 cua
+   SYSTEM_PROMPT; dai truoc ngan sau de tranh trung chuoi con). */
+const SECTOR_DRILL = [
+  ['bất động sản', '8600'], ['bđs', '8600'],
+  ['ngân hàng', '8300'],
+  ['dầu khí', '0500'],
+  ['tài nguyên cơ bản', '1700'],
+  ['thực phẩm và đồ uống', '3500'], ['thực phẩm', '3500'],
+  ['điện, nước', '7500'], ['xăng dầu khí đốt', '7500'], ['điện', '7500'],
+  ['bán lẻ', '5300'],
+  ['hàng & dịch vụ công nghiệp', '2700'],
+  ['xây dựng và vật liệu', '2300'], ['xây dựng', '2300'],
+  ['du lịch và giải trí', '5700'], ['du lịch', '5700'],
+  ['hóa chất', '1300'],
+  ['hàng cá nhân & gia dụng', '3700'], ['gia dụng', '3700'],
+  ['ô tô và phụ tùng', '3300'], ['ô tô', '3300'],
+  ['dịch vụ tài chính', '8700'], ['chứng khoán', '8700'],
+  ['công nghệ thông tin', '9500'], ['công nghệ', '9500'],
+  ['viễn thông', '6500'],
+  ['y tế', '4500'],
+  ['truyền thông', '5500'],
+  ['bảo hiểm', '8500'],
+];
+/* Y dinh co cau truc cho cau khoan nganh: "phan tich <nganh>",
+   "<nganh> de ro hon", "xem them/khoan sau <nganh>", "<nganh> thi
+   sao" -> analyze_sector nhu duong chip khoan (khong qua LLM). */
+function deterministicDrill(text) {
+  const t = ' ' + String(text || '').toLowerCase()
+    .replace(/\s+/g, ' ').trim() + ' ';
+  if (!/phân tích|để rõ hơn|khoan sâu|xem thêm|thì sao|kỹ hơn|chi tiết hơn/
+    .test(t)) return null;
+  for (const [nm, code] of SECTOR_DRILL) {
+    if (t.includes(nm)) return { name: 'analyze_sector', args: { code } };
+  }
+  return null;
+}
+
+/* ---------------- engine (b) GĐ2: queue qua D1 (quyet B 16:44 24/10) -------- */
+/* Chot 16:09 24/10 + quyet van chuyen B 16:44 24/10 (bo tunnel): key free
+   van chinh; engine chi vao khi luot dieu phoi chet vi khoa
+   (gemini_down/gemini_400) + co AI_ENGINE = engine-fallback + probe xanh.
+   Engine CHI SOAN DAP, khong chon tool, khong tu tinh so.
+   - _numericGuard voi data=null = dap khong duoc chua so nao khong co
+     nguon. Voi dap engine (khong co envelope), ap dung dung luat nay
+     bang cach LUOC BO moi token so truoc khi hien (giu phan tich dinh
+     tinh) thay vi bo ca dap — kem co figures_removed de client ghi chu.
+   - Khung CHU PHAN TICH: prompt cam khuyen nghi + loc cau khuyen nghi
+     o phia Worker truoc khi tra (stripRecommendationSentences).
+   - Timeout 120s ap cho buoc lai tab trong 1 browser-task (do that
+     harness: dap tab ve trong 15-30s); TTL job 30 phut o D1 bao hang
+     doi toi da 3 job x nhip runner 5 phut + thoi gian lai.
+   - Probe xanh = co engine-fallback + heartbeat runner tuoi (< 900s)
+     + khong bi chan tab (chan chi khi lan kiem tra tab gan nhat la
+     wrong_account va chua qua 30 phut; sau 30 phut chan tu het de
+     khoi ket vinh vien khi khong co job -> khong co lan kiem tra moi).
+   - Hook test staging-only: neu secret ENGINE_FORCE_ENGINE ton tai (chi
+     dat tren staging, gia tri ngau nhien, production khong bao gio co
+     secret nay) thi luot dieu phoi bi ep vao nhanh catch engine that
+     — dung cho S3, go secret sau S3 la hook chet ca staging. Khong
+     lam gia dap an. Thu tu S3: go secret hook TRUOC khi doi co ve keys
+     (khi hook con bat, moi luot chat deu di vao nhanh engine). */
+const ENGINE_INSTRUCTION =
+  'Ban la chuyen gia phan tich thi truong chung khoan Viet Nam. Nhiem vu: ' +
+  'CHI PHAN TICH dinh tinh cau hoi duoi day. TUYET DOI KHONG dua khuyen nghi ' +
+  'mua/ban/nam giu, khong muc tieu gia, khong cat lo/chot loi, khong du bao ' +
+  'chac chan gia se tang/giam. Khong bia so lieu: neu khong chac ve mot con ' +
+  'so thi noi dinh tinh, khong neu so cu the.';
+function enginePrompt(question, lang) {
+  return ENGINE_INSTRUCTION + '\nCAU HOI: ' + question +
+    '\nTra loi bang ngon ngu: ' + lang + '.';
+}
+
+let _flagCache = { v: null, at: 0 };
+async function aiEngineFlag(env) {
+  if (Date.now() - _flagCache.at < 60000 && _flagCache.v !== null) return _flagCache.v;
+  let v = 'keys';
+  try {
+    await env.DB.prepare(
+      'CREATE TABLE IF NOT EXISTS ai_engine_flag (value TEXT)').run();
+    const row = await env.DB.prepare(
+      'SELECT value FROM ai_engine_flag LIMIT 1').first();
+    if (row && row.value) v = row.value;
+  } catch (e) { /* loi doc co -> fail-closed ve keys */ }
+  _flagCache = { v, at: Date.now() };
+  return v;
+}
+
+const ENGINE_MAX_PENDING = 3;
+const ENGINE_PENDING_TTL_MS = 30 * 60 * 1000;
+const ENGINE_RUNNING_TTL_MS = 10 * 60 * 1000;
+const ENGINE_HEARTBEAT_FRESH_MS = 900 * 1000;
+const ENGINE_TAB_BLOCK_MS = 30 * 60 * 1000;
+const ENGINE_JOB_RETENTION_MS = 7 * 24 * 3600 * 1000;
+async function ensureEngineTables(env) {
+  await env.DB.prepare(
+    'CREATE TABLE IF NOT EXISTS engine_jobs (' +
+    'id TEXT PRIMARY KEY, prompt TEXT NOT NULL, lang TEXT, ' +
+    'status TEXT NOT NULL, created_at INTEGER NOT NULL, ' +
+    'claimed_at INTEGER, completed_at INTEGER, answer TEXT, ' +
+    'error TEXT, account_checked TEXT)').run();
+  await env.DB.prepare(
+    'CREATE TABLE IF NOT EXISTS engine_runner_state (' +
+    'id INTEGER PRIMARY KEY CHECK (id = 1), last_heartbeat_ms INTEGER, ' +
+    'last_tab_check_ms INTEGER, last_tab_ok INTEGER, last_account TEXT)').run();
+  await env.DB.prepare(
+    'INSERT OR IGNORE INTO engine_runner_state (id) VALUES (1)').run();
+}
+async function engineSweep(env, now) {
+  await env.DB.prepare(
+    "UPDATE engine_jobs SET status = 'expired', error = 'ttl_pending' " +
+    'WHERE status = ? AND created_at < ?')
+    .bind('pending', now - ENGINE_PENDING_TTL_MS).run();
+  await env.DB.prepare(
+    "UPDATE engine_jobs SET status = 'expired', error = 'ttl_running' " +
+    'WHERE status = ? AND claimed_at < ?')
+    .bind('running', now - ENGINE_RUNNING_TTL_MS).run();
+  await env.DB.prepare(
+    'DELETE FROM engine_jobs WHERE status IN ' +
+    "('done', 'failed', 'expired', 'cancelled') AND completed_at < ?")
+    .bind(now - ENGINE_JOB_RETENTION_MS).run();
+}
+async function engineProbe(env) {
+  try {
+    await ensureEngineTables(env);
+    const row = await env.DB.prepare(
+      'SELECT last_heartbeat_ms, last_tab_check_ms, last_tab_ok ' +
+      'FROM engine_runner_state WHERE id = 1').first();
+    if (!row || !row.last_heartbeat_ms) return { ok: false };
+    const now = Date.now();
+    if (now - row.last_heartbeat_ms > ENGINE_HEARTBEAT_FRESH_MS) {
+      return { ok: false };
+    }
+    // Chan tab am tinh: chi chan khi lan kiem tra gan nhat la
+    // wrong_account va chua qua 30 phut.
+    if (row.last_tab_ok === 0 && row.last_tab_check_ms &&
+      now - row.last_tab_check_ms < ENGINE_TAB_BLOCK_MS) {
+      return { ok: false, blocked_tab: true };
+    }
+    return { ok: true };
+  } catch (e) { return { ok: false }; }
+}
+function _engineJobId() {
+  try {
+    return crypto.randomUUID().replace(/-/g, '').slice(0, 16);
+  } catch (e) {
+    return Date.now().toString(36) +
+      Math.floor(Math.random() * 0xffffff).toString(36);
+  }
+}
+async function engineEnqueue(env, prompt, lang) {
+  await ensureEngineTables(env);
+  const now = Date.now();
+  await engineSweep(env, now);
+  const row = await env.DB.prepare(
+    'SELECT COUNT(*) AS n FROM engine_jobs WHERE status = ?')
+    .bind('pending').first();
+  if (row && row.n >= ENGINE_MAX_PENDING) return { queue_full: true };
+  const id = _engineJobId();
+  await env.DB.prepare(
+    'INSERT INTO engine_jobs (id, prompt, lang, status, created_at) ' +
+    'VALUES (?, ?, ?, ?, ?)')
+    .bind(id, String(prompt).slice(0, 4000), lang, 'pending', now).run();
+  return { job_id: id };
+}
+/* So sanh hang thoi gian cho secret runner (khong short-circuit). */
+function _ctEqual(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string') return false;
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+function engineRunnerAuth(request, env) {
+  const secret = env.ENGINE_RUNNER_SECRET;
+  if (!secret) return false;
+  const got = request.headers.get('X-Engine-Runner') || '';
+  return _ctEqual(got, secret);
+}
+
+const _NUM_RE = /(?<![A-Za-z0-9])-?\d{1,3}(?:\.\d{3})+(?:,\d+)?|(?<![A-Za-z0-9])-?\d+(?:,\d+)?/g;
+function stripNumbersForDraft(text) {
+  const cleaned = String(text || '').replace(_NUM_RE, '').replace(/[ \t]{2,}/g, ' ').trim();
+  return { text: cleaned, removed: cleaned !== String(text || '').trim() };
+}
+const _REC_RE = [
+  /nên\s+(mua|bán|nắm giữ)/i, /khuyến nghị/i, /cắt lỗ/i, /chốt lời/i,
+  /mục tiêu\s+(giá|chốt)/i, /đáng\s+mua/i, /mua\s+vào/i, /bán\s+ra\s+ngay/i,
+];
+function stripRecommendationSentences(text) {
+  const parts = String(text || '').split(/(?<=[.!?\n])\s+/);
+  const kept = [];
+  let removed = 0;
+  for (const s of parts) {
+    if (_REC_RE.some((re) => re.test(s))) { removed++; continue; }
+    kept.push(s);
+  }
+  return { text: kept.join(' ').replace(/[ \t]{2,}/g, ' ').trim(), removed };
+}
+function cleanEngineDraft(answer) {
+  const n = stripNumbersForDraft(answer);
+  const r = stripRecommendationSentences(n.text);
+  return { text: r.text, figures_removed: n.removed, rec_removed: r.removed };
+}
+
+/* Poll 1 job engine tu D1: client goi sau khi nhan engine_job o luot
+   fallback. Giu 'user' nhu route chat goc (resolveCaller chi lay email
+   ghi log, khong dung quyen nang gi them). */
+export async function hAiChatJob(request, env) {
+  const json = (o) => new Response(JSON.stringify(o), {
+    headers: { 'Content-Type': 'application/json' },
+  });
+  let caller = null;
+  try { caller = await resolveCaller(request, env); } catch (e) { /* bo qua */ }
+  const email = caller ? caller.email : '';
+  const url = new URL(request.url);
+  const id = url.searchParams.get('id');
+  if (!id) return json({ fallback: true, reason: 'bad_request' });
+  try {
+    await ensureEngineTables(env);
+    await engineSweep(env, Date.now());
+    const j = await env.DB.prepare(
+      'SELECT status, answer FROM engine_jobs WHERE id = ?').bind(id).first();
+    if (!j) return json({ fallback: true, reason: 'engine_not_found' });
+    if (j.status === 'done') {
+      const c = cleanEngineDraft(j.answer || '');
+      await aiLog(env, { ts: Date.now(), user_email: email, lang: 'vi',
+        tool: null, status: 'ok:engine', latency_ms: 0, keys_tried: 0,
+        lead_kept: 0, via: 'engine' });
+      return json({ ok: true, text: c.text, via: 'engine',
+        figures_removed: c.figures_removed, rec_removed: c.rec_removed });
+    }
+    if (j.status === 'pending' || j.status === 'running') {
+      return json({ pending: true });
+    }
+    return json({ fallback: true, reason: 'engine_failed' });
+  } catch (e) {
+    return json({ fallback: true, reason: 'engine_unreachable' });
+  }
+}
+export async function hAiChatJobCancel(request, env) {
+  const json = (o) => new Response(JSON.stringify(o), {
+    headers: { 'Content-Type': 'application/json' },
+  });
+  let body;
+  try { body = await request.json(); } catch (e) { return json({ ok: true }); }
+  const id = body && body.job_id;
+  if (!id) return json({ ok: true });
+  try {
+    await ensureEngineTables(env);
+    await env.DB.prepare(
+      "UPDATE engine_jobs SET status = 'cancelled' " +
+      'WHERE id = ? AND status = ?').bind(id, 'pending').run();
+  } catch (e) { /* huy best-effort: job tu het TTL neu khong huy duoc */ }
+  return json({ ok: true });
+}
+
+/* ---------------- route runner (auth ENGINE_RUNNER_SECRET) ---------------- */
+export async function hAiEngineClaim(request, env) {
+  const json = (o, status) => new Response(JSON.stringify(o), {
+    status: status || 200,
+    headers: { 'Content-Type': 'application/json' },
+  });
+  if (!engineRunnerAuth(request, env)) {
+    return json({ error: 'unauthorized' }, 401);
+  }
+  try {
+    await ensureEngineTables(env);
+    await engineSweep(env, Date.now());
+    const j = await env.DB.prepare(
+      'SELECT id, prompt, lang FROM engine_jobs ' +
+      "WHERE status = ? ORDER BY created_at ASC LIMIT 1")
+      .bind('pending').first();
+    if (!j) return json({ error: 'no_pending_job' }, 404);
+    await env.DB.prepare(
+      "UPDATE engine_jobs SET status = 'running', claimed_at = ? " +
+      'WHERE id = ? AND status = ?')
+      .bind(Date.now(), j.id, 'pending').run();
+    return json({ job_id: j.id, prompt: j.prompt, lang: j.lang });
+  } catch (e) {
+    return json({ error: 'engine_error' }, 500);
+  }
+}
+export async function hAiEngineComplete(request, env) {
+  const json = (o, status) => new Response(JSON.stringify(o), {
+    status: status || 200,
+    headers: { 'Content-Type': 'application/json' },
+  });
+  if (!engineRunnerAuth(request, env)) {
+    return json({ error: 'unauthorized' }, 401);
+  }
+  let body;
+  try { body = await request.json(); } catch (e) { return json({ error: 'bad_request' }, 400); }
+  const id = body && body.job_id;
+  if (!id) return json({ error: 'bad_request' }, 400);
+  try {
+    await ensureEngineTables(env);
+    const now = Date.now();
+    const failed = !!body.error;
+    const rs = await env.DB.prepare(
+      'UPDATE engine_jobs SET status = ?, answer = ?, error = ?, ' +
+      'account_checked = ?, completed_at = ? ' +
+      "WHERE id = ? AND status = 'running'")
+      .bind(failed ? 'failed' : 'done',
+        failed ? null : (body.answer || null),
+        failed ? String(body.error).slice(0, 100) : null,
+        body.account_checked ? String(body.account_checked).slice(0, 100) : null,
+        now, id).run();
+    if (!rs || rs.meta.changes === 0) {
+      return json({ error: 'job_not_running' }, 404);
+    }
+    // Ghi trang thai tab cho probe: timeout van la tab song (chi cham),
+    // chi wrong_account moi danh tab chet.
+    await env.DB.prepare(
+      'UPDATE engine_runner_state SET last_tab_check_ms = ?, ' +
+      'last_tab_ok = ?, last_account = ? WHERE id = 1')
+      .bind(now, body.error === 'wrong_account' ? 0 : 1,
+        body.account_checked ? String(body.account_checked).slice(0, 100) : null).run();
+    return json({ job_id: id, status: failed ? 'failed' : 'done' });
+  } catch (e) {
+    return json({ error: 'engine_error' }, 500);
+  }
+}
+export async function hAiEngineHeartbeat(request, env) {
+  const json = (o, status) => new Response(JSON.stringify(o), {
+    status: status || 200,
+    headers: { 'Content-Type': 'application/json' },
+  });
+  if (!engineRunnerAuth(request, env)) {
+    return json({ error: 'unauthorized' }, 401);
+  }
+  try {
+    await ensureEngineTables(env);
+    const now = Date.now();
+    await env.DB.prepare(
+      'UPDATE engine_runner_state SET last_heartbeat_ms = ? WHERE id = 1')
+      .bind(now).run();
+    return json({ heartbeat_at: now });
+  } catch (e) {
+    return json({ error: 'engine_error' }, 500);
+  }
 }
 
 /* ---------------- handler ---------------- */
@@ -291,6 +878,7 @@ export async function hAiChat(request, env) {
       status, latency_ms: Date.now() - t0,
       keys_tried: (extra && extra.keys_tried) || 0,
       lead_kept: (extra && extra.lead_kept) || 0,
+      via: (extra && extra.via) || null,
     });
     return json(payload);
   };
@@ -335,26 +923,88 @@ export async function hAiChat(request, env) {
 
   // Luot 1: dieu phoi (chon tool)
   let j1;
+  let viaOxion = false;
+  let viaCohere = false;
+  const pass1Body = {
+    systemInstruction: { parts: [{ text: SYSTEM_PROMPT + '\n13. Tra loi bang ngon ngu: ' + lang + '.' }] },
+    contents,
+    tools: [{ functionDeclarations: _buildDecls() }],
+    toolConfig: { functionCallingConfig: { mode: 'AUTO' } },
+    generationConfig: { temperature: 0.2, maxOutputTokens: 1024 },
+  };
   try {
-    j1 = await geminiCall(env, keys, state, {
-      systemInstruction: { parts: [{ text: SYSTEM_PROMPT + '\n13. Tra loi bang ngon ngu: ' + lang + '.' }] },
-      contents,
-      tools: [{ functionDeclarations: _buildDecls() }],
-      toolConfig: { functionCallingConfig: { mode: 'AUTO' } },
-      generationConfig: { temperature: 0.2, maxOutputTokens: 1024 },
-    }, 10000, 3000);
+    // Hook test staging-only (xem ghi chu engine): secret nay chi dat
+    // tren staging (gia tri ngau nhien, chi can ton tai); production
+    // khong co secret nay nen nhanh nay chet han o prod.
+    // Cohere ep-truoc staging-only: chi khi co ca COHERE_FORCE +
+    // COHERE_API_KEY (chi tren staging). Thanh cong -> viaCohere, bo
+    // qua luot key (de test khong bi key free nuot thanh via=null).
+    // That bai -> roi ve luot key nhu cu (via se noi that).
+    if (env.COHERE_FORCE && env.COHERE_API_KEY) {
+      try {
+        j1 = await cohereCall(env, pass1Body, 60000);
+        viaCohere = true;
+      } catch (e4) { /* Cohere chet -> luot key nhu cu */ }
+    }
+    if (!viaCohere) {
+      if (env.ENGINE_FORCE_ENGINE) {
+        const fe = new Error('gemini_down');
+        fe.reason = 'gemini_down'; fe.detail = 'forced_test';
+        throw fe;
+      }
+      j1 = await geminiCall(env, keys, state, pass1Body, 10000, 3000);
+    }
   } catch (e) {
-    return fallback((e && e.reason) || 'gemini_down',
-      { keys_tried: state.keysTried, detail: (e && e.detail) || null });
+    // Oxion (chan API du phong, Chot 22:08 24/10): chi khi luot key
+    // nem + co secret OXION_API_KEY. Thanh cong -> j1 dang Gemini,
+    // roi xuong xu ly fc/text phia duoi nhu luot key (kem co
+    // viaOxion de log via rieng). That bai -> engine (b) nhu cu.
+    if (env.OXION_API_KEY) {
+      try {
+        j1 = await oxionCall(env, pass1Body, 60000);
+        viaOxion = true;
+      } catch (e3) { /* Oxion chet -> engine nhu cu */ }
+    }
+    if (!viaOxion) {
+      // Engine (b): chi khi luot dieu phoi chet vi khoa + co engine-fallback
+      // + probe xanh. Tra fallback KEM engine_job (client cu bo qua truong
+      // moi va dung chatRoute nhu cu; client moi chi poll engine khi
+      // chatRoute khong giai quyet duoc) — khong lam cham luot fallback.
+      const fbExtra = { keys_tried: state.keysTried, detail: (e && e.detail) || null };
+      try {
+        const flag = await aiEngineFlag(env);
+        if (flag === 'engine-fallback') {
+          const probe = await engineProbe(env);
+          if (probe.ok) {
+            const enq = await engineEnqueue(env,
+              enginePrompt(lastUser.text, lang), lang);
+            if (enq.job_id) {
+              return finish({ fallback: true, reason: (e && e.reason) || 'gemini_down',
+                engine_job: enq.job_id, engine_available: true },
+                'fallback:engine_pending', fbExtra);
+            }
+            if (enq.queue_full) {
+              return finish({ fallback: true, reason: (e && e.reason) || 'gemini_down',
+                engine_busy: true }, 'fallback:engine_busy', fbExtra);
+            }
+          }
+        }
+      } catch (e2) { /* probe/enqueue loi -> fallback thuong */ }
+      return fallback((e && e.reason) || 'gemini_down', fbExtra);
+    }
   }
 
   let fc = geminiFunctionCall(j1);
   if (!fc) {
     // Khong can so lieu: chi chap nhan text neu khong chua con so
     // nao khong kiem chung duoc (khong co envelope de gac).
-    const text = geminiText(j1);
+    let text = geminiText(j1);
+    if (viaOxion || viaCohere) text = stripRecommendationSentences(text).text;
     if (text && _numericGuard(text, null) && !_bannedLead(text)) {
-      return finish({ ok: true, tool: null, text }, 'ok', { keys_tried: state.keysTried });
+      return finish(viaCohere ? { ok: true, tool: null, text, via: 'cohere' }
+        : viaOxion ? { ok: true, tool: null, text, via: 'oxion' } : { ok: true, tool: null, text },
+        viaCohere ? 'ok:cohere' : viaOxion ? 'ok:oxion' : 'ok',
+        { keys_tried: state.keysTried, via: viaCohere ? 'cohere' : viaOxion ? 'oxion' : null });
     }
     // Van xuoi khong kiem chung duoc (hoac rong): ep model CHON
     // TOOL 1 luot (mode ANY) truoc khi roi du phong. Ca loi
@@ -371,7 +1021,15 @@ export async function hAiChat(request, env) {
       fc = geminiFunctionCall(j1b);
     } catch (e) { /* het ngan sach / loi -> giu duong fallback cu */ }
     if (!fc) {
-      return fallback('no_tool', { keys_tried: state.keysTried });
+      // Du phong TAT DINH (lenh dau moi 21:39 23/10): cau khoan nganh
+      // ma model khong map duoc — ke ca khi ANY-enforcement khong sinh
+      // tool call hay quota chet giua chung — di qua lop y dinh co cau
+      // truc nhu duong chip khoan, thay vi tra no_tool ra giao dien.
+      fc = deterministicDrill(lastUser.text);
+    }
+    if (!fc) {
+      return fallback('no_tool', { keys_tried: state.keysTried,
+        detail: (state.trace || []).join(',') });
     }
   }
 
@@ -392,28 +1050,51 @@ export async function hAiChat(request, env) {
   // Luot 2: viet cau dan tu envelope, qua cong gac so. Bo qua khi
   // luot 1 da an gan het ngan sach thoi gian (the du lieu la chinh).
   let lead = null;
+  const dataJson = JSON.stringify(envelope.data || {}).slice(0, 6000);
+  const leadPrompt =
+    'Duoi day la du lieu thi truong (JSON) vua truy van duoc cho cau hoi cua nguoi dung. ' +
+    'Hay viet 1-2 cau dan ngan gon bang ngon ngu "' + lang + '" mo ta diem chinh cua du lieu.\n' +
+    'LUAT: CHI dung cac con so co mat trong JSON; khong nhac ngay thang; khong du doan, ' +
+    'khong khuyen nghi mua/ban; so tien lon quy ve don vi "ty" (1 ty = 1e9 dong), ' +
+    'so phan tram giu nguyen nhu trong JSON.\n' +
+    'CAU HOI: ' + lastUser.text + '\nDU LIEU: ' + dataJson;
   try {
-    if (Date.now() - t0 < 10000) {
-    const dataJson = JSON.stringify(envelope.data || {}).slice(0, 6000);
-    const leadPrompt =
-      'Duoi day la du lieu thi truong (JSON) vua truy van duoc cho cau hoi cua nguoi dung. ' +
-      'Hay viet 1-2 cau dan ngan gon bang ngon ngu "' + lang + '" mo ta diem chinh cua du lieu.\n' +
-      'LUAT: CHI dung cac con so co mat trong JSON; khong nhac ngay thang; khong du doan, ' +
-      'khong khuyen nghi mua/ban; so tien lon quy ve don vi "ty" (1 ty = 1e9 dong), ' +
-      'so phan tram giu nguyen nhu trong JSON.\n' +
-      'CAU HOI: ' + lastUser.text + '\nDU LIEU: ' + dataJson;
-    const j2 = await geminiCall(env, keys, state, {
+    if (Date.now() - t0 < 10000 || viaOxion || viaCohere) {
+    const j2 = viaCohere ? await cohereCall(env, {
+      contents: [{ role: 'user', parts: [{ text: leadPrompt }] }],
+      generationConfig: { temperature: 0.3, maxOutputTokens: 1024 },
+    }, 60000) : await geminiCall(env, keys, state, {
       contents: [{ role: 'user', parts: [{ text: leadPrompt }] }],
       generationConfig: { temperature: 0.3, maxOutputTokens: 1024 },
     }, 4000, 2000);
-    const txt = geminiText(j2).replace(/\s+/g, ' ').slice(0, 400);
+    let txt = geminiText(j2).replace(/\s+/g, ' ').slice(0, 400);
+    if (viaCohere) txt = stripRecommendationSentences(txt).text;
     if (txt && _numericGuard(txt, envelope.data) && !_bannedLead(txt)) lead = txt;
     }
-  } catch (e) { /* cau dan loi/gac truot -> chi hien the du lieu */ }
+  } catch (e) {
+    // Cau dan qua Oxion khi luot key chet (luot viaOxion: khoa da
+    // chet nen geminiCall truot nhanh qua dead-set). Van qua cong
+    // gac so + loc cau khuyen nghi nhu luot key. Luot viaCohere:
+    // khong roi Oxion (lead giu null, envelope van tra via=cohere).
+    if (!viaCohere && env.OXION_API_KEY) {
+      try {
+        const oj = await oxionCall(env, {
+          contents: [{ role: 'user', parts: [{ text: leadPrompt }] }],
+          generationConfig: { temperature: 0.3, maxOutputTokens: 1024 },
+        }, 60000);
+        let txt = geminiText(oj).replace(/\s+/g, ' ').slice(0, 400);
+        txt = stripRecommendationSentences(txt).text;
+        if (txt && _numericGuard(txt, envelope.data) && !_bannedLead(txt)) lead = txt;
+      } catch (e3) { /* Oxion chet -> chi hien the du lieu */ }
+    }
+  }
 
   return finish(
-    { ok: true, tool: fc.name, args: fc.args, envelope, lead },
-    'ok', { keys_tried: state.keysTried, lead_kept: lead ? 1 : 0 });
+    viaCohere ? { ok: true, tool: fc.name, args: fc.args, envelope, lead, via: 'cohere' }
+      : viaOxion ? { ok: true, tool: fc.name, args: fc.args, envelope, lead, via: 'oxion' }
+      : { ok: true, tool: fc.name, args: fc.args, envelope, lead },
+    viaCohere ? 'ok:cohere' : viaOxion ? 'ok:oxion' : 'ok',
+    { keys_tried: state.keysTried, lead_kept: lead ? 1 : 0, via: viaCohere ? 'cohere' : viaOxion ? 'oxion' : null });
 }
 
 export { _buildDecls };
