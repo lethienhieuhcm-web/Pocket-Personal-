@@ -73,8 +73,8 @@ if _REF:
     _REF_SHA = _rv.stdout.strip()
     _base = os.path.expanduser("~/workspace/.cf_ref")
     os.makedirs(_base, exist_ok=True)
-    _REF_SRC = tempfile.mkdtemp(prefix="ref_" + _ref_SHA[:8] + "_", dir=_base)
-    _p1 = subprocess.Popen(["git", "-C", _repo, "archive", _ref_SHA],
+    _REF_SRC = tempfile.mkdtemp(prefix="ref_" + _REF_SHA[:8] + "_", dir=_base)
+    _p1 = subprocess.Popen(["git", "-C", _repo, "archive", _REF_SHA],
                            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     _p2 = subprocess.run(["tar", "-x", "-C", _REF_SRC],
                          stdin=_p1.stdout, capture_output=True, text=True)
@@ -85,7 +85,7 @@ if _REF:
         shutil.rmtree(_REF_SRC, ignore_errors=True)
         sys.exit(2)
     atexit.register(lambda: shutil.rmtree(_REF_SRC, ignore_errors=True))
-    print(f"DEPLOY FROM REF: {_REF} -> {_ref_SHA} (archive: {_REF_SRC})")
+    print(f"DEPLOY FROM REF: {_REF} -> {_REF_SHA} (archive: {_REF_SRC})")
     print("  (chi file da commit; file dirty trong cay lam viec KHONG duoc deploy)")
 
 API = "https://api.cloudflare.com/client/v4"
