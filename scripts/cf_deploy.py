@@ -123,6 +123,7 @@ URL_PREFIX = "/english"
 FILES = [
     "index.html", "manifest.json", "sw.js", "icon.svg",
     "design-system.css", "_headers", "asset-manifest.json",
+    "flags.json",
     "stocks-manifest.json", "stocks-sw.js",
     "voice-manifest.json", "voice-sw.js",
     "chess-manifest.json", "chess-sw.js",
