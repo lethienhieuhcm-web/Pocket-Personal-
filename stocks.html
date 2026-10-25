@@ -435,6 +435,45 @@ input,select{background:var(--pp-bg2);border:1px solid var(--pp-line);color:var(
 </div>
 
 <div id="palOverlay" style="display:none"><div class="pal-box"><div class="pal-top"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg><input id="palIn" type="text" autocomplete="off" spellcheck="false" placeholder="Tìm mã, ngành, trang hoặc lệnh…"><button id="palClose" aria-label="Close">✕</button></div><div id="palResults"></div><div class="pal-foot" id="palFoot"></div></div></div>
+
+<!-- ===== MÀN Margin: dư nợ cho vay ===== -->
+<div class="view" id="v-margin">
+<div class="hdr"><a href="/hub" class="pp-back" style="text-decoration:none;font-size:20px" title="Về Pocket Personal" aria-label="Về Pocket Personal">‹</a><h1>Margin</h1><span class="src" id="mgSrc"></span></div>
+<div class="pagebar" id="marginTabs"></div>
+<div id="mgBanner"></div>
+<div class="idx" id="mgHead"></div>
+<div class="sec" id="mgChartT"></div>
+<div class="card" id="mgChart"></div>
+<div class="sec" id="mgTableT"></div>
+<div class="card"><table><thead id="mgTableHead"></thead><tbody id="mgTableBody"><tr><td colspan="3"><div class="hint">Đang tải…</div></td></tr></tbody></table></div>
+<div id="mgNotes"></div>
+</div>
+
+<!-- ===== MÀN Khối ngoại / Tự doanh: dòng tiền theo phiên ===== -->
+<div class="view" id="v-foreign">
+<div class="hdr"><a href="/hub" class="pp-back" style="text-decoration:none;font-size:20px" title="Về Pocket Personal" aria-label="Về Pocket Personal">‹</a><h1 id="ffTitle">Khối ngoại</h1><span class="src" id="ffSrc"></span></div>
+<div class="pagebar" id="foreignTabs"></div>
+<div class="idx" id="ffHead"></div>
+<div class="sec" id="ffChartT"></div>
+<div class="card" id="ffChart"><div class="hint">Đang tải…</div></div>
+<div class="sec" id="ffBuyT"></div>
+<div class="card"><table><thead id="ffBuyHead"></thead><tbody id="ffBuyBody"><tr><td colspan="4"><div class="hint">Đang tải…</div></td></tr></tbody></table></div>
+<div class="sec" id="ffSellT"></div>
+<div class="card"><table><thead id="ffSellHead"></thead><tbody id="ffSellBody"><tr><td colspan="4"><div class="hint">Đang tải…</div></td></tr></tbody></table></div>
+<div id="ffNotes"></div>
+</div>
+<div class="view" id="v-prop">
+<div class="hdr"><a href="/hub" class="pp-back" style="text-decoration:none;font-size:20px" title="Về Pocket Personal" aria-label="Về Pocket Personal">‹</a><h1 id="pfTitle">Tự doanh</h1><span class="src" id="pfSrc"></span></div>
+<div class="pagebar" id="propTabs"></div>
+<div class="idx" id="pfHead"></div>
+<div class="sec" id="pfChartT"></div>
+<div class="card" id="pfChart"><div class="hint">Đang tải…</div></div>
+<div class="sec" id="pfBuyT"></div>
+<div class="card"><table><thead id="pfBuyHead"></thead><tbody id="pfBuyBody"><tr><td colspan="4"><div class="hint">Đang tải…</div></td></tr></tbody></table></div>
+<div class="sec" id="pfSellT"></div>
+<div class="card"><table><thead id="pfSellHead"></thead><tbody id="pfSellBody"><tr><td colspan="4"><div class="hint">Đang tải…</div></td></tr></tbody></table></div>
+<div id="pfNotes"></div>
+</div>
 <script>
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
@@ -451,7 +490,7 @@ async function api(p){
   return r.json();
 }
 // Nav pill trên đầu — theo mockup
-const NAV=[["v-market","Thị trường"],["v-screen","Sàng lọc"],["v-consensus","Đồng thuận"],["v-holders","Cổ đông"],["v-sectors","Ngành"],["v-alert","Cảnh báo"],["v-mine","Của tôi"],["v-chat","AI Chat"]];
+const NAV=[["v-market","Thị trường"],["v-screen","Sàng lọc"],["v-consensus","Đồng thuận"],["v-holders","Cổ đông"],["v-sectors","Ngành"],["v-margin","Margin"],["v-foreign","Khối ngoại"],["v-prop","Tự doanh"],["v-alert","Cảnh báo"],["v-mine","Của tôi"],["v-chat","AI Chat"]];
 const NAVLBL=Object.fromEntries(NAV);
 // Trang lien ket (Chot 08:41 + phan hoi 09:06 22/10): bo thanh tab
 // chen chuc; trang Thi truong la muc luc cac muc, trang con chi co
@@ -476,11 +515,14 @@ function go(v){
   $(v).classList.add("on");window.scrollTo(0,0);
   $("aiFab").style.display=(v==="v-chat")?"none":"";
   if(v==="v-chat")renderChatSug();
-  ["mainTabs","screenTabs","consTabs","holdTabs","secTabs","alertTabs","mineMainTabs","chatTabs"].forEach(e=>{if($(e))buildNav(e,v);});
+  ["mainTabs","screenTabs","consTabs","holdTabs","secTabs","marginTabs","foreignTabs","propTabs","alertTabs","mineMainTabs","chatTabs"].forEach(e=>{if($(e))buildNav(e,v);});
   if(v==="v-screen")loadScreener();
   if(v==="v-consensus")loadConsensus();
   if(v==="v-holders")loadHolders();
   if(v==="v-sectors")loadSectors();
+  if(v==="v-margin")loadMargin();
+  if(v==="v-foreign")loadForeign();
+  if(v==="v-prop")loadProp();
   if(v==="v-alert")loadAlerts();
   if(v==="v-mine")loadMine();
 }
@@ -1060,9 +1102,7 @@ $("pfExportBtn").onclick=()=>{
 // tai luc mo app). Gia/% chi hien neu ma da co san trong du lieu
 // trang da tai (SS_PX tu luot screener cua top movers) - khong goi
 // API rieng cho tung ket qua.
-const SS_I18N={vi:{ph:"Tìm mã hoặc tên công ty…",none:"Không tìm thấy mã phù hợp"},en:{ph:"Search symbol or company name…",none:"No matching symbol"},zh:{ph:"搜索代码或公司名称…",none:"未找到匹配代码"},ko:{ph:"종목 코드 또는 회사명 검색…",none:"일치하는 종목이 없습니다"}};
 let SS_ROWS=null; const SS_PX={};
-function ssT(k){const L=SS_I18N[curLang]||SS_I18N.vi;return L[k];}
 function ssFold(s){return (s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/đ/g,"d");}
 async function ssLoad(){
   if(SS_ROWS)return;
@@ -2919,7 +2959,9 @@ async function chatSmart(q){
     j=await r.json().catch(()=>null);
   }catch(e){ j=null; }
   if(timer) clearTimeout(timer);
-  if(!j||j.fallback||!j.ok){ await _chatFill(inner,q,chatRoute(q),null); return; }
+  if(!j||j.fallback||!j.ok){
+    await _chatFill(inner,q,chatRoute(q),null); return;
+  }
   const route=j.tool?{tool:j.tool,args:j.args||{},label:q}:null;
   await _chatFill(inner,q,route,{envelope:j.envelope,lead:j.lead||null,errorText:j.errorText||null,textOnly:j.tool?null:(j.text||"")});
 }
@@ -2930,6 +2972,230 @@ function chatAsk(){
 }
 $("chatSend").onclick=chatAsk;
 $("chatIn").onkeydown=e=>{if(e.key==="Enter")chatAsk();};
+
+
+// __MG_BEGIN__
+(function(){
+  const MG_DATA = {"meta":{"latest":"2026-Q2","prev":"2026-Q1","partial_q":"2026-Q3","partial_n":39,"total_n":43,"source":"VCI IQ","hose_hnx_q2_margin":321150030564132,"upcom_q2_margin":18249570466871,"exchanges":{"HOSE":21,"HNX":11,"UPCOM":11}},"totals":[{"q":"2018-Q1","m":34014462029104,"a":2033112917575,"t":36047574946679,"n":38},{"q":"2018-Q2","m":23940425570796,"a":1311474958141,"t":25251900528937,"n":40},{"q":"2018-Q3","m":25895676145410,"a":1643744684334,"t":27539420829744,"n":37},{"q":"2018-Q4","m":22800969774558,"a":1888666492357,"t":24689636266915,"n":36},{"q":"2019-Q1","m":28341389495162,"a":1542442411892,"t":29883831907054,"n":38},{"q":"2019-Q2","m":33690800843965,"a":1671713123019,"t":35362513966984,"n":42},{"q":"2019-Q3","m":27981374047069,"a":1008502950971,"t":28989876998040,"n":38},{"q":"2019-Q4","m":21754688785513,"a":1298858518935,"t":23053547304448,"n":36},{"q":"2020-Q1","m":20511739407346,"a":1123258548113,"t":21634997955459,"n":38},{"q":"2020-Q2","m":29779130958080,"a":1951783962010,"t":31730914920090,"n":42},{"q":"2020-Q3","m":29817071965631,"a":1781607946210,"t":31598679911841,"n":40},{"q":"2020-Q4","m":38261150870124,"a":3544755221376,"t":41805906091500,"n":40},{"q":"2021-Q1","m":44601212386548,"a":4320687944441,"t":48921900330989,"n":36},{"q":"2021-Q2","m":64490804153633,"a":6832090243240,"t":71322894396873,"n":37},{"q":"2021-Q3","m":94715669601333,"a":5690882132607,"t":100406551733940,"n":39},{"q":"2021-Q4","m":95166599982734,"a":10081678646833,"t":105248278629567,"n":37},{"q":"2022-Q1","m":123470486628781,"a":10308546612951,"t":133779033241732,"n":40},{"q":"2022-Q2","m":98697635394642,"a":4051784849880,"t":102749420244522,"n":40},{"q":"2022-Q3","m":102618835213359,"a":4018029757068,"t":106636864970427,"n":36},{"q":"2022-Q4","m":74151201381749,"a":4289708542702,"t":78440909924451,"n":39},{"q":"2023-Q1","m":78109715374350,"a":3510330663130,"t":81620046037480,"n":40},{"q":"2023-Q2","m":93402220359813,"a":4146763023339,"t":97548983383152,"n":41},{"q":"2023-Q3","m":107036880736855,"a":3991613369021,"t":111028494105876,"n":41},{"q":"2023-Q4","m":118275411836748,"a":4825868499829,"t":123101280336577,"n":37},{"q":"2024-Q1","m":133298900444200,"a":6317132529756,"t":139616032973956,"n":39},{"q":"2024-Q2","m":155528740968264,"a":5689292434023,"t":161218033402287,"n":42},{"q":"2024-Q3","m":151081427474285,"a":4431071935471,"t":155512499409756,"n":40},{"q":"2024-Q4","m":172023589132332,"a":3836564576688,"t":175860153709020,"n":41},{"q":"2025-Q1","m":194349684666745,"a":4480043450595,"t":198829728117340,"n":41},{"q":"2025-Q2","m":214787722717427,"a":5158887810069,"t":219946610527496,"n":42},{"q":"2025-Q3","m":271686172155010,"a":8786349114353,"t":280472521269363,"n":41},{"q":"2025-Q4","m":307670472103409,"a":8074223126647,"t":315744695230056,"n":42},{"q":"2026-Q1","m":315031361553559,"a":6695329985868,"t":321726691539427,"n":42},{"q":"2026-Q2","m":339399601031003,"a":5908947572481,"t":345308548603484,"n":42},{"q":"2026-Q3","m":296934596280003,"a":3297740775362,"t":300232337055365,"n":39}],"firms":[{"s":"TCX","ex":"HOSE","name":"Chung khoan Techcombank","cls":"ok","m":51043232067722,"a":479203127134,"t":51522435194856,"pm":44146613378012,"q3m":54368387671504},{"s":"SSI","ex":"HOSE","name":"Chung khoan SSI","cls":"ok_recent","m":40036581154395,"a":435969870963,"t":40472551025358,"pm":36585242225377,"q3m":null},{"s":"VPX","ex":"HOSE","name":"Chung khoan VPBank","cls":"ok","m":37138760243238,"a":1038392662786,"t":38177152906024,"pm":35918759849688,"q3m":39691245533526},{"s":"VCK","ex":"HOSE","name":"Chung khoan VPS","cls":"ok_recent","m":30527661155420,"a":783792082340,"t":31311453237760,"pm":29979376691947,"q3m":25363394361661},{"s":"HCM","ex":"HOSE","name":"Chung khoan TP.HCM","cls":"ok","m":29023522504995,"a":0,"t":29023522504995,"pm":28140477163249,"q3m":29169878109274},{"s":"MBS","ex":"HNX","name":"Chung khoan MB","cls":"ok_recent","m":16670399706879,"a":157653840141,"t":16828053547020,"pm":14867436490253,"q3m":16510633797036},{"s":"VCI","ex":"HOSE","name":"Chung khoan Vietcap","cls":"ok","m":16646458908632,"a":499330699278,"t":17145789607910,"pm":16389139496232,"q3m":17155060526647},{"s":"VIX","ex":"HOSE","name":"Chung khoan VIX","cls":"ok_recent","m":13920481602576,"a":37644011607,"t":13958125614183,"pm":12453092661133,"q3m":12415461105213},{"s":"LPS","ex":"HOSE","name":"Chung khoan LPBank","cls":"partial","m":13636454644678,"a":101462974396,"t":13737917619074,"pm":11393575779172,"q3m":12394630057545},{"s":"VND","ex":"HOSE","name":"Chung khoan VNDIRECT","cls":"ok_recent","m":12700582740156,"a":158456205671,"t":12859038945827,"pm":12468621392668,"q3m":12115767509608},{"s":"KAI","ex":"UPCOM","name":"Chung khoan KAFI","cls":"ok_recent","m":11675097103052,"a":26723832625,"t":11701820935677,"pm":10707090458525,"q3m":12283889580322},{"s":"SHS","ex":"HNX","name":"Chung khoan Sai Gon Ha Noi","cls":"ok","m":11417441456788,"a":304630166666,"t":11722071623454,"pm":10196751152183,"q3m":12216411175910},{"s":"BSI","ex":"HOSE","name":"Chung khoan BIDV","cls":"ok","m":9372614221056,"a":97962479926,"t":9470576700982,"pm":8967221997478,"q3m":10255817424061},{"s":"DSE","ex":"HOSE","name":"Chung khoan DNSE","cls":"ok","m":6125104986489,"a":177959765712,"t":6303064752201,"pm":5655551028905,"q3m":6274083784594},{"s":"FTS","ex":"HOSE","name":"Chung khoan FPT","cls":"partial","m":5979842170172,"a":400546865449,"t":6380389035621,"pm":5592679998102,"q3m":5616099597852},{"s":"CTS","ex":"HOSE","name":"Chung khoan VietinBank","cls":"ok_recent","m":5276415740011,"a":45336851853,"t":5321752591864,"pm":5284578584542,"q3m":5050382620179},{"s":"VDS","ex":"HOSE","name":"Chung khoan Rong Viet","cls":"ok","m":4132797490688,"a":156869011403,"t":4289666502091,"pm":3707687465252,"q3m":null},{"s":"BVS","ex":"HNX","name":"Chung khoan Bao Viet","cls":"ok","m":4006109530803,"a":400379238169,"t":4406488768972,"pm":4074220268542,"q3m":3692158600025},{"s":"PHS","ex":"UPCOM","name":"Chung khoan Phu Hung","cls":"ok_recent","m":3878191502894,"a":117236937920,"t":3995428440814,"pm":4005653704131,"q3m":3987970842435},{"s":"AGR","ex":"HOSE","name":"Chung khoan Agribank","cls":"partial","m":2903705711294,"a":84294806155,"t":2988000517449,"pm":2464370146152,"q3m":3160429580221},{"s":"DSC","ex":"HOSE","name":"Chung khoan DSC","cls":"ok","m":2894012833286,"a":31471441399,"t":2925484274685,"pm":2554410990025,"q3m":2737978981926},{"s":"VFS","ex":"HNX","name":"Chung khoan Nhat Viet","cls":"ok","m":1909272125400,"a":60608083048,"t":1969880208448,"pm":1822467477021,"q3m":2270478577396},{"s":"ORS","ex":"HOSE","name":"Chung khoan Tien Phong","cls":"ok_recent","m":1872278593486,"a":12311221297,"t":1884589814783,"pm":1664476218820,"q3m":2662551315946},{"s":"PSI","ex":"HNX","name":"Chung khoan Dau khi","cls":"ok_recent","m":1245199021898,"a":28037759244,"t":1273236781142,"pm":1454417534533,"q3m":1367830770285},{"s":"ABW","ex":"UPCOM","name":"Chung khoan An Binh","cls":"ok","m":1172311676887,"a":69737432433,"t":1242049109320,"pm":808952255063,"q3m":1774996381523},{"s":"IVS","ex":"HNX","name":"Chung khoan Guotai Haitong","cls":"ok","m":791046202248,"a":2644217280,"t":793690419528,"pm":798244028169,"q3m":708947295685},{"s":"APG","ex":"HOSE","name":"Chung khoan APG","cls":"ok","m":723831348914,"a":3938060564,"t":727769409478,"pm":694606705711,"q3m":691783691157},{"s":"TCI","ex":"HOSE","name":"Chung khoan Thanh Cong","cls":"ok","m":560280031085,"a":21267896455,"t":581547927540,"pm":694954745033,"q3m":501930256943},{"s":"SBS","ex":"UPCOM","name":"Chung khoan Sacombank","cls":"ok","m":418231125461,"a":16896019391,"t":435127144852,"pm":220236456469,"q3m":342239800389},{"s":"TVS","ex":"HOSE","name":"Chung khoan Thien Viet","cls":"ok","m":364085136308,"a":1992982462,"t":366078118770,"pm":346715619687,"q3m":null},{"s":"VUA","ex":"UPCOM","name":"Chung khoan Stanley Brothers","cls":"ok_recent","m":300513471371,"a":150000000,"t":300663471371,"pm":71648842837,"q3m":578303630242},{"s":"BMS","ex":"UPCOM","name":"Chung khoan Bao Minh","cls":"ok","m":279595169597,"a":26500523684,"t":306095693281,"pm":134471861350,"q3m":688969266676},{"s":"HAC","ex":"UPCOM","name":"Chung khoan Hai Phong","cls":"ok","m":224547116988,"a":5744140308,"t":230291257296,"pm":173684217782,"q3m":432837737734},{"s":"APS","ex":"HNX","name":"Chung khoan APEC","cls":"ok","m":152720530183,"a":19023773920,"t":171744304103,"pm":160872046797,"q3m":149361823127},{"s":"ART","ex":"UPCOM","name":"Chung khoan BOS","cls":"partial","m":114411857455,"a":0,"t":114411857455,"pm":114411857455,"q3m":99411857455},{"s":"AAS","ex":"UPCOM","name":"Chung khoan SmartInvest","cls":"ok","m":100417405801,"a":1113992277,"t":101531398078,"pm":117336013603,"q3m":95972090366},{"s":"UPS","ex":"UPCOM","name":"Chung khoan UP","cls":"ok_recent","m":75968897669,"a":3743148984,"t":79712046653,"pm":104721434103,"q3m":50960141118},{"s":"EVS","ex":"HNX","name":"Chung khoan EVS","cls":"partial","m":72260541565,"a":2692354524,"t":74952896089,"pm":79996493658,"q3m":36621467816},{"s":"CSI","ex":"UPCOM","name":"Chung khoan Kirin","cls":"ok","m":10285139696,"a":155155410,"t":10440295106,"pm":9595966994,"q3m":14053826219},{"s":"TVB","ex":"HOSE","name":"Chung khoan T-Cap","cls":"ok_recent","m":4615187750,"a":8855574670,"t":13470762420,"pm":4615187750,"q3m":4615187750},{"s":"VIG","ex":"HNX","name":"Chung khoan VICS","cls":"ok","m":1466849764,"a":94709697,"t":1561559461,"pm":0,"q3m":2537357364},{"s":"WSS","ex":"HNX","name":"Chung khoan pho Wall","cls":"ok_recent","m":796126253,"a":88123655240,"t":88919781493,"pm":2385669156,"q3m":512945273},{"s":"HBS","ex":"HNX","name":"Chung khoan Hoa Binh","cls":"ok_recent","m":null,"a":null,"t":0,"pm":null,"q3m":null}]};
+  const MG_I18N = {
+    vi:{srcShort:"Nguồn: VCI IQ",totalMargin:"Tổng dư nợ margin",advance:"Ứng trước",totalLoans:"Tổng cho vay",coverage:"Độ phủ",firmsReported:"hãng đã báo cáo",changePrev:"Thay đổi so với quý trước",chartT:"Tổng dư nợ margin theo quý",tableT:"Từng CTCK — dư nợ margin",colSym:"Mã",colMargin:"Dư nợ margin",colChange:"Thay đổi",noData:"Chưa có số liệu",loadErr:"Lỗi tải",partialShort:"đang cập nhật",unitT:" nghìn tỷ",unitB:" tỷ",
+      partial:"Quý {q} mới có {n}/{t} hãng báo cáo — tổng thấp hơn chưa phải mức giảm.",
+      noteSrc:"Nguồn: VCI IQ (dữ liệu công khai). Nhóm: 43 CTCK đang giao dịch (21 HOSE, 11 HNX, 11 UPCOM).",
+      noteNotOfficial:"Tổng trên là tổng cộng dồn của nhóm, KHÔNG phải số chính thức do UBCK/HOSE công bố. Các CTCK chưa niêm yết (ACBS, TCBS, KBS, KIS…) không nằm trong nhóm.",
+      noteUpcom:"Tổng gồm 11 hãng UPCOM. Riêng HOSE+HNX, dư nợ margin Q2/2026 là 321,2 nghìn tỷ.",
+      noteVerify:"SSI Q2/2026 đã đối chiếu khớp tuyệt đối với BCTC chính thức (bản riêng lẻ và hợp nhất)."},
+    en:{srcShort:"Source: VCI IQ",totalMargin:"Total margin loans",advance:"Investor advances",totalLoans:"Total loans",coverage:"Coverage",firmsReported:"firms reported",changePrev:"Change vs previous quarter",chartT:"Total margin loans by quarter",tableT:"By firm — margin loans",colSym:"Symbol",colMargin:"Margin loans",colChange:"Change",noData:"No data yet",loadErr:"Load failed",partialShort:"updating",unitT:"T VND",unitB:"B VND",
+      partial:"Quarter {q} has only {n}/{t} firms reported — the lower total is not a decline.",
+      noteSrc:"Source: VCI IQ (public data). Universe: 43 trading securities firms (21 HOSE, 11 HNX, 11 UPCOM).",
+      noteNotOfficial:"The total above is the group's summed total, NOT an official figure published by UBCK/HOSE. Unlisted firms (ACBS, TCBS, KBS, KIS…) are not in the group.",
+      noteUpcom:"The total includes 11 UPCOM firms. HOSE+HNX only, Q2/2026 margin loans are 321.2 trillion VND.",
+      noteVerify:"SSI Q2/2026 reconciles exactly with its official financial statements (separate and consolidated)."},
+    zh:{srcShort:"来源：VCI IQ",totalMargin:"融资余额合计",advance:"投资者垫款",totalLoans:"贷款合计",coverage:"覆盖率",firmsReported:"家已公布",changePrev:"较上季度变化",chartT:"各季度融资余额合计",tableT:"各券商——融资余额",colSym:"代码",colMargin:"融资余额",colChange:"变化",noData:"暂无数据",loadErr:"加载失败",partialShort:"更新中",unitT:"万亿越盾",unitB:"十亿越盾",
+      partial:"{q}仅{n}/{t}家公布——合计偏低并非下降。",
+      noteSrc:"来源：VCI IQ（公开数据）。范围：43 家在交易证券公司（21 家 HOSE、11 家 HNX、11 家 UPCOM）。",
+      noteNotOfficial:"上述合计为该组加总数，并非 UBCK/HOSE 发布的官方数字。未上市券商（ACBS、TCBS、KBS、KIS…）不在范围内。",
+      noteUpcom:"合计包含 11 家 UPCOM 公司。仅 HOSE+HNX，2026 年第二季度融资余额为 321.2 万亿越盾。",
+      noteVerify:"SSI 2026 年第二季度已与官方财务报表（单体与合并）完全核对一致。"},
+    ko:{srcShort:"출처: VCI IQ",totalMargin:"신용융자 잔액 합계",advance:"투자자 선지급금",totalLoans:"대출 합계",coverage:"커버리지",firmsReported:"개사 공시",changePrev:"전 분기 대비 변동",chartT:"분기별 신용융자 잔액 합계",tableT:"증권사별——신용융자 잔액",colSym:"종목",colMargin:"신용융자 잔액",colChange:"변동",noData:"데이터 없음",loadErr:"불러오기 실패",partialShort:"업데이트 중",unitT:"조 동",unitB:"십억 동",
+      partial:"{q}는 {n}/{t}개사만 공시——합계가 낮은 것은 감소가 아닙니다.",
+      noteSrc:"출처: VCI IQ(공개 데이터). 범위: 거래 중인 증권사 43개사(HOSE 21, HNX 11, UPCOM 11).",
+      noteNotOfficial:"위 합계는 그룹 합산 수치이며, UBCK/HOSE가 발표한 공식 수치가 아닙니다. 비상장 증권사(ACBS, TCBS, KBS, KIS…)는 포함되지 않습니다.",
+      noteUpcom:"합계에는 UPCOM 11개사가 포함됩니다. HOSE+HNX만으로는 2026년 2분기 신용융자 잔액이 321.2조 동입니다.",
+      noteVerify:"SSI 2026년 2분기는 공식 재무제표(별도·연결)와 정확히 일치합니다."}
+  };
+  function mgL(){ const l=(typeof curLang!=="undefined"?curLang:"vi"); return MG_I18N[l]||MG_I18N.vi; }
+  function mgT(k){ const L=mgL(); return (L[k]!=null?L[k]:MG_I18N.vi[k]); }
+  function mgEsc(s){ return String(s??"").replace(/[&<>"]/g,function(c){ return ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]); }); }
+  function mgFmtT(v){ if(v==null) return "—"; return (v/1e12).toLocaleString("en-US",{minimumFractionDigits:1,maximumFractionDigits:1})+mgT("unitT"); }
+  function mgFmtB(v){ if(v==null) return "—"; return Math.round(v/1e9).toLocaleString("en-US")+mgT("unitB"); }
+  function mgPct(p){ if(p==null) return "—"; return (p>0?"+":"")+p.toFixed(2)+"%"; }
+  function mgQLbl(q){ const p=String(q).split("-"); return p.length===2?p[1]+"/"+p[0]:q; }
+  function mgFind(q){ for(const t of MG_DATA.totals){ if(t.q===q) return t; } return null; }
+  function mgLatestTotal(){ return mgFind(MG_DATA.meta.latest); }
+  function mgPartial(){ return mgFind(MG_DATA.meta.partial_q); }
+  function mgChange(f){ if(f.m==null||f.pm==null||f.pm===0) return null; return (f.m-f.pm)/f.pm*100; }
+  function mgChartSVG(){
+    const comp=MG_DATA.totals.filter(function(t){ return t.q!==MG_DATA.meta.partial_q; });
+    const part=mgPartial();
+    if(!comp.length) return "";
+    const vals=comp.map(function(t){ return t.m; });
+    let mn=Math.min.apply(null,vals), mx=Math.max.apply(null,vals);
+    const pad=(mx-mn)*0.08||1; mn-=pad; mx+=pad;
+    const W=440,H=170,PL=8,PR=8,PT=16,PB=22, n=comp.length;
+    const X=function(i){ return PL+i*(W-PL-PR)/(n-1); };
+    const Y=function(v){ return PT+(1-(v-mn)/(mx-mn))*(H-PT-PB); };
+    const pts=comp.map(function(t,i){ return X(i).toFixed(1)+","+Y(t.m).toFixed(1); }).join(" ");
+    let labels="";
+    comp.forEach(function(t,i){ if(t.q.slice(5)==="Q1"||i===n-1){ labels+='<text x="'+X(i).toFixed(1)+'" y="'+(H-6)+'" font-size="10" fill="var(--pp-mut)" text-anchor="middle">'+mgQLbl(t.q)+'</text>'; } });
+    const lastV='<text x="'+X(n-1).toFixed(1)+'" y="'+(Y(comp[n-1].m)-8).toFixed(1)+'" font-size="11" font-weight="700" fill="var(--pp-ink)" text-anchor="end">'+mgFmtT(comp[n-1].m)+'</text>';
+    let dashed="";
+    if(part&&part.m!=null){
+      const x2=PL+n*(W-PL-PR)/(n-1);
+      dashed='<line x1="'+X(n-1).toFixed(1)+'" y1="'+Y(comp[n-1].m).toFixed(1)+'" x2="'+x2.toFixed(1)+'" y2="'+Y(part.m).toFixed(1)+'" stroke="var(--pp-mut)" stroke-width="1.5" stroke-dasharray="4 3"/>'+
+        '<circle cx="'+x2.toFixed(1)+'" cy="'+Y(part.m).toFixed(1)+'" r="4" fill="none" stroke="var(--pp-mut)" stroke-width="1.5"/>';
+    }
+    return '<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto;display:block"><polyline points="'+pts+'" fill="none" stroke="var(--pp-accent)" stroke-width="2" stroke-linejoin="round"/>'+dashed+lastV+labels+'</svg>';
+  }
+  function loadMargin(){
+    try{
+      const head=$("mgHead"), chart=$("mgChart"), chartT=$("mgChartT"), tableT=$("mgTableT"),
+        thead=$("mgTableHead"), tbody=$("mgTableBody"), notes=$("mgNotes"), banner=$("mgBanner"), src=$("mgSrc");
+      if(!tbody) return;
+      const m=MG_DATA.meta, lt=mgLatestTotal(), pv=mgFind(m.prev), part=mgPartial();
+      if(!lt||!MG_DATA.totals.length){ tbody.innerHTML='<tr><td colspan="3"><div class="hint">'+mgT("loadErr")+'</div></td></tr>'; return; }
+      const chg=(lt.m!=null&&pv&&pv.m)?(lt.m-pv.m)/pv.m*100:null;
+      if(src) src.textContent=mgT("srcShort");
+      if(banner){
+        banner.innerHTML = part ? '<div class="insight"><div class="ins-b">'+mgT("partial").replace("{q}",mgQLbl(m.partial_q)).replace("{n}",String(m.partial_n)).replace("{t}",String(m.total_n))+'</div></div>' : "";
+      }
+      if(head) head.innerHTML=
+        '<div class="idxcard"><div class="s">'+mgT("totalMargin")+' ('+mgQLbl(m.latest)+')</div><div class="p">'+mgFmtT(lt.m)+'</div><div class="c">'+mgT("changePrev")+': '+mgPct(chg)+'</div></div>'+
+        '<div class="idxcard"><div class="s">'+mgT("advance")+'</div><div class="p">'+mgFmtT(lt.a)+'</div><div class="c">'+mgT("totalLoans")+': '+mgFmtT(lt.t)+'</div></div>'+
+        '<div class="idxcard"><div class="s">'+mgT("coverage")+'</div><div class="p">'+lt.n+'/'+m.total_n+'</div><div class="c">'+mgT("firmsReported")+'</div></div>'+
+        '<div class="idxcard"><div class="s">'+mgQLbl(m.partial_q)+'</div><div class="p">'+mgFmtT(part?part.m:null)+'</div><div class="c">'+mgT("partialShort")+'</div></div>';
+      if(chartT) chartT.textContent=mgT("chartT");
+      if(chart) chart.innerHTML=mgChartSVG();
+      if(tableT) tableT.textContent=mgT("tableT");
+      if(thead) thead.innerHTML='<tr><th>'+mgT("colSym")+'</th><th style="text-align:right">'+mgT("colMargin")+'</th><th style="text-align:right">'+mgT("colChange")+'</th></tr>';
+      tbody.innerHTML=MG_DATA.firms.map(function(f){
+        const c=mgChange(f);
+        const cls=c==null?"":(c>=0?"up":"down");
+        const adv=f.a==null?"":'<div style="font-size:12px;color:var(--pp-mut)">'+mgT("advance")+': '+(f.a===0?"0":mgFmtB(f.a))+'</div>';
+        return '<tr><td><b>'+mgEsc(f.s)+'</b><div style="font-size:12px;color:var(--pp-mut)">'+mgEsc(f.name)+' · '+mgEsc(f.ex)+'</div></td>'+
+          '<td style="text-align:right">'+(f.m==null?'<span style="color:var(--pp-mut)">'+mgT("noData")+'</span>':'<b>'+mgFmtB(f.m)+'</b>'+adv)+'</td>'+
+          '<td style="text-align:right" class="'+cls+'">'+mgPct(c)+'</td></tr>';
+      }).join("");
+      if(notes) notes.innerHTML='<div class="note">'+mgT("noteSrc")+'</div><div class="note">'+mgT("noteNotOfficial")+'</div><div class="note">'+mgT("noteUpcom")+'</div><div class="note">'+mgT("noteVerify")+'</div>';
+    }catch(e){
+      const b=$("mgTableBody"); if(b) b.innerHTML='<tr><td colspan="3"><div class="hint">'+mgT("loadErr")+'</div></td></tr>';
+    }
+  }
+  if(typeof window!=="undefined"){ window.loadMargin=loadMargin; window.__mgTest={data:MG_DATA,latestTotal:mgLatestTotal,partial:mgPartial,change:mgChange,fmtT:mgFmtT,fmtB:mgFmtB,pct:mgPct,qlbl:mgQLbl,chart:mgChartSVG,i18n:MG_I18N,t:mgT,render:loadMargin}; }
+})();
+// __MG_END__
+
+// __FLOW_BEGIN__
+// Tab Khối ngoại + Tự doanh (Chốt 07:12 25/10): biểu đồ mua/bán/ròng
+// các phiên gần đây + Top 10 mua/bán ròng phiên gần nhất, đơn vị tỷ
+// đồng. Chỉ đọc API đã có (/foreign-flow, /proprietary-flow và
+// /history theo mã), không mở collector mới. Biểu đồ cộng dồn lịch
+// sử của các mã trong snapshot phiên gần nhất; phiên cuối tuần
+// (không giao dịch) và phiên thiếu giá trị ước lượng được bỏ qua.
+try{
+(function(){
+  const FLOW_I18N={
+    vi:{titleF:"Khối ngoại",titleP:"Tự doanh",session:"Phiên",chartT:"Giá trị mua/bán/ròng các phiên gần đây",buyT:"Top 10 mua ròng",sellT:"Top 10 bán ròng",colSym:"Mã",colBuy:"Mua",colSell:"Bán",colNet:"Mua ròng",unitB:"tỷ đồng",noData:"Chưa có số liệu",loadErr:"Không tải được dữ liệu",noteF:"Nguồn: dữ liệu VCI Trading, cập nhật sau 17:15 mỗi phiên.",noteF2:"Biểu đồ cộng dồn {N} mã có dữ liệu; giá trị lịch sử là ước lượng (khối lượng × giá đóng cửa) và chỉ hiện phiên có đủ giá trị; phiên cuối tuần không phải phiên giao dịch nên không hiện.",noteP:"Nguồn: dữ liệu tự doanh 3 sàn (FINFO → Vietstock → PDF HOSE đối chiếu), chu trình 16:35 mỗi phiên.",noteP2:"Biểu đồ cộng dồn {N} mã có giao dịch tự doanh trong phiên gần nhất.",buyLbl:"Mua",sellLbl:"Bán",netLbl:"Mua ròng"},
+    en:{titleF:"Foreign",titleP:"Proprietary",session:"Session",chartT:"Buy/sell/net value over recent sessions",buyT:"Top 10 net buys",sellT:"Top 10 net sells",colSym:"Symbol",colBuy:"Buy",colSell:"Sell",colNet:"Net buy",unitB:"B VND",noData:"No data yet",loadErr:"Load failed",noteF:"Source: VCI Trading data, updated after 17:15 each session.",noteF2:"Chart sums {N} symbols with data; historical values are estimates (volume × close price) and only sessions with complete values are shown; weekends are not trading sessions.",noteP:"Source: proprietary trading data, 3 markets (FINFO → Vietstock → HOSE PDF cross-checked), 16:35 cycle each session.",noteP2:"Chart sums {N} symbols with proprietary trades in the latest session.",buyLbl:"Buy",sellLbl:"Sell",netLbl:"Net buy"},
+    zh:{titleF:"外资",titleP:"自营",session:"交易日",chartT:"近几个交易日买入/卖出/净买入金额",buyT:"净买入前10",sellT:"净卖出前10",colSym:"代码",colBuy:"买入",colSell:"卖出",colNet:"净买入",unitB:"十亿越盾",noData:"暂无数据",loadErr:"加载失败",noteF:"来源：VCI Trading数据，每个交易日17:15后更新。",noteF2:"图表汇总{N}只有数据的代码；历史金额为估算值（成交量×收盘价），仅显示数值完整的交易日；周末不是交易日。",noteP:"来源：三市自营交易数据（FINFO→Vietstock→HOSE PDF核对），每个交易日16:35更新。",noteP2:"图表汇总最新交易日有自营交易的{N}只代码。",buyLbl:"买入",sellLbl:"卖出",netLbl:"净买入"},
+    ko:{titleF:"외국인",titleP:"자기매매",session:"거래일",chartT:"최근 거래일 매수/매도/순매수 금액",buyT:"순매수 상위 10",sellT:"순매도 상위 10",colSym:"종목",colBuy:"매수",colSell:"매도",colNet:"순매수",unitB:"십억 동",noData:"데이터 없음",loadErr:"불러오기 실패",noteF:"출처: VCI Trading 데이터, 매 거래일 17:15 이후 업데이트.",noteF2:"차트는 데이터가 있는 {N} 종목 합계이며, 과거 금액은 추정치(거래량×종가)이고 값이 완전한 거래일만 표시합니다. 주말은 거래일이 아닙니다.",noteP:"출처: 3개 시장 자기매매 데이터(FINFO→Vietstock→HOSE PDF 대조), 매 거래일 16:35 주기.",noteP2:"차트는 최근 거래일에 자기매매가 있었던 {N} 종목 합계입니다.",buyLbl:"매수",sellLbl:"매도",netLbl:"순매수"}
+  };
+  function flT(k){ try{ const o=FLOW_I18N[curLang]||FLOW_I18N.vi; return o[k]||FLOW_I18N.vi[k]||k; }catch(e){ return FLOW_I18N.vi[k]||k; } }
+  function flB(v){ if(v==null||!isFinite(+v)) return "—"; return (+v/1e9).toLocaleString("vi-VN",{maximumFractionDigits:1}); }
+  function flD(iso){ if(!/^\d{4}-\d{2}-\d{2}$/.test(iso||"")) return iso||"—"; const p=iso.split("-"); return p[2]+"/"+p[1]+"/"+p[0]; }
+  function flWeekend(iso){ try{ const d=new Date(iso+"T00:00:00Z").getUTCDay(); return d===0||d===6; }catch(e){ return false; } }
+  const FLOW_CFG={
+    foreign:{pfx:"ff",snap:"/foreign-flow",hist:"/foreign-flow/history",buyK:"buy_value",sellK:"sell_value",hBuyK:"buy_value_est",hSellK:"sell_value_est",title:"titleF",note1:"noteF",note2:"noteF2",src:"VCI Trading"},
+    prop:{pfx:"pf",snap:"/proprietary-flow",hist:"/proprietary-flow/history",buyK:"buy_value_vnd",sellK:"sell_value_vnd",hBuyK:"buy_value_vnd",hSellK:"sell_value_vnd",title:"titleP",note1:"noteP",note2:"noteP2",src:"FINFO · Vietstock · PDF HOSE"}
+  };
+  function flChartSVG(series){
+    const W=720,H=270,PL=58,PR=12,PT=16,PB=30;
+    const iw=W-PL-PR, ih=H-PT-PB;
+    if(!series.length) return '<div class="hint">'+flT("noData")+'</div>';
+    let mx=0,mn=0;
+    series.forEach(s=>{ mx=Math.max(mx,s.buy,s.sell,s.buy-s.sell); mn=Math.min(mn,0,s.buy-s.sell); });
+    if(mx<=0) mx=1;
+    const X=i=>PL+iw*(series.length===1?0.5:i/(series.length-1));
+    const Y=v=>PT+ih*(mx-v)/(mx-mn);
+    const bw=Math.min(26,iw/Math.max(1,series.length)/2.2);
+    let s='<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto;display:block" role="img">';
+    [0,0.5,1].forEach(f=>{ const v=mn+(mx-mn)*f, y=Y(v);
+      s+='<line x1="'+PL+'" y1="'+y.toFixed(1)+'" x2="'+(W-PR)+'" y2="'+y.toFixed(1)+'" stroke="#e5e7eb"/><text x="'+(PL-6)+'" y="'+(y+4).toFixed(1)+'" font-size="11" text-anchor="end" fill="#6b7280">'+flB(v)+'</text>'; });
+    const y0=Y(0);
+    s+='<line x1="'+PL+'" y1="'+y0.toFixed(1)+'" x2="'+(W-PR)+'" y2="'+y0.toFixed(1)+'" stroke="#9ca3af"/>';
+    series.forEach((pt,i)=>{
+      const x=X(i);
+      s+='<rect x="'+(x-bw-1).toFixed(1)+'" y="'+Y(pt.buy).toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+Math.max(0,(y0-Y(pt.buy))).toFixed(1)+'" fill="#22c55e"/>';
+      s+='<rect x="'+(x+1).toFixed(1)+'" y="'+Y(pt.sell).toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+Math.max(0,(y0-Y(pt.sell))).toFixed(1)+'" fill="#ef4444"/>';
+      s+='<text x="'+x.toFixed(1)+'" y="'+(H-8)+'" font-size="11" text-anchor="middle" fill="#6b7280">'+flD(pt.d).slice(0,5)+'</text>';
+    });
+    let pts="";
+    series.forEach((pt,i)=>{ pts+=(pts?" ":"")+X(i).toFixed(1)+","+Y(pt.buy-pt.sell).toFixed(1); });
+    s+='<polyline points="'+pts+'" fill="none" stroke="#3b82f6" stroke-width="2"/>';
+    series.forEach((pt,i)=>{ s+='<circle cx="'+X(i).toFixed(1)+'" cy="'+Y(pt.buy-pt.sell).toFixed(1)+'" r="3" fill="#3b82f6"/>'; });
+    s+='</svg>';
+    s+='<div class="hint" style="margin-top:6px"><span style="color:#22c55e">■</span> '+flT("buyLbl")+' &nbsp; <span style="color:#ef4444">■</span> '+flT("sellLbl")+' &nbsp; <span style="color:#3b82f6">—</span> '+flT("netLbl")+' ('+flT("unitB")+')</div>';
+    return s;
+  }
+  async function flPool(items, n, fn){
+    let idx=0;
+    async function wk(){ while(idx<items.length){ const it=items[idx++]; try{ await fn(it); }catch(e){} } }
+    const ws=[]; for(let k=0;k<Math.min(n,items.length);k++) ws.push(wk());
+    await Promise.all(ws);
+  }
+  async function loadFlow(kind){
+    const C=FLOW_CFG[kind]; if(!C) return;
+    const P=C.pfx, g=id=>$(P+id);
+    try{
+      const t=g("Title"); if(t) t.textContent=flT(C.title);
+      const sr=g("Src"); if(sr) sr.textContent=C.src;
+      const ct=g("ChartT"); if(ct) ct.textContent=flT("chartT")+" ("+flT("unitB")+")";
+      const bt=g("BuyT"); if(bt) bt.textContent=flT("buyT");
+      const st=g("SellT"); if(st) st.textContent=flT("sellT");
+      const snap=await api(C.snap);
+      const by=snap.by_symbol||{};
+      const rows=Object.keys(by).map(sym=>{
+        const d=by[sym]||{};
+        const b=+d[C.buyK]||0, s=+d[C.sellK]||0;
+        return {sym,buy:b,sell:s,net:b-s,td:d.trade_date||""};
+      }).filter(r=>r.buy||r.sell);
+      if(!rows.length) throw new Error("empty");
+      const buyTop=[...rows].sort((a,b)=>b.net-a.net).slice(0,10);
+      const sellTop=[...rows].sort((a,b)=>a.net-b.net).slice(0,10);
+      const th='<tr><th>'+flT("colSym")+'</th><th style="text-align:right">'+flT("colBuy")+'</th><th style="text-align:right">'+flT("colSell")+'</th><th style="text-align:right">'+flT("colNet")+'</th></tr>';
+      const mk=list=>list.map(r=>'<tr><td><b>'+esc(r.sym)+'</b></td><td style="text-align:right">'+flB(r.buy)+'</td><td style="text-align:right">'+flB(r.sell)+'</td><td style="text-align:right;color:'+(r.net>=0?"#16a34a":"#dc2626")+'">'+flB(r.net)+'</td></tr>').join("");
+      const bh=g("BuyHead"), bb=g("BuyBody"), sh=g("SellHead"), sb=g("SellBody");
+      if(bh) bh.innerHTML=th; if(bb) bb.innerHTML=mk(buyTop)||'<tr><td colspan="4"><div class="hint">'+flT("noData")+'</div></td></tr>';
+      if(sh) sh.innerHTML=th; if(sb) sb.innerHTML=mk(sellTop)||'<tr><td colspan="4"><div class="hint">'+flT("noData")+'</div></td></tr>';
+      let tb=0, ts=0; rows.forEach(r=>{ tb+=r.buy; ts+=r.sell; });
+      const agg={};
+      await flPool(rows.map(r=>r.sym), 8, async sym=>{
+        try{
+          const h=await api(C.hist+"?symbol="+encodeURIComponent(sym)+"&limit=30");
+          (h.rows||[]).forEach(r=>{
+            const dt=r.trade_date||"";
+            if(!/^\d{4}-\d{2}-\d{2}$/.test(dt)) return;
+            if(flWeekend(dt)) return;
+            const b=+r[C.hBuyK], s=+r[C.hSellK];
+            if(!isFinite(b)||!isFinite(s)) return;
+            if(!agg[dt]) agg[dt]={buy:0,sell:0};
+            agg[dt].buy+=b; agg[dt].sell+=s;
+          });
+        }catch(e){}
+      });
+      const dates=Object.keys(agg).sort().slice(-20);
+      const series=dates.map(d=>({d:d,buy:agg[d].buy,sell:agg[d].sell}));
+      const ch=g("Chart"); if(ch) ch.innerHTML=flChartSVG(series);
+      let sess="";
+      if(kind==="prop"){ const tds=rows.map(r=>r.td).filter(Boolean).sort(); if(tds.length) sess=tds[tds.length-1]; }
+      if(!sess && dates.length) sess=dates[dates.length-1];
+      if(!sess && snap.updated) sess=String(snap.updated).slice(0,10);
+      const hd=g("Head");
+      if(hd) hd.innerHTML='<div class="idxcard"><div class="s">'+flT("session")+' '+flD(sess)+'</div><div class="p">'+flB(tb-ts)+'</div><div class="c">'+flT("buyLbl")+': '+flB(tb)+' · '+flT("sellLbl")+': '+flB(ts)+'</div></div>';
+      const nt=g("Notes");
+      if(nt) nt.innerHTML='<div class="note">'+flT(C.note1)+'</div><div class="note">'+flT(C.note2).replace("{N}", String(rows.length))+'</div>';
+    }catch(e){
+      const ch=g("Chart"); if(ch) ch.innerHTML='<div class="hint">'+flT("loadErr")+'</div>';
+      const bb=g("BuyBody"); if(bb) bb.innerHTML='<tr><td colspan="4"><div class="hint">'+flT("loadErr")+'</div></td></tr>';
+      const sb=g("SellBody"); if(sb) sb.innerHTML='<tr><td colspan="4"><div class="hint">'+flT("loadErr")+'</div></td></tr>';
+    }
+  }
+  function loadForeign(){ return loadFlow("foreign"); }
+  function loadProp(){ return loadFlow("prop"); }
+  if(typeof window!=="undefined"){ window.loadForeign=loadForeign; window.loadProp=loadProp;
+    window.__flowTest={i18n:FLOW_I18N,t:flT,fmtB:flB,fmtD:flD,weekend:flWeekend,chart:flChartSVG,load:loadFlow,cfg:FLOW_CFG}; }
+})();
+}catch(e){}
+// __FLOW_END__
 
 // ---- Cau hoi goi y theo 7 nhom kha nang (Dot A) ----
 const CHAT_GROUPS=[
@@ -2986,10 +3252,10 @@ function renderChatSug(){
   const bar=$("sugBar"); if(bar) bar.addEventListener("click",chatSugToggle);
 }
 const LANGS = {
-  vi: {market:"Thị trường",screen:"Sàng lọc",cons:"Đồng thuận",hold:"Cổ đông",sec:"Ngành",alert:"Cảnh báo",mine:"Của tôi",chat:"AI Chat",indices:"Chỉ số",gainers:"Tăng mạnh nhất HOSE",send:"Gửi",askPh:"Hỏi về cổ phiếu…"},
-  en: {market:"Market",screen:"Screener",cons:"Consensus",hold:"Shareholders",sec:"Sectors",alert:"Alerts",mine:"Mine",chat:"AI Chat",indices:"Indices",gainers:"Top gainers HOSE",send:"Send",askPh:"Ask about stocks…"},
-  zh: {market:"市场",screen:"筛选",cons:"共识",hold:"股东",sec:"行业",alert:"提醒",mine:"我的",chat:"AI Chat",indices:"指数",gainers:"HOSE涨幅榜",send:"发送",askPh:"询问股票…"},
-  ko: {market:"시장",screen:"스크리너",cons:"컨센서스",hold:"주주",sec:"업종",alert:"알림",mine:"내 정보",chat:"AI Chat",indices:"지수",gainers:"HOSE 상승 상위",send:"보내기",askPh:"주식에 대해 질문…"}
+  vi: {market:"Thị trường",screen:"Sàng lọc",cons:"Đồng thuận",hold:"Cổ đông",sec:"Ngành",margin:"Margin",foreign:"Khối ngoại",prop:"Tự doanh",alert:"Cảnh báo",mine:"Của tôi",chat:"AI Chat",indices:"Chỉ số",gainers:"Tăng mạnh nhất HOSE",send:"Gửi",askPh:"Hỏi về cổ phiếu…"},
+  en: {market:"Market",screen:"Screener",cons:"Consensus",hold:"Shareholders",sec:"Sectors",margin:"Margin",foreign:"Foreign",prop:"Proprietary",alert:"Alerts",mine:"Mine",chat:"AI Chat",indices:"Indices",gainers:"Top gainers HOSE",send:"Send",askPh:"Ask about stocks…"},
+  zh: {market:"市场",screen:"筛选",cons:"共识",hold:"股东",sec:"行业",margin:"融资余额",foreign:"外资",prop:"自营",alert:"提醒",mine:"我的",chat:"AI Chat",indices:"指数",gainers:"HOSE涨幅榜",send:"发送",askPh:"询问股票…"},
+  ko: {market:"시장",screen:"스크리너",cons:"컨센서스",hold:"주주",sec:"업종",margin:"신용융자 잔고",foreign:"외국인",prop:"자기매매",alert:"알림",mine:"내 정보",chat:"AI Chat",indices:"지수",gainers:"HOSE 상승 상위",send:"보내기",askPh:"주식에 대해 질문…"}
 };
 let curLang = (localStorage.getItem("elab_uiLang") || localStorage.getItem("stk_lang") || "vi").replace(/"/g, "");
 if(!["vi","en","zh","ko"].includes(curLang)) curLang = "vi";
@@ -3018,8 +3284,8 @@ function setStkLang(l){
   localStorage.setItem("stk_lang", l);
   const L = LANGS[curLang];
   NAVLBL["v-market"] = L.market; NAVLBL["v-screen"] = L.screen; NAVLBL["v-consensus"] = L.cons; NAVLBL["v-holders"] = L.hold; NAVLBL["v-sectors"] = L.sec;
-  NAVLBL["v-alert"] = L.alert; NAVLBL["v-mine"] = L.mine;
-  ["mainTabs","screenTabs","consTabs","holdTabs","secTabs","alertTabs","mineMainTabs","chatTabs"].forEach(e=>{if($(e))buildNav(e, document.querySelector(".view.on")?.id || "v-market");});
+  NAVLBL["v-alert"] = L.alert; NAVLBL["v-mine"] = L.mine; NAVLBL["v-margin"] = L.margin; NAVLBL["v-foreign"] = L.foreign; NAVLBL["v-prop"] = L.prop;
+  ["mainTabs","screenTabs","consTabs","holdTabs","secTabs","marginTabs","foreignTabs","propTabs","alertTabs","mineMainTabs","chatTabs"].forEach(e=>{if($(e))buildNav(e, document.querySelector(".view.on")?.id || "v-market");});
   syncLangUI();
   applyLang();
   translateDOM();
@@ -3029,6 +3295,9 @@ function setStkLang(l){
 window.__elabSetLang = setStkLang;
 
 const I18N_FULL = {
+"Margin":["Margin","融资余额","신용융자 잔고"],
+"Khối ngoại":["Foreign","外资","외국인"],
+"Tự doanh":["Proprietary","自营","자기매매"],
 "Tìm mã, ngành, trang hoặc lệnh…":["Search symbols, sectors, pages or commands…","搜索股票、行业、页面或命令…","종목, 업종, 페이지 또는 명령 검색…"],
 "(tỷ đồng)":["(B VND)","(十亿越盾)","(10억 동)"],
 "+ Thêm cảnh báo":["+ Add alert","+ 添加提醒","+ 알림 추가"],
@@ -3153,6 +3422,16 @@ const I18N_FULL = {
 "Tăng mạnh nhất":["Top gainers","涨幅最大","상승률 상위"],
 "Giá trị giao dịch lớn nhất":["Highest traded value","成交额最大","거래대금 상위"],
 "Đang tìm…":["Searching…","查询中…","조회 중…"],
+"Đang chờ đáp án (có thể mất vài phút)…":["Waiting for the answer (may take a few minutes)…","正在等待答案（可能需要几分钟）…","답변을 기다리는 중 (몇 분 걸릴 수 있음)…"],
+"Đã chờ":["Waited","已等待","대기 시간"],
+"phút":["minutes","分钟","분"],
+"giây":["seconds","秒","초"],
+"Huỷ chờ":["Cancel","取消","취소"],
+"Đã huỷ chờ đáp án.":["Wait cancelled.","已取消等待。","대기 취소됨."],
+"Không lấy được đáp án từ bản nháp, thử lại sau.":["Could not get the draft answer. Please try again later.","未能获取草稿答案,请稍后重试。","초안 답변을 가져오지 못했습니다. 나중에 다시 시도하세요."],
+"Kênh dự phòng đang bận, em trả lời bằng hướng khác.":["The fallback channel is busy, so here's an answer another way.","备用通道正忙,改用其他方式回答。","대체 채널이 바빠 다른 방식으로 답변합니다."],
+"Một số con số đã lược vì chưa có nguồn.":["Some figures were removed because they had no source.","部分数字因无来源已被删除。","출처가 없는 일부 숫자는 삭제되었습니다."],
+"Một số câu khuyến nghị đã lược.":["Some recommendation sentences were removed.","部分建议语句已被删除。","일부 추천 문장은 삭제되었습니다."],
 "Lỗi tải dữ liệu. Thử lại sau.":["Failed to load data. Please try again later.","数据加载失败,请稍后重试。","데이터 로드 실패. 나중에 다시 시도하세요."],
 "Câu hỏi này em chưa trả lời được.":["I can't answer this question yet.","这个问题暂时无法回答。","이 질문에는 아직 답할 수 없습니다."],
 "Thử các câu gợi ý ở đầu trang, hoặc hỏi theo mã cổ phiếu, ngành, vĩ mô, dòng tiền…":["Try the suggested questions at the top of the page, or ask by stock symbol, sector, macro, money flow…","可尝试页面顶部的建议问题,或按股票代码、行业、宏观、资金流提问…","페이지 상단의 추천 질문을 시도하거나 종목, 업종, 거시, 수급으로 질문해 보세요…"],
@@ -3388,7 +3667,7 @@ function applyLang(){
   const L = LANGS[curLang] || LANGS.vi;
   document.querySelectorAll("#langPick button").forEach(b=>b.classList.toggle("on", b.dataset.lang===curLang));
   // Dịch nhãn tab chính
-  const lbl = {"v-market":L.market,"v-screen":L.screen,"v-consensus":L.cons,"v-holders":L.hold,"v-sectors":L.sec,"v-alert":L.alert,"v-mine":L.mine,"v-chat":L.chat};
+  const lbl = {"v-market":L.market,"v-screen":L.screen,"v-consensus":L.cons,"v-holders":L.hold,"v-sectors":L.sec,"v-margin":L.margin,"v-foreign":L.foreign,"v-prop":L.prop,"v-alert":L.alert,"v-mine":L.mine,"v-chat":L.chat};
   document.querySelectorAll("[data-scr]").forEach(()=>{});
   if($("chatSend")) $("chatSend").textContent = L.send;
   if($("chatIn")) $("chatIn").placeholder = L.askPh;
