@@ -2523,23 +2523,3 @@ export async function hMcpGet() {
   });
 }
 
-// GET /api/admin/mcp-log?email=&tool=&limit= — truy vet luot goi MCP
-// (route auth 'admin' o index.js da chan san).
-export async function hMcpLogAdmin(request, env) {
-  const u = new URL(request.url);
-  const limit = Math.min(parseInt(u.searchParams.get('limit') || '100', 10) || 100, 500);
-  const email = u.searchParams.get('email');
-  const tool = u.searchParams.get('tool');
-  await ensureLog(env);
-  let sqlText = 'SELECT id, ts, user_email, plan, tool, params_json, status, refusal_code, verification_flags, result_rows, latency_ms, as_of, result_id, source_result FROM mcp_log';
-  const conds = [], binds = [];
-  if (email) { conds.push('user_email = ?'); binds.push(email); }
-  if (tool) { conds.push('tool = ?'); binds.push(tool); }
-  if (conds.length) sqlText += ' WHERE ' + conds.join(' AND ');
-  sqlText += ' ORDER BY id DESC LIMIT ?';
-  binds.push(limit);
-  const rs = await env.DB.prepare(sqlText).bind(...binds).all();
-  return new Response(JSON.stringify({ rows: rs.results || [] }), {
-    headers: { 'Content-Type': 'application/json' },
-  });
-}
