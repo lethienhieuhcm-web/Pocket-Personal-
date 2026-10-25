@@ -1,13 +1,13 @@
 import {handleBookResult, handleBookUpload, handleBookList, handleBookGet, handleAdminBooksPending, handleAdminBooksApprove} from './books.js';
-import {handleTTS, handleVoices, handleQuota, handleTranslate, handleDict, handleCloneVoice} from './content.js';
-import {handleCollectionsList, handleCollectionGet, handleAdminCollectionCreate, handleAdminCollectionDelete, handleAdminItemCreate, handleAdminItemDelete} from './collections.js';
+import {handleTTS, handleVoices, handleQuota, handleTranslate, handleDict} from './content.js';
+import {handleCollectionsList, handleCollectionGet} from './collections.js';
 import {handleAIExplain, handleAIQuiz, handleByokProxy, handleAiRelay} from './ai.js';
 import {handleVocabAdd, handleVocabDue, handleVocabReview} from './vocab.js';
 import {handleAnalytics, handleInsights, handleBankGet, handleBankPost, handleReadingsList, handleReadingsCreate, handleReadingGet, handleReadingDelete, handleReadingAudioPut, handleAdminUsers, handleAdminRole, handleAdminDelete} from './library.js';
 import {handleRegister, handleSendCode, handleVerifyCode, handleLogin, handleLogout, handleMe, handleGoogleLogin, handleGoogleCallback, handleGoogleIdToken, handleListSessions, handleRevokeSession, handleVerifyEmail, handleResendVerification, handleForgotPassword, handleResetPassword, handleResetPasswordPage } from './auth.js';
 import {handleGetPlan, handleGetUsage, handleSetPlan} from './billing.js';
-import {hMcp, hMcpGet, hMcpLogAdmin} from './mcp.js';
-import {hAiChat} from './ai_chat.js';
+import {hMcp, hMcpGet} from './mcp.js';
+import {hAiChat, hAiChatJob, hAiChatJobCancel, hAiEngineClaim, hAiEngineComplete, hAiEngineHeartbeat} from './ai_chat.js';
 import {handleDriveAuthUrl, handleDriveCallback, handleDriveStatus, handleDriveDisconnect, handleDriveMusic, handleDriveStream, handleDriveUpload} from './drive.js';
 import {handleDacMusic, handleDacStream, handleDacStreamTest, handleDacDriveToken, handleDacAudio, handleDacAudioSign, handleDacAudioToken, handleDacResolve, handleDacCopy, handleDacFolders, handleDacSync, handleDacSearch, handleDacLibrary, handleDacPlaylistList, handleDacPlaylistCreate, handleDacPlaylistDelete, handleDacPlaylistGet, handleDacPlaylistSetItems, handleDacAuthLogin, handleDacAuthRefresh, handleDacAuthLogout} from './dac.js';
 import {handleSpotifyAuthUrl, handleSpotifyCallback, handleSpotifyStatus, handleSpotifySearch} from './spotify.js';
@@ -17,7 +17,7 @@ import { and, eq, lt, sql } from "drizzle-orm";
 import { rateLimits } from "./schema.js";
 import {getSession, getUser, OWNER_EMAIL} from './auth.js';
 import {jerr} from './utils.js';
-import {hStockVersion, hStockIndices, hStockSectorIndices, hStockRegime, hStockSignals, hStockQuote, hStockOhlcv, hStockTrades, hStockScreener, hStockFundamentals, hStockStatements, hStockNews, hStockMarketNews, hStockForeignFlow, hStockForeignHistory, hStockProprietaryFlow, hStockProprietaryHistory, hStockMacro, hStockMacroHistory, hStockConsensus, hStockConsensusDetail, hStockHolders, hStockHoldersShard, hStockHoldersSymbol, hStockSectors, hStockSectorsDetail, hStockListing, hStockEvents, hStockCompanyProfile, hStockCompare, hWatchlistGet, hWatchlistAdd, hWatchlistDel, hPortfolio, hTxnAdd, hTxnDel, hTxnNote, hCostHistory, hTargetsGet, hTargetsSet, hTargetsDel, hStockPublish, hModalAlert, hStockReportData, hStockAlertDone, hStockTargetDone, hStockRisk, hStockStrategyReview, hRuleAlertsGet, hRuleAlertsAdd, hRuleAlertsDel, hRuleAlertsInternal, hTickStateGet} from './stock.js';
+import {hStockVersion, hStockIndices, hStockSectorIndices, hStockRegime, hStockSignals, hStockQuote, hStockOhlcv, hStockTrades, hStockScreener, hStockFundamentals, hStockStatements, hStockNews, hStockMarketNews, hStockForeignFlow, hStockForeignHistory, hStockProprietaryFlow, hStockProprietaryHistory, hStockMacro, hStockMacroHistory, hStockConsensus, hStockConsensusDetail, hStockHolders, hStockHoldersShard, hStockHoldersSymbol, hStockSectors, hStockSectorsDetail, hStockListing, hStockEvents, hStockCompanyProfile, hStockCompare, hWatchlistGet, hWatchlistAdd, hWatchlistDel, hPortfolio, hTxnAdd, hCostHistory, hTargetsGet, hTargetsSet, hTargetsDel, hStockPublish, hModalAlert, hStockReportData, hStockAlertDone, hStockTargetDone, hStockRisk, hStockStrategyReview, hRuleAlertsGet, hRuleAlertsAdd, hRuleAlertsDel, hRuleAlertsInternal, hTickStateGet} from './stock.js';
 
 // Build ID - replaced with timestamp on every deploy (see cf_deploy.py)
 const BUILD_ID = "__BUILD__";
@@ -63,7 +63,6 @@ const ROUTES = [
   ['GET',    '/api/admin/books/pending', handleAdminBooksPending, 'admin'],
   ['POST',   '/api/admin/books/approve', handleAdminBooksApprove, 'admin'],
   ['POST',   '/api/admin/set-plan',  handleSetPlan,          'admin'],
-  ['GET',    '/api/admin/mcp-log',   hMcpLogAdmin,           'admin'],
   // --- auth ---
   ['POST',   '/api/auth/send-code',  handleSendCode,         'public'],
   ['POST',   '/api/auth/verify-code',handleVerifyCode,       'public'],
@@ -91,6 +90,11 @@ const ROUTES = [
   ['GET',    '/api/mcp',           hMcpGet,                'user'],
   // --- AI Chat Dot B: tang dieu phoi LLM tren MCP (ai_chat.js) ---
   ['POST',   '/api/ai/chat',       hAiChat,                'user'],
+  ['GET',    '/api/ai/chat/job',   hAiChatJob,             'user'],
+  ['POST',   '/api/ai/chat/job-cancel', hAiChatJobCancel,  'user'],
+  ['POST',   '/api/ai/engine/claim', hAiEngineClaim,       'custom'],
+  ['POST',   '/api/ai/engine/complete', hAiEngineComplete, 'custom'],
+  ['POST',   '/api/ai/engine/heartbeat', hAiEngineHeartbeat, 'custom'],
   // --- drive ---
   ['GET',    '/api/drive/auth-url',  handleDriveAuthUrl,     'user'],
   ['GET',    '/api/drive/callback',  handleDriveCallback,    'custom'],
@@ -107,7 +111,7 @@ const ROUTES = [
   ['GET',    '/api/dac/music',       handleDacMusic,           'dac'],
   ['GET',    '/api/dac/folders',     handleDacFolders,         'dac'],
   ['POST',   '/api/dac/sync',        handleDacSync,            'dac'],
-  ['GET',    '/api/dac/stream/*',    handleDacStream, handleDacStreamTest,            'user'],
+  ['GET',    '/api/dac/stream/*',    handleDacStream,                'dac'],
   ['GET',    '/api/dac/stream-test/*', handleDacStreamTest,       'dac'],
   ['GET',    '/api/dac/drive-token',  handleDacDriveToken,        'dac'],
   ['GET',    '/api/dac/audio/*',     handleDacAudio,             'public'],
@@ -134,7 +138,6 @@ const ROUTES = [
   ['POST',   '/api/tts',             handleTTS,              'user'],
   ['GET',    '/api/voices',          handleVoices,           'user'],
   ['GET',    '/api/quota',           handleQuota,            'user'],
-  ['POST',   '/api/admin/clone-voice', handleCloneVoice,     'admin'],
   ['POST',   '/api/translate',       handleTranslate,        'user'],
   ['POST',   '/api/ai/explain',      handleAIExplain,        'user'],
   ['POST',   '/api/ai/quiz',         handleAIQuiz,           'user'],
@@ -146,10 +149,6 @@ const ROUTES = [
   // --- collections (content library) ---
   ['GET',    '/api/collections',     handleCollectionsList,  'user'],
   ['GET',    '/api/collections/*',   (q,w,e)=>handleCollectionGet(e,w,q.split('/').pop()), 'user'],
-  ['POST',   '/api/admin/collections', handleAdminCollectionCreate, 'admin'],
-  ['DELETE', '/api/admin/collections/*', (q,w,e)=>handleAdminCollectionDelete(e,w,q.split('/').pop()), 'admin'],
-  ['POST',   '/api/admin/collections/*/items', (q,w,e)=>{ const p=q.split('/'); return handleAdminItemCreate(e,w,p[4]); }, 'admin'],
-  ['DELETE', '/api/admin/items/*',   (q,w,e)=>handleAdminItemDelete(e,w,q.split('/').pop()), 'admin'],
   // --- stock ---
   ['GET',    '/api/stock/version',   hStockVersion,          'user'],
   ['GET',    '/api/stock/indices',   hStockIndices,          'user'],
@@ -191,8 +190,6 @@ const ROUTES = [
   ['DELETE', '/api/stock/watchlist/*', hWatchlistDel,        'user'],
   ['GET',    '/api/stock/portfolio', hPortfolio,             'user'],
   ['POST',   '/api/stock/portfolio/txn', hTxnAdd,            'user'],
-  ['DELETE', '/api/stock/portfolio/txn/*', hTxnDel,          'user'],
-  ['PUT',    '/api/stock/portfolio/txn/*', hTxnNote,         'user'],
   ['GET',    '/api/stock/portfolio/cost_history', hCostHistory, 'user'],
   ['GET',    '/api/stock/targets',   hTargetsGet,            'user'],
   ['POST',   '/api/stock/targets',   hTargetsSet,            'user'],

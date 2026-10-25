@@ -1,29 +1,5 @@
 import { checkRate, jerr, fetchTimeout, stripHtml } from './utils.js';
 
-/* Admin: create Instant Voice Clone on ElevenLabs from uploaded audio.
-   POST /api/admin/clone-voice (raw audio bytes in body, name in X-Voice-Name header)
-   Uses env.ELEVENLABS_API_KEY server-side. Admin only. */
-export async function handleCloneVoice(request, env) {
-  const key = env.ELEVENLABS_API_KEY;
-  if (!key) return jerr("TTS not configured", 503);
-  const name = (request.headers.get("X-Voice-Name") || "Henrry Voice").slice(0, 50);
-  const audioBuf = await request.arrayBuffer();
-  if (!audioBuf || audioBuf.byteLength < 1000) return jerr("Missing audio data", 400);
-  // Forward to ElevenLabs /v1/voices/add
-  const elForm = new FormData();
-  elForm.append("name", name);
-  elForm.append("files", new Blob([audioBuf], { type: "audio/mpeg" }), "voice_sample.mp3");
-  elForm.append("description", "Henrry's voice clone for Pocket Personal");
-  const r = await fetch("https://api.elevenlabs.io/v1/voices/add", {
-    method: "POST",
-    headers: { "xi-api-key": key },
-    body: elForm
-  });
-  const j = await r.json().catch(() => ({}));
-  if (!r.ok) return jerr("ElevenLabs error: " + (j.detail?.message || r.status), r.status);
-  return new Response(JSON.stringify({ voice_id: j.voice_id, name }), { headers: { "Content-Type": "application/json" } });
-}
-
 export async function handleTTS(request, env) {
   const ip = request.headers.get("cf-connecting-ip") || "x";
   if (!checkRate(ip)) return jerr("Rate limit exceeded (300/day)", 429);

@@ -856,21 +856,6 @@ export async function hTxnAdd(request, env){
   return sJson({id, fee:Math.round(fee*100)/100});
 }
 
-export async function hTxnDel(request, env){
-  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
-  const id = parseInt(new URL(request.url).pathname.split("/").pop(),10);
-  await d1TxnDel(env, s.email, id);
-  return sJson({ok:true});
-}
-
-export async function hTxnNote(request, env){
-  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
-  const id = parseInt(new URL(request.url).pathname.split("/").pop(),10);
-  const b = await request.json().catch(()=>({}));
-  await d1TxnUpdateNote(env, s.email, id, String(b.note||"").slice(0,500));
-  return sJson({ok:true});
-}
-
 export async function hCostHistory(request, env){
   const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
   const sym = (new URL(request.url).searchParams.get("symbol")||"").toUpperCase();
