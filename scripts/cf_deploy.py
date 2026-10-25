@@ -14,6 +14,9 @@ import sys
 import urllib.request
 import urllib.error
 import glob as _glob
+import tempfile
+import atexit
+import shutil
 from datetime import datetime, timezone
 
 # Single source for VM + GitHub Actions (unified 2026-10-15).
@@ -34,17 +37,74 @@ except ImportError:
     def read_json_response(resp):
         return json.loads(resp.read().decode())
 
+# --- Deploy tu mot git ref (muc 2, 25/10) ---
+# --ref <branch|commit> hoac CF_DEPLOY_REF: giai quyet ref thanh SHA, git
+# archive vao thu muc tam (duoi ~/workspace/.cf_ref, tranh /tmp tmpfs
+# 512MB), roi deploy TU CAY ARCHIVE DO — chi file da commit, khong bao
+# gom file dirty trong cay lam viec. Production chi deploy tu ref da push.
+_REF_ARG = None
+_args = sys.argv[1:]
+for _i, _a in enumerate(_args):
+    if _a.startswith("--ref="):
+        _REF_ARG = _a[len("--ref="):]
+    elif _a == "--ref" and _i + 1 < len(_args):
+        _REF_ARG = _args[_i + 1]
+_REF = _REF_ARG or os.environ.get("CF_DEPLOY_REF") or None
+_REF_SRC = None
+_REF_SHA = None
+if _REF:
+    def _find_repo():
+        for _c in (os.environ.get("CF_DEPLOY_SRC"),
+                   os.path.dirname(_SCRIPT_DIR),
+                   "/home/hatch/workspace/english-lab"):
+            if _c and os.path.isdir(os.path.join(_c, ".git")):
+                return _c
+        return None
+    _repo = _find_repo()
+    if not _repo:
+        print("CF_DEPLOY_REF: khong tim thay git repo (can .git)")
+        sys.exit(2)
+    _rv = subprocess.run(["git", "-C", _repo, "rev-parse", "--verify", "--quiet",
+                          _REF + "^{commit}"],
+                         capture_output=True, text=True)
+    if _rv.returncode != 0 or not _rv.stdout.strip():
+        print(f"CF_DEPLOY_REF: khong giai quyet duoc ref '{_REF}' trong {_repo}")
+        sys.exit(2)
+    _REF_SHA = _rv.stdout.strip()
+    _base = os.path.expanduser("~/workspace/.cf_ref")
+    os.makedirs(_base, exist_ok=True)
+    _REF_SRC = tempfile.mkdtemp(prefix="ref_" + _ref_SHA[:8] + "_", dir=_base)
+    _p1 = subprocess.Popen(["git", "-C", _repo, "archive", _ref_SHA],
+                           stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    _p2 = subprocess.run(["tar", "-x", "-C", _REF_SRC],
+                         stdin=_p1.stdout, capture_output=True, text=True)
+    _p1.stdout.close()
+    _p1.wait()
+    if _p1.returncode != 0 or _p2.returncode != 0:
+        print(f"CF_DEPLOY_REF: git archive that bai: {(_p1.stderr.read() or '')[:300] if _p1.stderr else ''}")
+        shutil.rmtree(_REF_SRC, ignore_errors=True)
+        sys.exit(2)
+    atexit.register(lambda: shutil.rmtree(_REF_SRC, ignore_errors=True))
+    print(f"DEPLOY FROM REF: {_REF} -> {_ref_SHA} (archive: {_REF_SRC})")
+    print("  (chi file da commit; file dirty trong cay lam viec KHONG duoc deploy)")
+
 API = "https://api.cloudflare.com/client/v4"
 ACCOUNT = "25b2327e932d26e5487c2ba8ad058932"
 # Moi truong deploy (2026-10-20, stockui Dot C): mac dinh production nhu cu.
 # Staging: CF_WORKER_NAME=fancy-wood-2b3c-staging CF_D1_ID=<staging uuid>
 #          CF_VERIFY_HOST=staging.lethanhdong.one CF_PURGE=0 CF_DRIFT=0
+# Deploy tu commit/nhanh (muc 2, 25/10): python scripts/cf_deploy.py --ref <branch|commit>
+#          (hoac CF_DEPLOY_REF=<ref>). Chi file da commit duoc deploy; production
+#          chi deploy tu ref da push.
 WORKER = os.environ.get("CF_WORKER_NAME", "fancy-wood-2b3c")
 D1_ID = os.environ.get("CF_D1_ID", "e856db4d-1ee1-42fd-9c1d-1807ca31afb5")
 VERIFY_HOST = os.environ.get("CF_VERIFY_HOST", "lethanhdong.one")
 def _detect_src():
     """Find the english-lab checkout: CF_DEPLOY_SRC (CI) -> scripts/.. (repo)
-    -> /home/hatch/workspace/english-lab (VM)."""
+    -> /home/hatch/workspace/english-lab (VM). With --ref/CF_DEPLOY_REF,
+    the archived ref tree wins (committed files only)."""
+    if _REF_SRC and os.path.isdir(os.path.join(_REF_SRC, "worker")):
+        return _REF_SRC
     cands = []
     env = os.environ.get("CF_DEPLOY_SRC")
     if env:
