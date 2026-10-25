@@ -85,6 +85,16 @@ if _REF:
         shutil.rmtree(_REF_SRC, ignore_errors=True)
         sys.exit(2)
     atexit.register(lambda: shutil.rmtree(_REF_SRC, ignore_errors=True))
+    # Build worker can node_modules (untracked, khong co trong git archive):
+    # symlink tu repo goc — chi la build dependency, bundle cuoi cung giong
+    # het nhu deploy tu cay (cung src + cung node_modules).
+    _nm_src = os.path.join(_repo, "worker", "node_modules")
+    _nm_dst = os.path.join(_REF_SRC, "worker", "node_modules")
+    if os.path.isdir(_nm_src) and not os.path.exists(_nm_dst):
+        os.symlink(_nm_src, _nm_dst)
+        print(f"  (node_modules: symlink tu {_nm_src})")
+    elif not os.path.exists(_nm_dst):
+        print("  CANH BAO: khong co worker/node_modules trong repo — build worker co the that bai (can npm install)")
     print(f"DEPLOY FROM REF: {_REF} -> {_REF_SHA} (archive: {_REF_SRC})")
     print("  (chi file da commit; file dirty trong cay lam viec KHONG duoc deploy)")
 
