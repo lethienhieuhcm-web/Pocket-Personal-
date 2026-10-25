@@ -7,7 +7,7 @@ import {handleAnalytics, handleInsights, handleBankGet, handleBankPost, handleRe
 import {handleRegister, handleSendCode, handleVerifyCode, handleLogin, handleLogout, handleMe, handleGoogleLogin, handleGoogleCallback, handleGoogleIdToken, handleListSessions, handleRevokeSession, handleVerifyEmail, handleResendVerification, handleForgotPassword, handleResetPassword, handleResetPasswordPage } from './auth.js';
 import {handleGetPlan, handleGetUsage, handleSetPlan} from './billing.js';
 import {hMcp, hMcpGet, hMcpLogAdmin} from './mcp.js';
-import {hAiChat} from './ai_chat.js';
+import {hAiChat, hAiChatJob, hAiChatJobCancel, hAiEngineClaim, hAiEngineComplete, hAiEngineHeartbeat} from './ai_chat.js';
 import {handleDriveAuthUrl, handleDriveCallback, handleDriveStatus, handleDriveDisconnect, handleDriveMusic, handleDriveStream, handleDriveUpload} from './drive.js';
 import {handleDacMusic, handleDacStream, handleDacStreamTest, handleDacDriveToken, handleDacAudio, handleDacAudioSign, handleDacAudioToken, handleDacResolve, handleDacCopy, handleDacFolders, handleDacSync, handleDacSearch, handleDacLibrary, handleDacPlaylistList, handleDacPlaylistCreate, handleDacPlaylistDelete, handleDacPlaylistGet, handleDacPlaylistSetItems, handleDacAuthLogin, handleDacAuthRefresh, handleDacAuthLogout} from './dac.js';
 import {handleSpotifyAuthUrl, handleSpotifyCallback, handleSpotifyStatus, handleSpotifySearch} from './spotify.js';
@@ -91,6 +91,11 @@ const ROUTES = [
   ['GET',    '/api/mcp',           hMcpGet,                'user'],
   // --- AI Chat Dot B: tang dieu phoi LLM tren MCP (ai_chat.js) ---
   ['POST',   '/api/ai/chat',       hAiChat,                'user'],
+  ['GET',    '/api/ai/chat/job',   hAiChatJob,             'user'],
+  ['POST',   '/api/ai/chat/job-cancel', hAiChatJobCancel,  'user'],
+  ['POST',   '/api/ai/engine/claim', hAiEngineClaim,       'custom'],
+  ['POST',   '/api/ai/engine/complete', hAiEngineComplete, 'custom'],
+  ['POST',   '/api/ai/engine/heartbeat', hAiEngineHeartbeat, 'custom'],
   // --- drive ---
   ['GET',    '/api/drive/auth-url',  handleDriveAuthUrl,     'user'],
   ['GET',    '/api/drive/callback',  handleDriveCallback,    'custom'],
