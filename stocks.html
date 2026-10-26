@@ -2125,7 +2125,7 @@ function chartSvg(rows,scale){
 async function loadChart(sym, iv){
   _chartSym=sym; iv=iv||"1D"; _chartIv=iv;
   document.querySelectorAll("#dIv button").forEach(b=>b.classList.toggle("on", b.textContent===iv));
-  const box=$("dChart"); box.innerHTML='<div class="hint">Đang tải…</div>';
+  const box=$("dChart"); if(window.PP_CHART)PP_CHART.destroy(); box.innerHTML='<div class="hint">Đang tải…</div>';
   ["dFaLegend","dFaPct","dFaGrid"].forEach(k=>{ const e=$(k); if(e) e.innerHTML=""; });
   const pnl=$("dIndPanel"); if(pnl) pnl.style.display="none";
   try{
@@ -2323,6 +2323,7 @@ function renderIndChart(){
   ];
   const studies=getStudies();
   if(!window.PP_IND||!window.PP_STUDIES){
+    if(window.PP_CHART)PP_CHART.destroy();
     box.innerHTML=chartSvg(disp, scale); if(panes)panes.innerHTML=""; if(chips)chips.innerHTML="";
     renderFaLegend([], volLines, scale); renderFaPctGrid(); return;
   }
@@ -2334,6 +2335,26 @@ function renderIndChart(){
   });
   const overlays=results.filter(x=>x.res&&x.res.plots&&x.res.plots.length&&x.spec&&x.spec.priceStudy);
   const paneItems=results.filter(x=>x.res&&x.res.plots&&x.res.plots.length&&x.spec&&!x.spec.priceStudy);
+  // GĐ2 lật live (port từ stocks-v2.html GĐ1, đã kiểm chứng staging):
+  // vẽ bằng PP_CHART/Lightweight Charts; lỗi tải thư viện hoặc adapter
+  // -> rơi về SVG như bản live cũ. pricePrecision theo cùng quy tắc
+  // scale của main (chỉ số chính + chỉ số phụ -> 2, mã -> 0).
+  if(window.PP_CHART&&window.LightweightCharts){
+    let ok=false;
+    try{
+      ok=PP_CHART.render(box,{bars:full,scale:scale,pricePrecision:(IDX_LIST.includes(_chartSym)||IDX_SEC_LIST.includes(_chartSym))?2:0,intraday:_chartIv!=="1D",studies:results,volLines:[
+        {color:VOL_MA5_COL, vals:smaSeries(volFull,5)},
+        {color:VOL_MA10_COL, vals:smaSeries(volFull,10)},
+      ]});
+    }catch(e){ ok=false; }
+    if(ok){
+      if(panes)panes.innerHTML="";
+      renderIndChips(studies);
+      renderFaLegend(overlays, volLines, scale);
+      renderFaPctGrid();
+      return;
+    }
+  }
   box.innerHTML=chartSvgInd(disp, overlays, off, scale, volLines);
   if(panes) panes.innerHTML=paneItems.map(p=>paneSvgInd(p, off, disp.length, scale)).join("");
   renderIndChips(studies);
@@ -3888,8 +3909,10 @@ loadMarket();
 pollVersion(); setInterval(pollVersion, 5*60*1000);
 </script>
 <script src="/english/js/lang-dropdown.js?v=__BUILD__"></script>
+<script src="/english/js/vendor/lightweight-charts.js?v=__BUILD__"></script>
 <script src="/english/js/features/stock-indicators-spec.js?v=__BUILD__"></script>
 <script src="/english/js/features/stock-indicators.js?v=__BUILD__"></script>
+<script src="/english/js/features/stock-chart.js?v=__BUILD__"></script>
 
 <button id="aiFab" onclick="openChat()" style="position:fixed;right:16px;bottom:24px;width:52px;height:52px;border-radius:50%;background:var(--pp-accent);color:#fff;border:none;font-size:20px;box-shadow:0 4px 16px rgba(0,0,0,.5);cursor:pointer;z-index:200"><svg class="tic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></button>
 </body>
