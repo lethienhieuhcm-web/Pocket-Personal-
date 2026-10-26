@@ -1,0 +1,63 @@
+name: Spike SSI proxy (isolated)
+
+# Job toi thieu, co lap: chi CONNECT + handshake SSI qua proxy bang
+# secret Modal da luu. App Modal RIENG (ssi-proxy-spike), khong phai
+# app stock-tick-collector, khong schedule, khong deploy production,
+# khong dung collector dang chay, khong lat live.
+# Chay tu dong khi push file spike hoac chinh workflow nay; co the
+# dispatch tay (workflow_dispatch) de chay lai.
+# Ket qua (verdict JSON, khong URL/creds) duoc commit ve
+# modal_crons/spike_result.json de doc lai (file ket qua khong nam
+# trong trigger paths nen khong gay vong lap).
+
+on:
+  push:
+    paths:
+      - "modal_crons/ssi_proxy_spike.py"
+      - ".github/workflows/spike-ssi-proxy.yml"
+  workflow_dispatch:
+
+jobs:
+  spike:
+    runs-on: ubuntu-latest
+    env:
+      MODAL_TOKEN_ID: ${{ secrets.MODAL_TOKEN_ID }}
+      MODAL_TOKEN_SECRET: ${{ secrets.MODAL_TOKEN_SECRET }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Modal CLI
+        run: pip install modal
+
+      - name: Run isolated SSI proxy spike
+        continue-on-error: true
+        run: |
+          cd modal_crons && modal run ssi_proxy_spike.py 2>&1 | tee /tmp/spike.log
+
+      - name: Extract verdict JSON
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import re, json
+          try:
+              log = open('/tmp/spike.log').read()
+          except Exception:
+              log = ''
+          m = re.search(r'SPIKE_RESULT_JSON_START(.*?)SPIKE_RESULT_JSON_END', log, re.S)
+          data = m.group(1).strip() if m else json.dumps({"verdict": "UNKNOWN", "error": "no result marker in log"})
+          open('modal_crons/spike_result.json', 'w').write(data + '\n')
+          print(data)
+          PY
+
+      - name: Commit verdict back
+        if: always()
+        run: |
+          git config user.name "muse-spike"
+          git config user.email "muse-spike@local"
+          git add modal_crons/spike_result.json
+          git diff --cached --quiet && echo "no verdict change" || (git commit -m "ssi proxy spike verdict" && git push)
