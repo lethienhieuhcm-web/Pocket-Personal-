@@ -88,6 +88,18 @@ export function renderArticleView(){
   head.className = "bookhead";
   head.innerHTML = `<div class="btitle">${esc(state.readTitle || t("readingRoom"))}</div><div class="bsub">${esc(when.toLocaleDateString())} · ${state.readData.length} ${t("sentencesU")} · ${words} ${t("wordsU")}</div>`;
   box.appendChild(head);
+  // Scene illustration for this article, when one has been mapped
+  // (state.readImage holds the image name without extension).
+  if(state.readImage){
+    const fig = document.createElement("img");
+    fig.src = "/api/images/reading/" + encodeURIComponent(state.readImage) + ".png";
+    fig.alt = "";
+    fig.style.width = "100%";
+    fig.style.borderRadius = "12px";
+    fig.style.marginBottom = "12px";
+    fig.onerror = ()=>{ fig.remove(); };
+    box.appendChild(fig);
+  }
   // Group into paragraphs (~4 sentences each) like book paragraphs
   let para = null, count = 0;
   state.readData.forEach((d, idx)=>{

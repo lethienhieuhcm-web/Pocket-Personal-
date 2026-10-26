@@ -45,6 +45,7 @@ function renderVocabCard(){
   vocabFlipped = false;
   box.innerHTML = `
     <div style="text-align:center;padding:24px 16px;background:var(--card2);border-radius:12px;margin-bottom:12px;min-height:120px;display:flex;flex-direction:column;justify-content:center">
+      <img id="vocabImg" style="width:100%;max-height:240px;object-fit:cover;border-radius:12px;margin-bottom:12px;display:none">
       <div style="font-size:28px;font-weight:700;margin-bottom:8px">${esc(w.word)}</div>
       <div id="vocabMeaning" style="display:none;font-size:16px;color:var(--mut)">${esc(w.meaning || "")}</div>
       <div style="font-size:12px;color:var(--mut);margin-top:8px">${vocabIdx+1} / ${vocabQueue.length}</div>
@@ -56,6 +57,13 @@ function renderVocabCard(){
         <button class="btn primary" id="vocabRemembered" style="flex:1">${esc(t("vocabRemembered"))}</button>
       </div>
     </div>`;
+  const vocabImg = $("vocabImg");
+  if(vocabImg){
+    vocabImg.onload = ()=>{ vocabImg.style.display = "block"; };
+    vocabImg.onerror = ()=>{ vocabImg.style.display = "none"; };
+    vocabImg.alt = w.word;
+    vocabImg.src = "/api/images/vocab/" + encodeURIComponent(w.word) + ".png";
+  }
   $("vocabFlip").onclick = ()=>{
     $("vocabMeaning").style.display = "block";
     $("vocabFlip").style.display = "none";
