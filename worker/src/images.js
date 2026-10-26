@@ -7,7 +7,7 @@ import { jerr } from './utils.js';
 const ALLOWED_EXT = new Set(['png', 'jpg', 'jpeg', 'webp']);
 
 export async function handleImageGet(request, env) {
-  const key = new URL(request.url).pathname.replace('/api/images/', '');
+  const key = new URL(request.url).pathname.replace('/api/', '');
   const parts = key.split('/');
   if (parts.length !== 3) return jerr('Invalid key', 400);
   if (parts[0] !== 'images') return jerr('Invalid key', 400);
