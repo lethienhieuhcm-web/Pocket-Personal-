@@ -3,6 +3,7 @@ import {handleTTS, handleVoices, handleQuota, handleTranslate, handleDict} from 
 import {handleCollectionsList, handleCollectionGet} from './collections.js';
 import {handleAIExplain, handleAIQuiz, handleByokProxy, handleAiRelay} from './ai.js';
 import {handleVocabAdd, handleVocabDue, handleVocabReview} from './vocab.js';
+import {handleImageGet} from './images.js';
 import {handleAnalytics, handleInsights, handleBankGet, handleBankPost, handleReadingsList, handleReadingsCreate, handleReadingGet, handleReadingDelete, handleReadingAudioPut, handleAdminUsers, handleAdminRole, handleAdminDelete} from './library.js';
 import {handleRegister, handleSendCode, handleVerifyCode, handleLogin, handleLogout, handleMe, handleGoogleLogin, handleGoogleCallback, handleGoogleIdToken, handleListSessions, handleRevokeSession, handleVerifyEmail, handleResendVerification, handleForgotPassword, handleResetPassword, handleResetPasswordPage } from './auth.js';
 import {handleGetPlan, handleGetUsage, handleSetPlan} from './billing.js';
@@ -56,6 +57,7 @@ const ROUTES = [
   ['GET',    '/api/books',           handleBookList,         'user'],
   ['POST',   '/api/books/upload',    handleBookUpload,       'user'],
   ['GET',    '/api/books/*',         handleBookGet,          'user'],
+  ['GET',    '/api/images/*',       handleImageGet,         'user'],
   ['POST',   '/api/books/result',    handleBookResult,       'custom'],
   // --- admin ---
   ['GET',    '/api/admin/users',     handleAdminUsers,       'admin'],
