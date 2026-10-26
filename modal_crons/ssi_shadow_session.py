@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-# Chan SSI BONG phien 2026-10-26 — app Modal RIENG, khong phai collector.
+# Chan SSI BONG phien 2026-10-27 — app Modal RIENG, khong phai collector.
 # - Doc SSI qua proxy tu Modal secret SSI_PROXY_URL (da luu moi 09:25).
-# - Chi publish vao prefix bong moi src ssi-shadow-20261026:
+# - Chi publish vao prefix bong moi src ssi-shadow-20261027:
 #   raw_chunks + src_artifacts (snapshot/health), KHONG gui
 #   status/intraday/foreign -> khong dung bat ky key nao cua collector
 #   dang chay (status.json, intraday, foreign, src dnse/kbs/vndirect/vps).
@@ -24,7 +24,7 @@ import modal
 
 ICT = timezone(timedelta(hours=7))
 PUBLISH_URL = "https://lethanhdong.one/api/internal/stock-publish"
-SRC = "ssi-shadow-20261026"
+SRC = "ssi-shadow-20261027"
 UNIVERSE = [
     "VCB", "BID", "CTG", "TCB", "MBB", "VPB", "HPG", "VHM",
     "VIC", "VNM", "MSN", "FPT", "MWG", "SSI", "VND", "HCM",
@@ -488,7 +488,7 @@ async def session_loop():
         print("[ssi-shadow] ket thuc phien", flush=True)
 
 
-app = modal.App("ssi-shadow-session-20261026")
+app = modal.App("ssi-shadow-session-20261027")
 image = (modal.Image.debian_slim(python_version="3.12")
          .pip_install("websockets>=14"))
 
