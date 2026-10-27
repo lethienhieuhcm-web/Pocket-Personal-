@@ -150,6 +150,16 @@ td{padding:7px 4px;border-bottom:1px solid var(--pp-line)}
 .ba{background:var(--pp-bg2);border-radius:8px;padding:8px;font-size:12px}
 .ba .t{color:var(--pp-mut);font-size:12px;margin-bottom:4px}
 .ba .pr{font-weight:700;font-size:14px}
+/* Ke shelf 27/10: thang depth so lenh trong hop quote + bang lich su nhom NDT */
+.obsec{margin-top:10px;border-top:1px solid var(--pp-line);padding-top:8px}
+.obrow{display:grid;grid-template-columns:64px 1fr 84px;gap:6px;align-items:center;font-size:12px;padding:2px 0}
+.obbar{height:10px;border-radius:5px;background:var(--pp-bg2);overflow:hidden}
+.obbar i{display:block;height:100%}
+.obbar.ask i{background:#fca5a5}.obbar.bid i{background:#86efac}
+.obctl{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;align-items:center}
+.obctl button,.obctl select{font-size:12px;padding:5px 9px;border-radius:6px;background:var(--pp-bg2);color:var(--pp-ink);border:1px solid var(--pp-line);cursor:pointer}
+.obctl button.on{background:var(--pp-accent);color:#fff;border-color:var(--pp-accent)}
+.obhist{overflow-x:auto}.obhist table{min-width:520px}
 .bars{display:flex;align-items:flex-end;gap:3px;height:90px;margin-top:10px;justify-content:center}
 .bar{width:14px;border-radius:3px 3px 0 0;min-height:3px}
 .bar.p{background:var(--pp-accent)}.bar.n{background:var(--pp-danger)}
@@ -164,6 +174,11 @@ td{padding:7px 4px;border-bottom:1px solid var(--pp-line)}
 .view.on{display:block}
 input,select{background:var(--pp-bg2);border:1px solid var(--pp-line);color:var(--pp-ink);border-radius:8px;padding:9px;font-size:12px}
 .hint{color:var(--pp-mut);font-size:12px;text-align:center;padding:20px}
+.flowwrap{overflow-x:auto}
+.flowwrap table{min-width:660px}
+.flowwrap th{white-space:nowrap}
+.flowwrap td{white-space:nowrap}
+.trialbadge{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.4px;color:var(--pp-accent);border:1px solid var(--pp-accent);border-radius:999px;padding:2px 8px;margin-left:8px;vertical-align:middle;white-space:nowrap}
 /* Co tab (muc 2): tab bi tat trong flags.json se an ca nut nav va view. */
 html.no-tab-margin .navcard[onclick*="v-margin"],html.no-tab-margin #v-margin{display:none!important}
 html.no-tab-foreign .navcard[onclick*="v-foreign"],html.no-tab-foreign #v-foreign{display:none!important}
@@ -489,6 +504,8 @@ html.no-tab-prop .navcard[onclick*="v-prop"],html.no-tab-prop #v-prop{display:no
 <div class="card"><table><thead id="ffBuyHead"></thead><tbody id="ffBuyBody"><tr><td colspan="4"><div class="hint">Đang tải…</div></td></tr></tbody></table></div>
 <div class="sec" id="ffSellT"></div>
 <div class="card"><table><thead id="ffSellHead"></thead><tbody id="ffSellBody"><tr><td colspan="4"><div class="hint">Đang tải…</div></td></tr></tbody></table></div>
+<div class="sec" id="ffHistT"></div>
+<div class="card" id="ffHistCard"><div style="padding:10px 12px;display:flex;gap:6px;flex-wrap:wrap;align-items:center"><input id="ffHistSym" placeholder="ACB" style="width:110px;text-transform:uppercase"><button id="ffHistBtn" onclick="loadFlowHist('foreign')" style="font-size:12px;padding:9px 14px;border-radius:8px;background:var(--pp-accent);color:#fff;border:none;cursor:pointer">Xem</button></div><div class="obhist"><table><thead id="ffHistHead"></thead><tbody id="ffHistBody"><tr><td colspan="5"><div class="hint">Nhập mã rồi bấm Xem</div></td></tr></tbody></table></div><div class="note" id="ffHistNote"></div></div>
 <div id="ffNotes"></div>
 </div>
 <div class="view" id="v-prop">
@@ -501,7 +518,19 @@ html.no-tab-prop .navcard[onclick*="v-prop"],html.no-tab-prop #v-prop{display:no
 <div class="card"><table><thead id="pfBuyHead"></thead><tbody id="pfBuyBody"><tr><td colspan="4"><div class="hint">Đang tải…</div></td></tr></tbody></table></div>
 <div class="sec" id="pfSellT"></div>
 <div class="card"><table><thead id="pfSellHead"></thead><tbody id="pfSellBody"><tr><td colspan="4"><div class="hint">Đang tải…</div></td></tr></tbody></table></div>
+<div class="sec" id="pfHistT"></div>
+<div class="card" id="pfHistCard"><div style="padding:10px 12px;display:flex;gap:6px;flex-wrap:wrap;align-items:center"><input id="pfHistSym" placeholder="ACB" style="width:110px;text-transform:uppercase"><button id="pfHistBtn" onclick="loadFlowHist('prop')" style="font-size:12px;padding:9px 14px;border-radius:8px;background:var(--pp-accent);color:#fff;border:none;cursor:pointer">Xem</button></div><div class="obhist"><table><thead id="pfHistHead"></thead><tbody id="pfHistBody"><tr><td colspan="5"><div class="hint">Nhập mã rồi bấm Xem</div></td></tr></tbody></table></div><div class="note" id="pfHistNote"></div></div>
 <div id="pfNotes"></div>
+</div>
+
+<!-- ===== MÀN Dòng tiền: sàng lọc dòng tiền ngày (Chốt F1 27/10) ===== -->
+<div class="view" id="v-flow">
+<div class="hdr"><a href="/hub" class="pp-back" style="text-decoration:none;font-size:20px" title="Về Pocket Personal" aria-label="Về Pocket Personal">‹</a><h1 id="flowTitle">Dòng tiền</h1><span class="src" id="flowSrc"></span></div>
+<div class="pagebar" id="flowTabs"></div>
+<div class="idx" id="flowHead"></div>
+<div class="sec"><span id="flowTableT"></span><span class="trialbadge" id="flowTrial"></span></div>
+<div class="card"><div class="flowwrap"><table><thead id="flowTableHead"></thead><tbody id="flowTableBody"><tr><td colspan="10"><div class="hint">Đang tải…</div></td></tr></tbody></table></div></div>
+<div class="note" id="flowNote"></div>
 </div>
 <script>
 const $=id=>document.getElementById(id);
@@ -519,7 +548,7 @@ async function api(p){
   return r.json();
 }
 // Nav pill trên đầu — theo mockup
-const NAV=[["v-market","Thị trường"],["v-screen","Sàng lọc"],["v-consensus","Đồng thuận"],["v-holders","Cổ đông"],["v-sectors","Ngành"],["v-margin","Margin"],["v-foreign","Khối ngoại"],["v-prop","Tự doanh"],["v-alert","Cảnh báo"],["v-mine","Của tôi"],["v-chat","AI Chat"]];
+const NAV=[["v-market","Thị trường"],["v-screen","Sàng lọc"],["v-consensus","Đồng thuận"],["v-holders","Cổ đông"],["v-sectors","Ngành"],["v-margin","Margin"],["v-foreign","Khối ngoại"],["v-prop","Tự doanh"],["v-flow","Dòng tiền"],["v-alert","Cảnh báo"],["v-mine","Của tôi"],["v-chat","AI Chat"]];
 const NAVLBL=Object.fromEntries(NAV);
 // Trang lien ket (Chot 08:41 + phan hoi 09:06 22/10): bo thanh tab
 // chen chuc; trang Thi truong la muc luc cac muc, trang con chi co
@@ -544,7 +573,8 @@ function go(v){
   $(v).classList.add("on");window.scrollTo(0,0);
   $("aiFab").style.display=(v==="v-chat")?"none":"";
   if(v==="v-chat")renderChatSug();
-  ["mainTabs","screenTabs","consTabs","holdTabs","secTabs","marginTabs","foreignTabs","propTabs","alertTabs","mineMainTabs","chatTabs"].forEach(e=>{if($(e))buildNav(e,v);});
+  ["mainTabs","screenTabs","consTabs","holdTabs","secTabs","marginTabs","foreignTabs","propTabs","flowTabs","alertTabs","mineMainTabs","chatTabs"].forEach(e=>{if($(e))buildNav(e,v);});
+  if(v==="v-flow")loadFlowScreen();
   if(v==="v-screen")loadScreener();
   if(v==="v-consensus")loadConsensus();
   if(v==="v-holders")loadHolders();
@@ -688,6 +718,49 @@ function renderPF(j){
     `<div class="hint" style="padding-bottom:8px">${L.buy}: ${fmtTyF(tot.bv,F,false)} · ${L.sell}: ${fmtTyF(tot.sv,F,false)}</div>`+
     (buy.length?`<div class="hint" style="padding:4px 0">${L.topBuy}</div><table>${list(buy)}</table>`:"")+
     (sell.length?`<div class="hint" style="padding:8px 0 4px">${L.topSell}</div><table>${list(sell)}</table>`:"");
+}
+// ---- Dòng tiền: sàng lọc dòng tiền ngày (Chốt F1-F4 27/10) ----
+// Chỉ hiển thị + xác nhận. Không gate, không tín hiệu mua: thang 4
+// tín hiệu chưa hiệu chuẩn, mọi cột mới chỉ để theo dõi/đối chiếu.
+const FLOWSCR_I18N={
+  vi:{title:"Dòng tiền",trial:"[THỬ DÒNG TIỀN]",disc:"Đo dòng tiền, không phải tín hiệu mua. Số liệu chỉ để theo dõi và đối chiếu.",screen:"Phiên sàng lọc",applies:"Áp dụng cho phiên",syms:"mã",rank:"Hạng",sym:"Mã",close:"Đóng cửa",mf20:"Ròng 20 phiên (tiền)",f20:"Ngoại ròng 20 phiên",f1:"Ngoại ròng 1 phiên",prop:"Tự doanh ròng",empty:"Chưa có dữ liệu sàng lọc dòng tiền",loadErr:"Không tải được dữ liệu dòng tiền",stale:"Mã thiếu hoặc chưa cập nhật tới phiên sàng lọc hiện “—”.",inout:"+ là vào ròng, − là ra ròng (tỷ đồng).",ty:"tỷ",tr:"triệu"},
+  en:{title:"Money flow",trial:"[MONEY FLOW TRIAL]",disc:"Measures money flow, not a buy signal. Figures are for tracking and cross-checking only.",screen:"Screening session",applies:"Applies to session",syms:"symbols",rank:"Rank",sym:"Symbol",close:"Close",mf20:"Net 20 sessions (money)",f20:"Foreign net · 20 sessions",f1:"Foreign net · 1 session",prop:"Proprietary net",empty:"No money-flow screening data yet",loadErr:"Could not load money-flow data",stale:"Symbols missing or not yet updated to the screening session show “—”.",inout:"+ means net inflow, − means net outflow (B VND).",ty:"B",tr:"M"},
+  zh:{title:"资金流",trial:"[资金流试用]",disc:"衡量资金流向，并非买入信号。数据仅供跟踪与核对。",screen:"筛选交易日",applies:"适用交易日",syms:"只",rank:"排名",sym:"代码",close:"收盘",mf20:"20日净额（金额）",f20:"外资净额 · 20日",f1:"外资净额 · 1日",prop:"自营净额",empty:"暂无资金流筛选数据",loadErr:"无法加载资金流数据",stale:"缺失或未更新至筛选交易日的代码显示“—”。",inout:"+ 为净流入，− 为净流出（十亿越盾）。",ty:"十亿",tr:"百万"},
+  ko:{title:"자금 흐름",trial:"[자금 흐름 시범]",disc:"자금 흐름을 측정할 뿐 매수 신호가 아닙니다. 수치는 추적 및 대조용입니다.",screen:"스크리닝 거래일",applies:"적용 거래일",syms:"종목",rank:"순위",sym:"종목",close:"종가",mf20:"20거래일 순매수(금액)",f20:"외국인 순매수 · 20거래일",f1:"외국인 순매수 · 1거래일",prop:"자전 순매수",empty:"자금 흐름 스크리닝 데이터 없음",loadErr:"자금 흐름 데이터를 불러오지 못했습니다",stale:"누락되었거나 스크리닝 거래일까지 업데이트되지 않은 종목은 “—”로 표시됩니다.",inout:"+는 순유입, −는 순유출입니다(십억 동).",ty:"십억",tr:"백만"},
+};
+let _flowScr=null;
+const _fsSigned=(v,d)=>{ if(v==null||!isFinite(Number(v))) return "—"; const n=Number(v); return (n>0?"+":"")+n.toFixed(d); };
+async function loadFlowScreen(){
+  const body=$("flowTableBody");
+  try{
+    const j=await api("/flow-screen");
+    _flowScr=j; renderFlowScreen(j);
+  }catch(e){
+    const L=FLOWSCR_I18N[curLang]||FLOWSCR_I18N.vi;
+    if(body) body.innerHTML=`<tr><td colspan="10"><div class="hint">${L.loadErr}</div></td></tr>`;
+  }
+}
+function renderFlowScreen(j){
+  const L=FLOWSCR_I18N[curLang]||FLOWSCR_I18N.vi;
+  const t=$("flowTitle"); if(t) t.textContent=L.title;
+  const tr=$("flowTrial"); if(tr) tr.textContent=L.trial;
+  const src=$("flowSrc"); if(src) src.textContent=j.screen_date||"";
+  const head=$("flowHead");
+  if(head) head.textContent=j.available?`${L.screen}: ${j.screen_date||"—"} · ${L.applies}: ${j.for_date||"—"} · ${j.count} ${L.syms}`:`${L.screen}: ${j.screen_date||"—"}`;
+  const tt=$("flowTableT"); if(tt) tt.textContent=L.title;
+  const th=$("flowTableHead"), body=$("flowTableBody");
+  const cols=[L.rank,L.sym,L.close,L.mf20,"CMF20","OBV20","MFI14",L.f20,L.f1,L.prop];
+  if(th) th.innerHTML="<tr>"+cols.map((c,i)=>`<th${i>1?" style=\"text-align:right\"":""}>${esc(c)}</th>`).join("")+"</tr>";
+  const rows=(j&&j.rows)||[];
+  if(!j.available||!rows.length){
+    if(body) body.innerHTML=`<tr><td colspan="10"><div class="hint">${L.empty}</div></td></tr>`;
+  }else{
+    const cls=v=>v==null?"":(Number(v)>0?"up":Number(v)<0?"down":"");
+    const ty=v=>fmtTyF(v,L,true);
+    if(body) body.innerHTML=rows.map(r=>`<tr><td>${r.rank}</td><td><a href="#" onclick="openSym('${esc(r.symbol)}');return false"><b>${esc(r.symbol)}</b></a></td><td style="text-align:right">${fmtN(r.close)}</td><td style="text-align:right" class="${cls(r.cmf20)}">${_fsSigned(r.cmf20,3)}</td><td style="text-align:right" class="${cls(r.obv20)}">${_fsSigned(r.obv20,2)}</td><td style="text-align:right">${r.mfi14==null?"—":Number(r.mfi14).toFixed(1)}</td><td style="text-align:right"><b class="${cls(r.mf20_val)}">${ty(r.mf20_val)}</b></td><td style="text-align:right" class="${cls(r.foreign_net20_val)}">${ty(r.foreign_net20_val)}</td><td style="text-align:right" class="${cls(r.foreign_net1_val)}">${ty(r.foreign_net1_val)}</td><td style="text-align:right" class="${cls(r.prop_net_val)}">${ty(r.prop_net_val)}</td></tr>`).join("");
+  }
+  const note=$("flowNote");
+  if(note) note.textContent=L.disc+" "+L.inout+" "+L.stale;
 }
 // ---- Tin thi truong (GET /news/market) ----
 async function loadMN(){
@@ -1419,9 +1492,11 @@ async function loadDetail(sym){
       const bp=side(q.bid),ap=side(q.ask);
       h+=`<div class="bidask"><div class="ba"><div class="t">Mua 1/2/3</div><div class="pr up">${bp}</div></div><div class="ba"><div class="t">Bán 1/2/3</div><div class="pr down">${ap}</div></div></div>`;
     }
+    h+='<div id="dOb"></div>';
     $("dQuote").innerHTML=h;
     if(q._prov){_lastDSrc=q._prov.source;refreshSrc();}
   }catch(e){$("dQuote").innerHTML='<div class="hint">Lỗi tải</div>';}
+  loadOrderbook(sym);
   loadFlow(sym);loadFund(sym);loadNews(sym);loadChart(sym);loadTape(sym);
   loadEvents(sym);loadProfile(sym);loadConsDetail(sym);loadTarget(sym);loadCost(sym);wlLoad().then(paintWatchBtn);
 }
@@ -3302,10 +3377,10 @@ function renderChatSug(){
   const bar=$("sugBar"); if(bar) bar.addEventListener("click",chatSugToggle);
 }
 const LANGS = {
-  vi: {market:"Thị trường",screen:"Sàng lọc",cons:"Đồng thuận",hold:"Cổ đông",sec:"Ngành",margin:"Margin",foreign:"Khối ngoại",prop:"Tự doanh",alert:"Cảnh báo",mine:"Của tôi",chat:"AI Chat",send:"Gửi",askPh:"Hỏi về cổ phiếu…"},
-  en: {market:"Market",screen:"Screener",cons:"Consensus",hold:"Shareholders",sec:"Sectors",margin:"Margin",foreign:"Foreign",prop:"Proprietary",alert:"Alerts",mine:"Mine",chat:"AI Chat",send:"Send",askPh:"Ask about stocks…"},
-  zh: {market:"市场",screen:"筛选",cons:"共识",hold:"股东",sec:"行业",margin:"融资余额",foreign:"外资",prop:"自营",alert:"提醒",mine:"我的",chat:"AI Chat",send:"发送",askPh:"询问股票…"},
-  ko: {market:"시장",screen:"스크리너",cons:"컨센서스",hold:"주주",sec:"업종",margin:"신용융자 잔고",foreign:"외국인",prop:"자기매매",alert:"알림",mine:"내 정보",chat:"AI Chat",send:"보내기",askPh:"주식에 대해 질문…"}
+  vi: {market:"Thị trường",screen:"Sàng lọc",cons:"Đồng thuận",hold:"Cổ đông",sec:"Ngành",margin:"Margin",foreign:"Khối ngoại",prop:"Tự doanh",flow:"Dòng tiền",alert:"Cảnh báo",mine:"Của tôi",chat:"AI Chat",send:"Gửi",askPh:"Hỏi về cổ phiếu…"},
+  en: {market:"Market",screen:"Screener",cons:"Consensus",hold:"Shareholders",sec:"Sectors",margin:"Margin",foreign:"Foreign",prop:"Proprietary",flow:"Money flow",alert:"Alerts",mine:"Mine",chat:"AI Chat",send:"Send",askPh:"Ask about stocks…"},
+  zh: {market:"市场",screen:"筛选",cons:"共识",hold:"股东",sec:"行业",margin:"融资余额",foreign:"外资",prop:"自营",flow:"资金流",alert:"提醒",mine:"我的",chat:"AI Chat",send:"发送",askPh:"询问股票…"},
+  ko: {market:"시장",screen:"스크리너",cons:"컨센서스",hold:"주주",sec:"업종",margin:"신용융자 잔고",foreign:"외국인",prop:"자기매매",flow:"자금 흐름",alert:"알림",mine:"내 정보",chat:"AI Chat",send:"보내기",askPh:"주식에 대해 질문…"}
 };
 let curLang = (localStorage.getItem("elab_uiLang") || localStorage.getItem("stk_lang") || "vi").replace(/"/g, "");
 if(!["vi","en","zh","ko"].includes(curLang)) curLang = "vi";
@@ -3334,15 +3409,161 @@ function setStkLang(l){
   localStorage.setItem("stk_lang", l);
   const L = LANGS[curLang];
   NAVLBL["v-market"] = L.market; NAVLBL["v-screen"] = L.screen; NAVLBL["v-consensus"] = L.cons; NAVLBL["v-holders"] = L.hold; NAVLBL["v-sectors"] = L.sec;
-  NAVLBL["v-alert"] = L.alert; NAVLBL["v-mine"] = L.mine; NAVLBL["v-margin"] = L.margin; NAVLBL["v-foreign"] = L.foreign; NAVLBL["v-prop"] = L.prop;
-  ["mainTabs","screenTabs","consTabs","holdTabs","secTabs","marginTabs","foreignTabs","propTabs","alertTabs","mineMainTabs","chatTabs"].forEach(e=>{if($(e))buildNav(e, document.querySelector(".view.on")?.id || "v-market");});
+  NAVLBL["v-alert"] = L.alert; NAVLBL["v-mine"] = L.mine; NAVLBL["v-margin"] = L.margin; NAVLBL["v-foreign"] = L.foreign; NAVLBL["v-prop"] = L.prop; NAVLBL["v-flow"] = L.flow;
+  ["mainTabs","screenTabs","consTabs","holdTabs","secTabs","marginTabs","foreignTabs","propTabs","flowTabs","alertTabs","mineMainTabs","chatTabs"].forEach(e=>{if($(e))buildNav(e, document.querySelector(".view.on")?.id || "v-market");});
   syncLangUI();
   applyLang();
   translateDOM();
   refreshSrc();
   renderRegime();
+  if($("v-flow") && $("v-flow").classList.contains("on") && _flowScr) renderFlowScreen(_flowScr);
 }
 window.__elabSetLang = setStkLang;
+
+// ===== KE SHELF 27/10 (Chot Henrry 09:59 27/10) =====
+// Kệ 1: thang depth so lenh trong hop quote (khong thay hop quote 1/2/3,
+// khong them tab NAV, khong noi realtime tick — poll 60s khi live).
+// Kệ 2: bang lich su nhom NDT theo ma tren man Khoi ngoai / Tu doanh,
+// bang group-agnostic (group tham so dieu khien) — nhom chua co du lieu
+// chi hien ghi chu, khong so gia.
+const SHELF_I18N={
+  vi:{obTitle:"Sổ lệnh",obLive:"LIVE",obSnap:"Snapshot",obBackLive:"Về live",obPrev:"‹ 60s",obNext:"60s ›",obReplay:"Phát lại",obStop:"Dừng",obBid:"Mua",obAsk:"Bán",obPrice:"Giá",obVol:"KL",obTotBid:"Tổng mua",obTotAsk:"Tổng bán",obSpread:"Chênh lệch",obLast:"Giá khớp",obTotalsNote:"Tổng KL là tổng cộng từ các mức hiện có (tin sổ lệnh không mang tổng riêng).",obFrom:"Dữ liệu từ 27/10.",obNoData:"Chưa có số liệu sổ lệnh",obLoadErr:"Không tải được sổ lệnh",fhTitle:"Lịch sử theo mã",fhView:"Xem",fhDate:"Ngày",fhBuy:"Mua (KL)",fhSell:"Bán (KL)",fhNetVol:"Ròng (KL)",fhNetVal:"Ròng (giá trị)",fhNoData:"Chưa có số liệu",fhFrom:"Dữ liệu từ 27/10.",fhOther:"Cá nhân / tổ chức trong nước: chưa có dữ liệu.",fhLoadErr:"Không tải được lịch sử",fhEnterSym:"Nhập mã rồi bấm Xem"},
+  en:{obTitle:"Order book",obLive:"LIVE",obSnap:"Snapshot",obBackLive:"Back to live",obPrev:"‹ 60s",obNext:"60s ›",obReplay:"Replay",obStop:"Stop",obBid:"Bid",obAsk:"Ask",obPrice:"Price",obVol:"Vol",obTotBid:"Total bid",obTotAsk:"Total ask",obSpread:"Spread",obLast:"Last price",obTotalsNote:"Totals are sums of the levels shown (the book feed carries no separate totals).",obFrom:"Data from 27 Oct.",obNoData:"No order-book data yet",obLoadErr:"Order book load failed",fhTitle:"History by symbol",fhView:"View",fhDate:"Date",fhBuy:"Buy (vol)",fhSell:"Sell (vol)",fhNetVol:"Net (vol)",fhNetVal:"Net (value)",fhNoData:"No data yet",fhFrom:"Data from 27 Oct.",fhOther:"Individual / domestic institutions: no data yet.",fhLoadErr:"History load failed",fhEnterSym:"Enter a symbol, then View"},
+  zh:{obTitle:"盘口",obLive:"实时",obSnap:"快照",obBackLive:"回到实时",obPrev:"‹ 60秒",obNext:"60秒 ›",obReplay:"回放",obStop:"停止",obBid:"买入",obAsk:"卖出",obPrice:"价格",obVol:"量",obTotBid:"买入总量",obTotAsk:"卖出总量",obSpread:"价差",obLast:"最新价",obTotalsNote:"总量为所示档位之和（盘口数据不含单独总量）。",obFrom:"数据自10月27日起。",obNoData:"暂无盘口数据",obLoadErr:"盘口加载失败",fhTitle:"按代码查看历史",fhView:"查看",fhDate:"日期",fhBuy:"买入（量）",fhSell:"卖出（量）",fhNetVol:"净（量）",fhNetVal:"净（金额）",fhNoData:"暂无数据",fhFrom:"数据自10月27日起。",fhOther:"个人／国内机构：暂无数据。",fhLoadErr:"历史加载失败",fhEnterSym:"输入代码后点查看"},
+  ko:{obTitle:"호가창",obLive:"실시간",obSnap:"스냅샷",obBackLive:"실시간으로",obPrev:"‹ 60초",obNext:"60초 ›",obReplay:"다시 보기",obStop:"중지",obBid:"매수",obAsk:"매도",obPrice:"가격",obVol:"수량",obTotBid:"매수 합계",obTotAsk:"매도 합계",obSpread:"스프레드",obLast:"체결가",obTotalsNote:"합계는 표시된 호가들의 합입니다(호가 데이터에 별도 합계가 없습니다).",obFrom:"10월 27일부터의 데이터.",obNoData:"호가 데이터 없음",obLoadErr:"호가 불러오기 실패",fhTitle:"종목별 이력",fhView:"보기",fhDate:"날짜",fhBuy:"매수(수량)",fhSell:"매도(수량)",fhNetVol:"순(수량)",fhNetVal:"순(금액)",fhNoData:"데이터 없음",fhFrom:"10월 27일부터의 데이터.",fhOther:"개인／국내 기관: 데이터 없음.",fhLoadErr:"이력 불러오기 실패",fhEnterSym:"종목을 입력한 뒤 보기를 누르세요"}
+};
+function shT(k){ const L=SHELF_I18N[curLang]||SHELF_I18N.vi; return L[k]||SHELF_I18N.vi[k]||k; }
+function shTodayIct(){ return new Date(Date.now()+7*3600*1000).toISOString().slice(0,10); }
+function shFmtTime(iso){
+  if(!iso) return "—";
+  const m=String(iso).match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+  return m ? m[4]+":"+m[5]+" "+m[3]+"/"+m[2] : String(iso).slice(0,16);
+}
+function shShiftIct(iso, sec){
+  const ms=Date.parse(iso)+sec*1000;
+  if(!isFinite(ms)) return null;
+  return new Date(ms+7*3600*1000).toISOString().slice(11,16);
+}
+// --- Kệ 1: sổ lệnh ---
+let obState={sym:null,date:null,time:null,live:true,curTime:null};
+let obTimer=null, obReplayTimer=null;
+function obStopTimers(){ if(obTimer){clearInterval(obTimer);obTimer=null;} if(obReplayTimer){clearInterval(obReplayTimer);obReplayTimer=null;} }
+function obStopPoll(){ if(obTimer){clearInterval(obTimer);obTimer=null;} }
+function obRow(lv, cls, maxV){
+  const p=lv[0], v=lv[1];
+  const w=maxV>0 ? Math.max(2, Math.round((v||0)/maxV*100)) : 0;
+  return '<div class="obrow"><span style="font-weight:700">'+fmtN(p)+'</span><span class="obbar '+cls+'"><i style="width:'+w+'%"></i></span><span style="text-align:right">'+fmtN(v)+'</span></div>';
+}
+function obPaint(j){
+  const el=$("dOb"); if(!el) return;
+  const L=shT;
+  let h='<div class="obsec"><div class="row"><span class="k">'+L("obTitle")+'</span><span class="v">'+(j.live?L("obLive"):(L("obSnap")+" "+shFmtTime(j.time)))+'</span></div>';
+  if(j.empty){ h+='<div class="hint">'+L("obNoData")+'</div>'; }
+  else{
+    const maxV=Math.max(1, ...j.bids.map(x=>x[1]||0), ...j.asks.map(x=>x[1]||0));
+    h+='<div style="margin-top:6px"><div style="font-size:12px;color:var(--pp-mut);margin-bottom:2px">'+L("obAsk")+'</div>';
+    h+=([...j.asks].reverse().map(lv=>obRow(lv,"ask",maxV)).join(""));
+    h+='<div class="row"><span class="k">'+L("obSpread")+'</span><span class="v">'+(j.spread!=null?fmtN(j.spread):"—")+'</span></div>';
+    if(j.last!=null) h+='<div class="row"><span class="k">'+L("obLast")+'</span><span class="v">'+fmtN(j.last)+'</span></div>';
+    h+='<div style="font-size:12px;color:var(--pp-mut);margin:6px 0 2px">'+L("obBid")+'</div>';
+    h+=j.bids.map(lv=>obRow(lv,"bid",maxV)).join("");
+    h+='<div class="row"><span class="k">'+L("obTotBid")+' / '+L("obTotAsk")+'</span><span class="v">'+fmtN(j.total_bid_vol)+' / '+fmtN(j.total_ask_vol)+'</span></div>';
+    h+='<div class="note" style="padding:6px 0 0">'+L("obTotalsNote")+' '+L("obFrom")+'</div>';
+    h+='</div>';
+  }
+  h+='<div class="obctl"><select id="obDate" onchange="obOnDate(this.value)"></select>';
+  h+='<button onclick="obStep(-60)">'+L("obPrev")+'</button><button onclick="obStep(60)">'+L("obNext")+'</button>';
+  h+='<button id="obReplayBtn" onclick="obReplay()">'+L("obReplay")+'</button>';
+  if(!j.live) h+='<button class="on" onclick="obGoLive()">'+L("obBackLive")+'</button>';
+  h+='</div></div>';
+  el.innerHTML=h;
+  obFillDates(j.date);
+}
+async function obFillDates(sel){
+  const el=$("obDate"); if(!el) return;
+  try{
+    const j=await api("/orderbook/dates?symbol="+encodeURIComponent(obState.sym||""));
+    const ds=(j.dates||[]);
+    el.innerHTML=ds.map(d=>'<option value="'+d+'"'+(d===sel?' selected':'')+'>'+d.slice(8,10)+"/"+d.slice(5,7)+"/"+d.slice(0,4)+'</option>').join("")
+      || '<option value="'+sel+'">'+sel+'</option>';
+  }catch(e){ el.innerHTML='<option value="'+sel+'">'+sel+'</option>'; }
+}
+async function obFetch(){
+  const el=$("dOb"); if(!el||!obState.sym) return;
+  const q="/orderbook?symbol="+encodeURIComponent(obState.sym)+"&date="+encodeURIComponent(obState.date||shTodayIct())
+    +(obState.time?"&time="+encodeURIComponent(obState.time):"");
+  try{
+    const j=await api(q);
+    obState.curTime=j.time||null; obState.live=!!j.live;
+    obPaint(j);
+  }catch(e){ if(el) el.innerHTML='<div class="obsec"><div class="hint">'+shT("obLoadErr")+'</div></div>'; }
+}
+function obArmPoll(){
+  obStopTimers();
+  // Chi poll khi dang xem live cua ngay hom nay va van o dung ma.
+  if(obState.live && obState.date===shTodayIct()){
+    obTimer=setInterval(()=>{ if($("dOb")&&obState.sym===curSym) obFetch(); else obStopTimers(); }, 60000);
+  }
+}
+async function loadOrderbook(sym){
+  obStopTimers();
+  obState={sym:sym,date:shTodayIct(),time:null,live:true,curTime:null};
+  const el=$("dOb"); if(el) el.innerHTML='<div class="obsec"><div class="hint">Đang tải…</div></div>';
+  await obFetch(); obArmPoll();
+}
+function obGoLive(){ obStopTimers(); obState.time=null; obState.live=true; obFetch(); obArmPoll(); }
+function obOnDate(d){ obStopTimers(); obState.date=d; obState.time=null; obState.live=true; obFetch(); obArmPoll(); }
+function obStep(sec){
+  obStopPoll();
+  if(!obState.curTime){ obGoLive(); return; }
+  const t=shShiftIct(obState.curTime, sec);
+  if(!t){ obGoLive(); return; }
+  // Buoc toi ma vuot gio hien tai -> ve live.
+  if(sec>0 && Date.parse(obState.curTime)+sec*1000 > Date.now()+60000){ obGoLive(); return; }
+  obState.time=t; obState.live=false; obFetch();
+}
+function obReplay(){
+  if(obReplayTimer){ obStopTimers(); const b=$("obReplayBtn"); if(b) b.textContent=shT("obReplay"); return; }
+  if(!obState.curTime) return;
+  obStopTimers();
+  obState.time=shShiftIct(obState.curTime, 0); obState.live=false;
+  obReplayTimer=setInterval(()=>{
+    if(!$("dOb")){ obStopTimers(); return; }
+    const prev=obState.curTime;
+    obStep(60);
+    setTimeout(()=>{ if(obState.curTime===prev||obState.live){ obStopTimers(); const b=$("obReplayBtn"); if(b) b.textContent=shT("obReplay"); } }, 900);
+  }, 1600);
+  const b=$("obReplayBtn"); if(b) b.textContent=shT("obStop");
+}
+window.loadOrderbook=loadOrderbook; window.obGoLive=obGoLive; window.obOnDate=obOnDate; window.obStep=obStep; window.obReplay=obReplay;
+// --- Kệ 2: lịch sử nhóm NĐT theo mã (group-agnostic) ---
+const FLOW_HIST_CFG={foreign:{pfx:"ff",group:"foreign"},prop:{pfx:"pf",group:"proprietary"}};
+async function loadFlowHist(kind){
+  const C=FLOW_HIST_CFG[kind]; if(!C) return;
+  const P=C.pfx, g=id=>$(P+id);
+  const t=g("HistT"); if(t) t.textContent=shT("fhTitle");
+  const btn=g("HistBtn"); if(btn) btn.textContent=shT("fhView");
+  const symEl=g("HistSym");
+  const sym=(symEl?symEl.value:"").trim().toUpperCase();
+  const head=g("HistHead"), body=g("HistBody"), note=g("HistNote");
+  if(!sym){ if(body) body.innerHTML='<tr><td colspan="5"><div class="hint">'+shT("fhEnterSym")+'</div></td></tr>'; return; }
+  if(head) head.innerHTML='<tr><th>'+shT("fhDate")+'</th><th style="text-align:right">'+shT("fhBuy")+'</th><th style="text-align:right">'+shT("fhSell")+'</th><th style="text-align:right">'+shT("fhNetVol")+'</th><th style="text-align:right">'+shT("fhNetVal")+'</th></tr>';
+  if(body) body.innerHTML='<tr><td colspan="5"><div class="hint">Đang tải…</div></td></tr>';
+  try{
+    const j=await api("/flow-history?symbol="+encodeURIComponent(sym)+"&group="+encodeURIComponent(C.group)+"&days=90");
+    const rows=j.rows||[];
+    if(!rows.length){ if(body) body.innerHTML='<tr><td colspan="5"><div class="hint">'+shT("fhNoData")+'</div></td></tr>'; }
+    else{
+      const num=v=>(v==null?"—":fmtN(v));
+      const cls=v=>(v==null?"":(v>=0?"up":"down"));
+      if(body) body.innerHTML=rows.map(r=>'<tr><td>'+esc(r.date)+'</td><td style="text-align:right">'+num(r.buy_vol)+'</td><td style="text-align:right">'+num(r.sell_vol)+'</td><td style="text-align:right" class="'+cls(r.net_vol)+'">'+num(r.net_vol)+'</td><td style="text-align:right" class="'+cls(r.net_val)+'">'+(r.net_val==null?"—":fmtTy(r.net_val))+'</td></tr>').join("");
+    }
+    if(note) note.innerHTML=shT("fhFrom")+" "+shT("fhOther");
+  }catch(e){
+    if(body) body.innerHTML='<tr><td colspan="5"><div class="hint">'+shT("fhLoadErr")+'</div></td></tr>';
+  }
+}
+window.loadFlowHist=loadFlowHist;
 
 const I18N_FULL = {
 "Margin":["Margin","融资余额","신용융자 잔고"],

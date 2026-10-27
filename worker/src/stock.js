@@ -586,6 +586,286 @@ export async function hStockForeignHistory(request, env){
     updated:d?d.updated:null});
 }
 
+/* ===== KE SHELF 27/10 (Chot Henrry 09:59 27/10): so lenh + lich su nhom NDT =====
+   Du lieu that tu 27/10: so lenh SSI 10 muc bid/ask, snapshot 60s, prefix
+   R2 orderbook-YYYYMMDD; lich su nhom NDT do batch EOD publish qua
+   hStockPublish (khoa flow_history, xem cuoi ham do). KHONG doc collector
+   live, KHONG backfill, KHONG uoc luong so lieu. Tong KL mua/ban o day
+   la TONG CONG tu cac muc hien co — tin s/MAIN khong mang
+   totalBidQty/totalAskQty nen khong bao gio ghi tong tu feed. */
+
+/* Chuan hoa 1 book: chi giu muc co gia (bo [null,null] cua so lenh mong),
+   tong = tong cac muc hien co, spread = best ask - best bid. */
+export function obCleanBook(raw){
+  const side = (arr)=>{
+    const out = [];
+    for(const lv of (Array.isArray(arr) ? arr : [])){
+      if(!Array.isArray(lv)) continue;
+      const p = lv[0], v = lv[1];
+      if(p == null || !isFinite(+p)) continue;
+      out.push([+p, (v == null || !isFinite(+v)) ? null : +v]);
+    }
+    return out;
+  };
+  const bids = side(raw && raw.bids), asks = side(raw && raw.asks);
+  const sum = (xs)=> xs.reduce((a, x)=> a + (x[1] || 0), 0);
+  const bestBid = bids.length ? bids[0][0] : null;
+  const bestAsk = asks.length ? asks[0][0] : null;
+  return {
+    last: (raw && raw.last != null && isFinite(+raw.last)) ? +raw.last : null,
+    bids, asks,
+    total_bid_vol: sum(bids), total_ask_vol: sum(asks),
+    spread: (bestBid != null && bestAsk != null)
+      ? Math.round((bestAsk - bestBid) * 1000) / 1000 : null,
+    totals_are_sums: true,
+  };
+}
+
+/* Chon snapshot gan nhat tai hoac truoc moc thoi gian (so sanh chuoi ISO,
+   cung offset +07:00 do collector ghi). Tra ve null neu khong co dong nao. */
+export function obPickSnapshot(lines, sym, targetIso){
+  let best = null;
+  for(const ln of lines){
+    if(!ln || ln.kind !== "book_minute") continue;
+    const books = ln.books || (ln.by_symbol ? ln.by_symbol : null);
+    if(!books || !books[sym]) continue;
+    if(targetIso && ln.t && ln.t > targetIso) continue;
+    if(!best || (ln.t || "") >= (best.t || "")) best = ln;
+  }
+  if(!best) return null;
+  return {t: best.t || null, book: best.books[sym]};
+}
+
+async function obGunzipText(buf){
+  try{
+    const ds = new DecompressionStream("gzip");
+    const stream = new Blob([buf]).stream().pipeThrough(ds);
+    return await new Response(stream).text();
+  }catch(e){
+    return new TextDecoder().decode(buf);
+  }
+}
+
+async function obListKeys(env, prefix, cap){
+  const keys = [];
+  let cursor = undefined;
+  while(keys.length < cap){
+    const page = await env.DATA.list({prefix, cursor});
+    for(const o of (page.objects || [])) keys.push(o.key);
+    if(!page.truncated || !page.cursor) break;
+    cursor = page.cursor;
+  }
+  return keys;
+}
+
+/* Gio ICT hien tai (VM thieu tzdata nen khong dung TZ): UTC+7 bang so hoc. */
+function obTodayIct(){
+  return new Date(Date.now() + 7 * 3600 * 1000).toISOString().slice(0, 10);
+}
+
+const OB_SYM_RE = /^[A-Z]{3,10}$/;
+
+/* GET /api/stock/orderbook?symbol=&date=&time=
+   - time bo trong -> snapshot moi nhat (live).
+   - time co -> snapshot gan nhat tai hoac truoc time trong ngay date
+     (time dang "HH:MM", "HH:MM:SS" hoac ISO day du). */
+export async function hStockOrderbook(request, env){
+  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
+  const u = new URL(request.url);
+  const sym = (u.searchParams.get("symbol") || "").toUpperCase();
+  if(!OB_SYM_RE.test(sym)) return jerr("Invalid symbol", 400);
+  const date = u.searchParams.get("date") || obTodayIct();
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(date)) return jerr("Invalid date", 400);
+  const src = "orderbook-" + date.replace(/-/g, "");
+  const timeRaw = (u.searchParams.get("time") || "").trim();
+  if(!timeRaw){
+    const d = await sGet(env, "market/shadow_tick/src/" + src + "/snapshot.json");
+    const raw = d && d.by_symbol ? d.by_symbol[sym] : null;
+    if(!raw) return sJson({symbol: sym, date, time: null, live: true, empty: true,
+      last: null, bids: [], asks: [], total_bid_vol: 0, total_ask_vol: 0,
+      spread: null, totals_are_sums: true, updated: (d && d.updated) || null});
+    return sJson(Object.assign({symbol: sym, date, time: (d && d.updated) || null,
+      live: true, empty: false}, obCleanBook(raw),
+      {updated: (d && d.updated) || null}));
+  }
+  let targetIso;
+  if(timeRaw.includes("T")) targetIso = timeRaw;
+  else{
+    const tm = timeRaw.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+    if(!tm) return jerr("Invalid time", 400);
+    const hh = tm[1].padStart(2, "0");
+    targetIso = date + "T" + hh + ":" + tm[2] + ":" + (tm[3] || "00") + "+07:00";
+  }
+  const hhReq = targetIso.slice(11, 13);
+  // Di nguoc theo gio trong ngay: gio yeu cau truoc, neu khong co
+  // snapshot tai/ truoc moc thi lay snapshot cuoi cua gio truoc do.
+  for(let step = 0; step < 24; step++){
+    const hhNum = parseInt(hhReq, 10) - step;
+    if(hhNum < 0) break;
+    const hh = String(hhNum).padStart(2, "0");
+    const keys = await obListKeys(env,
+      "stock/market/shadow_tick/raw/" + date + "/" + src + "/" + hh + "/", 500);
+    if(!keys.length) continue;
+    const lines = [];
+    for(const k of keys){
+      try{
+        const o = await env.DATA.get(k);
+        if(!o) continue;
+        const buf = await o.arrayBuffer();
+        const txt = await obGunzipText(buf);
+        for(const line of txt.split("\n")){
+          if(!line.trim()) continue;
+          try{ lines.push(JSON.parse(line)); }catch(e){}
+        }
+      }catch(e){}
+    }
+    const pick = obPickSnapshot(lines, sym, targetIso);
+    if(pick) return sJson(Object.assign({symbol: sym, date, time: pick.t,
+      live: false, empty: false}, obCleanBook(pick.book)));
+    // Gio nay co file nhung khong co dong nao tai/truoc moc -> gio truoc.
+  }
+  return sJson({symbol: sym, date, time: null, live: false, empty: true,
+    last: null, bids: [], asks: [], total_bid_vol: 0, total_ask_vol: 0,
+    spread: null, totals_are_sums: true});
+}
+
+/* GET /api/stock/orderbook/dates?symbol= -> cac ngay co snapshot.
+   Ngay la theo nguon (prefix orderbook-YYYYMMDD), giong nhau cho ca 40 ma
+   cua nguon — symbol chi de kiem dinh dang, khong loc rieng tung ma. */
+export async function hStockOrderbookDates(request, env){
+  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
+  const sym = (new URL(request.url).searchParams.get("symbol") || "").toUpperCase();
+  if(sym && !OB_SYM_RE.test(sym)) return jerr("Invalid symbol", 400);
+  const keys = await obListKeys(env, "stock/market/shadow_tick/src/orderbook-", 1000);
+  const dates = [];
+  for(const k of keys){
+    const m = k.match(/orderbook-(\d{8})\/snapshot\.json$/);
+    if(!m) continue;
+    const d = m[1].slice(0, 4) + "-" + m[1].slice(4, 6) + "-" + m[1].slice(6, 8);
+    if(!dates.includes(d)) dates.push(d);
+  }
+  dates.sort().reverse();
+  return sJson({symbol: sym || null, dates, count: dates.length});
+}
+
+/* Chuan hoa 1 dong lich su nhom NDT: giu null khi nguon thieu gia tri,
+   khong dien 0 thay cho thieu. */
+export function obNormalizeFlowRow(r){
+  if(!r || !/^\d{4}-\d{2}-\d{2}$/.test(r.date || "")) return null;
+  const num = (v)=> (v == null || !isFinite(+v)) ? null : +v;
+  const buyVol = num(r.buy_vol), sellVol = num(r.sell_vol);
+  const buyVal = num(r.buy_val), sellVal = num(r.sell_val);
+  return {
+    date: r.date, buy_vol: buyVol, sell_vol: sellVol,
+    net_vol: (buyVol != null && sellVol != null) ? buyVol - sellVol : null,
+    buy_val: buyVal, sell_val: sellVal,
+    net_val: (buyVal != null && sellVal != null) ? buyVal - sellVal : null,
+  };
+}
+
+const FLOW_GROUPS = ["foreign", "proprietary"];
+
+/* GET /api/stock/flow-history?symbol=&group=&days=
+   group=foreign|proprietary -> doc file stock/flow/<group>/<symbol>.json
+   (do batch EOD publish). Nhom khac -> payload no-data, KHONG dong gia. */
+export async function hStockFlowHistory(request, env){
+  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
+  const u = new URL(request.url);
+  const sym = (u.searchParams.get("symbol") || "").toUpperCase();
+  if(!OB_SYM_RE.test(sym)) return jerr("Invalid symbol", 400);
+  const group = (u.searchParams.get("group") || "").toLowerCase();
+  const days = Math.max(1, Math.min(parseInt(u.searchParams.get("days") || "90", 10) || 90, 500));
+  if(!FLOW_GROUPS.includes(group)){
+    return sJson({symbol: sym, group, available: false, count: 0, rows: [],
+      note: "no-data"});
+  }
+  const d = await sGet(env, "flow/" + group + "/" + sym + ".json");
+  const rows = ((d && d.rows) || []).map(obNormalizeFlowRow).filter(Boolean)
+    .sort((a, b)=> (b.date || "").localeCompare(a.date || ""));
+  return sJson({symbol: sym, group, available: true,
+    count: rows.length, rows: rows.slice(0, days),
+    updated: (d && d.updated) || null});
+}
+const FLOW_SYM_RE = /^[A-Z0-9]{3,10}$/; // ma that co ca chu so (HT1, NT2, D2D...)
+
+/* Tinh cot ngoai/tu doanh cho 1 ma tu lich su R2: chi tinh khi du
+   lieu tuoi toi screen_date; cu/thieu -> null (view hien "—",
+   khong suy so, khong dien 0). Lich su luu tang dan theo trade_date. */
+export function flowJoinRow(frows, prows, screenDate){
+  const rowsAsc = (arr)=>{
+    const a = (Array.isArray(arr) ? arr : [])
+      .filter(r => r && r.trade_date && (!screenDate || r.trade_date <= screenDate));
+    a.sort((x, y) => String(x.trade_date).localeCompare(String(y.trade_date)));
+    return a;
+  };
+  // null/undefined/"" la thieu so, KHONG phai 0 (Number(null) === 0
+  // nen phai loc truoc khi doi so).
+  const numOrNull = (v)=>{
+    if(v == null || v === "") return null;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  };
+  const sumOrNull = (arr, k)=>{
+    let s = 0, any = false;
+    for(const r of arr){
+      const v = numOrNull(r[k]);
+      if(v !== null){ s += v; any = true; }
+    }
+    return any ? s : null;
+  };
+  const f = rowsAsc(frows);
+  const p = rowsAsc(prows);
+  const fLatest = f.length ? f[f.length - 1] : null;
+  const pLatest = p.length ? p[p.length - 1] : null;
+  const fFresh = !!(fLatest && screenDate && fLatest.trade_date === screenDate);
+  const pFresh = !!(pLatest && screenDate && pLatest.trade_date === screenDate);
+  const last20 = fFresh ? f.slice(-20) : [];
+  const f1 = fFresh ? fLatest : null;
+  return {
+    foreign_net20_val: fFresh ? sumOrNull(last20, "net_value_est") : null,
+    foreign_net20_vol: fFresh ? sumOrNull(last20, "net_volume") : null,
+    foreign_net1_val: f1 ? numOrNull(f1.net_value_est) : null,
+    foreign_net1_vol: f1 ? numOrNull(f1.net_volume) : null,
+    prop_net_val: pFresh ? numOrNull(pLatest.net_value_vnd) : null,
+    foreign_asof: fFresh ? fLatest.trade_date : null,
+    prop_asof: pFresh ? pLatest.trade_date : null,
+  };
+}
+
+/* GET /api/stock/flow-screen?date= — bang xep hang sang loc dong tien
+   ngay (Chot F1-F4 27/10/2026): doc dataset publish + join lich su
+   ngoai/tu doanh theo ma. Chi hien thi + xac nhan, KHONG gate, khong
+   doi nhan thanh tin hieu mua. */
+export async function hStockFlowScreen(request, env){
+  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
+  const u = new URL(request.url);
+  const date = (u.searchParams.get("date") || "").trim();
+  if(date && !/^[A-Za-z0-9_-]{1,32}$/.test(date)) return jerr("Invalid date", 400);
+  const key = date ? ("flow/flow_screen/" + date + ".json") : "flow/flow_screen_latest.json";
+  const d = await sGet(env, key);
+  if(!d || !Array.isArray(d.candidates)){
+    return sJson({available:false, for_date:(d && d.for_date) || null,
+      screen_date:(d && d.screen_date) || null, trial:true, count:0, rows:[],
+      updated:(d && d.updated) || null});
+  }
+  const screenDate = d.screen_date || "";
+  const cands = d.candidates.slice()
+    .sort((a, b) => (Number(b.cmf20) || 0) - (Number(a.cmf20) || 0));
+  const rows = [];
+  for(const c of cands){
+    const sym = String((c && c.symbol) || "").toUpperCase();
+    if(!FLOW_SYM_RE.test(sym)) continue;
+    const fh = await sGet(env, "market/foreign_flow_history/" + sym + ".json");
+    const ph = await sGet(env, "market/proprietary_flow_history/" + sym + ".json");
+    const j = flowJoinRow((fh && fh.rows) || [], (ph && ph.rows) || [], screenDate);
+    rows.push(Object.assign({rank:rows.length + 1, symbol:sym,
+      close:(c.close ?? null), cmf20:(c.cmf20 ?? null),
+      obv20:(c.obv20 ?? null), mfi14:(c.mfi14 ?? null), mf20_val:(c.mf20_val ?? null)}, j));
+  }
+  return sJson({available:true, for_date:d.for_date || null, screen_date:screenDate,
+    trial:true, count:rows.length, rows, updated:d.updated || null});
+}
+
 export async function getCompanyProfile(env, sym){
   sym = String(sym||"").toUpperCase();
   if(!sym) return {symbol:sym};
@@ -1092,6 +1372,43 @@ export async function hStockPublish(request, env){
       n++;
     }
   }
+  // Sang loc dong tien ngay (Chot F4 27/10/2026): dataset ghi DE
+  // (overwrite) — view /api/stock/flow-screen doc file nay + join lich
+  // su ngoai/tu doanh theo ma. Khong merge: moi lan publish la ban
+  // moi nhat cho for_date do. Chi hien thi + xac nhan, KHONG gate.
+  if(body.flow_screen){
+    const fs = body.flow_screen;
+    const cands = Array.isArray(fs.candidates) ? fs.candidates : [];
+    const rows = [];
+    for(const c of cands){
+      const sym = String((c && c.symbol) || "").toUpperCase();
+      if(!FLOW_SYM_RE.test(sym)) continue;
+      rows.push({
+        symbol:sym,
+        close:(c.close ?? null),
+        pos60:(c.pos60 ?? null),
+        ema50:(c.ema50 ?? null),
+        above_ema50:(c.above_ema50 ?? null),
+        updown20:(c.updown20 ?? null),
+        rvol1d:(c.rvol1d ?? null),
+        avg_vol20:(c.avg_vol20 ?? null),
+        avg_val20:(c.avg_val20 ?? null),
+        cmf20:(c.cmf20 ?? null),
+        obv20:(c.obv20 ?? null),
+        mfi14:(c.mfi14 ?? null),
+        mf20_val:(c.mf20_val ?? null),
+      });
+    }
+    const fdoc = doc({for_date:String(fs.for_date || ""),
+      screen_date:String(fs.screen_date || ""), candidates:rows});
+    await sPut(env, "flow/flow_screen_latest.json", fdoc);
+    n++;
+    const fd = String(fs.for_date || "");
+    if(/^[A-Za-z0-9_-]{1,32}$/.test(fd)){
+      await sPut(env, "flow/flow_screen/"+fd+".json", fdoc);
+      n++;
+    }
+  }
   // Vi mo Tier 2 (Henrry Chot T2-1 20/10/2026): overview + history
   // theo series, merge theo ngay, tran 1200 diem (~4-5 nam ngay lam
   // viec). Nguon: scripts/fetch_macro.py (SBV/VCB/SJC/NYFed/Treasury).
@@ -1310,6 +1627,41 @@ export async function hStockPublish(request, env){
     if(tv.status){
       await sPut(env, "market/shadow_tick/vci/status.json", doc(Object.assign({}, tv.status, {updated:now})));
       n++;
+    }
+  }
+  // KE SHELF 27/10 (Chot 09:59): batch EOD publish lich su nhom NDT.
+  // Payload: {"flow_history": {"foreign": {SYM: [rows]},
+  //   "proprietary": {SYM: [rows]}}} — row: {date, buy_vol, sell_vol,
+  //   buy_val, sell_val}, gia tri co the null khi nguon thieu (khong
+  //   dien 0). Moi ma ghi 1 file stock/flow/<group>/<SYM>.json, merge
+  //   theo ngay (cung ngay publish lai thi ghi de), sap xep tang dan,
+  //   giu toi da 500 ngay. API /api/stock/flow-history doc file nay.
+  if(body.flow_history){
+    for(const group of FLOW_GROUPS){
+      const bySym = body.flow_history[group];
+      if(!bySym || typeof bySym !== "object") continue;
+      for(const symRaw of Object.keys(bySym)){
+        const sym = String(symRaw).toUpperCase();
+        if(!OB_SYM_RE.test(sym)) continue;
+        const days = bySym[symRaw];
+        if(!Array.isArray(days) || !days.length) continue;
+        const fkey = "flow/" + group + "/" + sym + ".json";
+        const cur = await sGet(env, fkey) || {rows: []};
+        const byDate = {};
+        for(const r of (cur.rows || [])){
+          const nr = obNormalizeFlowRow(r);
+          if(nr) byDate[nr.date] = nr;
+        }
+        for(const r of days){
+          const nr = obNormalizeFlowRow(r);
+          if(nr) byDate[nr.date] = nr;
+        }
+        const merged = Object.values(byDate)
+          .sort((a, b)=> (a.date || "").localeCompare(b.date || ""))
+          .slice(-500);
+        await sPut(env, fkey, doc({symbol: sym, group, rows: merged}));
+        n++;
+      }
     }
   }
   // Push real-time update to Ably (fire-and-forget; skip if no key)
