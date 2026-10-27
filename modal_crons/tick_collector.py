@@ -88,10 +88,12 @@ CONFIG = {
     # Chu ky publish (giay)
     "publish_sec": 30,
     # Cong khoi dong o Tang A (Modal): 4 cong truc tiep
-    # (DNSE/KBS/VNDirect/VPS). SSI chay app shadow rieng;
-    # Đ4 (SSI thanh cong 5) CHUA lam. VCI = chan Botkeep relay-4
-    # (adapter con trong code, khong chay trong loi).
-    "sources": ["dnse", "kbs", "vndirect", "vps"],
+    # (DNSE/KBS/VNDirect/VPS) + SSI qua CONNECT proxyvip (Đ4,
+    # CHOT Henrry 09:04 27/10 — SSI thanh cong 5, co merger +
+    # crosscheck + status; SSI chay song song app shadow rieng).
+    # VCI = chan Botkeep relay-4 (adapter con trong code,
+    # khong chay trong loi).
+    "sources": ["dnse", "kbs", "vndirect", "vps", "ssi-mqtt"],
     # LAT PRODUCTION: True — LENH Henrry 17:20 26/10 qua dau moi:
     # lat live tu phien 27/10 (khong cho parity sach nua — lay cong
     # tot nhat tung truong + do rong bu tru; sai thi sua theo phien).
