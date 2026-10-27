@@ -22,6 +22,8 @@ on:
 
 jobs:
   trial:
+  permissions:
+  contents: write
     runs-on: ubuntu-latest
     timeout-minutes: 180
     env:
@@ -66,3 +68,9 @@ jobs:
           git config user.email "muse-flow-trial@local"
           git add modal_crons/flow_screen_modal_trial_out.json
           git diff --cached --quiet && echo "no result change" || (git commit -m "flow screen Modal trial result" && git push)
+      - name: Upload result artifact
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+      name: flow-screen-trial-result
+      path: modal_crons/flow_screen_modal_trial_out.json
