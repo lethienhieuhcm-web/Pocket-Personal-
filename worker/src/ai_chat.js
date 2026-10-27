@@ -402,15 +402,15 @@ const SECTOR_DRILL = [
   ['ngân hàng', '8300'],
   ['dầu khí', '0500'],
   ['tài nguyên cơ bản', '1700'],
-  ['thực phẩm và đồ uống', '3500'], ['thực phẩm', '3500'],
-  ['điện, nước', '7500'], ['xăng dầu khí đốt', '7500'], ['điện', '7500'],
+  ['thực phẩm và đồ uống', '3500'], ['thực phẩm đồ uống', '3500'], ['thực phẩm', '3500'],
+  ['điện, nước', '7500'], ['điện nước', '7500'], ['xăng dầu khí đốt', '7500'], ['điện', '7500'],
   ['bán lẻ', '5300'],
-  ['hàng & dịch vụ công nghiệp', '2700'],
-  ['xây dựng và vật liệu', '2300'], ['xây dựng', '2300'],
-  ['du lịch và giải trí', '5700'], ['du lịch', '5700'],
+  ['hàng & dịch vụ công nghiệp', '2700'], ['hàng và dịch vụ công nghiệp', '2700'], ['hàng dịch vụ công nghiệp', '2700'],
+  ['xây dựng và vật liệu', '2300'], ['xây dựng vật liệu', '2300'], ['xây dựng', '2300'],
+  ['du lịch và giải trí', '5700'], ['du lịch giải trí', '5700'], ['du lịch', '5700'],
   ['hóa chất', '1300'],
-  ['hàng cá nhân & gia dụng', '3700'], ['gia dụng', '3700'],
-  ['ô tô và phụ tùng', '3300'], ['ô tô', '3300'],
+  ['hàng cá nhân & gia dụng', '3700'], ['hàng cá nhân và gia dụng', '3700'], ['hàng cá nhân gia dụng', '3700'], ['gia dụng', '3700'],
+  ['ô tô và phụ tùng', '3300'], ['ô tô phụ tùng', '3300'], ['ô tô', '3300'],
   ['dịch vụ tài chính', '8700'], ['chứng khoán', '8700'],
   ['công nghệ thông tin', '9500'], ['công nghệ', '9500'],
   ['viễn thông', '6500'],
@@ -420,11 +420,16 @@ const SECTOR_DRILL = [
 ];
 /* Y dinh co cau truc cho cau khoan nganh: "phan tich <nganh>",
    "<nganh> de ro hon", "xem them/khoan sau <nganh>", "<nganh> thi
-   sao" -> analyze_sector nhu duong chip khoan (khong qua LLM). */
+   sao" -> analyze_sector nhu duong chip khoan (khong qua LLM).
+   Them ho "ma nao" (Chot C 27/10): "<nganh> ... ma nao tap trung /
+   dang chu y / manh / dong tien vao-ra ma nao" -> analyze_sector,
+   ke ca khi cau hoi noi ve dong tien. Chi kich khi co ten nganh
+   trong cau (vong SECTOR_DRILL ben duoi); khong co ten nganh thi
+   tra null nhu cu. */
 function deterministicDrill(text) {
   const t = ' ' + String(text || '').toLowerCase()
     .replace(/\s+/g, ' ').trim() + ' ';
-  if (!/phân tích|để rõ hơn|khoan sâu|xem thêm|thì sao|kỹ hơn|chi tiết hơn/
+  if (!/phân tích|để rõ hơn|khoan sâu|xem thêm|thì sao|kỹ hơn|chi tiết hơn|mã nào|ma nao/
     .test(t)) return null;
   for (const [nm, code] of SECTOR_DRILL) {
     if (t.includes(nm)) return { name: 'analyze_sector', args: { code } };
@@ -747,6 +752,7 @@ const SYSTEM_PROMPT = [
   '4. P/E, ROE, doanh thu, loi nhuan CUA NGANH -> get_sector (khong phai dong tien). Hoi ve mot nguoi nam giu co phieu -> find_holder. Hoi co dong lon cua mot ma -> get_company_profile.',
   '5. Chi goi tool khi cau hoi can so lieu thi truong. Chao hoi xa giao thi tra loi text ngan gon, khong goi tool. Khong co tool nao phu hop thi tra loi text ngan noi chua co du lieu cho cau do. TUYET DOI khong bia so, khong tu tinh so, khong du doan gia, khong khuyen nghi mua/ban.',
   '6. PHAN TICH NGANH (BB-1): "phan tich <ten nganh>", "<ten nganh> de ro hon", "xem them/khoan sau <ten nganh>", "<ten nganh> thi sao" -> analyze_sector voi code cua nganh do (ke ca khi lich su dang o the dong tien hay the nganh). Bang ma ICB: 0500 Dau khi; 8600 Bat dong san; 1700 Tai nguyen Co ban; 3500 Thuc pham va do uong; 7500 Dien, nuoc & xang dau khi dot; 5300 Ban le; 2700 Hang & Dich vu Cong nghiep; 2300 Xay dung va Vat lieu; 5700 Du lich va Giai tri; 1300 Hoa chat; 3700 Hang ca nhan & Gia dung; 3300 O to va phu tung; 8700 Dich vu tai chinh; 9500 Cong nghe Thong tin; 6500 Vien thong; 4500 Y te; 5500 Truyen thong; 8300 Ngan hang; 8500 Bao hiem.',
+  '6b. MA NAO TRONG NGANH: "ma nao tap trung/dang chu y/manh (nhat) trong <ten nganh>", "<ten nganh> dong tien di vao ma nao, ra ma nao", "<ten nganh> ma nao hut tien" -> analyze_sector voi code cua nganh do (giong luat 6). Khi cau hoi co "ma nao" + ten nganh thi goi analyze_sector, ke ca khi cau hoi noi ve dong tien — khong dung get_flow_summary cho cau nay.',
   '7. VI MO: hoi ty gia, lai suat, gia vang, OMO, chinh sach tien te -> get_macro (co series thi dat series tuong ung); khong tra loi van xuoi thay cho so lieu vi mo.',
   '8. PHAN TICH MA (BB-2): "phan tich (ky) <ma>", "xem ky ma <ma>", "<ma> ky hon" -> analyze_symbol(symbol). Hoi nhanh gia/dong tien 1 ma thi van dung get_quote/get_flow nhu thuong.',
   '9. SO SANH (BB-3): "so sanh X voi Y" -> analyze_compare: 2 ma thi kind=symbols, 2 ten nganh thi kind=sectors kem 2 ma ICB tuong ung.',
