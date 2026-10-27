@@ -1,0 +1,1 @@
+{"proxy_present": true, "A": {"ws": "ok 713ms", "connack_rc": 0, "suback": true, "listen": {"seconds": 20, "total_msgs": 0}, "verdict": "PASS"}, "B": {"verdict": "SKIPPED", "reason": "A PASS"}, "verdict": "PASS"}
