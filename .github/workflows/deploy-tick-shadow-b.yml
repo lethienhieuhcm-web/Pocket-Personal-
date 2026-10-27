@@ -1,0 +1,28 @@
+name: Deploy Tick Shadow B to Modal
+
+on:
+  push:
+    paths:
+      - "modal_crons/tick_collector_shadow_b.py"
+      - ".github/workflows/deploy-tick-shadow-b.yml"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      MODAL_TOKEN_ID: ${{ secrets.MODAL_TOKEN_ID }}
+      MODAL_TOKEN_SECRET: ${{ secrets.MODAL_TOKEN_SECRET }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Modal CLI
+        run: pip install modal
+
+      - name: Deploy tick shadow B
+        run: |
+          cd modal_crons && modal deploy tick_collector_shadow_b.py
