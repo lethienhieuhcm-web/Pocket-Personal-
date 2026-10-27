@@ -2,8 +2,10 @@
 
 Ban sao cua modal_crons/tick_collector.py (ban main, gom goi sua
 publish Chot 21:58 27/10) voi 3 diem khac DUY NHAT:
-  (1) universe = 73 ma dot dau universe B (xem
-      stock-app/scratch/compute_universe_b.py + universe_b_20261027.json);
+  (1) universe = 42 ma universe B200 (Lenh Henrry 22:40 27/10: cua so
+      dong tien 200 phien, CMF200 > 0 ben 2 phien; doi chieu DAT tai
+      dau moi — xem stock-app/scratch/compute_universe_b200.py +
+      universe_b200_20261027.json);
   (2) KHONG lich chay (khong schedule) — chi chay khi dispatch tay
       qua workflow tick-shadow-b-session.yml, 1 phien, de DO TAI;
   (3) publish duoi khoa tick_shadow_b / tape_b -> prefix R2
@@ -68,16 +70,12 @@ CONFIG = {
     # thi bat dau trang nhu cu, khong chan phien.
     "resume": False,  # BONG rieng: khong nap checkpoint cua phien live
     "universe": [
-        "AAN", "AAS", "ABB", "ACB", "ANV", "APS", "BFC", "BVS",
-        "BWE", "C69", "CDC", "CLI", "CTD", "CTF", "CTG", "CTI",
-        "CTS", "DCL", "DCM", "DPG", "GEL", "HAG", "HDA", "HDB",
-        "HDC", "HQC", "HSG", "HT1", "HTN", "HVH", "IDC", "IDI",
-        "IJC", "KBC", "KDH", "KSB", "MBB", "MBS", "MCH", "MSR",
-        "MWG", "NAB", "NAF", "NKG", "NT2", "NTL", "OCB", "ORS",
-        "PAC", "PDR", "PLC", "PTB", "QNS", "QTP", "SHB", "SZC",
-        "TCB", "TCH", "TDP", "TIN", "TNG", "TOS", "TVN", "VCG",
-        "VEA", "VGS", "VGT", "VHC", "VIB", "VJC", "VPB", "VPL",
-        "VRE",
+        "AAS", "ABB", "BFC", "BWE", "C69", "CDC", "CTF", "CTI",
+        "DCL", "DPG", "GMD", "HAG", "HDA", "HDB", "HHP", "HTN",
+        "HVH", "IDC", "KBC", "KSB", "MCH", "MSR", "MWG", "NAB",
+        "NAF", "ORS", "PDR", "PTB", "QNS", "SHB", "SSB", "TCX",
+        "TDP", "TIN", "TNG", "TOS", "TVN", "VEA", "VGR", "VGT",
+        "VJC", "VPL",
     ],
 }
 
