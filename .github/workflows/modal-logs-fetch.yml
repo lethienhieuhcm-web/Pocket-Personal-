@@ -1,0 +1,40 @@
+name: Fetch Modal Logs (one-off)
+
+on:
+  workflow_dispatch:
+    inputs:
+      app_name:
+        description: "Modal app name"
+        required: false
+        default: "stock-tick-collector"
+
+jobs:
+  fetch-logs:
+    runs-on: ubuntu-latest
+    env:
+      MODAL_TOKEN_ID: ${{ secrets.MODAL_TOKEN_ID }}
+      MODAL_TOKEN_SECRET: ${{ secrets.MODAL_TOKEN_SECRET }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Modal CLI
+        run: pip install modal
+
+      - name: Capture CLI help and app logs
+        run: |
+          mkdir -p modal-logs-out
+          modal app logs --help > modal-logs-out/help.txt 2>&1 || true
+          timeout 180 modal app logs "${{ inputs.app_name }}" > modal-logs-out/app-logs.txt 2>&1 || echo "exit=$?" >> modal-logs-out/app-logs.txt
+          ls -la modal-logs-out
+          wc -c modal-logs-out/*
+
+      - name: Upload logs artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: modal-logs-20261027
+          path: modal-logs-out/
