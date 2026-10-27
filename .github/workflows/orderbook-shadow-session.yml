@@ -1,0 +1,21 @@
+name: Order book shadow session 2026-10-27
+on:
+  workflow_dispatch:
+jobs:
+  shadow:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    env:
+      MODAL_TOKEN_ID: ${{ secrets.MODAL_TOKEN_ID }}
+      MODAL_TOKEN_SECRET: ${{ secrets.MODAL_TOKEN_SECRET }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Modal CLI
+        run: pip install modal
+      - name: Run order book shadow session
+        run: |
+          cd modal_crons && modal run orderbook_shadow_session.py
