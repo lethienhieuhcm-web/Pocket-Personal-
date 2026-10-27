@@ -386,14 +386,23 @@ class SsiShadow:
                 d = pb_decode(payload, SSI_STOCK)
                 sym = d.get("stockSymbol") or topic.split("/")[1]
                 if d.get("matchedPrice"):
-                    self.snap[sym] = {
+                    # FIX retain 27/10 (bugfix ngoai SSI): truong ngoai SSI la
+                    # optional, chi ~5% tin s/MAIN mang theo — ghi de toan bo
+                    # snapshot se xoa so ngoai cu khi tin sau khong mang
+                    # truong ngoai (nguyen nhan snapshot 26/10 null 40/40).
+                    # Chi cap nhat truong khac None, giu so ngoai cuoi cung.
+                    cur = self.snap.get(sym, {})
+                    for _k, _v in {
                         "last": d["matchedPrice"] / 1000,
                         "total_volume": d.get("nmTotalTradedQty"),
                         "total_value": d.get("nmTotalTradedValue"),
                         "buy_volume": d.get("buyForeignQtty"),
                         "sell_volume": d.get("sellForeignQtty"),
                         "room": d.get("remainForeignQtty"),
-                    }
+                    }.items():
+                        if _v is not None:
+                            cur[_k] = _v
+                    self.snap[sym] = cur
                 self.raw.append((hour, json.dumps(
                     {"t": recv, "topic": topic, "sym": sym, "kind": "s",
                      "last": d.get("matchedPrice"),
