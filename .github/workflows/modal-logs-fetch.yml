@@ -25,16 +25,17 @@ jobs:
       - name: Install Modal CLI
         run: pip install modal
 
-      - name: Capture CLI help and app logs
+      - name: Capture windowed logs with timestamps
         run: |
           mkdir -p modal-logs-out
-          modal app logs --help > modal-logs-out/help.txt 2>&1 || true
-          timeout 180 modal app logs "${{ inputs.app_name }}" > modal-logs-out/app-logs.txt 2>&1 || echo "exit=$?" >> modal-logs-out/app-logs.txt
-          ls -la modal-logs-out
-          wc -c modal-logs-out/*
+          modal app logs "${{ inputs.app_name }}" --since 2026-10-27T07:20:00 --until 2026-10-27T08:05:00 --timestamps --show-function-id --show-container-id --tail 1000 > modal-logs-out/app-logs-windowed.txt 2>&1 || echo "exit=$?" >> modal-logs-out/app-logs-windowed.txt
+          wc -l -c modal-logs-out/app-logs-windowed.txt
+          echo "===== BEGIN app-logs-windowed.txt ====="
+          cat modal-logs-out/app-logs-windowed.txt
+          echo "===== END app-logs-windowed.txt ====="
 
       - name: Upload logs artifact
         uses: actions/upload-artifact@v4
         with:
-          name: modal-logs-20261027
+          name: modal-logs-windowed-20261027
           path: modal-logs-out/
