@@ -1954,6 +1954,17 @@ def publish(payload, source):
         return json.loads(r.read().decode())
 
 
+def publish_checked(payload, source):
+    """Publish + kiem tra tra loi Worker: {ok:false} hoac non-2xx
+    (HTTPError) deu raise de dirty duoc giu lai chu ky sau (Chot
+    21:58 27/10). Tra loi ok lang khong duoc coi la thanh cong."""
+    resp = publish(payload, source)
+    if not isinstance(resp, dict) or not resp.get("ok"):
+        raise RuntimeError(
+            f"stock-publish tra ve khong ok: {str(resp)[:120]}")
+    return resp
+
+
 def fetch_tick_state(key=None):
     """Doc artifact shadow_tick tu Worker (route noi bo, secret) —
     phuc vu resume Dot 2. key=None -> status.json; key dang
@@ -2019,6 +2030,7 @@ async def _collect(max_minutes=0):
         tasks[name] = asyncio.create_task(ad.run())
     last_publish = 0.0
     publishes = 0
+    _freeze_streak = [0]  # chu ky lien tiep raw>0 ma 0 phut bucket
     _prev_msgs = {}
     _prev_t = [time.time()]
 
@@ -2115,6 +2127,18 @@ async def _collect(max_minutes=0):
                 raw_payload[src_r][hour] = base64.b64encode(
                     gzip.compress(lines.encode())).decode()
         src_state = agg.export_src_state()
+        # --- Goi sua publish (Chot 21:58 27/10): snapshot dirty TRUOC
+        # khi build payload; tick toi trong luc build/await POST khong
+        # duoc xoa kem. Luot closed=True gui LAI TOAN BO buckets (hoa
+        # giai cuoi phien) thay vi chi dirty.
+        dirty_snap = set(agg.dirty)
+        dirty_pt_snap = set(agg.dirty_pt)
+        if closed:
+            for part_all in src_state.values():
+                for s in (part_all.get("buckets") or {}):
+                    dirty_snap.add(s)
+                for s in (part_all.get("buckets_pt") or {}):
+                    dirty_pt_snap.add(s)
         artifacts = {}
         for name in CONFIG["sources"]:
             part = src_state.get(name) or {}
@@ -2123,18 +2147,41 @@ async def _collect(max_minutes=0):
             artifacts[name] = {
                 "snapshot": {"by_symbol": part.get("snapshot") or {}},
                 "health": build_health(name),
-                "buckets_dirty": {s: bk[s] for s in agg.dirty
+                "buckets_dirty": {s: bk[s] for s in dirty_snap
                                   if s in bk},
                 "buckets_pt_dirty": {s: bkpt[s]
-                                     for s in agg.dirty_pt
+                                     for s in dirty_pt_snap
                                      if s in bkpt},
             }
         for name in CONFIG["sources"]:
             _prev_msgs[name] = adapters[name].msgs
         _prev_t[0] = time.time()
-        intra = agg.build_intraday(sorted(agg.dirty))
+        intra = agg.build_intraday(sorted(dirty_snap))
         foreign = agg.build_foreign()
         flow = agg.build_foreign_flow()
+        # --- Quan sat publish (Chot 21:58 27/10): so phut bucket gui
+        # di + so raw record moi chu ky; canh bao khi raw>0 ma khong
+        # co phut bucket nao 2 chu ky lien tiep (dung chu ky dong
+        # bang 27/10: buckets/intraday dung tu 14:25:42 trong khi
+        # status/raw van len).
+        buckets_minutes_sent = 0
+        for _a in artifacts.values():
+            for _v in list(_a["buckets_dirty"].values()):
+                buckets_minutes_sent += len(_v)
+            for _v in list(_a["buckets_pt_dirty"].values()):
+                buckets_minutes_sent += len(_v)
+        raw_n = len(raw_recs)
+        if raw_n > 0 and buckets_minutes_sent == 0:
+            _freeze_streak[0] += 1
+            if _freeze_streak[0] >= 2:
+                print(f"[tick-multi] ALERT dong bang publish: raw_n={raw_n} "
+                      f"buckets_minutes_sent=0 chu ky lien tiep="
+                      f"{_freeze_streak[0]}", flush=True)
+        else:
+            _freeze_streak[0] = 0
+        print(f"[tick-multi] publish obs: dirty_n={len(dirty_snap)} "
+              f"buckets_minutes_sent={buckets_minutes_sent} raw_n={raw_n} "
+              f"closed={closed}", flush=True)
         keys = list(intra.keys())
         chunks = [keys[i:i + 10]
                   for i in range(0, len(keys), 10)] or [[]]
@@ -2147,19 +2194,19 @@ async def _collect(max_minutes=0):
                                      "src_artifacts": artifacts}}
                 if chunk:
                     p["tick_shadow"]["intraday"] = chunk
-                await asyncio.to_thread(publish, p, "multi")
+                await asyncio.to_thread(publish_checked, p, "multi")
                 if CONFIG["live"]:
                     live = {"tick_live": {"foreign": flow}}
                     if chunk:
                         live["tick_live"]["intraday"] = chunk
-                    await asyncio.to_thread(publish, live, "multi")
+                    await asyncio.to_thread(publish_checked, live, "multi")
             elif chunk:
                 await asyncio.to_thread(
-                    publish, {"tick_shadow": {"intraday": chunk}},
+                    publish_checked, {"tick_shadow": {"intraday": chunk}},
                     "multi")
                 if CONFIG["live"]:
                     await asyncio.to_thread(
-                        publish, {"tick_live": {"intraday": chunk}},
+                        publish_checked, {"tick_live": {"intraday": chunk}},
                         "multi")
         # Bang khop lenh chi tiet (tape): publish kem chu ky nay,
         # loi thi chu ky sau gui lai (build_tape chi danh dau dirty
@@ -2170,13 +2217,16 @@ async def _collect(max_minutes=0):
         tape = agg.build_tape()
         if tape:
             await asyncio.to_thread(publish, {"tape": tape}, "multi")
-        # Publish xong moi xoa dirty: POST loi giua chung -> dirty
-        # con nguyen, chu ky sau gui lai (Worker merge idempotent,
-        # intraday ghi de theo ma). Xoa truoc POST se lam mat
-        # artifact cua ma ngung giao dich sau chu ky loi — vuot
-        # nguong mat <= 1 chu ky cua kill-test.
-        agg.dirty.clear()
-        agg.dirty_pt.clear()
+        # Publish xong moi xoa PHAN DA SNAPSHOT: POST loi giua chung
+        # -> dirty con nguyen, chu ky sau gui lai (Worker merge
+        # idempotent, intraday ghi de theo ma). Ma chua co trong
+        # snapshot ma phat sinh tick trong luc POST thi con lai trong
+        # dirty (set khong phan biet tick moi cua ma da dirty — phan
+        # nay luot closed=True gui lai toan bo se hoa giai).
+        # Xoa truoc POST se lam mat artifact cua ma ngung giao dich
+        # sau chu ky loi — vuot nguong mat <= 1 chu ky cua kill-test.
+        agg.dirty -= dirty_snap
+        agg.dirty_pt -= dirty_pt_snap
         publishes += 1
 
     while not session_over():

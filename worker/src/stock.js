@@ -1211,6 +1211,10 @@ export async function hTargetsDel(request, env){
 
 
 /* ---------- VM day snapshot len (secret, khong can session) ---------- */
+// Trang thai canh bao bat bien publish tick (Chot 21:58 27/10) —
+// best-effort theo isolate: streak/total theo nguon gui.
+const _tickInvariant = new Map();
+
 export async function hStockPublish(request, env){
   const got = request.headers.get("X-Publish-Secret") || "";
   if(!env.STOCK_PUBLISH_SECRET || got !== env.STOCK_PUBLISH_SECRET) return jerr("Forbidden", 403);
@@ -1222,6 +1226,10 @@ export async function hStockPublish(request, env){
   const prov = (body._prov && typeof body._prov === "object") ? body._prov : null;
   const doc = (o)=> prov ? Object.assign({updated:now, _prov:prov}, o) : Object.assign({updated:now}, o);
   let n = 0;
+  // Goi sua publish (Chot 21:58 27/10): loi khoi tick -> 502 thay
+  // vi ok lang; canh bao bat bien gom vao tra loi.
+  const tickErrors = [];
+  const tickAlerts = [];
   const put1 = async (key, val)=>{
     if(val===undefined) return;
     await sPut(env, "market/"+key+".json", doc(val));
@@ -1498,7 +1506,7 @@ export async function hStockPublish(request, env){
   }
   // Bo thu tick chay bong (Chot 21/10): chi ghi duoi prefix
   // market/shadow_tick/ — KHONG consumer production nao doc.
-  if(body.tick_shadow){
+  if(body.tick_shadow){ try{
     const ts = body.tick_shadow;
     if(ts.intraday) for(const key of Object.keys(ts.intraday)){
       await sPut(env, "market/shadow_tick/intraday/"+key+".json",
@@ -1579,11 +1587,46 @@ export async function hStockPublish(request, env){
         }
       }
     }
+  }catch(e){ tickErrors.push({block:"tick_shadow", error:String((e&&e.message)||e).slice(0,200)}); } }
+  // Canh bao bat bien (Chot 21:58 27/10): payload tick_shadow co raw
+  // chunk nhung rong buckets/intraday 2 chu ky lien tiep -> dem canh
+  // bao vao tra loi.
+  if(body.tick_shadow && !tickErrors.some(e=>e.block==="tick_shadow")){
+    const _ts = body.tick_shadow;
+    let _rawChunks = 0;
+    if(_ts.raw_chunks && typeof _ts.raw_chunks === "object")
+      for(const _src of Object.keys(_ts.raw_chunks))
+        _rawChunks += Object.keys(_ts.raw_chunks[_src] || {}).length;
+    let _bkMin = 0;
+    if(_ts.src_artifacts && typeof _ts.src_artifacts === "object")
+      for(const _src of Object.keys(_ts.src_artifacts)){
+        const _a = _ts.src_artifacts[_src] || {};
+        for(const _k of ["buckets_dirty", "buckets_pt_dirty"])
+          for(const _s of Object.keys(_a[_k] || {}))
+            _bkMin += Object.keys(_a[_k][_s] || {}).length;
+      }
+    let _intraRows = 0;
+    if(_ts.intraday && typeof _ts.intraday === "object")
+      for(const _k of Object.keys(_ts.intraday))
+        _intraRows += Array.isArray(_ts.intraday[_k]) ? _ts.intraday[_k].length : 0;
+    const _srcKey = (prov && prov.source) || "tick";
+    const _inv = _tickInvariant.get(_srcKey) || {streak:0, total:0};
+    if(_rawChunks > 0 && _bkMin === 0 && _intraRows === 0){
+      _inv.streak += 1;
+      if(_inv.streak >= 2){
+        _inv.total += 1;
+        const _msg = "tick publish invariant: raw>0 but buckets/intraday empty "
+          + _inv.streak + " cycles (source=" + _srcKey + ")";
+        tickAlerts.push(_msg);
+        console.error(_msg);
+      }
+    } else _inv.streak = 0;
+    _tickInvariant.set(_srcKey, _inv);
   }
   // Merger tach (Dot 3): ban hop nhat theo truong + verdict
   // conformance chi ghi duoi market/shadow_tick/merged/ — khong
   // consumer production nao doc, khong ghi khoa production.
-  if(body.tick_merged){
+  if(body.tick_merged){ try{
     const tm = body.tick_merged;
     if(tm.intraday) for(const key of Object.keys(tm.intraday)){
       await sPut(env, "market/shadow_tick/merged/intraday/"+key+".json",
@@ -1599,13 +1642,13 @@ export async function hStockPublish(request, env){
       await sPut(env, "market/shadow_tick/merged/status.json", doc(Object.assign({}, tm.status, {updated:now})));
       n++;
     }
-  }
+  }catch(e){ tickErrors.push({block:"tick_merged", error:String((e&&e.message)||e).slice(0,200)}); } }
   // Bo thu tick DA CONG — ban LAT (Chot Henrry 19:39 21/10): du lieu
   // hop nhat DNSE+KBS+VNDirect+VPS ghi thang production. Intraday ->
   // market/intraday/ (cung khoa voi nhanh intraday thuong). Khoi
   // ngoai MERGE vao market/foreign_flow.json: chi de cac ma cua bo
   // thu (40 ma), giu nguyen moi ma con lai do luong publish cham ghi.
-  if(body.tick_live){
+  if(body.tick_live){ try{
     const tl = body.tick_live;
     if(tl.intraday) for(const key of Object.keys(tl.intraday)){
       await sPut(env, "market/intraday/"+key+".json", doc({rows:tl.intraday[key]}));
@@ -1617,12 +1660,12 @@ export async function hStockPublish(request, env){
       await sPut(env, "market/foreign_flow.json", doc({by_symbol:merged}));
       n++;
     }
-  }
+  }catch(e){ tickErrors.push({block:"tick_live", error:String((e&&e.message)||e).slice(0,200)}); } }
   // Chan VCI doc lap Tang B (Chot 19:39 21/10): chay tren ha tang
   // OVH/Botkeep (Modal bi VCI chan 403) — nguon ngoai DU BO thu hai.
   // Chi ghi shadow rieng market/shadow_tick/vci/ de doi chieu +
   // bao cao do on dinh; KHONG dung du lieu production.
-  if(body.tick_vci){
+  if(body.tick_vci){ try{
     const tv = body.tick_vci;
     if(tv.intraday) for(const key of Object.keys(tv.intraday)){
       await sPut(env, "market/shadow_tick/vci/intraday/"+key+".json", doc({rows:tv.intraday[key]}));
@@ -1636,7 +1679,7 @@ export async function hStockPublish(request, env){
       await sPut(env, "market/shadow_tick/vci/status.json", doc(Object.assign({}, tv.status, {updated:now})));
       n++;
     }
-  }
+  }catch(e){ tickErrors.push({block:"tick_vci", error:String((e&&e.message)||e).slice(0,200)}); } }
   // KE SHELF 27/10 (Chot 09:59): batch EOD publish lich su nhom NDT.
   // Payload: {"flow_history": {"foreign": {SYM: [rows]},
   //   "proprietary": {SYM: [rows]}}} — row: {date, buy_vol, sell_vol,
@@ -1672,6 +1715,10 @@ export async function hStockPublish(request, env){
       }
     }
   }
+  if(tickErrors.length){
+    return jerr("Publish block failed", 502,
+      {written:n, errors:tickErrors, alerts:tickAlerts});
+  }
   // Push real-time update to Ably (fire-and-forget; skip if no key)
   if(env.ABLY_ROOT_KEY && n>0){
     try{
@@ -1683,7 +1730,8 @@ export async function hStockPublish(request, env){
       });
     }catch(e){ /* silent: publish already succeeded */ }
   }
-  return sJson({ok:true, written:n});
+  return sJson(Object.assign({ok:true, written:n},
+    tickAlerts.length ? {alerts:tickAlerts} : {}));
 }
 
 
