@@ -868,6 +868,27 @@ export async function hStockFlowScreen(request, env){
     trial:true, count:rows.length, rows, updated:d.updated || null});
 }
 
+/* Tong thi truong chuan HSX (Chot 22:23 27/10): doc file latest hoac
+   theo ngay (?date=YYYY-MM-DD); thieu -> available:false (frontend
+   hien "—", khong chan view). */
+export async function hStockMarketTotals(request, env){
+  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
+  const u = new URL(request.url);
+  const date = (u.searchParams.get("date") || "").trim();
+  if(date && !/^\d{4}-\d{2}-\d{2}$/.test(date)) return jerr("Invalid date", 400);
+  const key = date ? ("market/market_totals/" + date + ".json") : "market/market_totals_latest.json";
+  const d = await sGet(env, key);
+  if(!d || !d.date || !Number.isFinite(Number(d.total_volume))){
+    return sJson({available:false, date:(d && d.date) || date || null,
+      updated:(d && d.updated) || null});
+  }
+  return sJson({available:true, date:d.date, source:d.source || "HSX",
+    source_url:d.source_url || null, retrieved_at:d.retrieved_at || null,
+    rows:d.rows || 0, total_volume:d.total_volume, total_value:d.total_value,
+    breakdown:d.breakdown || null, basis_note:d.basis_note || null,
+    updated:d.updated || null});
+}
+
 export async function getCompanyProfile(env, sym){
   sym = String(sym||"").toUpperCase();
   if(!sym) return {symbol:sym};
@@ -1422,6 +1443,40 @@ export async function hStockPublish(request, env){
     const fd = String(fs.for_date || "");
     if(/^[A-Za-z0-9_-]{1,32}$/.test(fd)){
       await sPut(env, "flow/flow_screen/"+fd+".json", fdoc);
+      n++;
+    }
+  }
+  // Tong thi truong chuan HSX (Chot 22:23 27/10): tong khoi luong/gia
+  // tri khop lenh GOP toan san theo phien, tach co phieu/chung quyen/
+  // ETF. Payload: {"market_totals": {date, source, source_url,
+  // retrieved_at, rows, total_volume, total_value, breakdown:{...},
+  // basis_note, verification}} — ghi de latest + file theo ngay.
+  // Bo qua neu thieu date/total hop le. Route tra available:false
+  // khi thieu so, frontend hien "—", khong chan view.
+  if(body.market_totals){
+    const mt = body.market_totals;
+    const mdate = String(mt.date || "");
+    const totV = Number(mt.total_volume), totVal = Number(mt.total_value);
+    if(/^\d{4}-\d{2}-\d{2}$/.test(mdate) && Number.isFinite(totV) && Number.isFinite(totVal)){
+      const bk = (mt.breakdown && typeof mt.breakdown === "object") ? mt.breakdown : {};
+      const bkRow = (r)=> (r && typeof r === "object") ? {
+        rows:(Number(r.rows) || 0),
+        total_volume_shares:(Number(r.total_volume_shares) || 0),
+        total_value_vnd:(Number(r.total_value_vnd) || 0)} : null;
+      const mdoc = doc({date:mdate,
+        source:String(mt.source || "HSX"),
+        source_url:String(mt.source_url || ""),
+        retrieved_at:String(mt.retrieved_at || ""),
+        rows:(Number(mt.rows) || 0),
+        total_volume:totV, total_value:totVal,
+        breakdown:{stock_other:bkRow(bk.stock_other),
+          covered_warrant:bkRow(bk.covered_warrant),
+          etf_fund:bkRow(bk.etf_fund)},
+        basis_note:String(mt.basis_note || ""),
+        verification:String(mt.verification || "")});
+      await sPut(env, "market/market_totals_latest.json", mdoc);
+      n++;
+      await sPut(env, "market/market_totals/"+mdate+".json", mdoc);
       n++;
     }
   }

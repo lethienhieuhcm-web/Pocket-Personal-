@@ -250,6 +250,7 @@ html.no-tab-prop .navcard[onclick*="v-prop"],html.no-tab-prop #v-prop{display:no
 <div class="card" id="ffCard"><div class="hint">Đang tải…</div></div>
 <div class="sec">Tự doanh hôm nay</div>
 <div class="card" id="pfCard"><div class="hint">Đang tải…</div></div>
+<div id="mtWrap"><div class="hint">Đang tải…</div></div>
 <div class="sec">Vĩ mô</div>
 <div id="macroWrap"><div class="hint">Đang tải…</div></div>
 <div class="sec">Tin thị trường</div>
@@ -645,6 +646,7 @@ async function loadMarket(){
   }catch(e){$("topMovers").innerHTML='<tr><td colspan="4"><div class="hint">Lỗi tải</div></td></tr>';}
   loadFF();
   loadPF();
+  loadMarketTotals();
   loadMacro();
   loadMN();
 }
@@ -774,6 +776,44 @@ function renderMN(j){
   if(!items.length){ card.innerHTML='<div class="hint">Chưa có tin</div>'; return; }
   card.innerHTML=items.slice(0,10).map(n=>`<div style="padding:8px 0;border-bottom:1px solid var(--pp-line)"><a href="${esc(n.url||"#")}" target="_blank" rel="noopener" style="display:flex;flex-direction:column;justify-content:center;min-height:44px;color:var(--pp-ink);text-decoration:none;font-size:14px;font-weight:600">${esc(n.title||"")}<div style="font-size:12px;color:var(--pp-mut);margin-top:2px;font-weight:400">${n.symbol?esc(n.symbol)+" · ":""}${esc((n.publish_time||"").slice(0,10))}</div></a></div>`).join("");
 }
+// ---- Tong thi truong chuan HSX (Chot 22:23 27/10): the "Tong toan
+// thi truong — HSX, khop lenh" — tong GOP khop lenh toan san theo
+// phien, KHONG lan voi rong ngoai + tu doanh trong AI Chat.
+const MT_I18N={
+  vi:{title:"Tổng toàn thị trường — HSX, khớp lệnh",vol:"Tổng khối lượng",val:"Tổng giá trị",stocks:"Cổ phiếu",warrant:"Chứng quyền có bảo đảm",etf:"ETF / Chứng chỉ quỹ",session:"Phiên",src:"Nguồn",captured:"Lấy số",basis:"Khớp lệnh thuần, không gồm thỏa thuận",empty:"Chưa có số liệu tổng thị trường",volUnit:"CP",valUnit:"tỷ ₫"},
+  en:{title:"Whole-market total — HSX, matched trades",vol:"Total volume",val:"Total value",stocks:"Stocks",warrant:"Covered warrants",etf:"ETF / Fund certificates",session:"Session",src:"Source",captured:"Captured",basis:"Matched trades only, excluding negotiated deals",empty:"No whole-market totals yet",volUnit:"shares",valUnit:"VND bn"},
+  zh:{title:"全市场总计 — HSX，撮合交易",vol:"总成交量",val:"总成交额",stocks:"股票",warrant:"备兑权证",etf:"ETF / 基金份额",session:"交易日",src:"来源",captured:"采集于",basis:"仅撮合成交，不含协议交易",empty:"暂无全市场总计数据",volUnit:"股",valUnit:"十亿₫"},
+  ko:{title:"시장 전체 합계 — HSX, 체결 거래",vol:"총 거래량",val:"총 거래대금",stocks:"주식",warrant:"커버드 워런트",etf:"ETF / 펀드 증서",session:"거래일",src:"출처",captured:"수집 시각",basis:"체결 거래만, 협의 거래 제외",empty:"시장 전체 합계 데이터 없음",volUnit:"주",valUnit:"십억₫"},
+};
+let _mtData=null;
+async function loadMarketTotals(){
+  try{ _mtData=await api("/market-totals"); }
+  catch(e){ _mtData=null; }
+  renderMarketTotals();
+}
+function renderMarketTotals(){
+  const w=$("mtWrap"); if(!w) return;
+  const L=MT_I18N[curLang]||MT_I18N.vi, d=_mtData||{};
+  const dash='<span style="color:var(--pp-mut)">—</span>';
+  const grp=v=>v==null?null:Number(v).toLocaleString(curLang==="vi"?"vi-VN":"en-US");
+  const fmtVol=v=>v==null?dash:grp(v)+" "+L.volUnit;
+  const fmtVal=v=>{ if(v==null) return dash;
+    const s=(Number(v)/1e9).toLocaleString(curLang==="vi"?"vi-VN":"en-US",{minimumFractionDigits:1,maximumFractionDigits:1});
+    return s+" "+L.valUnit; };
+  const fDate=s=>{ if(!s) return ""; const p=String(s).split("-"); return p.length===3?p[2]+"/"+p[1]+"/"+p[0]:String(s); };
+  const fTime=s=>{ if(!s) return ""; return String(s).slice(11,16)+" "+fDate(String(s).slice(0,10)); };
+  const bk=(d&&d.breakdown)||{};
+  const row=(lbl,r)=>{ const v=r?r.total_volume_shares:null, val=r?r.total_value_vnd:null;
+    return `<tr><td>${lbl}</td><td style="text-align:right">${fmtVol(v)}</td><td style="text-align:right">${fmtVal(val)}</td></tr>`; };
+  const ok=d&&d.available;
+  w.innerHTML=`<div class="sec">${L.title}</div><div class="card" style="padding:12px">`
+    +`<div style="display:flex;gap:18px;flex-wrap:wrap"><div><div class="hint">${L.vol}</div><div style="font-size:20px;font-weight:700">${ok?fmtVol(d.total_volume):dash}</div></div>`
+    +`<div><div class="hint">${L.val}</div><div style="font-size:20px;font-weight:700">${ok?fmtVal(d.total_value):dash}</div></div></div>`
+    +`<table style="width:100%;margin-top:10px"><tbody>${row(L.stocks,bk.stock_other)}${row(L.warrant,bk.covered_warrant)}${row(L.etf,bk.etf_fund)}</tbody></table>`
+    +(ok?`<div class="mcsrc" style="margin-top:8px">${L.session} ${fDate(d.date)} · ${L.src}: ${esc(d.source||"HSX")} · ${L.captured}: ${fTime(d.retrieved_at)}</div><div class="hint" style="margin-top:4px">${L.basis}</div>`:`<div class="hint" style="margin-top:8px">${L.empty}</div>`)
+    +`</div>`;
+}
+
 // ---- Vi mo (Tier 2-1): GET /macro (overview + spark) va /macro/history
 // khi mo chi tiet. Nguon chinh thong: NHNN, Vietcombank, SJC, NY Fed,
 // Bo Tai chinh My — nhan nguon hien duoi moi the.
@@ -3418,6 +3458,7 @@ function setStkLang(l){
   refreshSrc();
   renderRegime();
   if($("v-flow") && $("v-flow").classList.contains("on") && _flowScr) renderFlowScreen(_flowScr);
+  if($("v-market") && $("v-market").classList.contains("on")) renderMarketTotals();
 }
 window.__elabSetLang = setStkLang;
 
