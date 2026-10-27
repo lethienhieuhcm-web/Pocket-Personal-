@@ -19,6 +19,8 @@ on:
 
 jobs:
   spike:
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
     env:
       MODAL_TOKEN_ID: ${{ secrets.MODAL_TOKEN_ID }}
@@ -61,3 +63,9 @@ jobs:
           git config user.email "muse-spike@local"
           git add modal_crons/spike_result.json
           git diff --cached --quiet && echo "no verdict change" || (git commit -m "ssi proxy spike verdict" && git push)
+      - name: Upload verdict artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: spike-verdict-result
+          path: modal_crons/spike_result.json
