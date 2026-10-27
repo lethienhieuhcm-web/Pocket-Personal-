@@ -69,9 +69,9 @@ jobs:
           git add modal_crons/flow_screen_modal_trial_out.json
           git diff --cached --quiet && echo "no result change" || (git commit -m "flow screen Modal trial result" && git push)
       - name: Upload result artifact
-      if: always()
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-        name: flow-screen-trial-result
+          name: flow-screen-trial-result
           path: modal_crons/flow_screen_modal_trial_out.json
     
