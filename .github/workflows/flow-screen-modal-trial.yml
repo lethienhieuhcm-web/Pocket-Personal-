@@ -66,6 +66,8 @@ jobs:
         run: |
           git config user.name "muse-flow-trial"
           git config user.email "muse-flow-trial@local"
+          git config pull.rebase true
+          git pull origin main
           git add modal_crons/flow_screen_modal_trial_out.json
           git diff --cached --quiet && echo "no result change" || (git commit -m "flow screen Modal trial result" && git push)
       - name: Upload result artifact
