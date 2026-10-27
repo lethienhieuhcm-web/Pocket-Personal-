@@ -1292,6 +1292,11 @@ export async function hStockPublish(request, env){
     await sPut(env, "market/tape/"+sym+".json", doc(body.tape[sym]));
     n++;
   }
+  // Tape cua ban bong universe B: prefix rieng, khong de len tape live.
+  if(body.tape_b) for(const sym of Object.keys(body.tape_b)){
+    await sPut(env, "market/shadow_tick_b/tape/"+sym+".json", doc(body.tape_b[sym]));
+    n++;
+  }
   if(body.statements) for(const sym of Object.keys(body.statements)){
     await sPut(env, "market/statements/"+sym+".json", doc(body.statements[sym]));
     n++;
@@ -1643,11 +1648,128 @@ export async function hStockPublish(request, env){
       }
     }
   }catch(e){ tickErrors.push({block:"tick_shadow", error:String((e&&e.message)||e).slice(0,200)}); } }
+  if(body.tick_shadow_b){ try{
+    const ts = body.tick_shadow_b;
+    if(ts.intraday) for(const key of Object.keys(ts.intraday)){
+      await sPut(env, "market/shadow_tick_b/intraday/"+key+".json",
+        doc({rows:ts.intraday[key], src:(body._prov||{}).source||null, updated:now}));
+      n++;
+    }
+    if(ts.foreign){
+      await sPut(env, "market/shadow_tick_b/foreign.json",
+        doc({by_symbol:ts.foreign, src:(body._prov||{}).source||null, updated:now}));
+      n++;
+    }
+    if(ts.status){
+      await sPut(env, "market/shadow_tick_b/status.json", doc(Object.assign({}, ts.status, {updated:now})));
+      n++;
+    }
+    // Dot 2 (thiet ke tong the bo thu): raw tick chunks (gzip
+    // JSONL, base64) + artifact theo nguon — van duoi prefix
+    // shadow_tick, khong consumer production nao doc.
+    if(ts.raw_chunks){
+      const day = (ts.status && ts.status.session_date) || now.slice(0, 10);
+      for(const src of Object.keys(ts.raw_chunks)){
+        if(!/^[a-z0-9-]+$/.test(src)) continue;
+        for(const hour of Object.keys(ts.raw_chunks[src])){
+          if(!/^[0-9]{2}$/.test(hour)) continue;
+          const b64 = ts.raw_chunks[src][hour];
+          if(typeof b64 !== "string" || !b64) continue;
+          const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+          await env.DATA.put("stock/market/shadow_tick_b/raw/"+day+"/"+src+"/"+hour+"/"+Date.now()+".jsonl.gz",
+            bytes, {httpMetadata:{contentType:"application/gzip"}});
+          n++;
+        }
+      }
+    }
+    if(ts.src_artifacts){
+      for(const src of Object.keys(ts.src_artifacts)){
+        if(!/^[a-z0-9-]+$/.test(src)) continue;
+        const a = ts.src_artifacts[src] || {};
+        if(a.snapshot){
+          await sPut(env, "market/shadow_tick_b/src/"+src+"/snapshot.json",
+            doc(Object.assign({}, a.snapshot, {src, updated:now})));
+          n++;
+        }
+        if(a.health){
+          await sPut(env, "market/shadow_tick_b/src/"+src+"/health.json",
+            doc(Object.assign({}, a.health, {src, updated:now})));
+          n++;
+        }
+        const hasBk = a.buckets_dirty && Object.keys(a.buckets_dirty).length;
+        const hasPt = a.buckets_pt_dirty && Object.keys(a.buckets_pt_dirty).length;
+        if(hasBk || hasPt){
+          const bkey = "market/shadow_tick_b/src/"+src+"/buckets.json";
+          const cur = await sGet(env, bkey) || {buckets:{}};
+          const bk = cur.buckets || {};
+          const bp = cur.buckets_pt || {};
+          // Chi giu phut cua phien hien tai (session_date trong
+          // status cua cung payload): buckets.json khong tich luy
+          // qua phien -> resume chi thay dung phien dang chay, va
+          // object khong phinh theo ngay.
+          const sessDay = (ts.status && ts.status.session_date) || null;
+          if(sessDay){
+            for(const coll of [bk, bp]){
+              for(const sym of Object.keys(coll)){
+                for(const mk of Object.keys(coll[sym])){
+                  if(!mk.startsWith(sessDay)) delete coll[sym][mk];
+                }
+                if(!Object.keys(coll[sym]).length) delete coll[sym];
+              }
+            }
+          }
+          if(hasBk) for(const sym of Object.keys(a.buckets_dirty)){
+            bk[sym] = Object.assign({}, bk[sym] || {}, a.buckets_dirty[sym]);
+          }
+          if(hasPt) for(const sym of Object.keys(a.buckets_pt_dirty)){
+            bp[sym] = Object.assign({}, bp[sym] || {}, a.buckets_pt_dirty[sym]);
+          }
+          await sPut(env, bkey, doc({buckets:bk, buckets_pt:bp, src, updated:now}));
+          n++;
+        }
+      }
+    }
+  }catch(e){ tickErrors.push({block:"tick_shadow_b", error:String((e&&e.message)||e).slice(0,200)}); } }
   // Canh bao bat bien (Chot 21:58 27/10): payload tick_shadow co raw
   // chunk nhung rong buckets/intraday 2 chu ky lien tiep -> dem canh
   // bao vao tra loi.
   if(body.tick_shadow && !tickErrors.some(e=>e.block==="tick_shadow")){
     const _ts = body.tick_shadow;
+    let _rawChunks = 0;
+    if(_ts.raw_chunks && typeof _ts.raw_chunks === "object")
+      for(const _src of Object.keys(_ts.raw_chunks))
+        _rawChunks += Object.keys(_ts.raw_chunks[_src] || {}).length;
+    let _bkMin = 0;
+    if(_ts.src_artifacts && typeof _ts.src_artifacts === "object")
+      for(const _src of Object.keys(_ts.src_artifacts)){
+        const _a = _ts.src_artifacts[_src] || {};
+        for(const _k of ["buckets_dirty", "buckets_pt_dirty"])
+          for(const _s of Object.keys(_a[_k] || {}))
+            _bkMin += Object.keys(_a[_k][_s] || {}).length;
+      }
+    let _intraRows = 0;
+    if(_ts.intraday && typeof _ts.intraday === "object")
+      for(const _k of Object.keys(_ts.intraday))
+        _intraRows += Array.isArray(_ts.intraday[_k]) ? _ts.intraday[_k].length : 0;
+    const _srcKey = (prov && prov.source) || "tick";
+    const _inv = _tickInvariant.get(_srcKey) || {streak:0, total:0};
+    if(_rawChunks > 0 && _bkMin === 0 && _intraRows === 0){
+      _inv.streak += 1;
+      if(_inv.streak >= 2){
+        _inv.total += 1;
+        const _msg = "tick publish invariant: raw>0 but buckets/intraday empty "
+          + _inv.streak + " cycles (source=" + _srcKey + ")";
+        tickAlerts.push(_msg);
+        console.error(_msg);
+      }
+    } else _inv.streak = 0;
+    _tickInvariant.set(_srcKey, _inv);
+  }
+  // Canh bao bat bien (Chot 21:58 27/10): payload tick_shadow_b co raw
+  // chunk nhung rong buckets/intraday 2 chu ky lien tiep -> dem canh
+  // bao vao tra loi.
+  if(body.tick_shadow_b && !tickErrors.some(e=>e.block==="tick_shadow_b")){
+    const _ts = body.tick_shadow_b;
     let _rawChunks = 0;
     if(_ts.raw_chunks && typeof _ts.raw_chunks === "object")
       for(const _src of Object.keys(_ts.raw_chunks))
