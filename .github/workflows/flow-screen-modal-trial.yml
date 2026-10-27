@@ -1,0 +1,68 @@
+name: Flow screen trial on Modal (isolated)
+
+# Trial 1 luot sang ngay full universe tren Modal, theo pattern spike
+# SSI proxy 26/10: app Modal RIENG (flow-screen-trial), khong schedule,
+# khong deploy, khong dung file live, khong lat live.
+# Chay tu dong khi push file trial hoac chinh workflow nay; co the
+# dispatch tay (workflow_dispatch) de chay lai.
+# Ket qua FULL (kem per-symbol) duoc commit ve
+# modal_crons/flow_screen_modal_trial_out.json de doi chieu parity
+# (file ket qua khong nam trong trigger paths nen khong gay vong lap).
+
+on:
+  push:
+    paths:
+      - "modal_crons/flow_screen_modal_trial.py"
+      - "modal_crons/flow_screen_trial/direct_fetch.py"
+      - "modal_crons/flow_screen_trial/flow_screen_daily.py"
+      - "modal_crons/flow_screen_trial/universe.json"
+      - "modal_crons/flow_screen_trial/README.md"
+      - ".github/workflows/flow-screen-modal-trial.yml"
+  workflow_dispatch:
+
+jobs:
+  trial:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    env:
+      MODAL_TOKEN_ID: ${{ secrets.MODAL_TOKEN_ID }}
+      MODAL_TOKEN_SECRET: ${{ secrets.MODAL_TOKEN_SECRET }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Modal CLI
+        run: pip install modal
+
+      - name: Run full evening screen trial on Modal
+        continue-on-error: true
+        run: |
+          cd modal_crons && modal run flow_screen_modal_trial.py --end 2026-10-26 2>&1 | tee /tmp/flow_trial.log
+
+      - name: Extract full result JSON
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import re, json
+          try:
+              log = open('/tmp/flow_trial.log').read()
+          except Exception:
+              log = ''
+          m = re.search(r'FLOW_TRIAL_JSON_START(.*?)FLOW_TRIAL_JSON_END', log, re.S)
+          data = m.group(1).strip() if m else json.dumps({"verdict": "UNKNOWN", "error": "no result marker in log"})
+          open('modal_crons/flow_screen_modal_trial_out.json', 'w').write(data + '\n')
+          s = json.loads(data)
+          print(json.dumps({k: v for k, v in s.items() if k != 'symbols'}, ensure_ascii=False))
+          PY
+
+      - name: Commit result back
+        if: always()
+        run: |
+          git config user.name "muse-flow-trial"
+          git config user.email "muse-flow-trial@local"
+          git add modal_crons/flow_screen_modal_trial_out.json
+          git diff --cached --quiet && echo "no result change" || (git commit -m "flow screen Modal trial result" && git push)
