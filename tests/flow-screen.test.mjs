@@ -54,7 +54,7 @@ function dateSeq(n, endY, endM, endD){
   const store = new Map();
   const env = mockEnv(store);
   const cands = [
-    { symbol: "ORS", close: 10000, cmf20: 0.504, obv20: 8.71, mfi14: 80.9, mf20_val: 560173450424 },
+    { symbol: "ORS", close: 10000, cmf20: 0.504, obv20: 8.71, mfi14: 80.9, mf20_val: 560173450424, cmf60: 0.41, obv60: 5.2, mf60_val: 555000000000, cmf250: 0.09, obv250: 1.1, mf250_val: 900000000000 },
     { symbol: "vgr", close: 128000, cmf20: -0.002, obv20: 17.34, mfi14: 87.7 },
     { symbol: "HT1", close: 13400, cmf20: 0.168, obv20: 10.04, mfi14: 80.4 },
     { symbol: "BAD!!", close: 1, cmf20: 0.9, obv20: 1, mfi14: 50 },
@@ -67,7 +67,7 @@ function dateSeq(n, endY, endM, endD){
   const dated = store.get("stock/flow/flow_screen/2026-10-27.json");
   check("publish: invalid symbols skipped, lowercase uppercased",
     latest && latest.candidates.length === 3 &&
-    latest.candidates[0].symbol === "ORS" && latest.candidates[0].mf20_val === 560173450424 && latest.candidates[1].symbol === "VGR" && latest.candidates[2].symbol === "HT1", latest);
+    latest.candidates[0].symbol === "ORS" && latest.candidates[0].mf20_val === 560173450424 && latest.candidates[0].mf60_val === 555000000000 && latest.candidates[0].cmf250 === 0.09 && latest.candidates[1].symbol === "VGR" && latest.candidates[2].symbol === "HT1", latest);
   check("publish: dated copy identical", JSON.stringify(dated.candidates) === JSON.stringify(latest.candidates));
   check("publish: doc wrapper has updated", typeof latest.updated === "string" && latest.updated.length > 0);
   // Overwrite (not merge): republish with one candidate only.
@@ -86,8 +86,8 @@ function dateSeq(n, endY, endM, endD){
   const store = new Map();
   const env = mockEnv(store);
   const cands = [
-    { symbol: "VGR", close: 128000, cmf20: -0.002, obv20: 17.34, mfi14: 87.7 },
-    { symbol: "ORS", close: 10000, cmf20: 0.504, obv20: 8.71, mfi14: 80.9, mf20_val: 560173450424 },
+    { symbol: "VGR", close: 128000, cmf20: -0.002, obv20: 17.34, mfi14: 87.7, cmf60: 0.5, mf60_val: 1, cmf250: null, mf250_val: null, obv250: null },
+    { symbol: "ORS", close: 10000, cmf20: 0.504, obv20: 8.71, mfi14: 80.9, mf20_val: 560173450424, cmf60: 0.41, obv60: 5.2, mf60_val: 555000000000, cmf250: 0.09, obv250: 1.1, mf250_val: 900000000000 },
     { symbol: "NKG", close: 9000, cmf20: 0.387, obv20: 8.84, mfi14: 92.5 },
   ];
   store.set("stock/flow/flow_screen_latest.json", { for_date: "2026-10-27", screen_date: "2026-10-26", candidates: cands, updated: "t" });
@@ -102,6 +102,11 @@ function dateSeq(n, endY, endM, endD){
     j.rows[0].rank === 1 && j.rows[2].rank === 3 && j.trial === true, j.rows);
   check("route: fields carried through",
     j.rows[0].cmf20 === 0.504 && j.rows[0].obv20 === 8.71 && j.rows[0].mfi14 === 80.9 && j.rows[0].close === 10000, j.rows[0]);
+  check("route: 60/250 fields carried through, ranking still cmf20 (not cmf60)",
+    j.rows[0].symbol === "ORS" && j.rows[0].cmf60 === 0.41 && j.rows[0].obv60 === 5.2 && j.rows[0].mf60_val === 555000000000 &&
+    j.rows[0].cmf250 === 0.09 && j.rows[0].obv250 === 1.1 && j.rows[0].mf250_val === 900000000000, j.rows[0]);
+  check("route: missing 250 fields stay null (short history)",
+    j.rows[2].cmf250 === null && j.rows[2].mf250_val === null && j.rows[2].obv250 === null, j.rows[2]);
 }
 
 // --- 3. Foreign 20-session sum: exactly the last 20 rows --------------------

@@ -860,7 +860,9 @@ export async function hStockFlowScreen(request, env){
     const j = flowJoinRow((fh && fh.rows) || [], (ph && ph.rows) || [], screenDate);
     rows.push(Object.assign({rank:rows.length + 1, symbol:sym,
       close:(c.close ?? null), cmf20:(c.cmf20 ?? null),
-      obv20:(c.obv20 ?? null), mfi14:(c.mfi14 ?? null), mf20_val:(c.mf20_val ?? null)}, j));
+      obv20:(c.obv20 ?? null), mfi14:(c.mfi14 ?? null), mf20_val:(c.mf20_val ?? null),
+      cmf60:(c.cmf60 ?? null), obv60:(c.obv60 ?? null), mf60_val:(c.mf60_val ?? null),
+      cmf250:(c.cmf250 ?? null), obv250:(c.obv250 ?? null), mf250_val:(c.mf250_val ?? null)}, j));
   }
   return sJson({available:true, for_date:d.for_date || null, screen_date:screenDate,
     trial:true, count:rows.length, rows, updated:d.updated || null});
@@ -1397,6 +1399,12 @@ export async function hStockPublish(request, env){
         obv20:(c.obv20 ?? null),
         mfi14:(c.mfi14 ?? null),
         mf20_val:(c.mf20_val ?? null),
+        cmf60:(c.cmf60 ?? null),
+        obv60:(c.obv60 ?? null),
+        mf60_val:(c.mf60_val ?? null),
+        cmf250:(c.cmf250 ?? null),
+        obv250:(c.obv250 ?? null),
+        mf250_val:(c.mf250_val ?? null),
       });
     }
     const fdoc = doc({for_date:String(fs.for_date || ""),
