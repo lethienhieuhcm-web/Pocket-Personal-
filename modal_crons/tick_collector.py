@@ -115,6 +115,17 @@ CONFIG = {
 # Uu tien hop nhat (cao -> thap)
 SRC_PRIORITY = ["dnse", "kbs", "vndirect", "vps", "vci", "ssi-mqtt"]
 
+# Best-gate map (CHOT Henrry 06:07 28/10): ngoai hop nhat CHI lay
+# tu cong da quy chuan ve chuan TONG (khop lenh + thoa thuan):
+# dnse, vndirect, vps. KBS (khop lenh, tru TCB/MWG) CHI tham gia
+# sau khi phuong phap cong phan thoa thuan duoc chung minh bang
+# so; ssi-mqtt/vci CHUA tham gia toi khi dinh nghia truong ngoai
+# duoc xac dinh (SSI cho phien du 28/10). Chi ap cho MERGE NGOAI
+# (_merged_foreign_sym); khong doi luat chon nguon nen theo phut
+# (merge_candles/_merged_buckets), dedup, hay co live. Snapshot
+# theo tung cong (self.foreign) giu nguyen de crosscheck/diag.
+FOREIGN_NORMALIZED_GATES = ["dnse", "vndirect", "vps"]
+
 # ---------------- Bang mapping truong snapshot (khai bao) ----------------
 # Mau FieldMapper cua vnstock (core/utils/field/): mapping theo nguon
 # khai bao mot cho kem CO KIEM CHUNG NGU NGHIA. verified=True chi khi
@@ -1649,17 +1660,30 @@ class Aggregator:
         return out
 
     def _merged_foreign_sym(self, sym):
+        # Chi cong da quy chuan duoc xet, giu thu tu SRC_PRIORITY
+        # tuong doi (dnse -> vndirect -> vps). Cong thang thieu
+        # truong: truong do VANG MAT (khong dien 0, khong lap bang
+        # cong chua quy chuan). Moi so mang co nguon (field_src)
+        # + co da-quy-chuan (normalized).
         snaps = [(src, self.foreign[src][sym]) for src in SRC_PRIORITY
-                 if sym in self.foreign.get(src, {})]
+                 if src in FOREIGN_NORMALIZED_GATES
+                 and sym in self.foreign.get(src, {})]
         if not snaps:
             return None
-        merged = dict(snaps[0][1])
-        for src, snap in snaps[1:]:
+        merged = {}
+        field_src = {}
+        for src, snap in snaps:
             for k, v in snap.items():
+                if k == "src":
+                    continue
                 if merged.get(k) is None and v is not None:
                     merged[k] = v
+                    field_src[k] = src
         merged["src"] = snaps[0][0]
         merged["sources"] = [s for s, _ in snaps]
+        merged["field_src"] = field_src
+        merged["normalized"] = True
+        merged["normalized_gates"] = [s for s, _ in snaps]
         return merged
 
     def build_foreign(self):
@@ -1693,6 +1717,8 @@ class Aggregator:
                 "sell_value": e.get("sell_value"),
                 "room": e.get("room"), "total_room": e.get("total_room"),
                 "src": e.get("src"),
+                "normalized": True,
+                "field_src": e.get("field_src"),
             }
         return out
 
