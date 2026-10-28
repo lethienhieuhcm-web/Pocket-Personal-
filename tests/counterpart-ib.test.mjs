@@ -74,6 +74,17 @@ async function bodyOf(resp){
   check("prod quotes untouched", store.get("stock/market/quotes.json") === undefined);
 }
 
+// 2b. Main quotes_patch uses the SAME shared helper (refactor 19:10 28/10):
+// merge into market/quotes.json base, wholesale per symbol.
+{
+  const store = new Map();
+  store.set("stock/market/quotes.json", { updated: "old", by_symbol: { AAA: { close: 10, volume: 1, keep: "base" } } });
+  const r = await hStockPublish(pubReq({ quotes_patch: { AAA: { close: 11, volume: 5 } } , _prov: PROV }), mockEnv(store));
+  const b = await bodyOf(r);
+  const q = store.get("stock/market/quotes.json")?.by_symbol || {};
+  check("main quotes_patch shared helper", b.written === 1 && q.AAA?.close === 11 && q.AAA?.keep === undefined, q.AAA);
+}
+
 // 3. depth_ib + live_overview_ib (valid + invalid skipped).
 {
   const store = new Map();
