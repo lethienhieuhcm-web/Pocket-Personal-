@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
-# Chan SSI BONG phien 2026-10-27 — app Modal RIENG, khong phai collector.
+# Chan SSI BONG — app Modal RIENG, khong phai collector.
+# Ngay phien (SRC + ten app Modal) SUY TU GIO ICT LUC CHAY, khong
+# ghi cung — sua goc loi 28/10 (moi phien phai tao entry tay, suyt
+# tac dispatch). Logic thu thap khong doi.
 # - Doc SSI qua proxy tu Modal secret SSI_PROXY_URL (da luu moi 09:25).
-# - Chi publish vao prefix bong moi src ssi-shadow-20261027:
+# - Chi publish vao prefix bong moi src ssi-shadow-<YYYYMMDD>:
 #   raw_chunks + src_artifacts (snapshot/health), KHONG gui
 #   status/intraday/foreign -> khong dung bat ky key nao cua collector
 #   dang chay (status.json, intraday, foreign, src dnse/kbs/vndirect/vps).
@@ -24,7 +27,18 @@ import modal
 
 ICT = timezone(timedelta(hours=7))
 PUBLISH_URL = "https://lethanhdong.one/api/internal/stock-publish"
-SRC = "ssi-shadow-20261027"
+
+
+def session_date(dt=None):
+    """Ngay phien (YYYYMMDD, gio ICT). Mac dinh: gio hien tai luc
+    chay. Tham so dt (datetime co tz) CHI cho test identity ngay
+    phien tuong lai — duong chay that khong truyen dt."""
+    return (dt or datetime.now(ICT)).strftime("%Y%m%d")
+
+
+# Identity phien dong nhat cho ca luot chay: suy 1 lan luc import.
+SESSION_DATE = session_date()
+SRC = f"ssi-shadow-{SESSION_DATE}"
 UNIVERSE = [
     "VCB", "BID", "CTG", "TCB", "MBB", "VPB", "HPG", "VHM",
     "VIC", "VNM", "MSN", "FPT", "MWG", "SSI", "VND", "HCM",
@@ -497,7 +511,7 @@ async def session_loop():
         print("[ssi-shadow] ket thuc phien", flush=True)
 
 
-app = modal.App("ssi-shadow-session-20261027")
+app = modal.App(f"ssi-shadow-session-{SESSION_DATE}")
 image = (modal.Image.debian_slim(python_version="3.12")
          .pip_install("websockets>=14"))
 
