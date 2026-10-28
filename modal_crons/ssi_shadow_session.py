@@ -36,9 +36,21 @@ def session_date(dt=None):
     return (dt or datetime.now(ICT)).strftime("%Y%m%d")
 
 
-# Identity phien dong nhat cho ca luot chay: suy 1 lan luc import.
+# Identity phien dong nhat cho ca luot chay: suy 1 lan luc import
+# (mac dinh luc deploy), roi suy LAI luc bat dau moi luot chay
+# (xem _refresh_session_identity) — container am khong giu ngay cu.
 SESSION_DATE = session_date()
 SRC = f"ssi-shadow-{SESSION_DATE}"
+
+
+def _refresh_session_identity():
+    """Suy lai SRC theo gio ICT LUC BAT DAU luot chay (khong tin
+    gia tri luc import — container Modal am co the tai dung giua
+    cac luot, ngay import se cu)."""
+    global SRC
+    SRC = f"ssi-shadow-{session_date()}"
+
+
 UNIVERSE = [
     "VCB", "BID", "CTG", "TCB", "MBB", "VPB", "HPG", "VHM",
     "VIC", "VNM", "MSN", "FPT", "MWG", "SSI", "VND", "HCM",
@@ -511,15 +523,21 @@ async def session_loop():
         print("[ssi-shadow] ket thuc phien", flush=True)
 
 
-app = modal.App(f"ssi-shadow-session-{SESSION_DATE}")
+# Ten app CO DINH — lich chay (schedule) gan vao app luc deploy;
+# ten doi theo ngay se sinh app moi moi ngay va lich cu khong bao
+# gio chay ban moi. Identity ngay phien nam o SRC (dong), khong
+# o ten app.
+app = modal.App("ssi-shadow-session")
 image = (modal.Image.debian_slim(python_version="3.12")
          .pip_install("websockets>=14"))
 
 
 @app.function(image=image,
               secrets=[modal.Secret.from_name("pocket-personal")],
-              timeout=60 * 60 * 6)
+              schedule=modal.Cron("55 1 * * 1-5", timezone="UTC"),
+              timeout=60 * 60 * 7)
 def run_session():
+    _refresh_session_identity()
     import asyncio
     asyncio.run(session_loop())
 
