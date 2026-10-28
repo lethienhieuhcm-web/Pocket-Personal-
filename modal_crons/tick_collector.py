@@ -30,7 +30,7 @@ Dau ra:
   doi chieu giu it nhat 1 tuan sau lat (tick_shadow_reconcile.py).
 - tick_live (MOI — ban LAT): intraday hop nhat -> market/intraday/
   production + khoi ngoai hop nhat merge vao market/foreign_flow.
-  json cho 40 ma. Nhan nguon tung ban ghi qua _prov + truong src.
+  json cho 42 ma. Nhan nguon tung ban ghi qua _prov + truong src.
 
 Ky luat: dung 1 ket noi/cong, PINGREQ keepalive 25s (broker dong
 ket noi neu client im lang 2-3 phut — bai hoc probe 20/10).
@@ -103,12 +103,15 @@ CONFIG = {
     # artifact theo nguon cua CHINH phien hom nay tu R2; loi/thieu
     # thi bat dau trang nhu cu, khong chan phien.
     "resume": True,
+    # Universe B200 (CHOT Henrry 15:16 28/10, hieu luc phien 29/10:
+    # live chay thay bong B; tieu chi CMF200>0 + cua sang, 42 ma).
     "universe": [
-        "VCB", "BID", "CTG", "TCB", "MBB", "VPB", "HPG", "VHM",
-        "VIC", "VNM", "MSN", "FPT", "MWG", "SSI", "VND", "HCM",
-        "STB", "ACB", "SHB", "POW", "GAS", "PLX", "BVH", "VRE",
-        "VJC", "PNJ", "SAB", "GVR", "BCM", "HDB", "TPB", "LPB",
-        "VIB", "EIB", "NLG", "KDH", "DGC", "FRT", "DGW", "GEX",
+        "AAS", "ABB", "BFC", "BWE", "C69", "CDC", "CTF", "CTI",
+        "DCL", "DPG", "GMD", "HAG", "HDA", "HDB", "HHP", "HTN",
+        "HVH", "IDC", "KBC", "KSB", "MCH", "MSR", "MWG", "NAB",
+        "NAF", "ORS", "PDR", "PTB", "QNS", "SHB", "SSB", "TCX",
+        "TDP", "TIN", "TNG", "TOS", "TVN", "VEA", "VGR", "VGT",
+        "VJC", "VPL",
     ],
 }
 
