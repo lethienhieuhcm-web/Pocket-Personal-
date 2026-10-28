@@ -26,8 +26,12 @@ image = (modal.Image.debian_slim(python_version="3.12")
          .pip_install("websockets>=14"))
 
 
+# Lich chay nhu collector live: T2-T6 08:55 ICT (01:55 UTC), tu
+# 29/10 — tach khoi runner GitHub (lenh 08:08 28/10). Entry
+# modal run van giu de dispatch tay khi can.
 @app.function(image=image,
               secrets=[modal.Secret.from_name("pocket-personal")],
+              schedule=modal.Cron("55 1 * * 1-5", timezone="UTC"),
               timeout=60 * 60 * 7, max_containers=1)
 def tick_shadow_b_session(max_minutes: int = 0):
     import asyncio
@@ -36,7 +40,11 @@ def tick_shadow_b_session(max_minutes: int = 0):
 
 @app.local_entrypoint()
 def main(max_minutes: int = 0):
-    tick_shadow_b_session.spawn(max_minutes)
+    # remote() BLOCK cho toi khi phien ket thuc — spawn() tra ngay,
+    # modal run thoat, app bi dung, call bi Cancelled truoc khi chay
+    # (bang chung 09:06 28/10: call Cancelled, 0 container, 0 log).
+    # Mau nay giong bong SSI (run_session.remote), chay het phien.
+    tick_shadow_b_session.remote(max_minutes)
 
 
 # =====================================================================
