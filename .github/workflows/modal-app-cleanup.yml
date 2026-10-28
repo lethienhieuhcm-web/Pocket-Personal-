@@ -14,12 +14,8 @@ jobs:
         run: pip install modal
       - name: List apps before
         run: modal app list
-      - name: Stop stock-tick-shadow-b
-        run: modal app stop -y stock-tick-shadow-b
-      - name: Stop ssi-shadow-session (already stopped expected)
-        if: always()
-        run: |
-          modal app stop -y ssi-shadow-session; echo "ssi-stop-exit=$?"
+      - name: Stop stock-tick-merger
+        run: modal app stop -y stock-tick-merger
       - name: List apps after
         if: always()
         run: modal app list
