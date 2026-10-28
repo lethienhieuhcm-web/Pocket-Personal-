@@ -42,6 +42,17 @@ body{font-family:var(--pp-font);background:var(--pp-bg);color:var(--pp-ink);max-
 .regime.danger{background:color-mix(in srgb,var(--pp-danger) 6%,var(--pp-card));border-left-color:var(--pp-danger)}
 .regime .t{font-size:14px;font-weight:700;color:var(--pp-ink)}
 .regime .d{font-size:12px;color:var(--pp-mut);margin-top:4px;line-height:1.5}
+.movHead{display:flex;justify-content:space-between;align-items:center;gap:8px;cursor:pointer;background:none;border:0;padding:0;width:100%;text-align:left;color:var(--pp-ink)}
+.movHead .t{font-size:14px;font-weight:700}
+.movChev{width:18px;height:18px;flex:none;color:var(--pp-mut);transition:transform .15s}
+.movOpen .movChev{transform:rotate(180deg)}
+.movSum{font-size:12px;color:var(--pp-mut);margin-top:4px;line-height:1.5}
+.movSec{font-size:12px;font-weight:700;color:var(--pp-ink);margin:12px 0 2px}
+.movRow{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-top:1px solid var(--pp-line);font-size:12px;line-height:1.5}
+.movRow:first-child{border-top:0}
+.movRow .k{color:var(--pp-mut)}
+.movRow .v{text-align:right}
+.movSub{font-size:11px;color:var(--pp-mut);margin-top:2px}
 .tabs{display:flex;gap:8px;padding:12px 16px;overflow-x:auto}
 .tab{font-size:12px;padding:7px 12px;border-radius:20px;background:var(--pp-card);color:var(--pp-mut);white-space:nowrap;border:1px solid var(--pp-line);cursor:pointer}
 .tabs.main{overflow:hidden}
@@ -237,6 +248,7 @@ html.no-tab-prop .navcard[onclick*="v-prop"],html.no-tab-prop #v-prop{display:no
   </div>
 </div><span class="src" id="mktSrc">Nguồn: VCI trực tiếp</span></div>
 <div class="regime" id="regimeBox" style="display:none"><div class="t" id="regimeT"></div><div class="d" id="regimeD"></div></div>
+<div id="movWrap"><div class="hint">Đang tải…</div></div>
 <div class="navgrid" id="mainTabs"></div>
 <div class="symsearch"><input id="symSearch" type="text" autocomplete="off" spellcheck="false" placeholder="Tìm mã hoặc tên công ty…"></div>
 
@@ -647,6 +659,7 @@ async function loadMarket(){
   loadFF();
   loadPF();
   loadMarketTotals();
+  loadMarketOverview();
   loadMacro();
   loadMN();
 }
@@ -812,6 +825,235 @@ function renderMarketTotals(){
     +`<table style="width:100%;margin-top:10px"><tbody>${row(L.stocks,bk.stock_other)}${row(L.warrant,bk.covered_warrant)}${row(L.etf,bk.etf_fund)}</tbody></table>`
     +(ok?`<div class="mcsrc" style="margin-top:8px">${L.session} ${fDate(d.date)} · ${L.src}: ${esc(d.source||"HSX")} · ${L.captured}: ${fTime(d.retrieved_at)}</div><div class="hint" style="margin-top:4px">${L.basis}</div>`:`<div class="hint" style="margin-top:8px">${L.empty}</div>`)
     +`</div>`;
+}
+
+// ---- Tong quan thi truong 2 phan (Chot 11:12 28/10) ----
+// Phan A: phien hom qua da chot (file EOD san co). Phan B: phien dang
+// chay, live — poll 60 giay, chi phan B. Do rong/TRIN dung CUNG cong
+// thuc the chat (mcp analyze_market): TRIN=(Adv/Dec)/(AdvVol/DecVol),
+// mau so la KHOI LUONG co phieu. Phan A tinh tai client tu screener
+// EOD; phan B doc file live_overview do realtime_poller ghi (moi 5
+// phut, tu bang KBS toan thi truong). Thieu so thi "—", khong chan view.
+// Q4 (dinh chinh 11:17: tuy noi dung tong hop, khong co dinh): header
+// luon hien 1 dong tom tat; mac dinh MO khi du kien live tuoi (<10
+// phut), DONG khi chi con so da chot; nguoi dung bam doi thi lua chon
+// do thang mac dinh trong phien.
+const MOV_I18N={
+  vi:{title:"Tổng quan thị trường",partA:"Phiên đã chốt",partB:"Phiên đang chạy",closed:"Đã chốt",live:"Đang chạy",updated:"Cập nhật",dataAsOf:"Dữ kiện",regime:"Trạng thái thị trường",ma50:"VNINDEX so với MA50",above:"trên",below:"dưới",breadth:"Độ rộng theo sàn",trin:"TRIN",divergence:"Phân kỳ CW−EW",leadLag:"Ngành dẫn dắt − lùi sau",sectorsUp:"ngành tăng",foreignNet:"Ròng khối ngoại",propNet:"Ròng tự doanh",propNote:"Trong phiên chưa có số tự doanh (PDF HOSE ~16:00, về phần A hôm sau)",totals:"Tổng toàn thị trường",vol:"Khối lượng",val:"Giá trị",indices:"Chỉ số",adv:"tăng",dec:"giảm",flat:"đứng giá",turnover:"Giá trị giao dịch",ty:"tỷ",tr:"triệu",syms:"mã",loading:"Đang tải…",noLive:"Chưa có dữ kiện live",lead:"Dẫn dắt",lag:"Lùi sau",session:"Phiên"},
+  en:{title:"Market overview",partA:"Settled session",partB:"Live session",closed:"Settled",live:"Live",updated:"Updated",dataAsOf:"Data as of",regime:"Market regime",ma50:"VNINDEX vs MA50",above:"above",below:"below",breadth:"Breadth by exchange",trin:"TRIN",divergence:"CW−EW divergence",leadLag:"Leading − lagging sectors",sectorsUp:"sectors up",foreignNet:"Foreign net",propNet:"Proprietary net",propNote:"No proprietary data intraday (HOSE PDF ~16:00, lands in part A tomorrow)",totals:"Whole-market total",vol:"Volume",val:"Value",indices:"Indices",adv:"up",dec:"down",flat:"flat",turnover:"Turnover",ty:"B",tr:"M",syms:"symbols",loading:"Loading…",noLive:"No live data yet",lead:"Leading",lag:"Lagging",session:"Session"},
+  zh:{title:"市场总览",partA:"已收盘交易日",partB:"进行中交易日",closed:"已收盘",live:"进行中",updated:"更新于",dataAsOf:"数据截至",regime:"市场状态",ma50:"VNINDEX 与 MA50",above:"上方",below:"下方",breadth:"分市场涨跌",trin:"TRIN",divergence:"市值加权−等权背离",leadLag:"领涨 − 落后行业",sectorsUp:"个行业上涨",foreignNet:"外资净额",propNet:"自营净额",propNote:"盘中暂无自营数据（HOSE PDF 约16:00，明日计入A部分）",totals:"全市场总计",vol:"成交量",val:"成交额",indices:"指数",adv:"涨",dec:"跌",flat:"平",turnover:"成交额",ty:"十亿",tr:"百万",syms:"只",loading:"加载中…",noLive:"暂无实时数据",lead:"领涨",lag:"落后",session:"交易日"},
+  ko:{title:"시장 개요",partA:"마감 세션",partB:"진행 중 세션",closed:"마감",live:"진행 중",updated:"업데이트",dataAsOf:"데이터 기준",regime:"시장 상태",ma50:"VNINDEX 대 MA50",above:"위",below:"아래",breadth:"거래소별 등락",trin:"TRIN",divergence:"시가총액−동일가중 괴리",leadLag:"선도 − 부진 업종",sectorsUp:"개 업종 상승",foreignNet:"외국인 순매수",propNet:"자기매매 순매수",propNote:"장중에는 자기매매 데이터 없음(HOSE PDF ~16:00, 다음 날 A에 반영)",totals:"시장 전체 합계",vol:"거래량",val:"거래대금",indices:"지수",adv:"상승",dec:"하락",flat:"보합",turnover:"거래대금",ty:"십억",tr:"백만",syms:"종목",loading:"불러오는 중…",noLive:"실시간 데이터 없음",lead:"선도",lag:"부진",session:"세션"},
+};
+let _movA=null, _movB=null, _movOpen=null, _movTimer=null;
+function movFmtDT(iso){
+  if(!iso) return {d:"",t:""};
+  const dt=new Date(iso); if(isNaN(dt)) return {d:"",t:""};
+  const p=new Intl.DateTimeFormat("en-GB",{timeZone:"Asia/Ho_Chi_Minh",day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit",hour12:false}).formatToParts(dt);
+  const g=k=>{ const x=p.find(y=>y.type===k); return x?x.value:""; };
+  return {d:g("day")+"/"+g("month")+"/"+g("year"), t:g("hour")+":"+g("minute")};
+}
+function movICTDate(iso){
+  if(!iso) return "";
+  const dt=new Date(iso); if(isNaN(dt)) return "";
+  return dt.toLocaleDateString("en-CA",{timeZone:"Asia/Ho_Chi_Minh"});
+}
+function movFDate(s){ if(!s) return ""; const p=String(s).split("-"); return p.length===3?p[2]+"/"+p[1]+"/"+p[0]:String(s); }
+function movDec(v,dp){
+  if(v==null||!isFinite(Number(v))) return "—";
+  return Number(v).toLocaleString(curLang==="vi"?"vi-VN":"en-US",{minimumFractionDigits:dp,maximumFractionDigits:dp});
+}
+function movBreadth(rows){
+  const byEx={}; let advN=0,decN=0,uncN=0,advV=0,decV=0,turn=0;
+  for(const r of rows||[]){
+    const ex=String(r.exchange||"").toUpperCase()||"UNKNOWN";
+    if(!byEx[ex]) byEx[ex]={advancers:0,decliners:0,unchanged:0};
+    const pc=parseFloat(r.pct_change);
+    if(!isNaN(pc)){ if(pc>0){byEx[ex].advancers++;advN++;} else if(pc<0){byEx[ex].decliners++;decN++;} else {byEx[ex].unchanged++;uncN++;} }
+    const vol=parseFloat(r.volume)||0;
+    if(!isNaN(pc)&&pc>0) advV+=vol;
+    if(!isNaN(pc)&&pc<0) decV+=vol;
+    turn+=parseFloat(r.value_vnd)||0;
+  }
+  const trin=(advN&&decN&&decV)?Number((((advN/decN)/(advV/decV))).toFixed(4)):null;
+  return {by_exchange:byEx,advancers:advN,decliners:decN,unchanged:uncN,trin,turnover_total:Math.round(turn)};
+}
+function movFlowTotal(doc,buyKey,sellKey){
+  const by=(doc&&doc.by_symbol)||{}; let net=0;
+  for(const s of Object.keys(by)){ const d=by[s]||{}; net+=(Number(d[buyKey])||0)-(Number(d[sellKey])||0); }
+  return {net,n:Object.keys(by).length};
+}
+function movDocDate(doc){
+  if(!doc) return "";
+  const p=doc._prov||{};
+  return movICTDate(p.fetched_at||p.retrieved_at||doc.updated||"");
+}
+function movSecName(code){
+  const row=PAL_SECTORS.find(r=>r[0]===String(code));
+  return row?row[1]:String(code||"");
+}
+function movLiveFresh(){
+  const lv=_movB&&_movB.live;
+  if(!lv||!lv.retrieved_at) return false;
+  const t=new Date(lv.retrieved_at).getTime();
+  return isFinite(t)&&(Date.now()-t)<10*60*1000;
+}
+function movBuildA(g){
+  const scr=g.screener||{};
+  const rows=scr.rows||[];
+  const br=movBreadth(rows);
+  const sess=(g.divergence&&g.divergence.sessions)||[];
+  const dv=sess.length?sess[sess.length-1]:null;
+  const sessionDate=movICTDate((scr._prov||{}).retrieved_at||scr.updated||"")||(dv?dv.date:"");
+  const ff=movFlowTotal(g.foreign,"buy_value","sell_value");
+  const pf=movFlowTotal(g.prop,"buy_value_vnd","sell_value_vnd");
+  const ffDate=movDocDate(g.foreign), pfDate=movDocDate(g.prop);
+  return {
+    regime:g.regime||null, breadth:br, divergence:dv,
+    divUpdated:(g.divergence&&g.divergence.updated)||"",
+    sessionDate, asOf:movFmtDT((scr._prov||{}).retrieved_at||scr.updated||""),
+    foreign:(ffDate&&ffDate===sessionDate)?ff:null, foreignDate:ffDate,
+    prop:(pfDate&&pfDate===sessionDate)?pf:null, propDate:pfDate,
+    totals:g.totals||null,
+  };
+}
+function movBuildB(g){
+  const rows=g.indices&&g.indices.rows?g.indices.rows:[];
+  const want={VNINDEX:"VNINDEX",VN30:"VN30",HNXIndex:"HNX",UPCOMIndex:"UPCOM"};
+  const idx=Object.keys(want).map(sym=>{ const r=rows.find(x=>x.symbol===sym)||null;
+    return {sym, label:want[sym], close:r?r.close:null, pct:r?r.pct_change:null}; });
+  const live=(g.live&&g.live.by_exchange)?g.live:null;
+  const ff=movFlowTotal(g.foreign,"buy_value","sell_value");
+  const sess=(g.divergence&&g.divergence.sessions)||[];
+  const dv=sess.length?sess[sess.length-1]:null;
+  return {
+    indices:idx, idxAsOf:movFmtDT((g.indices&&g.indices._prov&&g.indices._prov.retrieved_at)||(g.indices&&g.indices.updated)||""),
+    live, liveAsOf:movFmtDT(live?live.retrieved_at:""),
+    foreign:ff, foreignAsOf:movFmtDT((g.foreign&&g.foreign._prov&&g.foreign._prov.fetched_at)||(g.foreign&&g.foreign.updated)||""),
+    divergence:dv, divAsOf:movFmtDT((g.divergence&&g.divergence.updated)||""),
+  };
+}
+function movRow(k,v,sub){
+  return `<div class="movRow"><span class="k">${k}</span><span class="v">${v}${sub?`<div class="movSub">${sub}</div>`:""}</span></div>`;
+}
+function movBreadthTxt(L,br){
+  if(!br) return "—";
+  const parts=Object.keys(br.by_exchange||{}).sort().map(ex=>{
+    const b=br.by_exchange[ex];
+    return `${ex} ${fmtN(b.advancers)}/${fmtN(b.decliners)}`;
+  });
+  return parts.length?parts.join(" · "):"—";
+}
+function movDivTxt(L,dv){
+  if(!dv||dv.cw_ew_spread_pp==null) return "—";
+  const sp=Number(dv.cw_ew_spread_pp), cls=sp>=0?"up":"down";
+  let h=`<span class="${cls}"><b>${sp>0?"+":""}${movDec(sp,2)} pp</b></span> · EW ${dv.ew_pct!=null?movDec(dv.ew_pct,2)+"%":"—"} · ${dv.pct_advancers!=null?movDec(dv.pct_advancers,1)+"% "+esc(L.adv):"—"}`;
+  return h;
+}
+function movLeadTxt(L,dv){
+  if(!dv||dv.leader_laggard_spread_pp==null) return "—";
+  const top=dv.top_sector||null, bot=dv.bottom_sector||null;
+  const tn=top?`${esc(movSecName(top.code))} ${top.ret_pct!=null?movDec(top.ret_pct,2)+"%":""}`:"—";
+  const bn=bot?`${esc(movSecName(bot.code))} ${bot.ret_pct!=null?movDec(bot.ret_pct,2)+"%":""}`:"—";
+  return `${movDec(dv.leader_laggard_spread_pp,2)} pp · ${fmtN(dv.sectors_up||0)}/${fmtN(dv.sectors_total||0)} ${esc(L.sectorsUp)}<div class="movSub">${esc(L.lead)}: ${tn} · ${esc(L.lag)}: ${bn}</div>`;
+}
+function movSummary(L){
+  const fresh=movLiveFresh();
+  const br=fresh?(_movB.live):(_movA?_movA.breadth:null);
+  const trin=br?br.trin:null;
+  let pct=null;
+  if(fresh&&_movB.indices){ const v=_movB.indices.find(x=>x.sym==="VNINDEX"); pct=v?v.pct:null; }
+  if(pct==null&&_movA&&_movA.divergence) pct=_movA.divergence.index_pct;
+  const rg=_movA&&_movA.regime?_movA.regime:null;
+  const rnm=rg?(REGIME_I18N[rg.regime]?((REGIME_I18N[rg.regime][curLang]||REGIME_I18N[rg.regime].vi)[0]):rg.regime):"";
+  const bits=[];
+  if(rnm) bits.push(esc(rnm));
+  bits.push(`VNINDEX ${pct!=null?fmtPct(pct):"—"}`);
+  if(br) bits.push(`${fmtN(br.advancers)} ${esc(L.adv)}/${fmtN(br.decliners)} ${esc(L.dec)}`);
+  bits.push(`TRIN ${trin!=null?movDec(trin,2):"—"}`);
+  return bits.join(" · ");
+}
+function renderMarketOverview(){
+  const w=$("movWrap"); if(!w) return;
+  const L=MOV_I18N[curLang]||MOV_I18N.vi;
+  if(!_movA&&!_movB){ w.innerHTML=`<div class="hint">${esc(L.loading)}</div>`; return; }
+  const dash='<span style="color:var(--pp-mut)">—</span>';
+  const A=_movA||{}, B=_movB||{};
+  const open=_movOpen!=null?_movOpen:movLiveFresh();
+  const rg=A.regime||null;
+  const rnm=rg?(REGIME_I18N[rg.regime]?((REGIME_I18N[rg.regime][curLang]||REGIME_I18N[rg.regime].vi)[0]):rg.regime):null;
+  const rds=rg?(REGIME_I18N[rg.regime]?((REGIME_I18N[rg.regime][curLang]||REGIME_I18N[rg.regime].vi)[1]):(rg.desc||"")):"";
+  const maTxt=(rg&&rg.vnindex_close!=null&&rg.vnindex_ma50!=null)
+    ?`${fmtN(rg.vnindex_close)} / MA50 ${fmtN(rg.vnindex_ma50)} · ${rg.above_ma50?esc(L.above):esc(L.below)}`
+    :(rg?`${rg.above_ma50?esc(L.above):esc(L.below)} MA50`:dash);
+  const tot=A.totals||{};
+  const totOk=tot&&tot.available;
+  const bk=(tot&&tot.breakdown)||{};
+  const totTxt=totOk?`${esc(L.vol)} ${fmtN(tot.total_volume)} · ${esc(L.val)} ${fmtTyF(tot.total_value,L,false)}`:dash;
+  const aRows=[
+    movRow(esc(L.regime), rnm?`${esc(rg.emoji||"")} <b>${esc(rnm)}</b> — ${esc(rds)}`:dash),
+    movRow(esc(L.ma50), maTxt),
+    movRow(esc(L.breadth), esc(movBreadthTxt(L,A.breadth))),
+    movRow(esc(L.trin), A.breadth&&A.breadth.trin!=null?`<b>${movDec(A.breadth.trin,2)}</b>`:dash, A.breadth?`${esc(L.turnover)}: ${fmtTyF(A.breadth.turnover_total,L,false)}`:""),
+    movRow(esc(L.divergence), movDivTxt(L,A.divergence)),
+    movRow(esc(L.leadLag), movLeadTxt(L,A.divergence)),
+    movRow(esc(L.foreignNet), A.foreign?`<b class="${A.foreign.net>0?"up":A.foreign.net<0?"down":""}">${fmtTyF(A.foreign.net,L,true)}</b>`:dash, A.foreignDate?movFDate(A.foreignDate):""),
+    movRow(esc(L.propNet), A.prop?`<b class="${A.prop.net>0?"up":A.prop.net<0?"down":""}">${fmtTyF(A.prop.net,L,true)}</b>`:dash, A.propDate?movFDate(A.propDate):""),
+    movRow(esc(L.totals), totTxt, totOk?movFDate(tot.date):""),
+  ].join("");
+  const idxRows=(B.indices||[]).map(r=>{
+    const pc=r.pct, cls=pc>0?"up":pc<0?"down":"";
+    return `<div class="movRow"><span class="k">${esc(r.label)}</span><span class="v"><b>${r.close!=null?fmtN(r.close):"—"}</b> <span class="${cls}">${pc!=null?fmtPct(pc):"—"}</span></span></div>`;
+  }).join("")||`<div class="hint">${esc(L.noLive)}</div>`;
+  const lv=B.live||null;
+  const bRows=[
+    `<div class="movRow"><span class="k">${esc(L.indices)}</span><span class="v">${B.idxAsOf&&B.idxAsOf.t?esc(B.idxAsOf.t):"—"}</span></div>`,
+    idxRows,
+    movRow(esc(L.breadth), lv?esc(movBreadthTxt(L,lv)):dash, lv?`${fmtN(lv.n_symbols||0)} ${esc(L.syms)}`:""),
+    movRow(esc(L.trin), lv&&lv.trin!=null?`<b>${movDec(lv.trin,2)}</b>`:dash, lv?`${esc(L.turnover)}: ${fmtTyF(lv.turnover_total,L,false)}`:""),
+    movRow(esc(L.foreignNet), B.foreign?`<b class="${B.foreign.net>0?"up":B.foreign.net<0?"down":""}">${fmtTyF(B.foreign.net,L,true)}</b>`:dash, B.foreignAsOf&&B.foreignAsOf.t?esc(B.foreignAsOf.t):""),
+    movRow(esc(L.divergence), movDivTxt(L,B.divergence), B.divAsOf&&B.divAsOf.t?`${esc(L.dataAsOf)} ${esc(B.divAsOf.t)} ${esc(B.divAsOf.d)}`:""),
+    movRow(esc(L.leadLag), movLeadTxt(L,B.divergence)),
+    movRow(esc(L.propNet), dash, esc(L.propNote)),
+  ].join("");
+  const aHead=`${esc(L.partA)} · ${A.sessionDate?movFDate(A.sessionDate):"—"}${A.asOf&&A.asOf.t?` · ${esc(L.dataAsOf)} ${esc(A.asOf.t)}`:""}`;
+  const bHead=`${esc(L.partB)}${B.liveAsOf&&B.liveAsOf.t?` · ${esc(L.updated)} ${esc(B.liveAsOf.t)}`:""}`;
+  w.innerHTML=`<div class="sec">${esc(L.title)}</div><div class="card ${open?"movOpen":""}" style="padding:12px">`
+    +`<button class="movHead" onclick="movToggle()" aria-expanded="${open?"true":"false"}"><span class="t">${esc(L.title)}</span><svg class="movChev"><use href="#i-chevron-down"/></svg></button>`
+    +`<div class="movSum">${movSummary(L)}</div>`
+    +`<div id="movBody" style="display:${open?"":"none"}">`
+    +`<div class="movSec">${aHead}</div>${aRows}`
+    +`<div class="movSec">${bHead}</div>${bRows}`
+    +`</div></div>`;
+}
+function movToggle(){
+  _movOpen=!(_movOpen!=null?_movOpen:movLiveFresh());
+  renderMarketOverview();
+}
+function movRenderIdx(rows){
+  const el=$("idxRow"); if(!el) return;
+  el.innerHTML=rows.map(r=>{const pc=r.pct_change,cls=pc>0?"up":pc<0?"down":"";const fs=idxFileSym(r.symbol);
+    return `<div class="idxcard"${fs?` style="cursor:pointer" onclick="openIndex('${fs}')" title="${esc(r.symbol)}"`:""}><div class="s">${esc(r.symbol)}</div><div class="p">${fmtN(r.close)}</div><div class="c ${cls}">${pc>0?"▲":pc<0?"▼":""} ${fmtPct(pc)}</div></div>`;}).join("")||'<div class="hint">Chưa có dữ liệu</div>';
+}
+async function loadMarketOverview(){
+  const g={};
+  const f=async(k,p)=>{ try{ g[k]=await api(p); }catch(e){ g[k]=null; } };
+  await Promise.all([f("regime","/regime"),f("screener","/screener?all=1"),f("divergence","/divergence"),f("foreign","/foreign-flow"),f("prop","/proprietary-flow"),f("totals","/market-totals"),f("indices","/indices"),f("live","/live-overview")]);
+  _movA=movBuildA(g);
+  _movB=movBuildB(g);
+  renderMarketOverview();
+  if(!_movTimer) _movTimer=setInterval(()=>{ try{
+    if(document.hidden) return;
+    const v=$("v-market"); if(!v||!v.classList.contains("on")) return;
+    pollMarketOverview();
+  }catch(e){} },60000);
+}
+async function pollMarketOverview(){
+  const g={};
+  const f=async(k,p)=>{ try{ g[k]=await api(p); }catch(e){ g[k]=null; } };
+  await Promise.all([f("indices","/indices"),f("live","/live-overview"),f("foreign","/foreign-flow"),f("divergence","/divergence")]);
+  _movB=movBuildB(g);
+  try{ if(g.indices) movRenderIdx(g.indices.rows||[]); }catch(e){}
+  renderMarketOverview();
 }
 
 // ---- Vi mo (Tier 2-1): GET /macro (overview + spark) va /macro/history
@@ -3458,7 +3700,7 @@ function setStkLang(l){
   refreshSrc();
   renderRegime();
   if($("v-flow") && $("v-flow").classList.contains("on") && _flowScr) renderFlowScreen(_flowScr);
-  if($("v-market") && $("v-market").classList.contains("on")) renderMarketTotals();
+  if($("v-market") && $("v-market").classList.contains("on")){ renderMarketTotals(); renderMarketOverview(); }
 }
 window.__elabSetLang = setStkLang;
 

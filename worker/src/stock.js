@@ -868,6 +868,23 @@ export async function hStockFlowScreen(request, env){
     trial:true, count:rows.length, rows, updated:d.updated || null});
 }
 
+/* Phan ky CW-EW (Chot 11:12 28/10, khoi Tong quan thi truong 2 phan):
+   snapshot divergence.json do publisher ghi; frontend hien phien moi
+   nhat + as_of. Thieu file -> cachedMarket tra {updated:null, rows:[]},
+   frontend hien "—", khong chan view. */
+export async function hStockDivergence(request, env){
+  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
+  return cachedMarket(request, env, "market/divergence.json", 300);
+}
+
+/* Tong quan live (Chot 11:12 28/10): file market/live_overview.json do
+   realtime_poller ghi moi 5 phut (do rong/TRIN tu bang KBS toan thi
+   truong). Cache ngan (60s) theo nhip poll cua frontend. */
+export async function hStockLiveOverview(request, env){
+  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
+  return cachedMarket(request, env, "market/live_overview.json", 60);
+}
+
 /* Tong thi truong chuan HSX (Chot 22:23 27/10): doc file latest hoac
    theo ngay (?date=YYYY-MM-DD); thieu -> available:false (frontend
    hien "—", khong chan view). */
@@ -1270,6 +1287,29 @@ export async function hStockPublish(request, env){
     const curQ = await sGet(env, "market/quotes.json");
     const mergedQ = Object.assign({}, (curQ && curQ.by_symbol) || {}, body.quotes_patch);
     await put1("quotes", {by_symbol:mergedQ});
+  }
+  // Do rong/TRIN live (Chot 11:12 28/10): realtime_poller tinh tu bang
+  // KBS toan thi truong (moi 5 phut, buoc 1b) va gui kem live_overview —
+  // ghi file market/live_overview.json de frontend poll + doi chieu duoc.
+  // Chi ghi khi dung ngay phien + co bang theo san; thieu thi giu file cu.
+  if(body.live_overview && typeof body.live_overview === "object"){
+    const ov = body.live_overview;
+    const okDate = /^\d{4}-\d{2}-\d{2}$/.test(String(ov.session_date || ""));
+    const okEx = ov.by_exchange && typeof ov.by_exchange === "object";
+    if(okDate && okEx){
+      await put1("live_overview", {
+        session_date: ov.session_date,
+        retrieved_at: String(ov.retrieved_at || ""),
+        source: String(ov.source || ""),
+        n_symbols: Number(ov.n_symbols) || 0,
+        advancers: Number(ov.advancers) || 0,
+        decliners: Number(ov.decliners) || 0,
+        unchanged: Number(ov.unchanged) || 0,
+        trin: (ov.trin == null ? null : Number(ov.trin)),
+        turnover_total: Number(ov.turnover_total) || 0,
+        by_exchange: ov.by_exchange,
+      });
+    }
   }
   if(body.depth) await put1("depth", {by_symbol:body.depth});
   if(body.screener) await put1("screener", {rows:body.screener});
