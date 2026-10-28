@@ -1,15 +1,14 @@
 """
 Modal cron jobs for Pocket Personal (k1 Section 2).
 
-4 scheduled functions:
+3 scheduled functions:
 1. book_processor  - every 5 min: process PDF uploads from R2 (English Lab Books)
-2. publish_snapshot - DISABLED 2026-10-19 (thay bang realtime_poller).
-   Giuchuc nang de chay tay khi can.
-3. realtime_poller - every 1 min trong phien HOSE (9:00-14:45 +07, T2-T6):
+2. realtime_poller - every 1 min trong phien HOSE (9:00-14:45 +07, T2-T6):
    lay gia live tu VCI/KBS (tu chu, khong qua vnstock), publish len R2.
    Payload DUNG contract Worker ({"indices": [...]} -> market/indices.json,
    {"quotes": {SYM: {...}}} -> market/quotes.json).
-4. d1_backup        - daily: backup D1 to Modal Volume (keep 7 versions)
+3. d1_backup        - daily: backup D1 to Modal Volume (keep 7 versions)
+   (publish_snapshot da xoa 28/10 de don 1 suat lich Modal; code con trong git.)
 
 Secrets (Modal dashboard -> Secrets -> "pocket-personal"):
   - CF_API_TOKEN
@@ -21,7 +20,6 @@ Deploy:
 
 Test single run:
   modal run app.py::book_processor
-  modal run app.py::publish_snapshot
   modal run app.py::d1_backup
 """
 import modal
@@ -241,215 +239,6 @@ def book_processor():
     volume.commit()
 
 
-@app.function(
-    image=stock_image,
-    secrets=[modal.Secret.from_name("pocket-personal")],
-    volumes={"/data": volume},
-    # DISABLED 2026-10-19: thay bang realtime_poller (1 phut/lan, tu chu VCI/KBS)
-    # schedule=modal.Cron("*/30 2-7 * * 1-5", timezone="UTC"),
-    timeout=1200,
-)
-def publish_snapshot():
-    """Publish stock snapshot every 30 min during HOSE trading hours."""
-    import json, math, os, sys, time, urllib.request
-    from datetime import date, timedelta
-
-    PUBLISH_URL = "https://lethanhdong.one/api/internal/stock-publish"
-    ALERT_URL = "https://lethanhdong.one/api/internal/modal-alert"
-    SECRET = os.environ["STOCK_PUBLISH_SECRET"]
-    VNSTOCK_KEY = os.environ.get("VNSTOCK_API_KEY")
-
-    # vnstock 5.x: dang ky device bang key Community (Henrry yeu cau).
-    # Luu auth tren volume persistent /data de khong register lai moi run.
-    import subprocess
-    _vnhome = "/data/.vnstock"
-    os.makedirs(_vnhome, exist_ok=True)
-    os.environ["HOME"] = "/data"  # ~/.vnstock -> /data/.vnstock (persistent)
-    # Kiem tra device da register THAT chua (file ton tai chua du;
-    # lan truoc register that bai van de lai file stale)
-    def _device_ok():
-        try:
-            _sp = subprocess.run(["vnstock", "status"], capture_output=True,
-                                 timeout=30, env={**os.environ, "HOME": "/data"})
-            _out = _sp.stdout.decode() + _sp.stderr.decode()
-            return "Thiết bị:" in _out and "chưa" not in _out.lower().split("thiết bị:")[1][:50]
-        except Exception:
-            return False
-    if not _device_ok() and VNSTOCK_KEY:
-        print("vnstock: registering device with Community key...", flush=True)
-        try:
-            # Xoa auth stale truoc khi register lai
-            import shutil
-            shutil.rmtree(os.path.join(_vnhome, "auth"), ignore_errors=True)
-            _rp = subprocess.run(
-                ["vnstock", "register", "--stdin"],
-                input=VNSTOCK_KEY.encode(), capture_output=True, timeout=90,
-                env={**os.environ, "HOME": "/data"},
-            )
-            print("vnstock register: " + _rp.stdout.decode()[:300], flush=True)
-            if _rp.returncode != 0:
-                print("vnstock register FAILED: " + _rp.stderr.decode()[:300], flush=True)
-        except Exception as _re:
-            print(f"vnstock register error: {_re}", flush=True)
-
-    from vnstock import Market
-    import vnstock as _vnmod  # doc version runtime de gan vao _prov
-
-    def vn_call(fn, label, retries=3):
-        for attempt in range(retries):
-            try:
-                return fn()
-            except SystemExit:
-                print(f"[{label}] rate limit, sleep 70s (try {attempt+1})", flush=True)
-                time.sleep(70)
-            except Exception as e:
-                print(f"[{label}] error: {e} (try {attempt+1})", flush=True)
-                time.sleep(5)
-        print(f"[{label}] skipped after {retries} tries", flush=True)
-        return None
-
-    def publish(payload):
-        data = json.dumps(payload).encode()
-        req = urllib.request.Request(PUBLISH_URL, data=data, method="POST")
-        req.add_header("Content-Type", "application/json")
-        req.add_header("X-Publish-Secret", SECRET)
-        req.add_header("X-Internal-Secret", SECRET)
-        req.add_header("User-Agent", "Mozilla/5.0 (compatible; PocketPersonal/1.0)")
-        with urllib.request.urlopen(req, timeout=60) as resp:
-            return json.loads(resp.read().decode())
-
-    def _prov(source):
-        """Provenance (hoc tu vnstock 5): gan version vnstock THAT dang chay
-        trong image, de biet du lieu tu stock4 hay stock5."""
-        from datetime import datetime, timezone
-        ver = "?"
-        try:
-            from importlib.metadata import version as _pkg_version
-            ver = _pkg_version("vnstock")
-        except Exception:
-            ver = getattr(_vnmod, "__version__", "?")
-        return {"source": f"{source}/{ver}",
-                "retrieved_at": datetime.now(timezone.utc).isoformat()}
-
-    def send_fail_alert(detail):
-        """Bao Henrry qua Telegram khi run that bai hoan toan (kieu ong lon:
-        alert on meaningful failure, tranh alert fatigue khi chi loi 1 phan)."""
-        from datetime import datetime, timezone
-        try:
-            data = json.dumps({
-                "app": "pocket-personal-crons",
-                "fn": "publish_snapshot",
-                "time": datetime.now(timezone.utc).isoformat(),
-                "detail": detail,
-            }).encode()
-            req = urllib.request.Request(ALERT_URL, data=data, method="POST")
-            req.add_header("Content-Type", "application/json")
-            req.add_header("X-Publish-Secret", SECRET)
-            req.add_header("X-Internal-Secret", SECRET)
-            req.add_header("User-Agent", "Mozilla/5.0 (compatible; PocketPersonal/1.0)")
-            with urllib.request.urlopen(req, timeout=30) as resp:
-                print(f"  fail alert sent: HTTP {resp.status}", flush=True)
-        except Exception as e:
-            print(f"  fail alert error: {e}", flush=True)
-
-    def clean_num(v):
-        """So sach: None/NaN/inf -> None (tranh loi serialize nhu script VM)."""
-        if v is None:
-            return None
-        try:
-            f = float(v)
-        except (TypeError, ValueError):
-            return None
-        return None if math.isnan(f) or math.isinf(f) else f
-
-    def clean_rec(r):
-        return {k: (None if isinstance(v, float) and (math.isnan(v) or math.isinf(v)) else v)
-                for k, v in r.items()}
-
-    print(f"[{date.today().isoformat()}] publish_snapshot starting...")
-    market = Market()
-    ok_indices = False
-    ok_quotes = False
-
-    # Indices: pattern nhu script VM (dung ohlcv tung index, lay 2 bar cuoi
-    # de tinh change/pct_change). market.indices() khong con ton tai o vnstock v3.
-    try:
-        end = date.today().isoformat()
-        start = (date.today() - timedelta(days=10)).isoformat()
-        idx_rows = []
-        for sym in ["VNINDEX", "VN30", "HNXIndex", "UPCOMIndex"]:
-            recs = vn_call(
-                lambda s=sym: [clean_rec(r) for r in
-                               market.index(symbol=s).ohlcv(start=start, end=end).to_dict("records")],
-                f"indices-{sym}", retries=2)
-            item = {"symbol": sym}
-            if recs:
-                last = recs[-1]
-                item["close"] = clean_num(last.get("close"))
-                item["volume"] = clean_num(last.get("volume"))
-                t = last.get("time")
-                # 5.x: time la pandas Timestamp -> lay date; 4.x: str -> cat 10 ky tu
-                item["time"] = t[:10] if isinstance(t, str) else str(t)[:10]
-                if len(recs) >= 2:
-                    prev, cur = clean_num(recs[-2].get("close")), item["close"]
-                    if prev and cur:
-                        item["change"] = round(cur - prev, 2)
-                        item["pct_change"] = round((cur - prev) / prev * 100, 2)
-            idx_rows.append(item)
-            time.sleep(2)  # respect rate limit
-        if idx_rows:
-            # Contract Worker: {"indices": [...]} -> market/indices.json {rows: [...]}
-            result = publish({"indices": idx_rows, "_prov": _prov("vnstock")})
-            print(f"  indices: {len(idx_rows)} -> {result}")
-            ok_indices = True
-    except Exception as e:
-        print(f"  indices publish error: {e}")
-
-    # Quotes: map field that cua vnstock sang dung contract frontend
-    # {close, change, pct_change, volume, value_vnd, exchange} theo ma CK.
-    # vnstock 5.x: dung price_board (1 call cho 20 ma) thay vi 20x quote().
-    # 5.x khong co san price_change/percent_change/volume_accumulated/total_value
-    # -> change/pct_change tu tinh tu reference_price; volume/value_vnd = None
-    # (frontend khong dung 2 field nay tu quotes; AI context co fallback "—").
-    symbols = ["VCB", "BID", "CTG", "TCB", "MBB", "VPB", "HPG", "VHM", "VIC", "VNM",
-               "MSN", "FPT", "MWG", "SSI", "VND", "HCM", "STB", "ACB", "SHB", "POW"]
-    by_symbol = {}
-    board_recs = vn_call(lambda: market.price_board(symbols).to_dict("records"),
-                         "quote-board", retries=2)
-    if board_recs:
-        for r in board_recs:
-            sym = r.get("symbol")
-            close = clean_num(r.get("close_price"))
-            ref = clean_num(r.get("reference_price"))
-            chg = round(close - ref, 2) if (close is not None and ref) else None
-            pct = round(chg / ref * 100, 2) if (chg is not None and ref) else None
-            by_symbol[sym] = {
-                "close": close,
-                "change": chg,
-                "pct_change": pct,
-                "volume": None,
-                "value_vnd": None,
-                "exchange": r.get("exchange"),
-            }
-
-    if by_symbol:
-        try:
-            # Contract Worker: {"quotes": {SYM: {...}}} -> market/quotes.json {by_symbol: {...}}
-            result = publish({"quotes_patch": by_symbol, "_prov": _prov("vnstock")})
-            print(f"  quotes: {len(by_symbol)} symbols -> {result}")
-            ok_quotes = True
-        except Exception as e:
-            print(f"  quotes publish error: {e}")
-
-    # That bai hoan toan (khong publish duoc gi) -> alert + raise de
-    # dashboard Modal hien Failed. Loi 1 phan thi chi log, run sau tu retry.
-    if not ok_indices and not ok_quotes:
-        detail = "indices: FAILED, quotes: FAILED"
-        send_fail_alert(detail)
-        raise RuntimeError(f"publish_snapshot failed: {detail}")
-
-    print("publish_snapshot done.")
-    volume.commit()
 
 
 @app.function(
