@@ -2,7 +2,7 @@
 Modal cron jobs for Pocket Personal (k1 Section 2).
 
 3 scheduled functions:
-1. book_processor  - every 5 min: process PDF uploads from R2 (English Lab Books)
+1. book_processor  - daily 17:00 +07: process PDF uploads from R2 (English Lab Books)
 2. realtime_poller - every 1 min trong phien HOSE (9:00-14:45 +07, T2-T6):
    lay gia live tu VCI/KBS (tu chu, khong qua vnstock), publish len R2.
    Payload DUNG contract Worker ({"indices": [...]} -> market/indices.json,
@@ -55,11 +55,11 @@ app = modal.App("pocket-personal-crons")
     image=book_image,
     secrets=[modal.Secret.from_name("pocket-personal")],
     volumes={"/data": volume},
-    schedule=modal.Cron("*/5 * * * *"),  # every 5 minutes
+    schedule=modal.Cron("0 10 * * *", timezone="UTC"),  # daily 10:00 UTC = 17:00 +07 (Chot 17:24 28/10)
     timeout=600,
 )
 def book_processor():
-    """Process pending PDF book uploads from R2 every 5 minutes."""
+    """Process pending PDF book uploads from R2 once a day at 17:00 +07."""
     import json, re, os, tempfile, urllib.request
     from datetime import datetime
 
