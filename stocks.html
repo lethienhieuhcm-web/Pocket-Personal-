@@ -569,22 +569,51 @@ function openChat(){
   $("aiFab").style.display="none";
 }
 
+// __AUTO_RELOAD_BEGIN__
+// Tu tai lai du lieu view dang xem moi 60 giay (Chot 16:48 28/10):
+// so goc tuoi theo phut nhung trang truoc day chi tai luc mo view.
+// VIEW_LOADERS la bang duy nhat — go() va tu tai lai dung chung,
+// khong duy tri 2 danh sach rieng. Khong gom v-chat (co poller
+// rieng) va v-detail (tai lai day du se pha bieu do + dung lai
+// bo timer so lenh 60s cua chi tiet; chi tiet giu co che cu).
+const VIEW_LOADERS={
+  "v-market":()=>loadMarket(),
+  "v-screen":()=>loadScreener(),
+  "v-consensus":()=>loadConsensus(),
+  "v-holders":()=>loadHolders(),
+  "v-sectors":()=>loadSectors(),
+  "v-margin":()=>loadMargin(),
+  "v-foreign":()=>loadForeign(),
+  "v-prop":()=>loadProp(),
+  "v-flow":()=>loadFlowScreen(),
+  "v-alert":()=>loadAlerts(),
+  "v-mine":()=>loadMine(),
+};
+let _autoReloadBusy=false;
+function reloadCurrentView(){
+  if(_autoReloadBusy) return Promise.resolve(false);
+  const on=document.querySelector(".view.on");
+  const fn=on?VIEW_LOADERS[on.id]:null;
+  if(!fn) return Promise.resolve(false);
+  _autoReloadBusy=true;
+  let p; try{ p=Promise.resolve(fn()); }catch(e){ p=Promise.reject(e); }
+  return p.catch(()=>{}).finally(()=>{ _autoReloadBusy=false; }).then(()=>true);
+}
+// Dung khi tab an; bo qua khi dang go trong o nhap; khong chay chong.
+setInterval(()=>{
+  if(document.hidden) return;
+  const ae=document.activeElement;
+  if(ae&&(ae.tagName==="INPUT"||ae.tagName==="TEXTAREA"||ae.tagName==="SELECT"||ae.isContentEditable)) return;
+  reloadCurrentView();
+}, 60000);
+// __AUTO_RELOAD_END__
 function go(v){
   document.querySelectorAll(".view").forEach(s=>s.classList.remove("on"));
   $(v).classList.add("on");window.scrollTo(0,0);
   $("aiFab").style.display=(v==="v-chat")?"none":"";
   if(v==="v-chat")renderChatSug();
   ["mainTabs","screenTabs","consTabs","holdTabs","secTabs","marginTabs","foreignTabs","propTabs","flowTabs","alertTabs","mineMainTabs","chatTabs"].forEach(e=>{if($(e))buildNav(e,v);});
-  if(v==="v-flow")loadFlowScreen();
-  if(v==="v-screen")loadScreener();
-  if(v==="v-consensus")loadConsensus();
-  if(v==="v-holders")loadHolders();
-  if(v==="v-sectors")loadSectors();
-  if(v==="v-margin")loadMargin();
-  if(v==="v-foreign")loadForeign();
-  if(v==="v-prop")loadProp();
-  if(v==="v-alert")loadAlerts();
-  if(v==="v-mine")loadMine();
+  const _vl=VIEW_LOADERS[v]; if(_vl)_vl();
 }
 ["mainTabs","screenTabs","consTabs","holdTabs","secTabs","alertTabs","mineMainTabs","chatTabs"].forEach(e=>{if($(e))buildNav(e,"v-market");});
 document.querySelectorAll("#mineTabs .tab").forEach(t=>t.onclick=()=>{
