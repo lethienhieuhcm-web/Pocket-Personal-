@@ -10,14 +10,6 @@ name: Flow screen trial on Modal (isolated)
 # (file ket qua khong nam trong trigger paths nen khong gay vong lap).
 
 on:
-  push:
-    paths:
-      - "modal_crons/flow_screen_modal_trial.py"
-      - "modal_crons/flow_screen_trial/direct_fetch.py"
-      - "modal_crons/flow_screen_trial/flow_screen_daily.py"
-      - "modal_crons/flow_screen_trial/universe.json"
-      - "modal_crons/flow_screen_trial/README.md"
-      - ".github/workflows/flow-screen-modal-trial.yml"
   workflow_dispatch:
 
 jobs:
