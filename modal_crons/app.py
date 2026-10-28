@@ -334,6 +334,10 @@ def realtime_poller():
         try:
             listing = df.vnd_listing() or []
             all_syms = [x["symbol"] for x in listing if x.get("symbol")]
+            # Luu y: vnd_listing phai co trong direct_fetch.py BUNDLE
+            # (modal_crons/) — ban bundle thieu ham nay lam buoc 1b chet im
+            # tu 23/10 (depth dung tu 22/10, phat hien 28/10). Giu 2 ban
+            # direct_fetch dong bo khi sua ham nay.
             full = df.kbs_price_board(all_syms)
             # Do rong/TRIN live (Chot 11:12 28/10): cung cong thuc the
             # chat (mcp analyze_market) — TRIN=(Adv/Dec)/(AdvVol/DecVol),

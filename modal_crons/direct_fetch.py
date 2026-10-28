@@ -32,8 +32,13 @@ UA = (
 TIMEOUT = 25
 
 
-def _get(url: str, params: dict | None = None, retries: int = 2) -> dict:
-    """GET JSON, tu dong giai nen gzip, retry don gian."""
+def _get(url: str, params: dict | None = None, retries: int = 2, identity: bool = False) -> dict:
+    """GET JSON, tu dong giai nen gzip, retry don gian.
+
+    identity=True: xin ban identity (khong gzip) — cho response lon
+    (vd listing ~1.500 ma) ma egress proxy hay cat dot stream gzip
+    giua chung (gap 28/10: finfo tra gzip dut, decompress that).
+    """
     if params:
         url += ("&" if "?" in url else "?") + urllib.parse.urlencode(params)
     last_err: Exception | None = None
@@ -44,7 +49,7 @@ def _get(url: str, params: dict | None = None, retries: int = 2) -> dict:
                 headers={
                     "User-Agent": UA,
                     "Accept": "application/json",
-                    "Accept-Encoding": "gzip, deflate",
+                    "Accept-Encoding": "identity" if identity else "gzip, deflate",
                 },
             )
             with urllib.request.urlopen(req, timeout=TIMEOUT) as resp:
@@ -53,7 +58,7 @@ def _get(url: str, params: dict | None = None, retries: int = 2) -> dict:
                 except http.client.IncompleteRead as e:
                     raw = e.partial  # proxy cat connection — lay phan da nhan
                 enc = resp.headers.get("Content-Encoding", "")
-                if "gzip" in enc:
+                if not identity and "gzip" in enc:
                     import gzip
 
                     try:
@@ -218,6 +223,37 @@ def vci_company(symbol: str) -> dict:
 # ---------------------------------------------------------------- KBS
 
 _KBS_IIS = "https://kbbuddywts.kbsec.com.vn/iis-server/investment"
+
+_FINFO = "https://api-finfo.vndirect.com.vn/v4"
+
+
+def vnd_listing() -> list[dict]:
+    """Danh sach ma listed toan thi truong tu VNDirect finfo.
+
+    Copy verbatim tu stock-app/scripts/direct_fetch.py (TUCHU-95 Dot 2,
+    verify 20/10: 1.519 ma). Ban bundle nay TRUOC DAY THIEU ham nay nen
+    buoc 1b cua realtime_poller (depth + live_overview) chet im tu
+    23/10 — depth.json dung tu 22/10 (phat hien 28/10). Giu 2 ban
+    dong bo khi sua ham nay.
+    """
+    data = _get(f"{_FINFO}/stocks",
+                {"q": "type:STOCK~status:listed", "size": 2000},
+                identity=True)
+    rows = (data or {}).get("data") or []
+    out = []
+    for r in rows:
+        if not r.get("code"):
+            continue
+        out.append({
+            "symbol": r["code"],
+            "exchange": r.get("floor"),
+            "name": r.get("companyName"),
+            "name_en": r.get("companyNameEng"),
+            "isin": r.get("isin"),
+            "index_code": r.get("indexCode"),
+            "listed_date": r.get("listedDate"),
+        })
+    return out
 
 # Loai bao cao tai chinh KBS
 REPORT_TYPES = {
