@@ -1,0 +1,14 @@
+{
+  "source": "VNDirect finfo vnd_listing: GET https://api-finfo.vndirect.com.vn/v4/stocks?q=type:STOCK~status:listed&size=2000",
+  "fallback_used": false,
+  "fetched_at_ict": "2026-10-28T13:51:01+07:00",
+  "count": 1520,
+  "unique_symbols": 1520,
+  "exchanges": {
+    "HOSE": 407,
+    "HNX": 299,
+    "UPCOM": 814
+  },
+  "sha256": "4a11eae5061db91928e2d2d2f8f7ebb9bc929117c9b47704c4a71a4f4864c9e3",
+  "note": "Frozen at build time; collector loads this file, never fetches the listing at runtime."
+}
