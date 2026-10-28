@@ -37,7 +37,7 @@ stock_image = (
     modal.Image.debian_slim(python_version="3.13")
     .pip_install("requests")
     .pip_install("vnstock>=5,<6", extra_index_url="https://vnstocks.com/api/packages")
-    .add_local_file("./modal_crons/direct_fetch.py", "/opt/direct_fetch.py")
+    .add_local_file("./direct_fetch.py", "/opt/direct_fetch.py")  # CWD cua workflow deploy la modal_crons/
 )
 
 # Realtime image: KHONG can vnstock, chi can direct_fetch (tu chu du lieu)
@@ -45,7 +45,7 @@ stock_image = (
 realtime_image = (
     modal.Image.debian_slim(python_version="3.13")
     .pip_install("requests")
-    .add_local_file("./modal_crons/direct_fetch.py", "/opt/direct_fetch.py")
+    .add_local_file("./direct_fetch.py", "/opt/direct_fetch.py")  # CWD cua workflow deploy la modal_crons/
 )
 
 app = modal.App("pocket-personal-crons")
