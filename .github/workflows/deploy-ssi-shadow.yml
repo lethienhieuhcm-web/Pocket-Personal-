@@ -1,0 +1,27 @@
+name: Deploy SSI Shadow to Modal
+
+on:
+  push:
+    paths:
+      - "modal_crons/ssi_shadow_session.py"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      MODAL_TOKEN_ID: ${{ secrets.MODAL_TOKEN_ID }}
+      MODAL_TOKEN_SECRET: ${{ secrets.MODAL_TOKEN_SECRET }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Modal CLI
+        run: pip install modal
+
+      - name: Deploy SSI shadow
+        run: |
+          cd modal_crons && modal deploy ssi_shadow_session.py
