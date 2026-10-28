@@ -335,14 +335,63 @@ def realtime_poller():
             listing = df.vnd_listing() or []
             all_syms = [x["symbol"] for x in listing if x.get("symbol")]
             full = df.kbs_price_board(all_syms)
+            # Do rong/TRIN live (Chot 11:12 28/10): cung cong thuc the
+            # chat (mcp analyze_market) — TRIN=(Adv/Dec)/(AdvVol/DecVol),
+            # mau so la KHOI LUONG CP. Tinh tu bang tuoi vua lay, ghi kem
+            # trong cung POST voi depth (moi 5 phut). Loi tinh thi bo qua
+            # (giu file cu), khong chan depth.
+            ov = None
+            try:
+                by_ex = {}
+                adv_n = dec_n = unc_n = 0
+                adv_v = dec_v = 0.0
+                turnover = 0.0
+                for _sym, _q in (full or {}).items():
+                    _ex = str(_q.get("exchange") or "").upper() or "UNKNOWN"
+                    _slot = by_ex.setdefault(_ex, {"advancers": 0, "decliners": 0, "unchanged": 0, "adv_volume": 0, "dec_volume": 0})
+                    try:
+                        _pc = float(_q.get("pct_change"))
+                    except (TypeError, ValueError):
+                        _pc = None
+                    try:
+                        _vol = float(_q.get("volume") or 0)
+                    except (TypeError, ValueError):
+                        _vol = 0.0
+                    if _pc is not None:
+                        if _pc > 0:
+                            _slot["advancers"] += 1; adv_n += 1; adv_v += _vol; _slot["adv_volume"] += _vol
+                        elif _pc < 0:
+                            _slot["decliners"] += 1; dec_n += 1; dec_v += _vol; _slot["dec_volume"] += _vol
+                        else:
+                            _slot["unchanged"] += 1; unc_n += 1
+                    try:
+                        turnover += float(_q.get("value") or 0)
+                    except (TypeError, ValueError):
+                        pass
+                _trin = round((adv_n / dec_n) / (adv_v / dec_v), 4) if (adv_n and dec_n and dec_v) else None
+                if full:
+                    ov = {
+                        "session_date": vn_now.date().isoformat(),
+                        "retrieved_at": datetime.now(timezone.utc).isoformat(),
+                        "source": "direct:kbs-board-full",
+                        "n_symbols": len(full),
+                        "advancers": adv_n, "decliners": dec_n, "unchanged": unc_n,
+                        "trin": _trin, "turnover_total": round(turnover),
+                        "by_exchange": by_ex,
+                    }
+            except Exception as _e:  # noqa: BLE001
+                print(f"[realtime] live_overview compute error: {_e}")
             depth = {}
             for sym, q in full.items():
                 if q.get("bid") or q.get("ask"):
                     depth[sym] = {"bid": q.get("bid"), "ask": q.get("ask")}
-            r = publish({"depth": depth,
-                         "_prov": {"source": "direct:kbs-board-full",
-                                   "retrieved_at": datetime.now(timezone.utc).isoformat()}})
-            print(f"[realtime] depth: {len(depth)}/{len(all_syms)} -> {r}")
+            _payload = {"depth": depth,
+                        "_prov": {"source": "direct:kbs-board-full",
+                                  "retrieved_at": datetime.now(timezone.utc).isoformat()}}
+            if ov:
+                _payload["live_overview"] = ov
+            r = publish(_payload)
+            print(f"[realtime] depth: {len(depth)}/{len(all_syms)} -> {r}" + (f" | live_overview: {ov['advancers']}/{ov['decliners']} TRIN={ov['trin']}" if ov else ""))
         except Exception as e:  # noqa: BLE001
             print(f"[realtime] depth error: {e}")
 
