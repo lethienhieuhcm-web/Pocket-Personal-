@@ -20,4 +20,4 @@ jobs:
         run: pip install modal
       - name: Run SSI shadow session
         run: |
-          cd modal_crons && modal run ssi_shadow_session_20261028.py
+          cd modal_crons && modal run ssi_shadow_session.py
