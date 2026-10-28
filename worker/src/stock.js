@@ -1256,40 +1256,21 @@ export async function hStockPublish(request, env){
     await sPut(env, "market/"+key+".json", doc(val));
     n++;
   };
-  if(body.indices) await put1("indices", {rows:body.indices});
-  // Chi so nganh (engine chi so Dot B, Chot 22/10): publish_snapshot gui
-  // kem khoa sector_indices de ghi file R2 rieng — dai chi so chinh cua
-  // frontend khong doc khoa nay (giu nguyen 4 the). Thieu nhanh nay thi
-  // Worker bo qua khoa im lang (written khong dem), du lieu nganh mat.
-  if(body.sector_indices) await put1("sector_indices", {rows:body.sector_indices});
-  if(body.quotes) await put1("quotes", {by_symbol:body.quotes});
-  if(body.quotes_patch){
-    // Merge vao quotes.json hien co thay vi ghi de toan bo (22/10):
-    // poller realtime chi giu ~30 ma tuoi — truoc day moi lan no
-    // publish la phan vu tru con lai mat quote (404 trang chi tiet).
-    const curQ = await sGet(env, "market/quotes.json");
-    const mergedQ = Object.assign({}, (curQ && curQ.by_symbol) || {}, body.quotes_patch);
-    await put1("quotes", {by_symbol:mergedQ});
-  }
-  if(body.depth) await put1("depth", {by_symbol:body.depth});
-  // Nhan _ib (doi ung InstaBox, Chot 17:37 28/10): code doi ung tren VM
-  // publish vao file R2 RIENG (market/*_ib.json), khong ghi de file
-  // production, cho toi khi verify xong + Chot chuyen. Cung contract nhu
-  // nhanh goc; quotes_patch_ib merge vao quotes_ib.json hien co.
-  if(body.indices_ib) await put1("indices_ib", {rows:body.indices_ib});
-  if(body.sector_indices_ib) await put1("sector_indices_ib", {rows:body.sector_indices_ib});
-  if(body.quotes_patch_ib){
-    const curQ = await sGet(env, "market/quotes_ib.json");
-    const mergedQ = Object.assign({}, (curQ && curQ.by_symbol) || {}, body.quotes_patch_ib);
-    await put1("quotes_ib", {by_symbol:mergedQ});
-  }
-  if(body.depth_ib) await put1("depth_ib", {by_symbol:body.depth_ib});
-  if(body.live_overview_ib && typeof body.live_overview_ib === "object"){
-    const ov = body.live_overview_ib;
+  // Helpers dung chung cho nhanh chinh + nhanh _ib (lenh Henrry 19:10
+  // 28/10): MOT duong code, chi khac key file dau ra. Nhanh _ib la TAM
+  // (xoa khi doi ung len production — quy tac cat trong file thiet ke
+  // doi ung, muc 9). Nhan live_overview chinh (nhanh MOV) khi merge phai
+  // goi putLiveOverview, khong viet lai khoi validate.
+  const putQuotesPatch = async (key, patch)=>{
+    const curQ = await sGet(env, "market/"+key+".json");
+    await put1(key, {by_symbol:Object.assign({}, (curQ && curQ.by_symbol) || {}, patch)});
+  };
+  const putLiveOverview = async (key, ov)=>{
+    if(!ov || typeof ov !== "object") return;
     const okDate = /^\d{4}-\d{2}-\d{2}$/.test(String(ov.session_date || ""));
     const okEx = ov.by_exchange && typeof ov.by_exchange === "object";
     if(okDate && okEx){
-      await put1("live_overview_ib", {
+      await put1(key, {
         session_date: ov.session_date,
         retrieved_at: String(ov.retrieved_at || ""),
         source: String(ov.source || ""),
@@ -1302,7 +1283,32 @@ export async function hStockPublish(request, env){
         by_exchange: ov.by_exchange,
       });
     }
+  };
+  if(body.indices) await put1("indices", {rows:body.indices});
+  // Chi so nganh (engine chi so Dot B, Chot 22/10): publish_snapshot gui
+  // kem khoa sector_indices de ghi file R2 rieng — dai chi so chinh cua
+  // frontend khong doc khoa nay (giu nguyen 4 the). Thieu nhanh nay thi
+  // Worker bo qua khoa im lang (written khong dem), du lieu nganh mat.
+  if(body.sector_indices) await put1("sector_indices", {rows:body.sector_indices});
+  if(body.quotes) await put1("quotes", {by_symbol:body.quotes});
+  if(body.quotes_patch){
+    // Merge vao quotes.json hien co thay vi ghi de toan bo (22/10):
+    // poller realtime chi giu ~30 ma tuoi — truoc day moi lan no
+    // publish la phan vu tru con lai mat quote (404 trang chi tiet).
+    await putQuotesPatch("quotes", body.quotes_patch);
   }
+  if(body.depth) await put1("depth", {by_symbol:body.depth});
+  // Nhan _ib (doi ung InstaBox, Chot 17:37 28/10): TAM — publish vao file
+  // R2 RIENG (market/*_ib.json), khong ghi de file production. Dung chung
+  // helper put1/putQuotesPatch/putLiveOverview voi nhanh chinh, chi khac
+  // key. XOA TOAN BO khoi nay khi doi ung verify dat + len production.
+  for(const [bk, fk, shape] of [
+    ["indices_ib", "indices_ib", (v)=> ({rows:v})],
+    ["sector_indices_ib", "sector_indices_ib", (v)=> ({rows:v})],
+    ["depth_ib", "depth_ib", (v)=> ({by_symbol:v})],
+  ]) if(body[bk]) await put1(fk, shape(body[bk]));
+  if(body.quotes_patch_ib) await putQuotesPatch("quotes_ib", body.quotes_patch_ib);
+  if(body.live_overview_ib) await putLiveOverview("live_overview_ib", body.live_overview_ib);
   // Universe duy nhat (lenh Henrry 17:40 28/10): job sang ghi danh sach ma
   // vao market/universe.json; collector + code moi nap luc mo phien.
   // Validate chat: sai -> 400 LOUD (khong ghi de file cu bang du lieu loi).
