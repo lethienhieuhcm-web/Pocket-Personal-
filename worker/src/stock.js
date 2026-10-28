@@ -1272,6 +1272,55 @@ export async function hStockPublish(request, env){
     await put1("quotes", {by_symbol:mergedQ});
   }
   if(body.depth) await put1("depth", {by_symbol:body.depth});
+  // Nhan _ib (doi ung InstaBox, Chot 17:37 28/10): code doi ung tren VM
+  // publish vao file R2 RIENG (market/*_ib.json), khong ghi de file
+  // production, cho toi khi verify xong + Chot chuyen. Cung contract nhu
+  // nhanh goc; quotes_patch_ib merge vao quotes_ib.json hien co.
+  if(body.indices_ib) await put1("indices_ib", {rows:body.indices_ib});
+  if(body.sector_indices_ib) await put1("sector_indices_ib", {rows:body.sector_indices_ib});
+  if(body.quotes_patch_ib){
+    const curQ = await sGet(env, "market/quotes_ib.json");
+    const mergedQ = Object.assign({}, (curQ && curQ.by_symbol) || {}, body.quotes_patch_ib);
+    await put1("quotes_ib", {by_symbol:mergedQ});
+  }
+  if(body.depth_ib) await put1("depth_ib", {by_symbol:body.depth_ib});
+  if(body.live_overview_ib && typeof body.live_overview_ib === "object"){
+    const ov = body.live_overview_ib;
+    const okDate = /^\d{4}-\d{2}-\d{2}$/.test(String(ov.session_date || ""));
+    const okEx = ov.by_exchange && typeof ov.by_exchange === "object";
+    if(okDate && okEx){
+      await put1("live_overview_ib", {
+        session_date: ov.session_date,
+        retrieved_at: String(ov.retrieved_at || ""),
+        source: String(ov.source || ""),
+        n_symbols: Number(ov.n_symbols) || 0,
+        advancers: Number(ov.advancers) || 0,
+        decliners: Number(ov.decliners) || 0,
+        unchanged: Number(ov.unchanged) || 0,
+        trin: (ov.trin == null ? null : Number(ov.trin)),
+        turnover_total: Number(ov.turnover_total) || 0,
+        by_exchange: ov.by_exchange,
+      });
+    }
+  }
+  // Universe duy nhat (lenh Henrry 17:40 28/10): job sang ghi danh sach ma
+  // vao market/universe.json; collector + code moi nap luc mo phien.
+  // Validate chat: sai -> 400 LOUD (khong ghi de file cu bang du lieu loi).
+  if(body.universe){
+    const u = body.universe;
+    const syms = Array.isArray(u.symbols) ? u.symbols : null;
+    const okSyms = syms && syms.length > 0 && syms.every((s)=> typeof s === "string" && s.trim().length > 0);
+    const okUniq = okSyms && new Set(syms.map((s)=> s.trim().toUpperCase())).size === syms.length;
+    const okDate = /^\d{4}-\d{2}-\d{2}$/.test(String(u.as_of || ""));
+    if(!okSyms || !okUniq || !okDate) return jerr("Bad universe: symbols non-empty unique + as_of YYYY-MM-DD required", 400);
+    await put1("universe", {
+      symbols: syms.map((s)=> s.trim().toUpperCase()),
+      count: syms.length,
+      as_of: u.as_of,
+      basis: String(u.basis || ""),
+      source: String(u.source || ""),
+    });
+  }
   if(body.screener) await put1("screener", {rows:body.screener});
   if(body.fundamentals) await put1("fundamentals", {by_symbol:body.fundamentals});
   if(body.symbols) await put1("symbols", {rows:body.symbols});
@@ -1926,6 +1975,14 @@ export async function hTickStateGet(request, env){
     return jerr("Bad key", 400);
   }
   const d = await sGet(env, "market/shadow_tick/" + key);
+  return sJson(d || {});
+}
+
+// Universe duy nhat (lenh Henrry 17:40 28/10): collector + code moi doc
+// market/universe.json luc mo phien. Chua co file -> {} (ben doc tu phan
+// biet thieu file vs file loi, roi fallback theo hop dong).
+export async function hInternalUniverse(request, env){
+  const d = await sGet(env, "market/universe.json");
   return sJson(d || {});
 }
 
