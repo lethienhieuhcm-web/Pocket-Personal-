@@ -12,17 +12,10 @@ jobs:
     steps:
       - name: Install Modal CLI
         run: pip install modal
-      - name: Write probe file
-        run: |
-          cat > /tmp/probe_slot_20261028.py <<'PYEOF'
-          import modal
-          app = modal.App("probe-slot-20261028")
-          @app.function(schedule=modal.Cron("0 0 1 1 *"))
-          def probe_noop():
-              print("slot probe noop")
-          PYEOF
-      - name: Deploy probe
-        run: cd /tmp && modal deploy probe_slot_20261028.py
+      - name: List apps before
+        run: modal app list
+      - name: Stop probe app
+        run: modal app stop -y probe-slot-20261028
       - name: List apps after
         if: always()
         run: modal app list
