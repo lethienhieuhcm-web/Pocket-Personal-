@@ -16,9 +16,14 @@ backoff, batched local writes):
   - one core task aggregates 1-minute OHLCV buckets + snapshots, and
     flushes to local disk every 60 s,
   - local disk sink ONLY: raw JSONL per gate, SQLite buckets/snapshots,
-    checkpoint + load + gap logs. No network publish during the session.
-  - the ONLY secret is SSI_PROXY_URL from the environment. It is never
-    written to any file or log.
+    checkpoint + load + gap logs. Local disk is the source of truth.
+    Live push to R2 + D1 STAGING exists only as an opt-in module
+    (live_push.py, LIVE_PUSH_ENABLED=1); it reads already-flushed
+    state, never blocks the collector, and never carries the
+    session's only secret.
+  - the ONLY session secret is SSI_PROXY_URL from the environment. It
+    is never written to any file or log. Live-push credentials are
+    separate env vars, also never logged.
 
 Session window: weekdays (Mon-Fri) 08:50-15:05 ICT, derived from the
 clock at runtime, never hardcoded to a date.
@@ -1122,10 +1127,11 @@ class Core:
     queue, applies events, and flushes to disk every FLUSH_SEC.
     No other task touches this state, so no locks are needed."""
 
-    def __init__(self, outdir, session_date, gate_stats):
+    def __init__(self, outdir, session_date, gate_stats, live_push=None):
         self.outdir = outdir
         self.session_date = session_date
         self.gate_stats = gate_stats  # {gate: GateStats}
+        self.live_push = live_push  # LivePusher or None; never blocks flush
         self.buckets = {}   # gate -> sym -> minute -> [o,h,l,c,v,fts,lts]
         self.snaps = {}     # gate -> sym -> {field: value}
         self.put = {}       # sym -> accumulated SSI negotiated fields
@@ -1462,6 +1468,7 @@ class Core:
                 " (?,?,?,?,?,?,?,?,?,?)", rows)
             self.dirty_buckets = set()
         # merged candles (D1-loadable shape)
+        candle_rows = []
         if self.dirty_merged:
             rows = []
             for sym, minute in self.dirty_merged:
@@ -1474,6 +1481,7 @@ class Core:
                 "INSERT OR REPLACE INTO candles VALUES"
                 " (?,?,?,?,?,?,?,?,?)", rows)
             self.dirty_merged = set()
+            candle_rows = rows
         # snapshots
         if self.dirty_snaps:
             rows = []
@@ -1560,6 +1568,15 @@ class Core:
               f"q={queue_depth} flush_ms={flush_ms} "
               f"syms={len(self.symbols_with_ticks)}",
               flush=True)
+        # Live push AFTER all local writes: local disk is the source
+        # of truth; a push never blocks or breaks the flush.
+        if self.live_push is not None:
+            try:
+                self.live_push.push_cycle_async(
+                    outdir=self.outdir, session_date=self.session_date,
+                    candles=candle_rows)
+            except Exception as e:  # noqa: BLE001 - local data is safe
+                print(f"[live-push] loi: {e}", flush=True)
         return flush_ms
 
     # --------------------------------------------------------------- run
@@ -1656,7 +1673,8 @@ def load_universe(path):
 
 async def run_session(universe, outdir, endpoints=None, ssi_proxy="env",
                       minutes=None, stop_event=None,
-                      ssi_config_resolver=None, vnd_key_resolver=None):
+                      ssi_config_resolver=None, vnd_key_resolver=None,
+                      live_push=None):
     """Run one trial session. endpoints: {gate: ws_url} overrides for
     stub testing. minutes: run that many minutes from now instead of
     the session window (pre-open connectivity check). Returns the
@@ -1712,7 +1730,7 @@ async def run_session(universe, outdir, endpoints=None, ssi_proxy="env",
         gates[name] = cls(**kw)
     gate_stats = {name: g.stats for name, g in gates.items()}
 
-    core = Core(outdir, sess_date, gate_stats)
+    core = Core(outdir, sess_date, gate_stats, live_push=live_push)
     print(f"[run] session {sess_date} out={outdir} "
           f"universe={len(universe)} proxy={'set' if proxy else 'unset'}",
           flush=True)
@@ -1742,6 +1760,14 @@ async def run_session(universe, outdir, endpoints=None, ssi_proxy="env",
             "other four gates).")
     summary = core.write_summary(
         (start, end), ssi_source, bool(proxy), notes)
+    # Final push (synchronous: the session is over, nothing to stall).
+    # Covers summary.json, written after the last flush.
+    if core.live_push is not None:
+        try:
+            core.live_push.push_cycle(
+                outdir=outdir, session_date=sess_date, candles=[])
+        except Exception as e:  # noqa: BLE001 - local data is safe
+            print(f"[live-push] loi cuoi phien: {e}", flush=True)
     core.db.close()
     print(f"[run] done: matches={core.matches} "
           f"syms={len(core.symbols_with_ticks)} out={outdir}", flush=True)
@@ -1761,7 +1787,19 @@ def main(argv=None):
                     "of the session window")
     ap.add_argument("--endpoints-json", default="",
                     help="test hook: JSON file mapping gate -> ws URL")
+    ap.add_argument("--live-push", action="store_true",
+                    help="enable live push to R2 + D1 staging "
+                    "(LIVE_PUSH_ENABLED=1, secrets from env)")
     args = ap.parse_args(argv)
+
+    live_push = None
+    if args.live_push or os.environ.get("LIVE_PUSH_ENABLED", "") \
+            in ("1", "true", "yes"):
+        try:
+            import live_push as _lp
+            live_push = _lp.LivePusher()
+        except Exception as e:  # noqa: BLE001 - local run continues
+            print(f"[live-push] khong khoi tao duoc: {e}", flush=True)
 
     universe = load_universe(args.universe)
     manifest_path = os.path.join(here, "universe_manifest.json")
@@ -1793,7 +1831,8 @@ def main(argv=None):
     try:
         loop.run_until_complete(run_session(
             universe, args.out_dir, endpoints=endpoints,
-            minutes=args.minutes or None, stop_event=stop))
+            minutes=args.minutes or None, stop_event=stop,
+            live_push=live_push))
     finally:
         loop.close()
     return 0
