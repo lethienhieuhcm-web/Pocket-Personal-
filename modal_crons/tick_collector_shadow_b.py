@@ -26,12 +26,12 @@ image = (modal.Image.debian_slim(python_version="3.12")
          .pip_install("websockets>=14"))
 
 
-# Lich chay nhu collector live: T2-T6 08:55 ICT (01:55 UTC), tu
-# 29/10 — tach khoi runner GitHub (lenh 08:08 28/10). Entry
-# modal run van giu de dispatch tay khi can.
+# Lich Modal DA GO 28/10 (lenh Henrry 15:11 28/10: tu phien 29/10
+# KHONG chay bong B nua, bo thu InstaBox thay no — bong B NGHI HAN).
+# Chi go schedule; code giu nguyen trong git, ham van chay duoc bang
+# modal run / local entrypoint khi can mo lai bang tay.
 @app.function(image=image,
               secrets=[modal.Secret.from_name("pocket-personal")],
-              schedule=modal.Cron("55 1 * * 1-5", timezone="UTC"),
               timeout=60 * 60 * 7, max_containers=1)
 def tick_shadow_b_session(max_minutes: int = 0):
     import asyncio
