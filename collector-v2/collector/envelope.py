@@ -26,6 +26,25 @@ class Envelope:
         """Phut cua ts (epoch, lam tron xuong phut). Guard T1/T3 dung cai nay."""
         return int(self.ts // 60) * 60
 
+    def to_dict(self):
+        """Dang JSON-serializable de ghi WAL / truyen qua queue dang dict."""
+        return {"gate": self.gate, "kind": self.kind, "sym": self.sym,
+                "ts": self.ts, "recv_ts": self.recv_ts, "price": self.price,
+                "vol": self.vol, "acc": self.acc, "fields": self.fields,
+                "field_src": self.field_src, "seq": self.seq,
+                "ts_synthetic": self.ts_synthetic, "restated": self.restated}
+
+    @classmethod
+    def from_dict(cls, d):
+        return cls(gate=d["gate"], kind=d["kind"], sym=d["sym"],
+                   ts=float(d["ts"]), recv_ts=float(d["recv_ts"]),
+                   price=d.get("price"), vol=d.get("vol"), acc=d.get("acc"),
+                   fields=dict(d.get("fields") or {}),
+                   field_src=dict(d.get("field_src") or {}),
+                   seq=int(d.get("seq") or 0),
+                   ts_synthetic=bool(d.get("ts_synthetic")),
+                   restated=bool(d.get("restated")))
+
 
 def envelope_from_raw(gate, rec, seq=0, fieldmap_data=None):
     """Chuyen 1 dong raw (file vm-pull 28/10 hoac ban ghi da parse) -> Envelope.
