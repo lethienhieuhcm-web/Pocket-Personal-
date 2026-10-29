@@ -49,7 +49,7 @@ checkpoint vao status moi chu ky publish. (3) Close/open nen theo
 ts SU KIEN (tick som/muon nhat trong phut), khong theo thu tu den.
 (4) Luot publish dong phien kem khoi "diag" (snapshot theo nguon,
 tick totals, volume phut theo nguon, tong thoa thuan) cho
-reconcile dinh danh truong. Van chay bong, live=False.
+reconcile dinh danh truong. Chay LIVE tu phien 27/10 (live=True, Chot 17:20 26/10).
 """
 import modal
 
@@ -1373,7 +1373,12 @@ class Aggregator:
       tu cong ke tiep (vd DNSE thieu thi KBS/VPS bo sung).
     - Doi chieu cheo: so sanh snapshot cac cong voi cong chinh."""
 
-    def __init__(self):
+    def __init__(self, session_date=None):
+        # session_date 'YYYY-MM-DD' (ICT): _merged_buckets chi giu
+        # phut cua dung ngay nay — chan bucket phien truoc (vd phut
+        # 14:45 hom truoc trong bo nho) lot vao rows intraday.
+        # None = khong loc (tuong thich nguoc cho code goi cu).
+        self.session_date = session_date
         self.candles = {}       # src -> sym -> {minute: [o,h,l,c,v,
                                 #  first_ts, last_ts]}
         # Lop volume THOA THUAN theo phut (thiet ke 3.4 — bucket
@@ -1642,11 +1647,17 @@ class Aggregator:
 
     def _merged_buckets(self, sym):
         """{minute: bucket} — moi phut lay tu cong uu tien cao nhat
-        co phut do (failover muc phut)."""
+        co phut do (failover muc phut). Chi giu phut cua
+        session_date (neu co): bucket phien truoc trong bo nho
+        (tick timestamp cu, resume) khong lot vao intraday."""
         merged = {}
         for src in reversed(SRC_PRIORITY):
             for minute, b in self.candles.get(src, {}).get(
                     sym, {}).items():
+                if self.session_date and datetime.fromtimestamp(
+                        minute, ICT).strftime("%Y-%m-%d") \
+                        != self.session_date:
+                    continue
                 merged[minute] = b
         return merged
 
@@ -2020,9 +2031,9 @@ ADAPTERS = {"dnse": DnseAdapter, "kbs": KbsAdapter,
 
 async def _collect(max_minutes=0):
     universe = CONFIG["universe"]
-    agg = Aggregator()
     started = time.time()
     start_dt = now_ict()
+    agg = Aggregator(session_date=start_dt.strftime("%Y-%m-%d"))
     if CONFIG.get("resume"):
         # Resume Dot 2: nap checkpoint + artifact theo nguon cua
         # CHINH phien hom nay; bat ky loi nao -> bat dau trang.
@@ -2185,7 +2196,13 @@ async def _collect(max_minutes=0):
         for name in CONFIG["sources"]:
             _prev_msgs[name] = adapters[name].msgs
         _prev_t[0] = time.time()
-        intra = agg.build_intraday(sorted(dirty_snap))
+        # Luot closed=True: intraday cho TOAN BO universe (khong chi
+        # ma dirty / co buckets) — moi ma deu co file tuoi sau dong
+        # phien, ke ca ma ngung giao dich som. Luot dinh ky: chi ma
+        # dirty nhu cu.
+        intra_syms = sorted(CONFIG["universe"]) if closed \
+            else sorted(dirty_snap)
+        intra = agg.build_intraday(intra_syms)
         foreign = agg.build_foreign()
         flow = agg.build_foreign_flow()
         # --- Quan sat publish (Chot 21:58 27/10): so phut bucket gui
@@ -2211,6 +2228,25 @@ async def _collect(max_minutes=0):
         print(f"[tick-multi] publish obs: dirty_n={len(dirty_snap)} "
               f"buckets_minutes_sent={buckets_minutes_sent} raw_n={raw_n} "
               f"closed={closed}", flush=True)
+        # Luot closed=True: chunk POST loi thi LOG TO + DI TIEP chunk
+        # sau — khong con chu ky sau de gui lai, dung 1 chunk loi
+        # giua chung khong duoc lam mat ca luot dong phien (29/10:
+        # chi 4 ma len R2 roi dung). Luot dinh ky: van raise nhu cu
+        # de dirty duoc giu lai, chu ky sau gui lai.
+        chunk_failures = []
+
+        async def _post_checked(payload, source, what):
+            try:
+                await asyncio.to_thread(publish_checked, payload, source)
+            except Exception as e:  # noqa: BLE001
+                if closed:
+                    chunk_failures.append(what)
+                    print(f"[tick-multi] ALERT chunk publish loi "
+                          f"(closed, bo qua): {what}: {str(e)[:120]}",
+                          flush=True)
+                else:
+                    raise
+
         keys = list(intra.keys())
         chunks = [keys[i:i + 10]
                   for i in range(0, len(keys), 10)] or [[]]
@@ -2223,20 +2259,23 @@ async def _collect(max_minutes=0):
                                      "src_artifacts": artifacts}}
                 if chunk:
                     p["tick_shadow"]["intraday"] = chunk
-                await asyncio.to_thread(publish_checked, p, "multi")
+                await _post_checked(p, "multi", "shadow-chunk0")
                 if CONFIG["live"]:
                     live = {"tick_live": {"foreign": flow}}
                     if chunk:
                         live["tick_live"]["intraday"] = chunk
-                    await asyncio.to_thread(publish_checked, live, "multi")
+                    await _post_checked(live, "multi", "live-chunk0")
             elif chunk:
-                await asyncio.to_thread(
-                    publish_checked, {"tick_shadow": {"intraday": chunk}},
-                    "multi")
+                await _post_checked(
+                    {"tick_shadow": {"intraday": chunk}},
+                    "multi", f"shadow-chunk{ci}")
                 if CONFIG["live"]:
-                    await asyncio.to_thread(
-                        publish_checked, {"tick_live": {"intraday": chunk}},
-                        "multi")
+                    await _post_checked(
+                        {"tick_live": {"intraday": chunk}},
+                        "multi", f"live-chunk{ci}")
+        if chunk_failures:
+            print(f"[tick-multi] ALERT dong phien: chunk POST loi: "
+                  f"{', '.join(chunk_failures)}", flush=True)
         # Bang khop lenh chi tiet (tape): publish kem chu ky nay,
         # loi thi chu ky sau gui lai (build_tape chi danh dau dirty
         # lai khi co tick moi — neu POST loi o day, lan publish ke
