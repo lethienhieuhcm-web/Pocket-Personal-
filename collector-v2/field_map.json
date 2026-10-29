@@ -1,0 +1,500 @@
+{
+ "chot": "2026-10-28 22:40 — 12 cau (Q12: ten dung tu ngay dau, field map la file du lieu versioned + test HSX EOD)",
+ "gates": {
+  "dnse": {
+   "fields": {
+    "f10": {
+     "basis": "acc-cumulative",
+     "evidence": "collector-redesign-draft §3.3 + §4.2",
+     "note": "Do tu parser collector thu: _pnum(m, f10, 10) -> CP (acc luy ke).",
+     "raw_alias": "acc",
+     "scale": 10,
+     "standard": "accumulatedVol",
+     "unit": "CP",
+     "use": "Chi dedup + preopen, KHONG lam tong, KHONG dedup tuyet doi (acc khong don dieu, 74% tick regressed)",
+     "verified": false
+    },
+    "f13": {
+     "basis": "day-low",
+     "evidence": "hidden_files/dnse-divergence-20261028.md: f13 = gia thap nhat phien, khop day-low 40/40",
+     "forbidden_names": [
+      "last"
+     ],
+     "note": "Do tu parser collector thu: _pnum(m, f13) khong scale, gia tri 55.0 = 55 nghin dong (UIC ~55.000 VND); x1000 -> VND. EOD ref tinh bang nghin dong, quotes R2 tinh bang dong.",
+     "raw_alias": "last",
+     "scale": 1000,
+     "standard": "day_low",
+     "unit": "VND",
+     "use": "Chi tham khao, KHONG lam close",
+     "verified": false
+    },
+    "f17": {
+     "basis": "total",
+     "evidence": "hidden_files/dnse-divergence-20261028.md: buy/sell_volume co so TONG ±10 CP",
+     "raw_alias": "buy_volume",
+     "scale": 10,
+     "standard": "buy_volume",
+     "unit": "CP",
+     "use": "Duoc (map cong tot)",
+     "verified": true
+    },
+    "f18": {
+     "basis": "total",
+     "evidence": "hidden_files/dnse-divergence-20261028.md",
+     "raw_alias": "sell_volume",
+     "scale": 10,
+     "standard": "sell_volume",
+     "unit": "CP",
+     "use": "Duoc (map cong tot)",
+     "verified": true
+    },
+    "f20": {
+     "basis": "live-feed",
+     "evidence": "hidden_files/dnse-divergence-20261028.md: room khop vai CP",
+     "raw_alias": "room",
+     "scale": 10,
+     "standard": "room",
+     "unit": "CP",
+     "use": "Duoc (room live-feed)",
+     "verified": false
+    },
+    "f22": {
+     "basis": "atc-bucket",
+     "evidence": "hidden_files/dnse-divergence-20261028.md: f22 = khoi luong phien ATC bucket 14:45, khop 40/40",
+     "forbidden_names": [
+      "total_volume"
+     ],
+     "raw_alias": "total_volume",
+     "scale": 10,
+     "standard": "atc_volume",
+     "unit": "CP",
+     "use": "KHONG lam tong ngay",
+     "verified": false
+    },
+    "f25": {
+     "basis": "total",
+     "evidence": "hidden_files/dnse-divergence-20261028.md: total_value khop KBS ~40/40",
+     "raw_alias": "total_value",
+     "scale": 1000000000,
+     "standard": "total_value",
+     "unit": "VND",
+     "use": "Duoc",
+     "verified": true
+    },
+    "f5": {
+     "basis": "trade",
+     "evidence": "Parser collector thu: _pnum(m, f5) khong scale, gia tri nghin dong (55.0 = 55.000 VND)",
+     "raw_alias": null,
+     "scale": 1000,
+     "standard": "tick_price",
+     "unit": "VND",
+     "use": "Gia match (tick), x1000 -> VND",
+     "verified": false
+    },
+    "f58": {
+     "basis": "matched-only",
+     "evidence": "hidden_files/dnse-f58f59-check-20261028.md: f58 = gia tri ngoai KHOP LENH, khong gom thoa thuan",
+     "forbidden_names": [
+      "buy_value"
+     ],
+     "raw_alias": "buy_value",
+     "scale": 1000000000,
+     "standard": "buy_value_matched",
+     "unit": "VND",
+     "use": "Chi khi can basis khop lenh; CAM vao map ngoai TONG",
+     "verified": false
+    },
+    "f59": {
+     "basis": "matched-only",
+     "evidence": "hidden_files/dnse-f58f59-check-20261028.md",
+     "forbidden_names": [
+      "sell_value"
+     ],
+     "raw_alias": "sell_value",
+     "scale": 1000000000,
+     "standard": "sell_value_matched",
+     "unit": "VND",
+     "use": "Chi khi can basis khop lenh; CAM vao map ngoai TONG",
+     "verified": false
+    },
+    "f6": {
+     "basis": "trade",
+     "evidence": "Parser collector thu: _pnum(m, f6, 10) -> CP",
+     "raw_alias": null,
+     "scale": 10,
+     "standard": "tick_volume",
+     "unit": "CP",
+     "use": "Khoi luong match",
+     "verified": false
+    },
+    "f60": {
+     "basis": "live-feed",
+     "evidence": "hidden_files/dnse-divergence-20261028.md",
+     "raw_alias": "total_room",
+     "scale": 10,
+     "standard": "total_room",
+     "unit": "CP",
+     "use": "Duoc (room live-feed)",
+     "verified": false
+    },
+    "f7": {
+     "basis": "exchange-time",
+     "evidence": "Parser collector thu: node f7 long nhau, lay f1 ben trong lam epoch giay",
+     "raw_alias": null,
+     "scale": 1,
+     "standard": "tick_time",
+     "unit": "epoch-s",
+     "use": "Thoi gian So cua tick (f7/f1)",
+     "verified": false
+    }
+   },
+   "protocol": "MQTT v3 qua wss, topic quotes/krx/mdds/{stockinfo|tick}/v1/roundlot/symbol/{S}; payload protobuf: stockinfo -> f41, tick -> f45, thoi gian tick o f7/f1. User/pass doc tu bien moi truong DNSE_MQTT_USER/DNSE_MQTT_PW, KHONG ghi trong code."
+  },
+  "kbs": {
+   "fields": {
+    "acc": {
+     "basis": "acc-cumulative",
+     "evidence": "acc cuoi khop HSX tuyet doi 40/40 (doi chieu nen thu)",
+     "raw_alias": "acc",
+     "scale": 1,
+     "standard": "accumulatedVol",
+     "unit": "CP",
+     "use": "Chi dedup + preopen",
+     "verified": false
+    },
+    "buy_volume": {
+     "basis": "total",
+     "evidence": "hidden_files/ssi-foreign-definition-20261028.md: 4 cong dong thuan vs HSX tong 40/40",
+     "raw_alias": "buy_volume",
+     "scale": 1,
+     "standard": "buy_volume",
+     "unit": "CP",
+     "use": "Duoc (map cong tot)",
+     "verified": true
+    },
+    "last": {
+     "basis": "last-trade",
+     "evidence": "KBS lam chuan doi chieu OHLC vs FireAnt 27/10 (180/180)",
+     "raw_alias": "last",
+     "scale": 1,
+     "standard": "last",
+     "unit": "VND",
+     "use": "Duoc",
+     "verified": true
+    },
+    "room": {
+     "basis": "live-feed",
+     "evidence": "Room la muc live-feed, khong doi chieu HSX EOD",
+     "raw_alias": "room",
+     "scale": 1,
+     "standard": "room",
+     "unit": "CP",
+     "use": "Duoc (room live-feed)",
+     "verified": false
+    },
+    "sell_volume": {
+     "basis": "total",
+     "evidence": "hidden_files/ssi-foreign-definition-20261028.md",
+     "raw_alias": "sell_volume",
+     "scale": 1,
+     "standard": "sell_volume",
+     "unit": "CP",
+     "use": "Duoc (map cong tot)",
+     "verified": true
+    },
+    "total_room": {
+     "basis": "live-feed",
+     "evidence": "Room la muc live-feed",
+     "raw_alias": "total_room",
+     "scale": 1,
+     "standard": "total_room",
+     "unit": "CP",
+     "use": "Duoc (room live-feed)",
+     "verified": false
+    },
+    "total_value": {
+     "basis": "total",
+     "evidence": "hidden_files/eod-reconcile/2026-10-28",
+     "raw_alias": "total_value",
+     "scale": 1,
+     "standard": "total_value",
+     "unit": "VND",
+     "use": "Duoc",
+     "verified": true
+    },
+    "total_volume": {
+     "basis": "total",
+     "evidence": "hidden_files/eod-reconcile/2026-10-28: volume KBS khop tuyet doi 40/40",
+     "raw_alias": "total_volume",
+     "scale": 1,
+     "standard": "total_volume",
+     "unit": "CP",
+     "use": "Duoc",
+     "verified": true
+    }
+   },
+   "protocol": "Socket.IO"
+  },
+  "ssi": {
+   "fields": {
+    "buyForeignQtty": {
+     "basis": "partial",
+     "evidence": "hidden_files/ssi-foreign-definition-20261028.md: vs tong mua 6/40, ban 4/40",
+     "raw_alias": null,
+     "scale": 1,
+     "standard": "buy_volume_ssi_partial",
+     "unit": "CP",
+     "use": "KHONG vao map ngoai",
+     "verified": false
+    },
+    "nmTotalTradedQty": {
+     "basis": "total",
+     "evidence": "hidden_files/ssi-foreign-definition-20261028.md: last/total_volume dong thuan 40/40",
+     "raw_alias": null,
+     "scale": 1,
+     "standard": "total_volume",
+     "unit": "CP",
+     "use": "Nen (dong thuan 40/40 voi cong tot)",
+     "verified": true
+    },
+    "sellForeignQtty": {
+     "basis": "partial",
+     "evidence": "hidden_files/ssi-foreign-definition-20261028.md",
+     "raw_alias": null,
+     "scale": 1,
+     "standard": "sell_volume_ssi_partial",
+     "unit": "CP",
+     "use": "KHONG vao map ngoai",
+     "verified": false
+    }
+   },
+   "note": "Ngoai SSI la anh chup thieu khong deu, KHONG vao map cong tot ke ca fill-missing. Chi dung cho nen/gia.",
+   "protocol": "MQTT qua proxyvip (chi tu Modal — Q1: SSI O NGOAI bo thu moi)"
+  },
+  "vci": {
+   "fields": {
+    "accumulatedValue": {
+     "basis": "total",
+     "evidence": "files/vci-standardization-spec-2026-10-28.md: foreign VCI = TONG 40/40, chenh 0",
+     "raw_alias": null,
+     "scale": 1000000,
+     "standard": "total_value",
+     "unit": "VND",
+     "use": "Foreign-only, BAT BUOC x1e6 (trieu VND -> VND)",
+     "verified": true
+    },
+    "last": {
+     "basis": "total",
+     "evidence": "files/vci-standardization-spec-2026-10-28.md: close/volume khop tuyet doi 40/40 vs EOD",
+     "raw_alias": null,
+     "scale": 1,
+     "standard": "last",
+     "unit": "VND",
+     "use": "Foreign-only",
+     "verified": true
+    },
+    "room": {
+     "basis": "live-feed",
+     "evidence": "files/vci-standardization-spec-2026-10-28.md: GVR am -21.803.796 ca hai nguon",
+     "raw_alias": null,
+     "scale": 1,
+     "standard": "room",
+     "unit": "CP",
+     "use": "Foreign-only, co the am, KHONG kep >= 0",
+     "verified": false
+    },
+    "total_volume": {
+     "basis": "total",
+     "evidence": "files/vci-standardization-spec-2026-10-28.md",
+     "raw_alias": null,
+     "scale": 1,
+     "standard": "total_volume",
+     "unit": "CP",
+     "use": "Foreign-only",
+     "verified": true
+    }
+   },
+   "note": "Ngoai VCI = TONG 40/40. Nen VCI LOAI (bao phu 8,1%, tich luy da phien, bucket thieu fts/lts).",
+   "protocol": "Socket.IO — CONG THU 6 CHI-LAY-NGOAI (Q7: sau GĐ2, khong nen)"
+  },
+  "vndirect": {
+   "fields": {
+    "acc": {
+     "basis": "acc-cumulative",
+     "evidence": "collector-redesign-draft §5: neu cong khong gui acc thi khong co preopen",
+     "raw_alias": "acc",
+     "scale": 1,
+     "standard": "accumulatedVol",
+     "unit": "CP",
+     "use": "Chi dedup + preopen (neu cong gui acc; VNDirect co the khong co — MISSING thi ghi MISSING)",
+     "verified": false
+    },
+    "buy_volume": {
+     "basis": "total",
+     "evidence": "hidden_files/ssi-foreign-definition-20261028.md",
+     "raw_alias": "buy_volume",
+     "scale": 1,
+     "standard": "buy_volume",
+     "unit": "CP",
+     "use": "Duoc (map cong tot)",
+     "verified": true
+    },
+    "last": {
+     "basis": "last-trade",
+     "evidence": "4 cong dong thuan vs HSX tong 40/40",
+     "raw_alias": "last",
+     "scale": 1,
+     "standard": "last",
+     "unit": "VND",
+     "use": "Duoc",
+     "verified": true
+    },
+    "room": {
+     "basis": "live-feed",
+     "evidence": "Room la muc live-feed",
+     "raw_alias": "room",
+     "scale": 1,
+     "standard": "room",
+     "unit": "CP",
+     "use": "Duoc (room live-feed)",
+     "verified": false
+    },
+    "sell_volume": {
+     "basis": "total",
+     "evidence": "hidden_files/ssi-foreign-definition-20261028.md",
+     "raw_alias": "sell_volume",
+     "scale": 1,
+     "standard": "sell_volume",
+     "unit": "CP",
+     "use": "Duoc (map cong tot)",
+     "verified": true
+    },
+    "total_room": {
+     "basis": "live-feed",
+     "evidence": "Room la muc live-feed",
+     "raw_alias": "total_room",
+     "scale": 1,
+     "standard": "total_room",
+     "unit": "CP",
+     "use": "Duoc (room live-feed)",
+     "verified": false
+    },
+    "total_value": {
+     "basis": "total",
+     "evidence": "hidden_files/ssi-foreign-definition-20261028.md",
+     "raw_alias": "total_value",
+     "scale": 1,
+     "standard": "total_value",
+     "unit": "VND",
+     "use": "Duoc",
+     "verified": true
+    },
+    "total_volume": {
+     "basis": "total",
+     "evidence": "hidden_files/ssi-foreign-definition-20261028.md",
+     "raw_alias": "total_volume",
+     "scale": 1,
+     "standard": "total_volume",
+     "unit": "CP",
+     "use": "Duoc",
+     "verified": true
+    }
+   },
+   "note": "Ma UPCOM khong dang ky duoc (floor code chua xac dinh) — Q11: chap nhan thieu, 4 cong kia phu UPCOM",
+   "protocol": "MQTT"
+  },
+  "vps": {
+   "fields": {
+    "acc": {
+     "basis": "acc-cumulative",
+     "evidence": "acc cuoi khop HSX tuyet doi 40/40 (doi chieu nen thu)",
+     "raw_alias": "acc",
+     "scale": 1,
+     "standard": "accumulatedVol",
+     "unit": "CP",
+     "use": "Chi dedup + preopen",
+     "verified": false
+    },
+    "buy_value": {
+     "basis": "total",
+     "evidence": "hidden_files/dnse-f58f59-check-20261028.md: VPS = HSX tong tuyet doi ca 4 ma",
+     "raw_alias": "buy_value",
+     "scale": 1,
+     "standard": "buy_value",
+     "unit": "VND",
+     "use": "Duoc (map cong tot) — doi chung VPS = HSX tong tuyet doi 4 ma co lot",
+     "verified": true
+    },
+    "buy_volume": {
+     "basis": "total",
+     "evidence": "hidden_files/ssi-foreign-definition-20261028.md",
+     "raw_alias": "buy_volume",
+     "scale": 1,
+     "standard": "buy_volume",
+     "unit": "CP",
+     "use": "Duoc (map cong tot)",
+     "verified": true
+    },
+    "last": {
+     "basis": "last-trade",
+     "evidence": "4 cong dong thuan vs HSX tong 40/40",
+     "raw_alias": "last",
+     "scale": 1,
+     "standard": "last",
+     "unit": "VND",
+     "use": "Duoc",
+     "verified": true
+    },
+    "room": {
+     "basis": "live-feed",
+     "evidence": "Room la muc live-feed",
+     "raw_alias": "room",
+     "scale": 1,
+     "standard": "room",
+     "unit": "CP",
+     "use": "Duoc (room live-feed)",
+     "verified": false
+    },
+    "sell_value": {
+     "basis": "total",
+     "evidence": "hidden_files/dnse-f58f59-check-20261028.md",
+     "raw_alias": "sell_value",
+     "scale": 1,
+     "standard": "sell_value",
+     "unit": "VND",
+     "use": "Duoc (map cong tot)",
+     "verified": true
+    },
+    "sell_volume": {
+     "basis": "total",
+     "evidence": "hidden_files/ssi-foreign-definition-20261028.md",
+     "raw_alias": "sell_volume",
+     "scale": 1,
+     "standard": "sell_volume",
+     "unit": "CP",
+     "use": "Duoc (map cong tot)",
+     "verified": true
+    },
+    "total_volume": {
+     "basis": "total",
+     "evidence": "hidden_files/ssi-foreign-definition-20261028.md",
+     "raw_alias": "total_volume",
+     "scale": 1,
+     "standard": "total_volume",
+     "unit": "CP",
+     "use": "Duoc",
+     "verified": true
+    }
+   },
+   "protocol": "Socket.IO"
+  }
+ },
+ "rules": [
+  "Truong thieu ghi MISSING, khong dien 0. Truong suy ra ghi co derived.",
+  "Co verified=true chi khi da doi chieu HSX EOD. f13/f22/f58/f59 DNSE deu KHONG verified.",
+  "scale: gia tri protocol tho * scale = don vi chuan. Chi ap cho parser cong (GĐ1+), KHONG ap lai cho file raw vm-pull (da duoc collector thu scale).",
+  "raw_alias: ten key trong file raw vm-pull 28/10 (collector thu) de adapter replay doi sang ten chuan."
+ ],
+ "source_spec": "goals/vietnam-stock-web-app/files/collector-redesign-draft-2026-10-28.md §3.3",
+ "version": 1
+}
