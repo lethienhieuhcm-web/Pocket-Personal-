@@ -1,4 +1,5 @@
 import { jerr, sJson } from './utils.js';
+import { FANOUT, buildFanoutFrames, chunkFrames, assignFrameSeqs } from './fanout.js';
 import { getSession } from './auth.js';
 import { drizzle } from "drizzle-orm/d1";
 import { eq, and, asc, sql } from "drizzle-orm";
@@ -1253,7 +1254,86 @@ export async function hTargetsDel(request, env){
 // best-effort theo isolate: streak/total theo nguon gui.
 const _tickInvariant = new Map();
 
-export async function hStockPublish(request, env){
+// Dem loi gui Ably (bo sung 20:05 28/10: khong nuot loi im lang).
+// Chi dung de log/dem noi bo; Worker Logs la noi doc.
+let ablySendFail = 0;
+
+// --- Fan-out H1 (thiet ke doi ung §2.2/§2.3, Chot 16:20 29/10) ---
+// DO cap seq (duong chinh); Ably an theo cung seq (duong du phong).
+// Loi fan-out KHONG lam hong publish: log + dem, R2 + tra loi giu nguyen.
+let fanoutDoFail = 0;
+let fanoutSeqFallback = 0;
+let lastDoSeq = 0;
+
+function fanoutDoDay() {
+  return new Date(Date.now() + 7 * 3600 * 1000).toISOString().slice(0, 10).replaceAll("-", "");
+}
+
+async function fanoutIngestDo(env, frames) {
+  if (!env.MARKET_ROOM) return null;
+  const id = env.MARKET_ROOM.idFromName("market-" + fanoutDoDay());
+  const stub = env.MARKET_ROOM.get(id);
+  let resp = null;
+  try {
+    const ctl = (typeof AbortSignal !== "undefined" && AbortSignal.timeout) ? AbortSignal.timeout(FANOUT.DO_TIMEOUT_MS) : undefined;
+    resp = await stub.fetch(new Request("https://do/ingest", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Internal-Secret": env.INTERNAL_SECRET || env.STOCK_PUBLISH_SECRET || "" },
+      body: JSON.stringify({ frames: frames }),
+      signal: ctl,
+    }));
+  } catch (e) {
+    fanoutDoFail++;
+    console.error(`[fanout] DO ingest loi (fail #${fanoutDoFail}): ${e && e.message ? e.message : e}`);
+    return null;
+  }
+  if (!resp || !resp.ok) {
+    fanoutDoFail++;
+    let txt = "";
+    try { txt = resp ? (await resp.text()).slice(0, 200) : ""; } catch (e) {}
+    console.error(`[fanout] DO ingest HTTP ${resp ? resp.status : "?"} (fail #${fanoutDoFail}): ${txt}`);
+    return null;
+  }
+  try { return await resp.json(); } catch (e) {
+    fanoutDoFail++;
+    console.error(`[fanout] DO ingest JSON loi (fail #${fanoutDoFail})`);
+    return null;
+  }
+}
+
+async function fanoutSendAbly(env, frames) {
+  const creds = btoa(env.ABLY_ROOT_KEY.trim());
+  const ctl = (typeof AbortSignal !== "undefined" && AbortSignal.timeout) ? AbortSignal.timeout(FANOUT.ABLY_TIMEOUT_MS) : undefined;
+  // Batch 1 POST: Ably REST chap nhan mang message (moi frame 1 message,
+  // name = t, data = JSON string cua frame — SDK ben nghe parse nhu cu).
+  const ablyResp = await fetch("https://rest.ably.io/channels/market/messages", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Authorization": "Basic " + creds },
+    body: JSON.stringify(frames.map(function (f) { return { name: f.t, data: JSON.stringify(f) }; })),
+    signal: ctl,
+  });
+  if (!ablyResp.ok) {
+    ablySendFail++;
+    console.error(`[fanout] Ably HTTP ${ablyResp.status} (fail #${ablySendFail}): ${(await ablyResp.text()).slice(0, 200)}`);
+  }
+}
+
+async function fanoutPublishAbly(env, ctx, frames) {
+  if (!env.ABLY_ROOT_KEY || !frames.length) return false;
+  const run = async function () {
+    try { await fanoutSendAbly(env, frames); } catch (e) {
+      ablySendFail++;
+      console.error(`[fanout] Ably loi (fail #${ablySendFail}): ${e && e.message ? e.message : e}`);
+    }
+  };
+  // waitUntil: Ably cham/timeout KHONG cham duong tra loi publish (H3).
+  // Khong co ctx (test) -> cho xong, co timeout 5s ben trong.
+  if (ctx && typeof ctx.waitUntil === "function") { ctx.waitUntil(run()); return true; }
+  await run();
+  return true;
+}
+
+export async function hStockPublish(request, env, url, ctx){
   const got = request.headers.get("X-Publish-Secret") || "";
   if(!env.STOCK_PUBLISH_SECRET || got !== env.STOCK_PUBLISH_SECRET) return jerr("Forbidden", 403);
   let body;
@@ -1991,19 +2071,161 @@ export async function hStockPublish(request, env){
     return jerr("Publish block failed", 502,
       {written:n, errors:tickErrors, alerts:tickAlerts});
   }
-  // Push real-time update to Ably (fire-and-forget; skip if no key)
-  if(env.ABLY_ROOT_KEY && n>0){
-    try{
-      const creds = btoa(env.ABLY_ROOT_KEY.trim() + ":");
-      await fetch("https://rest.ably.io/channels/market/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": "Basic " + creds },
-        body: JSON.stringify({ name: "update", data: JSON.stringify({updated: now, ts: Date.now()}) }),
-      });
-    }catch(e){ /* silent: publish already succeeded */ }
+  // Fan-out frame song H1 (thiet ke doi ung §2.2, Chot 16:20 29/10):
+  // frame q/idx co seq do DO cap (Ably an theo), thay ping cu khong seq.
+  // Loi fan-out KHONG lam hong publish: log + dem, tra loi R2 giu nguyen.
+  // Chi khoa chinh (quotes_patch/quotes/indices/sector_indices); _ib
+  // KHONG fan-out (nhanh _ib ghi file rieng, xoa khi cat production).
+  try {
+    const built = buildFanoutFrames(body);
+    const allFrames = built.idx ? [built.idx].concat(built.q) : built.q;
+    if (allFrames.length) {
+      const stamped = [];
+      let anyFallback = false;
+      for (const ch of chunkFrames(allFrames, FANOUT.MAX_DO_PER_CALL)) {
+        const doRes = await fanoutIngestDo(env, ch);
+        const r = assignFrameSeqs(ch, doRes, lastDoSeq);
+        lastDoSeq = r.lastSeq;
+        if (r.fallback) { anyFallback = true; fanoutSeqFallback += ch.length; }
+        stamped.push.apply(stamped, r.frames);
+      }
+      if (built.truncated) console.error(`[fanout] cat bot ${built.truncated} frame q (vuot ${FANOUT.MAX_Q_PER_BATCH})`);
+      if (anyFallback) console.error(`[fanout] seq du phong (DO khong cap du, tong fallback=${fanoutSeqFallback})`);
+      await fanoutPublishAbly(env, ctx, stamped);
+    }
+  } catch (e) {
+    console.error(`[fanout] loi: ${e && e.message ? e.message : e}`);
   }
   return sJson(Object.assign({ok:true, written:n},
     tickAlerts.length ? {alerts:tickAlerts} : {}));
+}
+
+/* ---------- H1 staging: cap Ably token cho trinh duyet (subscribe-only) ---------- */
+// Router 'user' da kiem session. Worker goi Ably REST requestToken bang
+// Root key (server-side, khong bao gio ra trinh duyet), tra NGUYEN VEN
+// TokenDetails ve cho Ably JS SDK dung. Chi cap quyen subscribe kenh
+// 'market' + kenh thu staging-h1-YYYYMMDD (neu duoc hoi dung ten).
+export async function hAblyToken(request, env){
+  if(!env.ABLY_ROOT_KEY) return jerr("Ably not configured", 500);
+  const key = env.ABLY_ROOT_KEY.trim();
+  const keyName = key.split(":")[0];
+  if(!keyName || key.indexOf(":") < 0) return jerr("Ably key malformed", 500);
+  const url = new URL(request.url);
+  const channel = (url.searchParams.get("channel") || "market").trim();
+  if(channel !== "market" && !/^staging-h1-\d{8}$/.test(channel)) return jerr("Bad channel", 400);
+  const capability = JSON.stringify({ [channel]: ["subscribe"], market: ["subscribe"] });
+  let resp;
+  try{
+    resp = await fetch(`https://rest.ably.io/keys/${encodeURIComponent(keyName)}/requestToken`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": "Basic " + btoa(key) },
+      body: JSON.stringify({ keyName, capability, ttl: 3600000, timestamp: Date.now(), nonce: crypto.randomUUID() }),
+    });
+  }catch(e){
+    console.error(`[ably] requestToken loi: ${e && e.message ? e.message : e}`);
+    return jerr("Ably token failed", 502);
+  }
+  if(!resp.ok){
+    const detail = (await resp.text()).slice(0, 200);
+    console.error(`[ably] requestToken HTTP ${resp.status}: ${detail}`);
+    // STAGING-ONLY diagnostic: tra ma + body loi cua Ably de chan doan
+    // (khong chua secret). Xoa truoc khi merge production.
+    return new Response(JSON.stringify({error: "Ably token failed", ablyStatus: resp.status, ablyDetail: detail}), {status: 502, headers: {"Content-Type": "application/json"}});
+  }
+  return sJson(await resp.json());
+}
+
+/* ---------- STAGING-ONLY: publish frame thu len kenh Ably test ---------- */
+// CHI DUNG CHO CHUNG MINH SONG H1 O STAGING. Chi publish len kenh
+// staging-h1-YYYYMMDD (tu choi 'market' + moi kenh khac); khong ghi
+// R2/D1. PHAI XOA truoc khi merge production (muc cat, giong quy tac _ib).
+// Auth 'internal' (X-Internal-Secret) nhu stock-publish.
+export async function hAblyTestPublish(request, env){
+  if(!env.ABLY_ROOT_KEY) return jerr("Ably not configured", 500);
+  let body;
+  try{ body = await request.json(); }catch(e){ return jerr("Bad JSON", 400); }
+  const channel = String(body.channel || "");
+  if(!/^staging-h1-\d{8}$/.test(channel)) return jerr("Bad channel", 400);
+  const seq = Number(body.seq);
+  if(!Number.isInteger(seq) || seq <= 0) return jerr("Bad seq", 400);
+  const t = body.t === "idx" ? "idx" : "q";
+  const frame = t === "idx"
+    ? { t, seq, ts: Date.now(), vnindex: 1766.65, chg: 0, br: [279, 1025], trin: 0.2873, test: true }
+    : { t, seq, ts: Date.now(), s: "FPT", p: 54000, c: 0, v: 13225800, tv: 721751620000, o: 53900, h: 54100, l: 53800, fb: 493793, fs: 5253272, test: true };
+  const key = env.ABLY_ROOT_KEY.trim();
+  let resp;
+  try{
+    resp = await fetch(`https://rest.ably.io/channels/${encodeURIComponent(channel)}/messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": "Basic " + btoa(key) },
+      body: JSON.stringify({ name: t, data: JSON.stringify(frame) }),
+    });
+  }catch(e){
+    console.error(`[ably-test] publish loi: ${e && e.message ? e.message : e}`);
+    return jerr("Ably test publish failed", 502);
+  }
+  const text = await resp.text();
+  if(!resp.ok){
+    console.error(`[ably-test] publish HTTP ${resp.status}: ${text.slice(0, 200)}`);
+    return jerr("Ably test publish failed", 502);
+  }
+  return sJson({ ok: true, channel, seq, ablyStatus: resp.status, ablyBody: text.slice(0, 200) });
+}
+
+/* ---------- H1 pha DO: WebSocket stream qua Durable Object ---------- */
+// Auth o frame dau tien (khong header/URL). Room theo ngay ICT.
+export async function hStockStream(request, env){
+  const upgrade = request.headers.get("Upgrade") || "";
+  if(!upgrade.toLowerCase().includes("websocket")) return jerr("WebSocket upgrade required", 400);
+  if(!env.MARKET_ROOM){
+    console.error("[do] MARKET_ROOM binding thieu");
+    return jerr("DO not configured", 500);
+  }
+  const day = new Date(Date.now() + 7 * 3600 * 1000).toISOString().slice(0, 10).replaceAll("-", "");
+  const id = env.MARKET_ROOM.idFromName("market-" + day);
+  const stub = env.MARKET_ROOM.get(id);
+  return stub.fetch(request);
+}
+
+/* ---------- STAGING-ONLY: publish frame thu len DO ---------- */
+// Chi dung cho chung minh song H1 o staging. PHAI XOA truoc khi merge
+// production (muc cat, giong quy tac _ib). Auth 'internal'.
+export async function hDoTestPublish(request, env){
+  if(!env.MARKET_ROOM){
+    console.error("[do] MARKET_ROOM binding thieu");
+    return jerr("DO not configured", 500);
+  }
+  let body;
+  try{ body = await request.json(); }catch(e){ return jerr("Bad JSON", 400); }
+  const frames = Array.isArray(body.frames) ? body.frames : (body.frame ? [body.frame] : []);
+  if(frames.length === 0 || frames.length > 60) return jerr("Bad frames", 400);
+  for(const f of frames){
+    if(!f || typeof f !== "object") return jerr("Bad frame", 400);
+    const t = f.t === "idx" ? "idx" : "q";
+    if(t === "q" && typeof f.s !== "string") return jerr("Bad frame", 400);
+  }
+  const day = new Date(Date.now() + 7 * 3600 * 1000).toISOString().slice(0, 10).replaceAll("-", "");
+  const id = env.MARKET_ROOM.idFromName("market-" + day);
+  const stub = env.MARKET_ROOM.get(id);
+  let resp;
+  try{
+    resp = await stub.fetch(new Request("https://do/ingest", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Internal-Secret": env.INTERNAL_SECRET || env.STOCK_PUBLISH_SECRET || "" },
+      body: JSON.stringify({ frames }),
+    }));
+  }catch(e){
+    console.error(`[do] test publish loi: ${e && e.message ? e.message : e}`);
+    return jerr("DO test publish failed", 502);
+  }
+  const text = await resp.text();
+  if(!resp.ok){
+    console.error(`[do] test publish HTTP ${resp.status}: ${text.slice(0, 200)}`);
+    return jerr("DO test publish failed", 502);
+  }
+  let data;
+  try{ data = JSON.parse(text); }catch(e){ data = { raw: text.slice(0, 200) }; }
+  return sJson(Object.assign({ ok: true, doStatus: resp.status }, data));
 }
 
 
@@ -2029,6 +2251,13 @@ export async function hTickStateGet(request, env){
 // biet thieu file vs file loi, roi fallback theo hop dong).
 export async function hInternalUniverse(request, env){
   const d = await sGet(env, "market/universe.json");
+  return sJson(d || {});
+}
+
+// Lich quyen (Phuong an B, Chot 10:33 29/10): file versioned do job
+// 07:30 day len R2; app render muc Lich quyen, khong Telegram.
+export async function hCorporateActions(request, env){
+  const d = await sGet(env, "market/corporate_actions.json");
   return sJson(d || {});
 }
 

@@ -18,7 +18,8 @@ import { and, eq, lt, sql } from "drizzle-orm";
 import { rateLimits } from "./schema.js";
 import {getSession, getUser, OWNER_EMAIL} from './auth.js';
 import {jerr} from './utils.js';
-import {hStockVersion, hStockIndices, hStockSectorIndices, hStockRegime, hStockSignals, hStockQuote, hStockOhlcv, hStockTrades, hStockScreener, hStockFundamentals, hStockStatements, hStockNews, hStockMarketNews, hStockForeignFlow, hStockForeignHistory, hStockProprietaryFlow, hStockProprietaryHistory, hStockFlowScreen, hStockOrderbook, hStockOrderbookDates, hStockFlowHistory, hStockDivergence, hStockLiveOverview, hStockMarketTotals, hStockMacro, hStockMacroHistory, hStockConsensus, hStockConsensusDetail, hStockHolders, hStockHoldersShard, hStockHoldersSymbol, hStockSectors, hStockSectorsDetail, hStockListing, hStockEvents, hStockCompanyProfile, hStockCompare, hWatchlistGet, hWatchlistAdd, hWatchlistDel, hPortfolio, hTxnAdd, hCostHistory, hTargetsGet, hTargetsSet, hTargetsDel, hStockPublish, hModalAlert, hStockReportData, hStockAlertDone, hStockTargetDone, hStockRisk, hStockStrategyReview, hRuleAlertsGet, hRuleAlertsAdd, hRuleAlertsDel, hRuleAlertsInternal, hTickStateGet, hInternalUniverse} from './stock.js';
+export { MarketRoom } from "./market-room.js";
+import {hStockVersion, hStockIndices, hStockSectorIndices, hStockRegime, hStockSignals, hStockQuote, hStockOhlcv, hStockTrades, hStockScreener, hStockFundamentals, hStockStatements, hStockNews, hStockMarketNews, hStockForeignFlow, hStockForeignHistory, hStockProprietaryFlow, hStockProprietaryHistory, hStockFlowScreen, hStockOrderbook, hStockOrderbookDates, hStockFlowHistory, hStockDivergence, hStockLiveOverview, hStockMarketTotals, hStockMacro, hStockMacroHistory, hStockConsensus, hStockConsensusDetail, hStockHolders, hStockHoldersShard, hStockHoldersSymbol, hStockSectors, hStockSectorsDetail, hStockListing, hStockEvents, hStockCompanyProfile, hStockCompare, hWatchlistGet, hWatchlistAdd, hWatchlistDel, hPortfolio, hTxnAdd, hCostHistory, hTargetsGet, hTargetsSet, hTargetsDel, hStockPublish, hModalAlert, hStockReportData, hStockAlertDone, hStockTargetDone, hStockRisk, hStockStrategyReview, hRuleAlertsGet, hRuleAlertsAdd, hRuleAlertsDel, hRuleAlertsInternal, hTickStateGet, hInternalUniverse, hCorporateActions, hAblyToken, hAblyTestPublish, hStockStream, hDoTestPublish} from './stock.js';
 
 // Build ID - replaced with timestamp on every deploy (see cf_deploy.py)
 const BUILD_ID = "__BUILD__";
@@ -30,7 +31,7 @@ function addSecurityHeaders(h){
   h.set("Referrer-Policy", "strict-origin-when-cross-origin");
   // CSP: chỉ cho phép tài nguyên từ chính origin + inline script/style (app dùng inline)
   // + unpkg (SDK Hyperbeam) + *.hyperbeam.com (WebRTC interactive tier, Henrry Chốt 19/10)
-  h.set("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com; style-src 'self' 'unsafe-inline'; connect-src 'self' https://*.hyperbeam.com wss://*.hyperbeam.com; img-src 'self' data:; media-src 'self' https:;");
+  h.set("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com https://cdn.ably.com; style-src 'self' 'unsafe-inline'; connect-src 'self' https://*.hyperbeam.com wss://*.hyperbeam.com https://rest.ably.io https://realtime.ably.io wss://realtime.ably.io; img-src 'self' data:; media-src 'self' https:;");
   return h;
 }
 /* ============================================================
@@ -153,6 +154,7 @@ const ROUTES = [
   ['GET',    '/api/collections/*',   (q,w,e)=>handleCollectionGet(e,w,q.split('/').pop()), 'user'],
   // --- stock ---
   ['GET',    '/api/stock/version',   hStockVersion,          'user'],
+  ['GET',    '/api/stock/corporate-actions', hCorporateActions, 'user'],
   ['GET',    '/api/stock/indices',   hStockIndices,          'user'],
   ['GET',    '/api/stock/sector-indices', hStockSectorIndices, 'user'],
   ['GET',    '/api/stock/regime',    hStockRegime,           'user'],
@@ -217,6 +219,13 @@ const ROUTES = [
   ['POST',   '/api/internal/stock-publish', hStockPublish,   'internal'],
   ['GET',    '/api/internal/tick-state', hTickStateGet,      'internal'],
   ['GET',    '/api/internal/universe', hInternalUniverse,  'internal'],
+  // H1 staging: Ably token (subscribe-only) cho trinh duyet — session 'user'
+  ['POST',   '/api/ably-token',        hAblyToken,         'user'],
+  // H1 staging-only: publish frame thu (PHAI XOA truoc khi merge production)
+  ['POST',   '/api/internal/ably-test-publish', hAblyTestPublish, 'internal'],
+  // H1 pha DO: WebSocket stream (auth o frame dau) + publish thu staging-only (PHAI XOA truoc khi merge production)
+  ['GET',    '/api/stock/stream',     hStockStream,       'public'],
+  ['POST',   '/api/internal/do-test-publish', hDoTestPublish, 'internal'],
   ['POST',   '/api/internal/modal-alert', hModalAlert,     'internal'],
   ['GET',    '/api/internal/stock-report-data', hStockReportData, 'internal'],
   ['POST',   '/api/internal/stock-alert-done', hStockAlertDone, 'internal'],
@@ -278,7 +287,7 @@ async function checkRateLimit(request, env, path){
   return null;
 }
 
-async function dispatch(request, env, url){
+async function dispatch(request, env, url, ctx){
   const method = request.method;
   const path = url.pathname;
   // Rate limit public endpoints before auth checks
@@ -304,7 +313,7 @@ async function dispatch(request, env, url){
    }else if(auth === 'internal'){
       if(!internalOk(request, env)) return jerr('Forbidden', 403);
    }
-    return handler(request, env, url);
+    return handler(request, env, url, ctx);
  }
   return null;
 }
@@ -404,7 +413,7 @@ export default {
         url.pathname === "/terms" || url.pathname === "/terms.html") {
       return Response.redirect(new URL("/policy", url.origin), 301);
    }
-    const routed = await dispatch(request, env, url);
+    const routed = await dispatch(request, env, url, ctx);
     if(routed) return routed;
     const r = await env.ASSETS.fetch(request);
     if(url.pathname.endsWith(".html") || url.pathname === "/" || !url.pathname.includes(".")){
