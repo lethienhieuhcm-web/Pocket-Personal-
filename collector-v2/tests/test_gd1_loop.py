@@ -309,5 +309,45 @@ class TestGateLoopEndToEnd(unittest.TestCase):
             broker.stop()
 
 
+class TestRightsFlag(unittest.TestCase):
+    def test_load_rights_calendar_filters_by_date(self):
+        import json as _json
+        data = {"version": 1, "actions": [
+            {"symbol": "tcb", "ex_date": SESSION_DATE, "kind": "stock_dividend"},
+            {"symbol": "NT2", "ex_date": "2026-10-30", "kind": "cash_dividend"},
+            {"symbol": "ANV", "ex_date": SESSION_DATE, "kind": "cash_dividend"}]}
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "cal.json")
+            with open(path, "w", encoding="utf-8") as f:
+                _json.dump(data, f)
+            from collector.rights import load_rights_calendar
+            out = load_rights_calendar(path, SESSION_DATE)
+            self.assertEqual(out, {"TCB": "stock_dividend", "ANV": "cash_dividend"})
+
+    def test_consumer_flags_event_symbol_but_still_guards(self):
+        with tempfile.TemporaryDirectory() as d:
+            store = SessionStore(os.path.join(d, "session.db"))
+            c = Consumer(SESSION_DATE, store, d, flush_sec=3600,
+                         rights_events={"TCB": "stock_dividend"})
+            env = _match(sym="TCB")
+            self.assertEqual(c.process(env), "accept")
+            self.assertTrue(env.ex_date)
+            self.assertEqual(env.corp_action, "stock_dividend")
+            self.assertEqual(c.counters.rights_flagged, 1)
+            # Ma co su kien nhung tin cu van bi T1 loai — co khong mien guard.
+            old = _match(sym="TCB", ts=_ts(14, 30, day=28))
+            self.assertEqual(c.process(old), "reject_t1")
+            self.assertTrue(old.ex_date)
+            store.close()
+
+    def test_envelope_roundtrip_keeps_rights_fields(self):
+        e = _match(sym="TCB")
+        e.ex_date = True
+        e.corp_action = "stock_dividend"
+        e2 = Envelope.from_dict(e.to_dict())
+        self.assertTrue(e2.ex_date)
+        self.assertEqual(e2.corp_action, "stock_dividend")
+
+
 if __name__ == "__main__":
     unittest.main()

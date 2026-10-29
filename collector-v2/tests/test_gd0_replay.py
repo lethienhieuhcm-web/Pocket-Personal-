@@ -10,8 +10,12 @@ import unittest
 from collector.replay import replay
 
 RAW_DIR = os.environ.get(
-    "COLLECTOR_RAW_DIR", os.path.expanduser("~/workspace/instabox-collector/vm-pull"))
+    "COLLECTOR_RAW_DIR",
+    os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                 "fixtures", "raw-20261028"))
 SESSION_DATE = "2026-10-28"
+FIXTURE_FILES = ("raw_dnse.jsonl", "raw_kbs.jsonl",
+                 "raw_vndirect.jsonl", "raw_vps.jsonl")
 
 ICT = datetime.timezone(datetime.timedelta(hours=7))
 
@@ -23,6 +27,12 @@ def _date_ict(ts):
 class TestGd0Replay(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        missing = [f for f in FIXTURE_FILES
+                   if not os.path.exists(os.path.join(RAW_DIR, f))]
+        if missing:
+            raise unittest.SkipTest(
+                f"fixture GĐ0 thieu {missing} trong {RAW_DIR} — khoi phuc bang "
+                "fixtures/restore_from_r2.py, khong dung vm-pull (bi ghi de moi phien)")
         cls._tmp = tempfile.TemporaryDirectory()
         cls.result = replay(RAW_DIR, SESSION_DATE, cls._tmp.name)
         with open(os.path.join(cls._tmp.name, "quarantine.jsonl"), encoding="utf-8") as f:
@@ -48,7 +58,7 @@ class TestGd0Replay(unittest.TestCase):
         # Doc lap: dem truc tiep tu file raw, khong qua guard.
         rejected_keys = {json.dumps(q["raw"], sort_keys=True) for q in self.quarantine
                          if q["outcome"] == "reject_t1"}
-        for fname in ("raw_dnse.jsonl", "raw_kbs.jsonl", "raw_vndirect.jsonl", "raw_vps.jsonl"):
+        for fname in FIXTURE_FILES:
             with open(os.path.join(RAW_DIR, fname), encoding="utf-8") as f:
                 for line in f:
                     rec = json.loads(line)
@@ -67,7 +77,7 @@ class TestGd0Replay(unittest.TestCase):
     def test_all_2810_matches_accounted(self):
         total_matches = 0
         matches_2810 = 0
-        for fname in ("raw_dnse.jsonl", "raw_kbs.jsonl", "raw_vndirect.jsonl", "raw_vps.jsonl"):
+        for fname in FIXTURE_FILES:
             with open(os.path.join(RAW_DIR, fname), encoding="utf-8") as f:
                 for line in f:
                     rec = json.loads(line)

@@ -21,6 +21,8 @@ class Envelope:
     seq: int = 0
     ts_synthetic: bool = False
     restated: bool = False
+    ex_date: bool = False  # ma co su kien quyen hom nay (lich §3.5) — co thong tin, KHONG mien guard
+    corp_action: str = None  # kind su kien (stock_dividend/cash_dividend/...), None neu khong co
 
     def minute(self):
         """Phut cua ts (epoch, lam tron xuong phut). Guard T1/T3 dung cai nay."""
@@ -32,7 +34,8 @@ class Envelope:
                 "ts": self.ts, "recv_ts": self.recv_ts, "price": self.price,
                 "vol": self.vol, "acc": self.acc, "fields": self.fields,
                 "field_src": self.field_src, "seq": self.seq,
-                "ts_synthetic": self.ts_synthetic, "restated": self.restated}
+                "ts_synthetic": self.ts_synthetic, "restated": self.restated,
+                "ex_date": self.ex_date, "corp_action": self.corp_action}
 
     @classmethod
     def from_dict(cls, d):
@@ -43,7 +46,9 @@ class Envelope:
                    field_src=dict(d.get("field_src") or {}),
                    seq=int(d.get("seq") or 0),
                    ts_synthetic=bool(d.get("ts_synthetic")),
-                   restated=bool(d.get("restated")))
+                   restated=bool(d.get("restated")),
+                   ex_date=bool(d.get("ex_date")),
+                   corp_action=d.get("corp_action"))
 
 
 def envelope_from_raw(gate, rec, seq=0, fieldmap_data=None):

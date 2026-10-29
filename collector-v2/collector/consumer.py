@@ -4,10 +4,14 @@ Nhan envelope tu shared queue -> guard T1/T2/T3 -> dedup -> buckets 7 phan
 tu [o,h,l,c,v,fts,lts] / snapshots / preopen -> flush SQLite + checkpoint +
 quarantine moi FLUSH_SEC.
 
-GHI CHU T0: guard nhay gia do quyen (§4.1 bo sung Q6) CHUA lam o day vi can
-2 dau vao consumer hien chua co: file lich quyen + floor/ceiling/prev_close
-tu board. Diem moc: Consumer.process() — khi session cap rights context thi
-them mien tru T0 truoc classify() ma khong doi cac tang con lai.
+GHI CHU T0: guard nhay gia do quyen (§4.1 bo sung Q6) CHUA ap dung mien tru
+o day. Consumer chi gan co ex_date/corp_action tu lich (du lieu da co).
+Mien tru T0 can them floor/ceiling/prev_close TU BOARD — khong co dau vao
+nao trong pipeline mang 3 truong nay (snapshot DNSE khong co reference/
+floor/ceiling trong field map). Do la diem chan dung cua T0: can them dau
+vao board-reference o session runner truoc khi bat mien tru, khong duoc
+bo T2 cho ma co su kien neu thieu kiem tra floor/ceiling (se cho replay
+cu lot qua).
 """
 import json
 import os
@@ -34,6 +38,7 @@ class ConsumerCounters:
         self.acc_resets = 0
         self.preopen_segments = 0
         self.restatements = 0
+        self.rights_flagged = 0
         self.by_gate = {}
 
     def _gate(self, gate):
@@ -47,17 +52,19 @@ class ConsumerCounters:
                 "acc_regressed": self.acc_regressed,
                 "acc_resets": self.acc_resets,
                 "preopen_segments": self.preopen_segments,
-                "restatements": self.restatements, "by_gate": self.by_gate}
+                "restatements": self.restatements,
+                "rights_flagged": self.rights_flagged, "by_gate": self.by_gate}
 
 
 class Consumer:
     def __init__(self, session_date, store, out_dir, fieldmap_data=None,
                  flush_sec=FLUSH_SEC, time_fn=time.time,
-                 monotonic_fn=time.monotonic):
+                 monotonic_fn=time.monotonic, rights_events=None):
         self.session_date = session_date
         self.store = store
         self.out_dir = out_dir
         self.fieldmap_data = fieldmap_data
+        self.rights_events = rights_events or {}
         self.flush_sec = flush_sec
         self._time = time_fn
         self._mono = monotonic_fn
@@ -96,6 +103,13 @@ class Consumer:
 
     # -- xu ly 1 envelope (dung ca trong vong loop lan replay resume) --
     def process(self, env):
+        # Co quyen (§3.5): gan truoc guard, chi de danh dau — KHONG mien T1/T2
+        # (xem ghi chu T0 o dau file: thieu floor/ceiling board).
+        kind = self.rights_events.get(env.sym)
+        if kind is not None and not env.ex_date:
+            env.ex_date = True
+            env.corp_action = kind
+            self.counters.rights_flagged += 1
         self.counters.msgs += 1
         self.counters._gate(env.gate)["msgs"] += 1
         if env.seq:

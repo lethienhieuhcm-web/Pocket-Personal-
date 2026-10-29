@@ -21,6 +21,7 @@ import time
 from .consumer import Consumer, FLUSH_SEC, QUEUE_MAX
 from .envelope import Envelope
 from .gate import DnseGate, GATE
+from .rights import load_rights_calendar
 from .store import SessionStore
 from .wal import read_wal
 
@@ -43,7 +44,7 @@ def default_watchdog_armed():
 class SessionConfig:
     def __init__(self, symbols, out_dir, session_date=None, ws_url=None,
                  client_id=None, flush_sec=FLUSH_SEC, queue_max=QUEUE_MAX,
-                 silence_sec=120, minutes=None):
+                 silence_sec=120, minutes=None, rights_calendar=None):
         self.symbols = symbols
         self.out_dir = out_dir
         self.session_date = session_date or ict_today()
@@ -53,6 +54,7 @@ class SessionConfig:
         self.queue_max = queue_max
         self.silence_sec = silence_sec
         self.minutes = minutes
+        self.rights_calendar = rights_calendar
 
 
 def _read_checkpoint(out_dir):
@@ -82,8 +84,18 @@ def run_session(cfg, stop_event=None):
         _rotate_old_session(cfg.out_dir, ckpt["session_date"])
         ckpt = None
     store = SessionStore(os.path.join(cfg.out_dir, "session.db"))
+    rights_events = {}
+    if cfg.rights_calendar:
+        if os.path.exists(cfg.rights_calendar):
+            rights_events = load_rights_calendar(cfg.rights_calendar,
+                                                 cfg.session_date)
+            log.warning("lich quyen: %d ma co su kien ngay %s",
+                        len(rights_events), cfg.session_date)
+        else:
+            log.warning("LICH QUYEN THIEU: %s khong ton tai — envelope khong co co ex_date",
+                        cfg.rights_calendar)
     consumer = Consumer(cfg.session_date, store, cfg.out_dir,
-                        flush_sec=cfg.flush_sec)
+                        flush_sec=cfg.flush_sec, rights_events=rights_events)
     gap_q = queue.Queue()
     consumer.gap_queue = gap_q
     resumed = False
@@ -169,7 +181,10 @@ def _status_loop(cfg, consumer, gate, q, stop_event):
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description="Collector GĐ1: gate DNSE -> WAL -> SQLite")
-    ap.add_argument("--symbols", required=True, help="ma, cach nhau bang dau phay")
+    ap.add_argument("--symbols", required=False, default=None,
+                    help="ma, cach nhau bang dau phay (hoac dung --symbols-file)")
+    ap.add_argument("--symbols-file", default=None,
+                    help="file JSON array hoac moi dong 1 ma (universe du ma)")
     ap.add_argument("--out-dir", required=True)
     ap.add_argument("--date", default=None, help="session_date YYYY-MM-DD (mac dinh: hom nay ICT)")
     ap.add_argument("--ws-url", default=None)
@@ -178,14 +193,29 @@ def main(argv=None):
     ap.add_argument("--silence-sec", type=int, default=120)
     ap.add_argument("--minutes", type=float, default=None,
                     help="dung sau N phut (de chay thu)")
+    ap.add_argument("--rights-calendar", default=None,
+                    help="duong dan corporate_actions.json (co ex_date/corp_action, khong mien guard T0)")
     args = ap.parse_args(argv)
     logging.basicConfig(level=logging.INFO,
                         format="%(asctime)s %(levelname)s %(name)s: %(message)s")
-    cfg = SessionConfig([s.strip() for s in args.symbols.split(",") if s.strip()],
+    symbols = []
+    if args.symbols_file:
+        with open(args.symbols_file, encoding="utf-8") as f:
+            raw = f.read().strip()
+        if raw.startswith("["):
+            symbols = [str(s).strip().upper() for s in json.loads(raw)]
+        else:
+            symbols = [ln.strip().upper() for ln in raw.splitlines() if ln.strip()]
+    if args.symbols:
+        symbols += [s.strip() for s in args.symbols.split(",") if s.strip()]
+    if not symbols:
+        ap.error("can --symbols hoac --symbols-file")
+    cfg = SessionConfig(symbols,
                         args.out_dir, session_date=args.date,
                         ws_url=args.ws_url, client_id=args.client_id,
                         flush_sec=args.flush_sec, silence_sec=args.silence_sec,
-                        minutes=args.minutes)
+                        minutes=args.minutes,
+                        rights_calendar=args.rights_calendar)
     stop_event = threading.Event()
 
     def _sig(*_a):
