@@ -30,12 +30,10 @@ import { chatToolRun, resolveCaller } from './mcp.js';
 
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models/';
 const DEFAULT_MODEL = 'gemini-3.5-flash';
-// Oxion (chan API du phong AI Chat, Chot 22:08 24/10 theo ban trinh
-// 21:38 + phan key 21:57: key free -> Oxion key 1 -> tab Plus).
-// Code chi doc 1 secret OXION_API_KEY (khong xoay vong); model
-// mac dinh gemini-3.6-flash, doi duoc qua env OXION_MODEL.
-const OXION_URL = 'https://oxionai.com/v1/chat/completions';
-const OXION_MODEL_DEFAULT = 'gemini-3.6-flash';
+// Chan API du phong thu 2 cua AI Chat (ngat 08:08 26/10 theo Chot
+// ngat Oxion; khoi phuc duoc bang cach khoi phuc chan nay tu git).
+// Hien tai AI Chat chi dung key free; khong con duong goi nao toi
+// chan du phong nay trong worker.
 const RATE_LIMIT_PER_HOUR = 30; // tam tat o giai doan test (xem handler)
 
 /* ---------------- khai bao ham cho Gemini (15 tool) ---------------- */
@@ -271,128 +269,6 @@ function geminiFunctionCall(j) {
     }
   }
   return null;
-}
-
-// Gemini khai type HOA (STRING/OBJECT/...); endpoint OpenAI-
-// compatible doi type thuong (string/object/...). Chuan hoa de
-// quy qua properties/items; truong khac (description/enum/
-// required) giu nguyen. (Bai hoc 24/10: gui nguyen type HOA bi
-// aggregator tra 400 nhanh, chan Oxion chet ma khong ro ly do.)
-function _oxionSchema(node) {
-  if (!node || typeof node !== 'object') return { type: 'object', properties: {} };
-  const out = Array.isArray(node) ? [] : {};
-  for (const [k, v] of Object.entries(node)) {
-    if (k === 'type' && typeof v === 'string') out[k] = v.toLowerCase();
-    else if (k === 'properties' && v && typeof v === 'object') {
-      out[k] = {};
-      for (const [pk, pv] of Object.entries(v)) out[k][pk] = _oxionSchema(pv);
-    } else if (k === 'items' && v && typeof v === 'object') out[k] = _oxionSchema(v);
-    else out[k] = v;
-  }
-  return out;
-}
-
-/* ---------------- goi Oxion (chan API du phong) ---------------- */
-// Dich body dang Gemini sang OpenAI chat completions, tra ve dang
-// Gemini (candidates[0].content.parts) de tai su dung geminiText /
-// geminiFunctionCall / _numericGuard nhu luot key. Chi goi khi luot
-// key nem (pass-1 / pass-2); loi -> nem {reason:'oxion_down'} de
-// luong xu ly roi xuong engine (b) hoac bo cau dan nhu cu.
-async function oxionCall(env, geminiBody, timeoutMs) {
-  const key = env.OXION_API_KEY;
-  if (!key) {
-    const e = new Error('oxion_no_key');
-    e.reason = 'oxion_down';
-    throw e;
-  }
-  const messages = [];
-  const sys = geminiBody.systemInstruction
-    && geminiBody.systemInstruction.parts;
-  if (Array.isArray(sys)) {
-    const t = sys.filter((p) => typeof p.text === 'string')
-      .map((p) => p.text).join('\n');
-    if (t) messages.push({ role: 'system', content: t });
-  }
-  for (const c of (geminiBody.contents || [])) {
-    const t = (c.parts || []).filter((p) => typeof p.text === 'string')
-      .map((p) => p.text).join('\n');
-    messages.push({ role: c.role === 'model' ? 'assistant' : 'user', content: t });
-  }
-  const body = {
-    model: env.OXION_MODEL || OXION_MODEL_DEFAULT,
-    messages,
-    temperature: (geminiBody.generationConfig
-      && geminiBody.generationConfig.temperature) ?? 0.2,
-    max_tokens: (geminiBody.generationConfig
-      && geminiBody.generationConfig.maxOutputTokens) || 1024,
-  };
-  const decls = geminiBody.tools && geminiBody.tools[0]
-    && geminiBody.tools[0].functionDeclarations;
-  if (Array.isArray(decls) && decls.length) {
-    body.tools = decls.map((d) => ({
-      type: 'function',
-      function: {
-        name: d.name, description: d.description || '',
-        parameters: _oxionSchema(d.parameters),
-      },
-    }));
-    const mode = geminiBody.toolConfig
-      && geminiBody.toolConfig.functionCallingConfig
-      && geminiBody.toolConfig.functionCallingConfig.mode;
-    body.tool_choice = mode === 'ANY' ? 'required' : 'auto';
-  }
-  const ctl = new AbortController();
-  const timer = setTimeout(() => ctl.abort(), timeoutMs || 60000);
-  let r;
-  try {
-    r = await fetch(OXION_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: 'Bearer ' + key,
-      },
-      body: JSON.stringify(body),
-      signal: ctl.signal,
-    });
-  } catch (e) {
-    clearTimeout(timer);
-    const err = new Error('oxion_down');
-    err.reason = 'oxion_down';
-    throw err;
-  }
-  clearTimeout(timer);
-  if (!r.ok) {
-    const err = new Error('oxion_down');
-    err.reason = 'oxion_down';
-    err.detail = 'http_' + r.status;
-    throw err;
-  }
-  const j = await r.json();
-  const msg = j && j.choices && j.choices[0] && j.choices[0].message;
-  if (!msg) {
-    const err = new Error('oxion_down');
-    err.reason = 'oxion_down';
-    throw err;
-  }
-  const parts = [];
-  if (Array.isArray(msg.tool_calls)) {
-    for (const tc of msg.tool_calls) {
-      if (tc && tc.function && tc.function.name) {
-        let args = {};
-        try { args = JSON.parse(tc.function.arguments || '{}'); } catch (e2) { /* giu {} */ }
-        parts.push({ functionCall: { name: tc.function.name, args } });
-      }
-    }
-  }
-  if (typeof msg.content === 'string' && msg.content.trim()) {
-    parts.push({ text: msg.content });
-  }
-  if (!parts.length) {
-    const err = new Error('oxion_down');
-    err.reason = 'oxion_down';
-    throw err;
-  }
-  return { candidates: [{ content: { parts } }] };
 }
 
 /* Bang nganh ICB cho fallback TAT DINH (giong bang rule 6 cua
@@ -822,7 +698,6 @@ export async function hAiChat(request, env) {
 
   // Luot 1: dieu phoi (chon tool)
   let j1;
-  let viaOxion = false;
   const pass1Body = {
     systemInstruction: { parts: [{ text: SYSTEM_PROMPT + '\n13. Tra loi bang ngon ngu: ' + lang + '.' }] },
     contents,
@@ -841,55 +716,43 @@ export async function hAiChat(request, env) {
     }
     j1 = await geminiCall(env, keys, state, pass1Body, 10000, 3000);
   } catch (e) {
-    // Oxion (chan API du phong, Chot 22:08 24/10): chi khi luot key
-    // nem + co secret OXION_API_KEY. Thanh cong -> j1 dang Gemini,
-    // roi xuong xu ly fc/text phia duoi nhu luot key (kem co
-    // viaOxion de log via rieng). That bai -> engine (b) nhu cu.
-    if (env.OXION_API_KEY) {
-      try {
-        j1 = await oxionCall(env, pass1Body, 60000);
-        viaOxion = true;
-      } catch (e3) { /* Oxion chet -> engine nhu cu */ }
-    }
-    if (!viaOxion) {
-      // Engine (b): chi khi luot dieu phoi chet vi khoa + co engine-fallback
-      // + probe xanh. Tra fallback KEM engine_job (client cu bo qua truong
-      // moi va dung chatRoute nhu cu; client moi chi poll engine khi
-      // chatRoute khong giai quyet duoc) — khong lam cham luot fallback.
-      const fbExtra = { keys_tried: state.keysTried, detail: (e && e.detail) || null };
-      try {
-        const flag = await aiEngineFlag(env);
-        if (flag === 'engine-fallback') {
-          const probe = await engineProbe(env);
-          if (probe.ok) {
-            const enq = await engineEnqueue(env,
-              enginePrompt(lastUser.text, lang), lang);
-            if (enq.job_id) {
-              return finish({ fallback: true, reason: (e && e.reason) || 'gemini_down',
-                engine_job: enq.job_id, engine_available: true },
-                'fallback:engine_pending', fbExtra);
-            }
-            if (enq.queue_full) {
-              return finish({ fallback: true, reason: (e && e.reason) || 'gemini_down',
-                engine_busy: true }, 'fallback:engine_busy', fbExtra);
-            }
+    // (Chan du phong thu 2 da ngat 26/10: luot key chet di thang
+    // engine (b) / fallback nhu cu, khong qua chan du phong nua.)
+    // Engine (b): chi khi luot dieu phoi chet vi khoa + co engine-fallback
+    // + probe xanh. Tra fallback KEM engine_job (client cu bo qua truong
+    // moi va dung chatRoute nhu cu; client moi chi poll engine khi
+    // chatRoute khong giai quyet duoc) — khong lam cham luot fallback.
+    const fbExtra = { keys_tried: state.keysTried, detail: (e && e.detail) || null };
+    try {
+      const flag = await aiEngineFlag(env);
+      if (flag === 'engine-fallback') {
+        const probe = await engineProbe(env);
+        if (probe.ok) {
+          const enq = await engineEnqueue(env,
+            enginePrompt(lastUser.text, lang), lang);
+          if (enq.job_id) {
+            return finish({ fallback: true, reason: (e && e.reason) || 'gemini_down',
+              engine_job: enq.job_id, engine_available: true },
+              'fallback:engine_pending', fbExtra);
+          }
+          if (enq.queue_full) {
+            return finish({ fallback: true, reason: (e && e.reason) || 'gemini_down',
+              engine_busy: true }, 'fallback:engine_busy', fbExtra);
           }
         }
-      } catch (e2) { /* probe/enqueue loi -> fallback thuong */ }
-      return fallback((e && e.reason) || 'gemini_down', fbExtra);
-    }
-  }
+      }
+    } catch (e2) { /* probe/enqueue loi -> fallback thuong */ }
+    return fallback((e && e.reason) || 'gemini_down', fbExtra);  }
 
   let fc = geminiFunctionCall(j1);
   if (!fc) {
     // Khong can so lieu: chi chap nhan text neu khong chua con so
     // nao khong kiem chung duoc (khong co envelope de gac).
     let text = geminiText(j1);
-    if (viaOxion) text = stripRecommendationSentences(text).text;
     if (text && _numericGuard(text, null) && !_bannedLead(text)) {
-      return finish(viaOxion ? { ok: true, tool: null, text, via: 'oxion' } : { ok: true, tool: null, text },
-        viaOxion ? 'ok:oxion' : 'ok',
-        { keys_tried: state.keysTried, via: viaOxion ? 'oxion' : null });
+      return finish({ ok: true, tool: null, text },
+        'ok',
+        { keys_tried: state.keysTried, via: null });
     }
     // Van xuoi khong kiem chung duoc (hoac rong): ep model CHON
     // TOOL 1 luot (mode ANY) truoc khi roi du phong. Ca loi
@@ -944,7 +807,7 @@ export async function hAiChat(request, env) {
     'so phan tram giu nguyen nhu trong JSON.\n' +
     'CAU HOI: ' + lastUser.text + '\nDU LIEU: ' + dataJson;
   try {
-    if (Date.now() - t0 < 10000 || viaOxion) {
+    if (Date.now() - t0 < 10000) {
     const j2 = await geminiCall(env, keys, state, {
       contents: [{ role: 'user', parts: [{ text: leadPrompt }] }],
       generationConfig: { temperature: 0.3, maxOutputTokens: 1024 },
@@ -953,27 +816,14 @@ export async function hAiChat(request, env) {
     if (txt && _numericGuard(txt, envelope.data) && !_bannedLead(txt)) lead = txt;
     }
   } catch (e) {
-    // Cau dan qua Oxion khi luot key chet (luot viaOxion: khoa da
-    // chet nen geminiCall truot nhanh qua dead-set). Van qua cong
-    // gac so + loc cau khuyen nghi nhu luot key.
-    if (env.OXION_API_KEY) {
-      try {
-        const oj = await oxionCall(env, {
-          contents: [{ role: 'user', parts: [{ text: leadPrompt }] }],
-          generationConfig: { temperature: 0.3, maxOutputTokens: 1024 },
-        }, 60000);
-        let txt = geminiText(oj).replace(/\s+/g, ' ').slice(0, 400);
-        txt = stripRecommendationSentences(txt).text;
-        if (txt && _numericGuard(txt, envelope.data) && !_bannedLead(txt)) lead = txt;
-      } catch (e3) { /* Oxion chet -> chi hien the du lieu */ }
-    }
+    // (Chan du phong thu 2 da ngat 26/10: luot key chet -> chi hien
+    // the du lieu, khong viet cau dan qua chan du phong nua.)
   }
 
   return finish(
-    viaOxion ? { ok: true, tool: fc.name, args: fc.args, envelope, lead, via: 'oxion' }
-      : { ok: true, tool: fc.name, args: fc.args, envelope, lead },
-    viaOxion ? 'ok:oxion' : 'ok',
-    { keys_tried: state.keysTried, lead_kept: lead ? 1 : 0, via: viaOxion ? 'oxion' : null });
+    { ok: true, tool: fc.name, args: fc.args, envelope, lead },
+    'ok',
+    { keys_tried: state.keysTried, lead_kept: lead ? 1 : 0, via: null });
 }
 
 export { _buildDecls };
