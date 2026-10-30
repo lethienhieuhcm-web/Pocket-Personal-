@@ -138,15 +138,18 @@ FOREIGN_NORMALIZED_GATES = ["dnse", "vndirect", "vps"]
 # _gate_value (2 lop: gate_snap_fields tai adapter + Aggregator).
 FIELD_MAP = {
     "dnse": {
-        "total_volume": ("stockinfo f22", 10, False),   # dinh danh lai
+        # GĐ0 30/10 (probe + giai ma tho stockinfo): f13=day-low, f22=ATC-bucket,
+        # f58/f59=matched-only. Ten chuan theo field_map.json GĐ0; scale giu
+        # nguyen quy uoc duong live (gia = nghin dong).
+        "atc_volume": ("stockinfo f22", 10, False),
         "total_value": ("stockinfo f25", 10**9, False),
         "buy_volume": ("stockinfo f17", 10, True),
-        "buy_value": ("stockinfo f58", 10**9, True),
+        "buy_value_matched": ("stockinfo f58", 10**9, False),
         "sell_volume": ("stockinfo f18", 10, True),
-        "sell_value": ("stockinfo f59", 10**9, True),
+        "sell_value_matched": ("stockinfo f59", 10**9, False),
         "room": ("stockinfo f20", 10, False),           # sentinel GVR
         "total_room": ("stockinfo f60", 10, False),
-        "last": ("stockinfo f13", 1, True),
+        "day_low": ("stockinfo f13", 1, False),
     },
     "ssi-mqtt": {
         "total_volume": ("snapshot nmTotalTradedQty", 1, False),
@@ -199,8 +202,9 @@ FIELD_MAP = {
 }
 
 # Truong so luong phai qua cong hop le (don vi CP/dong sau scale)
-QTY_FIELDS = ("total_volume", "total_value", "buy_volume", "buy_value",
-              "sell_volume", "sell_value", "room", "total_room")
+QTY_FIELDS = ("total_volume", "atc_volume", "total_value", "buy_volume", "buy_value",
+              "buy_value_matched", "sell_volume", "sell_value",
+              "sell_value_matched", "room", "total_room")
 # Chan tren tuyet doi: vuot = sentinel/thieu du lieu (vd 2^64 qua
 # float). 2^62 du lon cho moi KL/GD hop le cua 1 ma trong 1 phien.
 ABSURD_CAP = 2 ** 62
@@ -824,13 +828,13 @@ class DnseAdapter:
                     sym = topic.rsplit("/", 1)[-1]
                 self.agg.on_snapshot(self.name, sym,
                     gate_snap_fields(self.name, {
-                    "last": self._num(m, "f13"),
-                    "total_volume": self._num(m, "f22", 10),
+                    "day_low": self._num(m, "f13"),
+                    "atc_volume": self._num(m, "f22", 10),
                     "total_value": self._num(m, "f25", 10**9),
                     "buy_volume": self._num(m, "f17", 10),
-                    "buy_value": self._num(m, "f58", 10**9),
+                    "buy_value_matched": self._num(m, "f58", 10**9),
                     "sell_volume": self._num(m, "f18", 10),
-                    "sell_value": self._num(m, "f59", 10**9),
+                    "sell_value_matched": self._num(m, "f59", 10**9),
                     "room": self._num(m, "f20", 10),
                     "total_room": self._num(m, "f60", 10),
                     }, self.agg.gate_stats))
