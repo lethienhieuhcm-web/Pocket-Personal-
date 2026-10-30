@@ -1835,45 +1835,54 @@ vi:{stock_div:"Cổ tức cổ phiếu {pct}%",cash_div:"Cổ tức tiền mặt
 en:{stock_div:"Stock dividend {pct}%",cash_div:"Cash dividend {amt} VND/share",split:"Split {f}-for-1",exdate:"Ex-date {date}",ref_adj:"Today's reference price {ref} (adjusted)",ref_line:"Reference: {ref}"},
 zh:{stock_div:"股票股息 {pct}%",cash_div:"现金股息每股 {amt} 越南盾",split:"拆股 {f} 倍",exdate:"除权日 {date}",ref_adj:"今日参考价 {ref}（已调整）",ref_line:"参考价：{ref}"},
 ko:{stock_div:"주식 배당 {pct}%",cash_div:"현금 배당 주당 {amt} VND",split:"액면분할 {f}배",exdate:"권리락일 {date}",ref_adj:"오늘 기준가 {ref} (조정됨)",ref_line:"기준가: {ref}"}};
+// Ve lai hop quote tu _lastQuote khi doi ngon ngu (V10 30/10: note
+// quyen chi render 1 lan o loadDetail, doi EN khong ve lai #dQuote —
+// cung ho loi i18n Lich quyen: renderCA(_caData) o setStkLang).
+// Giu nguyen noi dung #dOb (so lenh) qua lan ve lai.
+function renderQuote(q){
+  const _ob=$("dOb"), _obHtml=_ob?_ob.innerHTML:"";
+  const pc=q.pct_change,cls=pc>0?"up":pc<0?"down":"";
+  let h=`<div class="row"><span class="k">Giá khớp</span><span class="v" style="font-size:17px">${fmtN(q.close)}</span></div>`;
+  h+=`<div class="row"><span class="k">Thay đổi</span><span class="v ${cls}">${q.change!=null?fmtN(q.change)+" ("+fmtPct(pc)+")":fmtPct(pc)}</span></div>`;
+  // Nhan quyen + tham chieu (Phuong an B): chi hien khi co du lieu.
+  if(q.corp_action||(q.reference!=null&&q.reference>0)){
+    const ca=q.corp_action, L=CA_I18N[curLang]||CA_I18N.vi;
+    let caTxt="";
+    if(ca){
+      const d=(ca.ex_date||"").slice(0,10).split("-").reverse().join("/");
+      let kind="";
+      if(ca.kind==="stock_dividend") kind=L.stock_div.replace("{pct}",String(Math.round(((ca.factor||1)-1)*100)));
+      else if(ca.kind==="cash_dividend") kind=L.cash_div.replace("{amt}",fmtN(ca.cash||0));
+      else if(ca.kind==="split") kind=L.split.replace("{f}",String(ca.factor||""));
+      caTxt=kind+" — "+L.exdate.replace("{date}",d);
+      if(q.reference!=null&&q.reference>0) caTxt+=" · "+L.ref_adj.replace("{ref}",fmtN(q.reference));
+    }else{
+      caTxt=L.ref_line.replace("{ref}",fmtN(q.reference));
+    }
+    if(caTxt) h+=`<div class="hint" style="margin-top:4px">${esc(caTxt)}</div>`;
+  }
+  if(q.foreign_buy_value!=null||q.foreign_sell_value!=null){
+    h+=`<div class="row"><span class="k">NN mua / bán (hôm nay)</span><span class="v"><span class="up">${fmtTy(q.foreign_buy_value)}</span> / <span class="down">−${fmtTy(q.foreign_sell_value).replace("-","")}</span></span></div>`;
+  }
+  if(q.bid||q.ask){
+    const stepP=x=>Array.isArray(x)?+x[0]:(x&&typeof x==="object"?+(x.price??x.p):+x);
+    const side=a=>{ if(!Array.isArray(a)) return "—";
+      const s=a.slice(0,3).map(x=>fmtN(stepP(x))).filter(t=>t!=="—");
+      return s.length? s.join(" / ") : "—"; };
+    const bp=side(q.bid),ap=side(q.ask);
+    h+=`<div class="bidask"><div class="ba"><div class="t">Mua 1/2/3</div><div class="pr up">${bp}</div></div><div class="ba"><div class="t">Bán 1/2/3</div><div class="pr down">${ap}</div></div></div>`;
+  }
+  h+='<div id="dOb"></div>';
+  $("dQuote").innerHTML=h;
+  const _ob2=$("dOb");
+  if(_ob2&&_obHtml) _ob2.innerHTML=_obHtml;
+  if(q._prov){_lastDSrc=q._prov.source;refreshSrc();}
+}
 async function loadDetail(sym){
   $("dQuote").innerHTML='<div class="hint">Đang tải…</div>';
   try{
     const j=await api("/quote?symbol="+encodeURIComponent(sym));
-    const q=j.quote||j; _lastQuote=q; renderFaPctGrid();
-    const pc=q.pct_change,cls=pc>0?"up":pc<0?"down":"";
-    let h=`<div class="row"><span class="k">Giá khớp</span><span class="v" style="font-size:17px">${fmtN(q.close)}</span></div>`;
-    h+=`<div class="row"><span class="k">Thay đổi</span><span class="v ${cls}">${q.change!=null?fmtN(q.change)+" ("+fmtPct(pc)+")":fmtPct(pc)}</span></div>`;
-    // Nhan quyen + tham chieu (Phuong an B): chi hien khi co du lieu.
-    if(q.corp_action||(q.reference!=null&&q.reference>0)){
-      const ca=q.corp_action, L=CA_I18N[curLang]||CA_I18N.vi;
-      let caTxt="";
-      if(ca){
-        const d=(ca.ex_date||"").slice(0,10).split("-").reverse().join("/");
-        let kind="";
-        if(ca.kind==="stock_dividend") kind=L.stock_div.replace("{pct}",String(Math.round(((ca.factor||1)-1)*100)));
-        else if(ca.kind==="cash_dividend") kind=L.cash_div.replace("{amt}",fmtN(ca.cash||0));
-        else if(ca.kind==="split") kind=L.split.replace("{f}",String(ca.factor||""));
-        caTxt=kind+" — "+L.exdate.replace("{date}",d);
-        if(q.reference!=null&&q.reference>0) caTxt+=" · "+L.ref_adj.replace("{ref}",fmtN(q.reference));
-      }else{
-        caTxt=L.ref_line.replace("{ref}",fmtN(q.reference));
-      }
-      if(caTxt) h+=`<div class="hint" style="margin-top:4px">${esc(caTxt)}</div>`;
-    }
-    if(q.foreign_buy_value!=null||q.foreign_sell_value!=null){
-      h+=`<div class="row"><span class="k">NN mua / bán (hôm nay)</span><span class="v"><span class="up">${fmtTy(q.foreign_buy_value)}</span> / <span class="down">−${fmtTy(q.foreign_sell_value).replace("-","")}</span></span></div>`;
-    }
-    if(q.bid||q.ask){
-      const stepP=x=>Array.isArray(x)?+x[0]:(x&&typeof x==="object"?+(x.price??x.p):+x);
-      const side=a=>{ if(!Array.isArray(a)) return "—";
-        const s=a.slice(0,3).map(x=>fmtN(stepP(x))).filter(t=>t!=="—");
-        return s.length? s.join(" / ") : "—"; };
-      const bp=side(q.bid),ap=side(q.ask);
-      h+=`<div class="bidask"><div class="ba"><div class="t">Mua 1/2/3</div><div class="pr up">${bp}</div></div><div class="ba"><div class="t">Bán 1/2/3</div><div class="pr down">${ap}</div></div></div>`;
-    }
-    h+='<div id="dOb"></div>';
-    $("dQuote").innerHTML=h;
-    if(q._prov){_lastDSrc=q._prov.source;refreshSrc();}
+    const q=j.quote||j; _lastQuote=q; renderFaPctGrid(); renderQuote(q);
   }catch(e){$("dQuote").innerHTML='<div class="hint">Lỗi tải</div>';}
   loadOrderbook(sym);
   loadFlow(sym);loadFund(sym);loadNews(sym);loadChart(sym);loadTape(sym);
@@ -2453,8 +2462,8 @@ async function loadTarget(sym){
     const cur=t?((t.take_profit_pct!=null?("TP +"+t.take_profit_pct+"%"):"")+(t.take_profit_pct!=null&&t.stop_loss_pct!=null?" · ":"")+(t.stop_loss_pct!=null?("SL −"+t.stop_loss_pct+"%"):"")):L.curNone;
     box.innerHTML=`<div class="row"><span class="k">${esc(cur)}</span>${t&&t.unrealized_pct!=null?`<span class="v ${t.unrealized_pct>0?"up":t.unrealized_pct<0?"down":""}">${t.unrealized_pct>0?"+":""}${t.unrealized_pct}%</span>`:""}</div>
     <div style="display:flex;gap:8px;margin-top:8px">
-    <input id="tgTp" type="number" min="0" step="0.5" placeholder="${L.tpPh}" value="${t&&t.take_profit_pct!=null?t.take_profit_pct:""}" style="flex:1;background:var(--pp-bg2);color:var(--pp-ink);border:1px solid var(--pp-line);border-radius:8px;padding:8px;font-size:14px">
-    <input id="tgSl" type="number" min="0" step="0.5" placeholder="${L.slPh}" value="${t&&t.stop_loss_pct!=null?t.stop_loss_pct:""}" style="flex:1;background:var(--pp-bg2);color:var(--pp-ink);border:1px solid var(--pp-line);border-radius:8px;padding:8px;font-size:14px">
+    <input id="tgTp" type="number" min="0" step="0.5" placeholder="${L.tpPh}" value="${t&&t.take_profit_pct!=null?t.take_profit_pct:""}" style="flex:1;min-width:0;background:var(--pp-bg2);color:var(--pp-ink);border:1px solid var(--pp-line);border-radius:8px;padding:8px;font-size:14px">
+    <input id="tgSl" type="number" min="0" step="0.5" placeholder="${L.slPh}" value="${t&&t.stop_loss_pct!=null?t.stop_loss_pct:""}" style="flex:1;min-width:0;background:var(--pp-bg2);color:var(--pp-ink);border:1px solid var(--pp-line);border-radius:8px;padding:8px;font-size:14px">
     </div>
     <div style="display:flex;gap:8px;margin-top:8px">
     <button id="tgSave" style="flex:1;padding:9px;border-radius:8px;background:var(--pp-accent);color:#fff;border:none;font-size:14px;font-weight:600;cursor:pointer">${L.save}</button>
@@ -3798,6 +3807,7 @@ function setStkLang(l){
   if($("v-flow") && $("v-flow").classList.contains("on") && _flowScr) renderFlowScreen(_flowScr);
   if($("v-market") && $("v-market").classList.contains("on")){ renderMarketTotals(); renderMarketOverview(); }
   if(_caData) renderCA(_caData);
+  if(_lastQuote) renderQuote(_lastQuote);
 }
 window.__elabSetLang = setStkLang;
 
