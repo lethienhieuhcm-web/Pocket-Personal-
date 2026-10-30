@@ -18,7 +18,7 @@ import { and, eq, lt, sql } from "drizzle-orm";
 import { rateLimits } from "./schema.js";
 import {getSession, getUser, OWNER_EMAIL} from './auth.js';
 import {jerr} from './utils.js';
-import {hStockVersion, hStockIndices, hStockSectorIndices, hStockRegime, hStockSignals, hStockQuote, hStockOhlcv, hStockTrades, hStockScreener, hStockFundamentals, hStockStatements, hStockNews, hStockMarketNews, hStockForeignFlow, hStockForeignHistory, hStockProprietaryFlow, hStockProprietaryHistory, hStockFlowScreen, hStockOrderbook, hStockOrderbookDates, hStockFlowHistory, hStockDivergence, hStockLiveOverview, hStockMarketTotals, hStockMacro, hStockMacroHistory, hStockConsensus, hStockConsensusDetail, hStockHolders, hStockHoldersShard, hStockHoldersSymbol, hStockSectors, hStockSectorsDetail, hStockListing, hStockEvents, hStockCompanyProfile, hStockCompare, hWatchlistGet, hWatchlistAdd, hWatchlistDel, hPortfolio, hTxnAdd, hCostHistory, hTargetsGet, hTargetsSet, hTargetsDel, hStockPublish, hModalAlert, hStockReportData, hStockAlertDone, hStockTargetDone, hStockRisk, hStockStrategyReview, hRuleAlertsGet, hRuleAlertsAdd, hRuleAlertsDel, hRuleAlertsInternal, hTickStateGet, hInternalUniverse} from './stock.js';
+import {hStockVersion, hStockIndices, hStockSectorIndices, hStockRegime, hStockSignals, hStockQuote, hStockOhlcv, hStockTrades, hStockScreener, hStockFundamentals, hStockStatements, hStockNews, hStockMarketNews, hStockForeignFlow, hStockForeignHistory, hStockProprietaryFlow, hStockProprietaryHistory, hStockFlowScreen, hStockOrderbook, hStockOrderbookDates, hStockFlowHistory, hStockDivergence, hStockLiveOverview, hStockMarketTotals, hStockMacro, hStockMacroHistory, hStockConsensus, hStockConsensusDetail, hStockHolders, hStockHoldersShard, hStockHoldersSymbol, hStockSectors, hStockSectorsDetail, hStockListing, hStockEvents, hStockCompanyProfile, hStockCompare, hWatchlistGet, hWatchlistAdd, hWatchlistDel, hPortfolio, hTxnAdd, hCostHistory, hTargetsGet, hTargetsSet, hTargetsDel, hStockPublish, hModalAlert, hStockReportData, hStockAlertDone, hStockTargetDone, hStockRisk, hStockStrategyReview, hRuleAlertsGet, hRuleAlertsAdd, hRuleAlertsDel, hRuleAlertsInternal, hTickStateGet, hInternalUniverse, hCorporateActions} from './stock.js';
 
 // Build ID - replaced with timestamp on every deploy (see cf_deploy.py)
 const BUILD_ID = "__BUILD__";
@@ -153,6 +153,7 @@ const ROUTES = [
   ['GET',    '/api/collections/*',   (q,w,e)=>handleCollectionGet(e,w,q.split('/').pop()), 'user'],
   // --- stock ---
   ['GET',    '/api/stock/version',   hStockVersion,          'user'],
+  ['GET',    '/api/stock/corporate-actions', hCorporateActions, 'user'],
   ['GET',    '/api/stock/indices',   hStockIndices,          'user'],
   ['GET',    '/api/stock/sector-indices', hStockSectorIndices, 'user'],
   ['GET',    '/api/stock/regime',    hStockRegime,           'user'],

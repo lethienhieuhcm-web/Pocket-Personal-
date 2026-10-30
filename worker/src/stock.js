@@ -2032,6 +2032,13 @@ export async function hInternalUniverse(request, env){
   return sJson(d || {});
 }
 
+// Lich quyen (Phuong an B, Chot 10:33 29/10): file versioned do job
+// 07:30 day len R2; app render muc Lich quyen, khong Telegram.
+export async function hCorporateActions(request, env){
+  const d = await sGet(env, "market/corporate_actions.json");
+  return sJson(d || {});
+}
+
 export async function hModalAlert(request, env){
   const got = request.headers.get("X-Publish-Secret") || "";
   if(!env.STOCK_PUBLISH_SECRET || got !== env.STOCK_PUBLISH_SECRET) return jerr("Forbidden", 403);

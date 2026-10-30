@@ -267,6 +267,8 @@ html.no-tab-prop .navcard[onclick*="v-prop"],html.no-tab-prop #v-prop{display:no
 <div id="macroWrap"><div class="hint">Đang tải…</div></div>
 <div class="sec">Tin thị trường</div>
 <div class="card" id="mnCard"><div class="hint">Đang tải…</div></div>
+<div class="sec" id="caSec">Lịch quyền</div>
+<div class="card" id="caCard"><div class="hint">Đang tải…</div></div>
 <div class="hint" id="verLine" style="text-align:center;margin:14px 0 4px"></div>
 </div>
 
@@ -691,11 +693,51 @@ async function loadMarket(){
   loadMarketOverview();
   loadMacro();
   loadMN();
+  loadCA();
 }
 
 // ---- Khoi ngoai hom nay (GET /foreign-flow): du lieu publish gom 30 ma
 // thanh khoan cao nhat -> tong ghi dung pham vi nay, khong goi la toan
 // thi truong. Top 5 mua rong / ban rong theo gia tri rong (mua - ban).
+// ---- Lich quyen (Phuong an B, Chot 10:33 29/10): render tu file
+// versioned, khong Telegram. Hien su kien GDKHQ trong 30 ngay toi.
+const CAL_I18N={
+vi:{title:"Lịch quyền",sym:"Mã",kind:"Loại",ex:"GDKHQ",rec:"Đăng ký",stock:"Cổ tức CP {pct}%",cash:"Tiền mặt {amt} đ/cp",split:"Chia tách ×{f}",empty:"Chưa có sự kiện quyền trong 30 ngày tới",note:"{n} sự kiện · cập nhật {upd}",more:"và {n} sự kiện nữa"},
+en:{title:"Corporate actions",sym:"Symbol",kind:"Type",ex:"Ex-date",rec:"Record",stock:"Stock dividend {pct}%",cash:"Cash {amt} VND/share",split:"Split ×{f}",empty:"No corporate actions in the next 30 days",note:"{n} events · updated {upd}",more:"and {n} more events"},
+zh:{title:"股权登记日历",sym:"代码",kind:"类型",ex:"除权日",rec:"登记日",stock:"股票股息 {pct}%",cash:"现金每股 {amt} 越南盾",split:"拆股 ×{f}",empty:"未来30天暂无股权事件",note:"{n} 个事件 · 更新于 {upd}",more:"还有 {n} 个事件"},
+ko:{title:"권리 일정",sym:"종목",kind:"유형",ex:"권리락일",rec:"기준일",stock:"주식 배당 {pct}%",cash:"현금 주당 {amt} VND",split:"액면분할 ×{f}",empty:"향후 30일간 권리 이벤트 없음",note:"{n}건 · 업데이트 {upd}",more:"{n}건 더 보기"}};
+let _caData=null;
+async function loadCA(){
+  try{ _caData=await api("/corporate-actions"); renderCA(_caData); }
+  catch(e){ const c=$("caCard"); if(c) c.innerHTML='<div class="hint">Lỗi tải lịch quyền</div>'; }
+}
+function renderCA(j){
+  const card=$("caCard"); if(!card) return;
+  const L=CAL_I18N[curLang]||CAL_I18N.vi;
+  const sec=$("caSec"); if(sec) sec.textContent=L.title;
+  const acts=(j&&j.actions)||[];
+  const today=new Date(Date.now()+7*3600e3).toISOString().slice(0,10);
+  const horizon=new Date(Date.now()+7*3600e3+30*86400e3).toISOString().slice(0,10);
+  const rows=acts.filter(a=>a.ex_date>=today&&a.ex_date<=horizon)
+    .sort((a,b)=>a.ex_date<b.ex_date?-1:a.ex_date>b.ex_date?1:(a.symbol<b.symbol?-1:1));
+  if(!rows.length){ card.innerHTML=`<div class="hint">${esc(L.empty)}</div>`; return; }
+  const dFmt=s=>{ const p=String(s||"").slice(0,10).split("-"); return p.length===3?p[2]+"/"+p[1]+"/"+p[0]:"—"; };
+  const kindTxt=a=>{
+    if(a.kind==="stock_dividend") return L.stock.replace("{pct}",String(Math.round(((a.factor||1)-1)*100)));
+    if(a.kind==="cash_dividend") return L.cash.replace("{amt}",fmtN(a.cash||0));
+    if(a.kind==="split") return L.split.replace("{f}",String(a.factor||""));
+    return a.kind||"";
+  };
+  const shown=rows.slice(0,20);
+  let h=`<table><tr><th>${esc(L.sym)}</th><th>${esc(L.kind)}</th><th>${esc(L.ex)}</th><th>${esc(L.rec)}</th></tr><tbody>`;
+  h+=shown.map(a=>`<tr><td><b onclick="openSym('${esc(a.symbol)}')" style="cursor:pointer">${esc(a.symbol)}</b></td><td>${esc(kindTxt(a))}</td><td>${dFmt(a.ex_date)}</td><td>${dFmt(a.record_date)}</td></tr>`).join("");
+  h+=`</tbody></table>`;
+  const upd=j.updated_at?String(j.updated_at).slice(0,10):"";
+  h+=`<div class="hint" style="margin-top:6px">${esc(L.note.replace("{n}",String(rows.length)).replace("{upd}",upd))}`;
+  if(rows.length>shown.length) h+=` · ${esc(L.more.replace("{n}",String(rows.length-shown.length)))}`;
+  h+=`</div>`;
+  card.innerHTML=h;
+}
 const FF_I18N={
   vi:{net:"Ròng 30 mã thanh khoản nhất",buy:"Mua",sell:"Bán",topBuy:"Mua ròng mạnh nhất",topSell:"Bán ròng mạnh nhất",empty:"Chưa có dữ liệu phiên này",ty:"tỷ",tr:"triệu"},
   en:{net:"Net · 30 most liquid stocks",buy:"Buy",sell:"Sell",topBuy:"Top net buys",topSell:"Top net sells",empty:"No data for this session yet",ty:"B",tr:"M"},
@@ -3755,6 +3797,7 @@ function setStkLang(l){
   renderRegime();
   if($("v-flow") && $("v-flow").classList.contains("on") && _flowScr) renderFlowScreen(_flowScr);
   if($("v-market") && $("v-market").classList.contains("on")){ renderMarketTotals(); renderMarketOverview(); }
+  if(_caData) renderCA(_caData);
 }
 window.__elabSetLang = setStkLang;
 
