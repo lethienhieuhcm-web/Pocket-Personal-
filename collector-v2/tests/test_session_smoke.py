@@ -14,7 +14,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from mock_broker import MockBroker  # noqa: E402
 from collector import dnse_wire, protobuf  # noqa: E402
-from collector.session import SessionConfig, run_session  # noqa: E402
+from collector.session import SessionConfig, run_session, parse_symbols_text  # noqa: E402
 from collector.store import SessionStore  # noqa: E402
 from test_gd1_loop import _tick_payload, _minute_now  # noqa: E402
 
@@ -57,6 +57,20 @@ class TestSessionSmoke(unittest.TestCase):
             broker.stop()
             os.environ.pop("DNSE_MQTT_USER", None)
             os.environ.pop("DNSE_MQTT_PW", None)
+
+
+class TestParseSymbols(unittest.TestCase):
+    def test_dict_format_universe(self):
+        raw = json.dumps([{"symbol": "acb", "exchange": "HOSE"},
+                          {"symbol": "VCB", "exchange": "HOSE"},
+                          {"symbol": "acb", "exchange": "HOSE"},
+                          {"exchange": "HOSE"},
+                          {"code": "fpt"}])
+        self.assertEqual(parse_symbols_text(raw), ["ACB", "VCB", "FPT"])
+
+    def test_string_array_and_lines(self):
+        self.assertEqual(parse_symbols_text('["acb", "VCB", ""]'), ["ACB", "VCB"])
+        self.assertEqual(parse_symbols_text("acb\n\nVCB\nacb\n"), ["ACB", "VCB"])
 
 
 if __name__ == "__main__":

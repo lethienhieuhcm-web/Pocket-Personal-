@@ -179,6 +179,31 @@ def _status_loop(cfg, consumer, gate, q, stop_event):
         stop_event.wait(5.0)
 
 
+def parse_symbols_text(raw):
+    """File symbols: JSON array (str hoac dict co 'symbol'/'code'/'ticker')
+    hoac moi dong 1 ma. Tra list ma sach, duy nhat, giu thu tu.
+    Dict nguyen ban (universe_full.json) phai trich 'symbol', khong str()
+    ca dict (se ra topic rac, broker dong ket noi)."""
+    raw = raw.strip()
+    if raw.startswith("["):
+        items = json.loads(raw)
+    else:
+        items = [ln for ln in raw.splitlines() if ln.strip()]
+    out = []
+    seen = set()
+    for it in items:
+        if isinstance(it, dict):
+            sym = it.get("symbol") or it.get("code") or it.get("ticker")
+            sym = "" if sym is None else str(sym)
+        else:
+            sym = str(it)
+        sym = sym.strip().upper()
+        if sym and sym not in seen:
+            seen.add(sym)
+            out.append(sym)
+    return out
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description="Collector GĐ1: gate DNSE -> WAL -> SQLite")
     ap.add_argument("--symbols", required=False, default=None,
@@ -202,10 +227,7 @@ def main(argv=None):
     if args.symbols_file:
         with open(args.symbols_file, encoding="utf-8") as f:
             raw = f.read().strip()
-        if raw.startswith("["):
-            symbols = [str(s).strip().upper() for s in json.loads(raw)]
-        else:
-            symbols = [ln.strip().upper() for ln in raw.splitlines() if ln.strip()]
+        symbols = parse_symbols_text(raw)
     if args.symbols:
         symbols += [s.strip() for s in args.symbols.split(",") if s.strip()]
     if not symbols:
