@@ -77,6 +77,7 @@ class MockBroker(socketserver.ThreadingTCPServer):
         self._idx = 0
         self._lock = threading.Lock()
         self.connects = 0
+        self.handshakes = []
         self.subscribes = 0
         self.topics = []
         self._shutdown_flag = threading.Event()
@@ -132,6 +133,7 @@ class _Handler(socketserver.BaseRequestHandler):
              f"Sec-WebSocket-Accept: {accept}\r\n\r\n").encode())
         with broker._lock:
             broker.connects += 1
+            broker.handshakes.append(head.decode("latin-1"))
         # -- MQTT: cho CONNECT -> CONNACK, SUBSCRIBE -> SUBACK --
         mqtt_buf = bytearray()
         subscribed = False

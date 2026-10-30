@@ -30,6 +30,7 @@ STABLE_AFTER_SEC = 60
 SILENCE_SEC = 120
 DEFAULT_WS_URL = "wss://datafeed-krx.dnse.com.vn/wss"
 DEFAULT_ORIGIN = "https://banggia.dnse.com.vn"
+DEFAULT_PROTOCOLS = ("mqtt",)  # DNSE tra 400 neu handshake thieu Sec-WebSocket-Protocol
 
 
 class AuthError(Exception):
@@ -111,7 +112,7 @@ class GateStats:
 
 class DnseGate(threading.Thread):
     def __init__(self, symbols, out_queue, gap_queue, out_dir,
-                 ws_url=None, origin=DEFAULT_ORIGIN, protocols=None,
+                 ws_url=None, origin=DEFAULT_ORIGIN, protocols=DEFAULT_PROTOCOLS,
                  client_id=None, username=None, password=None,
                  keepalive=60, silence_sec=SILENCE_SEC,
                  watchdog_armed=None, stop_event=None,

@@ -269,6 +269,9 @@ class TestGateLoopEndToEnd(unittest.TestCase):
                         timeout=25.0)
                     self.assertTrue(ok, f"broker connects={broker.connects} buckets={list(consumer.buckets)}")
                     self.assertGreaterEqual(broker.subscribes, 2)
+                    self.assertTrue(any("Sec-WebSocket-Protocol: mqtt" in h
+                                        for h in broker.handshakes),
+                                    "handshake thieu Sec-WebSocket-Protocol: mqtt")
                     self.assertIn(tick_topic, broker.topics)
                     self.assertTrue(_wait_until(lambda: consumer.counters.dup_dropped >= 1, timeout=10.0))
                     self.assertTrue(_wait_until(lambda: consumer.buckets[("dnse", "UIC", minute)][4] == 900.0, timeout=10.0))
