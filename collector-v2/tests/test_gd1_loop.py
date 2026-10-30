@@ -291,6 +291,44 @@ class TestGateLoopEndToEnd(unittest.TestCase):
         finally:
             broker.stop()
 
+    def test_subscribe_chunked_for_large_universe(self):
+        symbols = ["S%03d" % i for i in range(250)]  # 500 topic -> 5 goi
+        tick_topic = dnse_wire.topics_for(["S000"])[1]
+        script = [("publish", tick_topic, _tick_payload())]
+        broker = MockBroker(script).start()
+        try:
+            with tempfile.TemporaryDirectory() as d:
+                store = SessionStore(os.path.join(d, "session.db"))
+                consumer = Consumer(SESSION_DATE, store, d, flush_sec=3600)
+                q = queue.Queue(maxsize=50000)
+                gap_q = queue.Queue()
+                consumer.gap_queue = gap_q
+                stop = threading.Event()
+                gate = DnseGate(symbols, q, gap_q, d,
+                                ws_url=f"ws://127.0.0.1:{broker.port}",
+                                username="u", password="<redacted>",
+                                watchdog_armed=lambda: False,
+                                stop_event=stop, rng=random.Random(7))
+                ct = threading.Thread(target=consumer.run, args=(q, stop), daemon=True)
+                ct.start()
+                gate.start()
+                try:
+                    minute = _minute_now()
+                    ok = _wait_until(
+                        lambda: broker.subscribes >= 5 and ("dnse", "S000", minute) in consumer.buckets,
+                        timeout=25.0)
+                    self.assertTrue(ok, f"subscribes={broker.subscribes} buckets={list(consumer.buckets)}")
+                    self.assertEqual(broker.subscribes, 5)
+                    self.assertEqual(len(broker.topics), 500)
+                    self.assertEqual(len(set(broker.topics)), 500)
+                finally:
+                    stop.set()
+                    gate.join(timeout=20)
+                    ct.join(timeout=20)
+                store.close()
+        finally:
+            broker.stop()
+
     def test_auth_failure_stops_without_retry(self):
         broker = MockBroker([], connack_code=5).start()
         try:

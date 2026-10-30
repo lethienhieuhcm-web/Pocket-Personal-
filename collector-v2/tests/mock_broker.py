@@ -67,6 +67,23 @@ def _ws_recv_message(conn, buf):
             return bytes(payload)
 
 
+def _answer_subscribe(broker, payload):
+    """Ghi topics + tra SUBACK (grant QoS 0 het). Dung cho ca 2 vong doc."""
+    with broker._lock:
+        broker.subscribes += 1
+    pid = struct.unpack_from(">H", payload, 0)[0]
+    n_topics = 0
+    pos = 2
+    while pos < len(payload):
+        tl = struct.unpack_from(">H", payload, pos)[0]
+        with broker._lock:
+            broker.topics.append(payload[pos + 2:pos + 2 + tl].decode())
+        pos += 2 + tl + 1
+        n_topics += 1
+    return (b"\x90" + bytes([2 + n_topics]) +
+            struct.pack(">H", pid) + b"\x00" * n_topics)
+
+
 class MockBroker(socketserver.ThreadingTCPServer):
     daemon_threads = True
     allow_reuse_address = True
@@ -153,21 +170,7 @@ class _Handler(socketserver.BaseRequestHandler):
                     _ws_send(self.request,
                              b"\x20\x02\x00" + bytes([broker.connack_code]))
                 elif ptype == 8:  # SUBSCRIBE
-                    with broker._lock:
-                        broker.subscribes += 1
-                    pid = struct.unpack_from(">H", payload, 0)[0]
-                    n_topics = 0
-                    pos = 2
-                    while pos < len(payload):
-                        tl = struct.unpack_from(">H", payload, pos)[0]
-                        with broker._lock:
-                            broker.topics.append(
-                                payload[pos + 2:pos + 2 + tl].decode())
-                        pos += 2 + tl + 1
-                        n_topics += 1
-                    _ws_send(self.request,
-                             b"\x90" + bytes([2 + n_topics]) +
-                             struct.pack(">H", pid) + b"\x00" * n_topics)
+                    _ws_send(self.request, _answer_subscribe(broker, payload))
                     subscribed = True
                 elif ptype == 12:  # PINGREQ
                     _ws_send(self.request, b"\xd0\x00")
@@ -186,6 +189,9 @@ class _Handler(socketserver.BaseRequestHandler):
                     del mqtt_buf[:used]
                     if ptype == 12:
                         _ws_send(self.request, b"\xd0\x00")
+                    elif ptype == 8:  # SUBSCRIBE tiep theo (chia nho)
+                        _ws_send(self.request,
+                                 _answer_subscribe(broker, _p))
             except socket.timeout:
                 pass
             except (ConnectionError, OSError):

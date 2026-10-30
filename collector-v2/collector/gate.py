@@ -31,6 +31,7 @@ SILENCE_SEC = 120
 DEFAULT_WS_URL = "wss://datafeed-krx.dnse.com.vn/wss"
 DEFAULT_ORIGIN = "https://banggia.dnse.com.vn"
 DEFAULT_PROTOCOLS = ("mqtt",)  # DNSE tra 400 neu handshake thieu Sec-WebSocket-Protocol
+SUBSCRIBE_CHUNK_TOPICS = 100  # 1 SUBSCRIBE 3040 topic (~137KB) bi broker dong; chia nho
 
 
 class AuthError(Exception):
@@ -61,9 +62,7 @@ class _PacketPump:
         chunk = self.client.recv()
         self.buf.extend(chunk)
 
-    def next_packet(self):
-        if self.stash:
-            return self.stash.popleft()
+    def _read_packet(self):
         while True:
             try:
                 ptype, _flags, payload, used = mqtt.parse_packet(bytes(self.buf))
@@ -73,9 +72,22 @@ class _PacketPump:
             del self.buf[:used]
             return ptype, payload
 
+    def next_packet(self):
+        if self.stash:
+            return self.stash.popleft()
+        return self._read_packet()
+
     def wait_for(self, want_type, stash_others=True):
+        # Quet stash hien co dung 1 luot (goi khong khop o lai, giu thu tu);
+        # sau do chi doc goi MOI tu socket. Dung pop+append lai goi stash
+        # trong vong lap se lap vo han tren cung 1 goi.
+        for _ in range(len(self.stash)):
+            ptype, payload = self.stash.popleft()
+            if ptype == want_type:
+                return payload
+            self.stash.append((ptype, payload))
         while True:
-            ptype, payload = self.next_packet()
+            ptype, payload = self._read_packet()
             if ptype == want_type:
                 return payload
             if stash_others:
@@ -196,14 +208,21 @@ class DnseGate(threading.Thread):
         if connack["return_code"] != 0:
             raise AuthError(f"CONNACK return_code={connack['return_code']}")
         topics = dnse_wire.topics_for(self.symbols)
-        client.send(mqtt.build_subscribe(1, topics))
-        try:
-            payload = pump.wait_for(9, stash_others=True)
-        except (WsClosed, WsError, socket.error) as e:
-            raise TransientError(f"cho SUBACK: {e}") from e
-        suback = mqtt.parse_suback(payload)
-        if any(rc != 0 for rc in suback["return_codes"]):
-            raise AuthError(f"SUBACK tu choi: {suback['return_codes']}")
+        packet_id = 1
+        for i in range(0, len(topics), SUBSCRIBE_CHUNK_TOPICS):
+            chunk = topics[i:i + SUBSCRIBE_CHUNK_TOPICS]
+            client.send(mqtt.build_subscribe(packet_id, chunk))
+            try:
+                payload = pump.wait_for(9, stash_others=True)
+            except (WsClosed, WsError, socket.error) as e:
+                raise TransientError(f"cho SUBACK: {e}") from e
+            suback = mqtt.parse_suback(payload)
+            if suback["packet_id"] != packet_id:
+                raise TransientError(
+                    f"SUBACK packet_id sai: {suback['packet_id']} != {packet_id}")
+            if any(rc != 0 for rc in suback["return_codes"]):
+                raise AuthError(f"SUBACK tu choi: {suback['return_codes']}")
+            packet_id += 1
         return client, pump
 
     def _serve(self, client, pump):
