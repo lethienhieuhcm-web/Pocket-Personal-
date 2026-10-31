@@ -30,7 +30,7 @@ Dau ra:
   doi chieu giu it nhat 1 tuan sau lat (tick_shadow_reconcile.py).
 - tick_live (MOI — ban LAT): intraday hop nhat -> market/intraday/
   production + khoi ngoai hop nhat merge vao market/foreign_flow.
-  json cho 42 ma. Nhan nguon tung ban ghi qua _prov + truong src.
+  json cho 40 ma. Nhan nguon tung ban ghi qua _prov + truong src.
 
 Ky luat: dung 1 ket noi/cong, PINGREQ keepalive 25s (broker dong
 ket noi neu client im lang 2-3 phut — bai hoc probe 20/10).
@@ -49,7 +49,7 @@ checkpoint vao status moi chu ky publish. (3) Close/open nen theo
 ts SU KIEN (tick som/muon nhat trong phut), khong theo thu tu den.
 (4) Luot publish dong phien kem khoi "diag" (snapshot theo nguon,
 tick totals, volume phut theo nguon, tong thoa thuan) cho
-reconcile dinh danh truong. Chay LIVE tu phien 27/10 (live=True, Chot 17:20 26/10).
+reconcile dinh danh truong. Van chay bong, live=False.
 """
 import modal
 
@@ -87,47 +87,61 @@ PUBLISH_URL = "https://lethanhdong.one/api/internal/stock-publish"
 CONFIG = {
     # Chu ky publish (giay)
     "publish_sec": 30,
-    # Cong khoi dong o Tang A (Modal): 4 cong truc tiep
-    # (DNSE/KBS/VNDirect/VPS) + SSI qua CONNECT proxyvip (Đ4,
-    # CHOT Henrry 09:04 27/10 — SSI thanh cong 5, co merger +
-    # crosscheck + status; SSI chay song song app shadow rieng).
-    # VCI = chan Botkeep relay-4 (adapter con trong code,
-    # khong chay trong loi).
+    # Cong khoi dong o Tang A (Modal): 4 cong truc tiep + SSI qua
+    # chuoi CONNECT proxy dan-cu (Dat 4, Chot 09:47 23/10 — chay
+    # bong, vao parity nhu cong thu 5). VCI = chan Botkeep relay-4
+    # (adapter con trong code, khong chay trong loi).
     "sources": ["dnse", "kbs", "vndirect", "vps", "ssi-mqtt"],
-    # LAT PRODUCTION: True — LENH Henrry 17:20 26/10 qua dau moi:
-    # lat live tu phien 27/10 (khong cho parity sach nua — lay cong
-    # tot nhat tung truong + do rong bu tru; sai thi sua theo phien).
-    # tick_live ghi production, tick_shadow van chay lam doi chieu.
-    "live": True,
+    # LAT PRODUCTION: False — DINH CHINH lenh 19:40 21/10: giu ban
+    # da cong chay BONG them vai phien, bao parity tung phien; chi
+    # bat True khi co lenh lat rieng sau (khi do tick_live moi ghi
+    # production, tick_shadow van chay lam doi chieu).
+    "live": False,
     # Resume giua phien (Dot 2): khoi dong lai -> nap checkpoint +
     # artifact theo nguon cua CHINH phien hom nay tu R2; loi/thieu
     # thi bat dau trang nhu cu, khong chan phien.
     "resume": True,
-    # Universe B200 (CHOT Henrry 15:16 28/10, hieu luc phien 29/10:
-    # live chay thay bong B; tieu chi CMF200>0 + cua sang, 42 ma).
     "universe": [
-        "AAS", "ABB", "BFC", "BWE", "C69", "CDC", "CTF", "CTI",
-        "DCL", "DPG", "GMD", "HAG", "HDA", "HDB", "HHP", "HTN",
-        "HVH", "IDC", "KBC", "KSB", "MCH", "MSR", "MWG", "NAB",
-        "NAF", "ORS", "PDR", "PTB", "QNS", "SHB", "SSB", "TCX",
-        "TDP", "TIN", "TNG", "TOS", "TVN", "VEA", "VGR", "VGT",
-        "VJC", "VPL",
+        "VCB", "BID", "CTG", "TCB", "MBB", "VPB", "HPG", "VHM",
+        "VIC", "VNM", "MSN", "FPT", "MWG", "SSI", "VND", "HCM",
+        "STB", "ACB", "SHB", "POW", "GAS", "PLX", "BVH", "VRE",
+        "VJC", "PNJ", "SAB", "GVR", "BCM", "HDB", "TPB", "LPB",
+        "VIB", "EIB", "NLG", "KDH", "DGC", "FRT", "DGW", "GEX",
     ],
 }
 
 # Uu tien hop nhat (cao -> thap)
 SRC_PRIORITY = ["dnse", "kbs", "vndirect", "vps", "vci", "ssi-mqtt"]
 
-# Best-gate map (CHOT Henrry 06:07 28/10): ngoai hop nhat CHI lay
-# tu cong da quy chuan ve chuan TONG (khop lenh + thoa thuan):
-# dnse, vndirect, vps. KBS (khop lenh, tru TCB/MWG) CHI tham gia
-# sau khi phuong phap cong phan thoa thuan duoc chung minh bang
-# so; ssi-mqtt/vci CHUA tham gia toi khi dinh nghia truong ngoai
-# duoc xac dinh (SSI cho phien du 28/10). Chi ap cho MERGE NGOAI
-# (_merged_foreign_sym); khong doi luat chon nguon nen theo phut
-# (merge_candles/_merged_buckets), dedup, hay co live. Snapshot
-# theo tung cong (self.foreign) giu nguyen de crosscheck/diag.
+# Best-gate map (CHOT Henrry 06:07 28/10): ngoai hop nhat CHI lay tu
+# cong da quy chuan ve chuan TONG (khop lenh + thoa thuan): dnse,
+# vndirect, vps. KBS/ssi-mqtt/vci KHONG tham gia (xem
+# stock-app/scripts/tick_merger.py — luat nay lap lai BY DESIGN
+# o ca 2 runtime, test_best_gate_conformance.py doi chieu).
 FOREIGN_NORMALIZED_GATES = ["dnse", "vndirect", "vps"]
+
+# Uu tien THEO TRUONG — CHI trong 3 cong da quy chuan (giong
+# tick_merger.FIELD_PRIORITY). Cong thang thieu truong: ghi thieu,
+# KHONG dien 0, KHONG lap bang cong chua quy chuan.
+FIELD_PRIORITY = {
+    "total_volume": ["vndirect", "vps"],
+    "total_value": ["vndirect", "dnse"],
+    "buy_volume": ["dnse", "vndirect", "vps"],
+    "sell_volume": ["dnse", "vndirect", "vps"],
+    "buy_value": ["vps"],
+    "sell_value": ["vps"],
+    "room": ["vndirect", "vps", "dnse"],
+    "total_room": ["vndirect", "dnse"],
+    "last": ["vndirect", "vps"],
+}
+
+
+def _field_order(field):
+    order = list(FIELD_PRIORITY.get(field, FOREIGN_NORMALIZED_GATES))
+    for s in FOREIGN_NORMALIZED_GATES:
+        if s not in order:
+            order.append(s)
+    return [s for s in order if s in FOREIGN_NORMALIZED_GATES]
 
 # ---------------- Bang mapping truong snapshot (khai bao) ----------------
 # Mau FieldMapper cua vnstock (core/utils/field/): mapping theo nguon
@@ -138,18 +152,15 @@ FOREIGN_NORMALIZED_GATES = ["dnse", "vndirect", "vps"]
 # _gate_value (2 lop: gate_snap_fields tai adapter + Aggregator).
 FIELD_MAP = {
     "dnse": {
-        # GĐ0 30/10 (probe + giai ma tho stockinfo): f13=day-low, f22=ATC-bucket,
-        # f58/f59=matched-only. Ten chuan theo field_map.json GĐ0; scale giu
-        # nguyen quy uoc duong live (gia = nghin dong).
-        "atc_volume": ("stockinfo f22", 10, False),
+        "total_volume": ("stockinfo f22", 10, False),   # dinh danh lai
         "total_value": ("stockinfo f25", 10**9, False),
         "buy_volume": ("stockinfo f17", 10, True),
-        "buy_value_matched": ("stockinfo f58", 10**9, False),
+        "buy_value": ("stockinfo f58", 10**9, True),
         "sell_volume": ("stockinfo f18", 10, True),
-        "sell_value_matched": ("stockinfo f59", 10**9, False),
+        "sell_value": ("stockinfo f59", 10**9, True),
         "room": ("stockinfo f20", 10, False),           # sentinel GVR
         "total_room": ("stockinfo f60", 10, False),
-        "day_low": ("stockinfo f13", 1, False),
+        "last": ("stockinfo f13", 1, True),
     },
     "ssi-mqtt": {
         "total_volume": ("snapshot nmTotalTradedQty", 1, False),
@@ -202,9 +213,8 @@ FIELD_MAP = {
 }
 
 # Truong so luong phai qua cong hop le (don vi CP/dong sau scale)
-QTY_FIELDS = ("total_volume", "atc_volume", "total_value", "buy_volume", "buy_value",
-              "buy_value_matched", "sell_volume", "sell_value",
-              "sell_value_matched", "room", "total_room")
+QTY_FIELDS = ("total_volume", "total_value", "buy_volume", "buy_value",
+              "sell_volume", "sell_value", "room", "total_room")
 # Chan tren tuyet doi: vuot = sentinel/thieu du lieu (vd 2^64 qua
 # float). 2^62 du lon cho moi KL/GD hop le cua 1 ma trong 1 phien.
 ABSURD_CAP = 2 ** 62
@@ -828,13 +838,13 @@ class DnseAdapter:
                     sym = topic.rsplit("/", 1)[-1]
                 self.agg.on_snapshot(self.name, sym,
                     gate_snap_fields(self.name, {
-                    "day_low": self._num(m, "f13"),
-                    "atc_volume": self._num(m, "f22", 10),
+                    "last": self._num(m, "f13"),
+                    "total_volume": self._num(m, "f22", 10),
                     "total_value": self._num(m, "f25", 10**9),
                     "buy_volume": self._num(m, "f17", 10),
-                    "buy_value_matched": self._num(m, "f58", 10**9),
+                    "buy_value": self._num(m, "f58", 10**9),
                     "sell_volume": self._num(m, "f18", 10),
-                    "sell_value_matched": self._num(m, "f59", 10**9),
+                    "sell_value": self._num(m, "f59", 10**9),
                     "room": self._num(m, "f20", 10),
                     "total_room": self._num(m, "f60", 10),
                     }, self.agg.gate_stats))
@@ -1373,16 +1383,12 @@ class VciAdapter:
 class Aggregator:
     """Giu du lieu THEO TUNG NGUON, hop nhat khi build:
     - Nen: theo tung phut, uu tien SRC_PRIORITY (dnse chinh).
-    - Khoi ngoai: snapshot cua cong chinh; thieu field thi dien
-      tu cong ke tiep (vd DNSE thieu thi KBS/VPS bo sung).
+    - Khoi ngoai: CHI cong da quy chuan (dnse/vndirect/vps) dong
+      gop gia tri, uu tien THEO TRUONG (FIELD_PRIORITY); cong
+      chua quy chuan (kbs/vci/ssi-mqtt) khong tham gia merge.
     - Doi chieu cheo: so sanh snapshot cac cong voi cong chinh."""
 
-    def __init__(self, session_date=None):
-        # session_date 'YYYY-MM-DD' (ICT): _merged_buckets chi giu
-        # phut cua dung ngay nay — chan bucket phien truoc (vd phut
-        # 14:45 hom truoc trong bo nho) lot vao rows intraday.
-        # None = khong loc (tuong thich nguoc cho code goi cu).
-        self.session_date = session_date
+    def __init__(self):
         self.candles = {}       # src -> sym -> {minute: [o,h,l,c,v,
                                 #  first_ts, last_ts]}
         # Lop volume THOA THUAN theo phut (thiet ke 3.4 — bucket
@@ -1651,17 +1657,11 @@ class Aggregator:
 
     def _merged_buckets(self, sym):
         """{minute: bucket} — moi phut lay tu cong uu tien cao nhat
-        co phut do (failover muc phut). Chi giu phut cua
-        session_date (neu co): bucket phien truoc trong bo nho
-        (tick timestamp cu, resume) khong lot vao intraday."""
+        co phut do (failover muc phut)."""
         merged = {}
         for src in reversed(SRC_PRIORITY):
             for minute, b in self.candles.get(src, {}).get(
                     sym, {}).items():
-                if self.session_date and datetime.fromtimestamp(
-                        minute, ICT).strftime("%Y-%m-%d") \
-                        != self.session_date:
-                    continue
                 merged[minute] = b
         return merged
 
@@ -1678,30 +1678,43 @@ class Aggregator:
         return out
 
     def _merged_foreign_sym(self, sym):
-        # Chi cong da quy chuan duoc xet, giu thu tu SRC_PRIORITY
-        # tuong doi (dnse -> vndirect -> vps). Cong thang thieu
-        # truong: truong do VANG MAT (khong dien 0, khong lap bang
-        # cong chua quy chuan). Moi so mang co nguon (field_src)
-        # + co da-quy-chuan (normalized).
-        snaps = [(src, self.foreign[src][sym]) for src in SRC_PRIORITY
-                 if src in FOREIGN_NORMALIZED_GATES
-                 and sym in self.foreign.get(src, {})]
-        if not snaps:
+        # Best-gate (CHOT 06:07 28/10): chi cong da quy chuan ve
+        # chuan TONG moi dong gop gia tri (giong tick_merger
+        # .merge_snapshot_sym: uu tien THEO TRUONG, bo room khi
+        # room > total_room sau hop nhat, src = cong cap
+        # total_volume). `sources` giu toan bo cong co snapshot
+        # (giong merger) de doi chieu — khong phai chi cong dong gop.
+        all_snaps = [(src, self.foreign[src][sym]) for src in SRC_PRIORITY
+                     if sym in self.foreign.get(src, {})]
+        if not all_snaps:
             return None
-        merged = {}
-        field_src = {}
-        for src, snap in snaps:
-            for k, v in snap.items():
-                if k == "src":
+        by_src = dict(all_snaps)
+        fields = set()
+        for _, snap in all_snaps:
+            fields.update(k for k in snap if k != "src")
+        merged, field_src = {}, {}
+        for f in sorted(fields):
+            for src in _field_order(f):
+                snap = by_src.get(src)
+                if not snap or f not in snap:
                     continue
-                if merged.get(k) is None and v is not None:
-                    merged[k] = v
-                    field_src[k] = src
-        merged["src"] = snaps[0][0]
-        merged["sources"] = [s for s, _ in snaps]
-        merged["field_src"] = field_src
-        merged["normalized"] = True
-        merged["normalized_gates"] = [s for s, _ in snaps]
+                v = snap.get(f)
+                if v is None:
+                    continue
+                merged[f] = v
+                field_src[f] = src
+                break
+        # room vuot total_room sau hop nhat -> bo room (thieu hon sai).
+        if (merged.get("room") is not None
+                and merged.get("total_room") is not None
+                and merged["room"] > merged["total_room"]):
+            del merged["room"]
+            field_src.pop("room", None)
+        if not merged:
+            return None
+        merged["src"] = field_src.get("total_volume") or next(
+            iter(field_src.values()), None)
+        merged["sources"] = [s for s, _ in all_snaps]
         return merged
 
     def build_foreign(self):
@@ -1735,8 +1748,6 @@ class Aggregator:
                 "sell_value": e.get("sell_value"),
                 "room": e.get("room"), "total_room": e.get("total_room"),
                 "src": e.get("src"),
-                "normalized": True,
-                "field_src": e.get("field_src"),
             }
         return out
 
@@ -1998,17 +2009,6 @@ def publish(payload, source):
         return json.loads(r.read().decode())
 
 
-def publish_checked(payload, source):
-    """Publish + kiem tra tra loi Worker: {ok:false} hoac non-2xx
-    (HTTPError) deu raise de dirty duoc giu lai chu ky sau (Chot
-    21:58 27/10). Tra loi ok lang khong duoc coi la thanh cong."""
-    resp = publish(payload, source)
-    if not isinstance(resp, dict) or not resp.get("ok"):
-        raise RuntimeError(
-            f"stock-publish tra ve khong ok: {str(resp)[:120]}")
-    return resp
-
-
 def fetch_tick_state(key=None):
     """Doc artifact shadow_tick tu Worker (route noi bo, secret) —
     phuc vu resume Dot 2. key=None -> status.json; key dang
@@ -2035,9 +2035,9 @@ ADAPTERS = {"dnse": DnseAdapter, "kbs": KbsAdapter,
 
 async def _collect(max_minutes=0):
     universe = CONFIG["universe"]
+    agg = Aggregator()
     started = time.time()
     start_dt = now_ict()
-    agg = Aggregator(session_date=start_dt.strftime("%Y-%m-%d"))
     if CONFIG.get("resume"):
         # Resume Dot 2: nap checkpoint + artifact theo nguon cua
         # CHINH phien hom nay; bat ky loi nao -> bat dau trang.
@@ -2074,7 +2074,6 @@ async def _collect(max_minutes=0):
         tasks[name] = asyncio.create_task(ad.run())
     last_publish = 0.0
     publishes = 0
-    _freeze_streak = [0]  # chu ky lien tiep raw>0 ma 0 phut bucket
     _prev_msgs = {}
     _prev_t = [time.time()]
 
@@ -2171,18 +2170,6 @@ async def _collect(max_minutes=0):
                 raw_payload[src_r][hour] = base64.b64encode(
                     gzip.compress(lines.encode())).decode()
         src_state = agg.export_src_state()
-        # --- Goi sua publish (Chot 21:58 27/10): snapshot dirty TRUOC
-        # khi build payload; tick toi trong luc build/await POST khong
-        # duoc xoa kem. Luot closed=True gui LAI TOAN BO buckets (hoa
-        # giai cuoi phien) thay vi chi dirty.
-        dirty_snap = set(agg.dirty)
-        dirty_pt_snap = set(agg.dirty_pt)
-        if closed:
-            for part_all in src_state.values():
-                for s in (part_all.get("buckets") or {}):
-                    dirty_snap.add(s)
-                for s in (part_all.get("buckets_pt") or {}):
-                    dirty_pt_snap.add(s)
         artifacts = {}
         for name in CONFIG["sources"]:
             part = src_state.get(name) or {}
@@ -2191,66 +2178,18 @@ async def _collect(max_minutes=0):
             artifacts[name] = {
                 "snapshot": {"by_symbol": part.get("snapshot") or {}},
                 "health": build_health(name),
-                "buckets_dirty": {s: bk[s] for s in dirty_snap
+                "buckets_dirty": {s: bk[s] for s in agg.dirty
                                   if s in bk},
                 "buckets_pt_dirty": {s: bkpt[s]
-                                     for s in dirty_pt_snap
+                                     for s in agg.dirty_pt
                                      if s in bkpt},
             }
         for name in CONFIG["sources"]:
             _prev_msgs[name] = adapters[name].msgs
         _prev_t[0] = time.time()
-        # Luot closed=True: intraday cho TOAN BO universe (khong chi
-        # ma dirty / co buckets) — moi ma deu co file tuoi sau dong
-        # phien, ke ca ma ngung giao dich som. Luot dinh ky: chi ma
-        # dirty nhu cu.
-        intra_syms = sorted(CONFIG["universe"]) if closed \
-            else sorted(dirty_snap)
-        intra = agg.build_intraday(intra_syms)
+        intra = agg.build_intraday(sorted(agg.dirty))
         foreign = agg.build_foreign()
         flow = agg.build_foreign_flow()
-        # --- Quan sat publish (Chot 21:58 27/10): so phut bucket gui
-        # di + so raw record moi chu ky; canh bao khi raw>0 ma khong
-        # co phut bucket nao 2 chu ky lien tiep (dung chu ky dong
-        # bang 27/10: buckets/intraday dung tu 14:25:42 trong khi
-        # status/raw van len).
-        buckets_minutes_sent = 0
-        for _a in artifacts.values():
-            for _v in list(_a["buckets_dirty"].values()):
-                buckets_minutes_sent += len(_v)
-            for _v in list(_a["buckets_pt_dirty"].values()):
-                buckets_minutes_sent += len(_v)
-        raw_n = len(raw_recs)
-        if raw_n > 0 and buckets_minutes_sent == 0:
-            _freeze_streak[0] += 1
-            if _freeze_streak[0] >= 2:
-                print(f"[tick-multi] ALERT dong bang publish: raw_n={raw_n} "
-                      f"buckets_minutes_sent=0 chu ky lien tiep="
-                      f"{_freeze_streak[0]}", flush=True)
-        else:
-            _freeze_streak[0] = 0
-        print(f"[tick-multi] publish obs: dirty_n={len(dirty_snap)} "
-              f"buckets_minutes_sent={buckets_minutes_sent} raw_n={raw_n} "
-              f"closed={closed}", flush=True)
-        # Luot closed=True: chunk POST loi thi LOG TO + DI TIEP chunk
-        # sau — khong con chu ky sau de gui lai, dung 1 chunk loi
-        # giua chung khong duoc lam mat ca luot dong phien (29/10:
-        # chi 4 ma len R2 roi dung). Luot dinh ky: van raise nhu cu
-        # de dirty duoc giu lai, chu ky sau gui lai.
-        chunk_failures = []
-
-        async def _post_checked(payload, source, what):
-            try:
-                await asyncio.to_thread(publish_checked, payload, source)
-            except Exception as e:  # noqa: BLE001
-                if closed:
-                    chunk_failures.append(what)
-                    print(f"[tick-multi] ALERT chunk publish loi "
-                          f"(closed, bo qua): {what}: {str(e)[:120]}",
-                          flush=True)
-                else:
-                    raise
-
         keys = list(intra.keys())
         chunks = [keys[i:i + 10]
                   for i in range(0, len(keys), 10)] or [[]]
@@ -2263,23 +2202,20 @@ async def _collect(max_minutes=0):
                                      "src_artifacts": artifacts}}
                 if chunk:
                     p["tick_shadow"]["intraday"] = chunk
-                await _post_checked(p, "multi", "shadow-chunk0")
+                await asyncio.to_thread(publish, p, "multi")
                 if CONFIG["live"]:
                     live = {"tick_live": {"foreign": flow}}
                     if chunk:
                         live["tick_live"]["intraday"] = chunk
-                    await _post_checked(live, "multi", "live-chunk0")
+                    await asyncio.to_thread(publish, live, "multi")
             elif chunk:
-                await _post_checked(
-                    {"tick_shadow": {"intraday": chunk}},
-                    "multi", f"shadow-chunk{ci}")
+                await asyncio.to_thread(
+                    publish, {"tick_shadow": {"intraday": chunk}},
+                    "multi")
                 if CONFIG["live"]:
-                    await _post_checked(
-                        {"tick_live": {"intraday": chunk}},
-                        "multi", f"live-chunk{ci}")
-        if chunk_failures:
-            print(f"[tick-multi] ALERT dong phien: chunk POST loi: "
-                  f"{', '.join(chunk_failures)}", flush=True)
+                    await asyncio.to_thread(
+                        publish, {"tick_live": {"intraday": chunk}},
+                        "multi")
         # Bang khop lenh chi tiet (tape): publish kem chu ky nay,
         # loi thi chu ky sau gui lai (build_tape chi danh dau dirty
         # lai khi co tick moi — neu POST loi o day, lan publish ke
@@ -2289,16 +2225,13 @@ async def _collect(max_minutes=0):
         tape = agg.build_tape()
         if tape:
             await asyncio.to_thread(publish, {"tape": tape}, "multi")
-        # Publish xong moi xoa PHAN DA SNAPSHOT: POST loi giua chung
-        # -> dirty con nguyen, chu ky sau gui lai (Worker merge
-        # idempotent, intraday ghi de theo ma). Ma chua co trong
-        # snapshot ma phat sinh tick trong luc POST thi con lai trong
-        # dirty (set khong phan biet tick moi cua ma da dirty — phan
-        # nay luot closed=True gui lai toan bo se hoa giai).
-        # Xoa truoc POST se lam mat artifact cua ma ngung giao dich
-        # sau chu ky loi — vuot nguong mat <= 1 chu ky cua kill-test.
-        agg.dirty -= dirty_snap
-        agg.dirty_pt -= dirty_pt_snap
+        # Publish xong moi xoa dirty: POST loi giua chung -> dirty
+        # con nguyen, chu ky sau gui lai (Worker merge idempotent,
+        # intraday ghi de theo ma). Xoa truoc POST se lam mat
+        # artifact cua ma ngung giao dich sau chu ky loi — vuot
+        # nguong mat <= 1 chu ky cua kill-test.
+        agg.dirty.clear()
+        agg.dirty_pt.clear()
         publishes += 1
 
     while not session_over():
