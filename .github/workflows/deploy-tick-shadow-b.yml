@@ -1,10 +1,7 @@
 name: Deploy Tick Shadow B to Modal
 
 on:
-  push:
-    paths:
-      - "modal_crons/tick_collector_shadow_b.py"
-      - ".github/workflows/deploy-tick-shadow-b.yml"
+  workflow_dispatch:
 
 jobs:
   deploy:
