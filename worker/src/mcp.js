@@ -42,10 +42,10 @@ const PROTOCOL_VERSION = '2025-03-26';
 const SERVER_INFO = { name: 'pocket-personal-stock-mcp', version: '1.0.0' };
 // MO FULL giai doan thu nghiem (Henrry sua lenh 10:07 22/10/2026,
 // Dot A the hien MCP ra frontend): true = bo phan goi muc 2.5 + bo
-// quota agent_calls cho MOI user (tools/list tra du 14 tool, khong
-// tru usage). Khi Henrry lenh dong, gat ve false la phan goi + quota
-// ap dung lai nguyen ven (khong sua them cho nao khac).
-const MCP_DEV_OPEN = true;
+// quota agent_calls cho MOI user (tools/list tra du tool, khong
+// tru usage). Henrry lenh dong 01/11/2026 (C2): false = phan goi +
+// quota ap dung lai nguyen ven (khong sua them cho nao khac).
+const MCP_DEV_OPEN = false;
 const SCOPE_NOTE =
   'MCP Pocket Personal chi tra SO LIEU THI TRUONG da publish trong ' +
   'app (gia, ho so, dong tien, vi mo, dong thuan dang so + link ' +
