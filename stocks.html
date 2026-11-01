@@ -3379,7 +3379,10 @@ function chatRoute(qRaw){
   // Khoan nganh TAT DINH (lenh dau moi 21:39 23/10): "phan tich
   // <nganh> de ro hon" va bien the -> analyze_sector nhu duong chip
   // khoan (Worker tra fallback hoac mat mang). Dat truoc luat /nganh/.
-  if(!sym&&has(/phân tích|để rõ hơn|khoan sâu|xem thêm|thì sao|kỹ hơn/)){
+  // Fix dinh tuyen (Chot 27/10): them ho "ma nao" — giong luoi worker
+  // (deterministicDrill) de cau "ma nao" khong co chu "nganh" van khoan
+  // dung nganh thay vi roi null -> tu choi (ca Q3 22:37 27/10).
+  if(!sym&&has(/phân tích|để rõ hơn|khoan sâu|xem thêm|thì sao|kỹ hơn|mã nào|ma nao/)){
     const SD=[["bất động sản","8600"],["bđs","8600"],["ngân hàng","8300"],["dầu khí","0500"],["tài nguyên cơ bản","1700"],["thực phẩm","3500"],["điện","7500"],["bán lẻ","5300"],["xây dựng","2300"],["du lịch","5700"],["hóa chất","1300"],["ô tô","3300"],["dịch vụ tài chính","8700"],["chứng khoán","8700"],["công nghệ","9500"],["viễn thông","6500"],["y tế","4500"],["truyền thông","5500"],["bảo hiểm","8500"]];
     for(const [nm,cd] of SD){ if(low.includes(nm)) return {tool:"analyze_sector",args:{code:cd},label:q}; }
   }

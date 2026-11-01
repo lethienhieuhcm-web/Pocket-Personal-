@@ -698,53 +698,59 @@ export async function hAiChat(request, env) {
 
   // Luot 1: dieu phoi (chon tool)
   let j1;
-  const pass1Body = {
-    systemInstruction: { parts: [{ text: SYSTEM_PROMPT + '\n13. Tra loi bang ngon ngu: ' + lang + '.' }] },
-    contents,
-    tools: [{ functionDeclarations: _buildDecls() }],
-    toolConfig: { functionCallingConfig: { mode: 'AUTO' } },
-    generationConfig: { temperature: 0.2, maxOutputTokens: 1024 },
-  };
-  try {
-    // Hook test staging-only (xem ghi chu engine): secret nay chi dat
-    // tren staging (gia tri ngau nhien, chi can ton tai); production
-    // khong co secret nay nen nhanh nay chet han o prod.
-    if (env.ENGINE_FORCE_ENGINE) {
-      const fe = new Error('gemini_down');
-      fe.reason = 'gemini_down'; fe.detail = 'forced_test';
-      throw fe;
-    }
-    j1 = await geminiCall(env, keys, state, pass1Body, 10000, 3000);
-  } catch (e) {
-    // (Chan du phong thu 2 da ngat 26/10: luot key chet di thang
-    // engine (b) / fallback nhu cu, khong qua chan du phong nua.)
-    // Engine (b): chi khi luot dieu phoi chet vi khoa + co engine-fallback
-    // + probe xanh. Tra fallback KEM engine_job (client cu bo qua truong
-    // moi va dung chatRoute nhu cu; client moi chi poll engine khi
-    // chatRoute khong giai quyet duoc) — khong lam cham luot fallback.
-    const fbExtra = { keys_tried: state.keysTried, detail: (e && e.detail) || null };
+  // Fix dinh tuyen (Chot 27/10): drill xac dinh chay TRUOC pass-1 LLM.
+  // Cau khoan nganh khong phu thuoc key LLM — khi key chet drill van
+  // cuu duoc thay vi roi thang fallback:gemini_down.
+  let fc = deterministicDrill(lastUser.text);
+  if (!fc) {
+    const pass1Body = {
+      systemInstruction: { parts: [{ text: SYSTEM_PROMPT + '\n13. Tra loi bang ngon ngu: ' + lang + '.' }] },
+      contents,
+      tools: [{ functionDeclarations: _buildDecls() }],
+      toolConfig: { functionCallingConfig: { mode: 'AUTO' } },
+      generationConfig: { temperature: 0.2, maxOutputTokens: 1024 },
+    };
     try {
-      const flag = await aiEngineFlag(env);
-      if (flag === 'engine-fallback') {
-        const probe = await engineProbe(env);
-        if (probe.ok) {
-          const enq = await engineEnqueue(env,
-            enginePrompt(lastUser.text, lang), lang);
-          if (enq.job_id) {
-            return finish({ fallback: true, reason: (e && e.reason) || 'gemini_down',
-              engine_job: enq.job_id, engine_available: true },
-              'fallback:engine_pending', fbExtra);
-          }
-          if (enq.queue_full) {
-            return finish({ fallback: true, reason: (e && e.reason) || 'gemini_down',
-              engine_busy: true }, 'fallback:engine_busy', fbExtra);
+      // Hook test staging-only (xem ghi chu engine): secret nay chi dat
+      // tren staging (gia tri ngau nhien, chi can ton tai); production
+      // khong co secret nay nen nhanh nay chet han o prod.
+      if (env.ENGINE_FORCE_ENGINE) {
+        const fe = new Error('gemini_down');
+        fe.reason = 'gemini_down'; fe.detail = 'forced_test';
+        throw fe;
+      }
+      j1 = await geminiCall(env, keys, state, pass1Body, 10000, 3000);
+    } catch (e) {
+      // (Chan du phong thu 2 da ngat 26/10: luot key chet di thang
+      // engine (b) / fallback nhu cu, khong qua chan du phong nua.)
+      // Engine (b): chi khi luot dieu phoi chet vi khoa + co engine-fallback
+      // + probe xanh. Tra fallback KEM engine_job (client cu bo qua truong
+      // moi va dung chatRoute nhu cu; client moi chi poll engine khi
+      // chatRoute khong giai quyet duoc) — khong lam cham luot fallback.
+      const fbExtra = { keys_tried: state.keysTried, detail: (e && e.detail) || null };
+      try {
+        const flag = await aiEngineFlag(env);
+        if (flag === 'engine-fallback') {
+          const probe = await engineProbe(env);
+          if (probe.ok) {
+            const enq = await engineEnqueue(env,
+              enginePrompt(lastUser.text, lang), lang);
+            if (enq.job_id) {
+              return finish({ fallback: true, reason: (e && e.reason) || 'gemini_down',
+                engine_job: enq.job_id, engine_available: true },
+                'fallback:engine_pending', fbExtra);
+            }
+            if (enq.queue_full) {
+              return finish({ fallback: true, reason: (e && e.reason) || 'gemini_down',
+                engine_busy: true }, 'fallback:engine_busy', fbExtra);
+            }
           }
         }
-      }
-    } catch (e2) { /* probe/enqueue loi -> fallback thuong */ }
-    return fallback((e && e.reason) || 'gemini_down', fbExtra);  }
+      } catch (e2) { /* probe/enqueue loi -> fallback thuong */ }
+      return fallback((e && e.reason) || 'gemini_down', fbExtra);  }
+  }
+  if (!fc) fc = geminiFunctionCall(j1);
 
-  let fc = geminiFunctionCall(j1);
   if (!fc) {
     // Khong can so lieu: chi chap nhan text neu khong chua con so
     // nao khong kiem chung duoc (khong co envelope de gac).
