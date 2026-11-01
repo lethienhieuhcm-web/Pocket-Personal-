@@ -6,6 +6,7 @@ on:
     paths:
       - "modal_crons/app.py"
       - "modal_crons/direct_fetch.py"
+      - "modal_crons/source_router.py"
       - ".github/workflows/deploy-modal-crons.yml"
 
 jobs:
