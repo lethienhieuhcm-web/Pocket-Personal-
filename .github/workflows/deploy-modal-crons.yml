@@ -5,6 +5,7 @@ on:
   push:
     paths:
       - "modal_crons/app.py"
+      - "modal_crons/direct_fetch.py"
       - ".github/workflows/deploy-modal-crons.yml"
 
 jobs:
