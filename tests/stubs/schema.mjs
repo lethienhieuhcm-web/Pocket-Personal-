@@ -4,3 +4,5 @@ export const portfolioTxns = {};
 export const alerts = {};
 export const targets = {};
 export const ruleAlerts = {};
+export const sessions = {};
+export const rateLimits = {};

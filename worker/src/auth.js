@@ -7,6 +7,14 @@ import { sessions, rateLimits } from "./schema.js";
 // Hardcoded administrator account
 export const OWNER_EMAIL = "lethienhieuhcm@gmail.com";
 
+// ---- TEST MODE (chi staging, KHONG BAO GIO production) — xem SPEC.md §3.1/§3.2/§4 ----
+// Identity gia: domain .local khong bao gio la user that -> getUser() = null -> tier 0 (free).
+export const TEST_USER_EMAIL = "test@staging.local";
+// Host staging xac nhan tu scripts/cf_deploy.py (CF_VERIFY_HOST khi deploy staging).
+// Khop CHINH XAC, khong suffix-match / substring.
+export const STAGING_HOST = "staging.lethanhdong.one";
+export const TEST_CREDENTIAL_HEADER = "X-Test-Credential";
+
 /* ---------- server auth + RBAC (PHASE 3: D1 primary, R2 fallback via db.js) ---------- */
 // Account DB (separate R2 bucket "english-lab-auth", binding AUTHDB):
 //   users/{email}.json {email, salt, hash, role, created}
@@ -22,7 +30,32 @@ export async function pbkdf2Hash(password, saltB64){
   return btoa(String.fromCharCode(...new Uint8Array(bits)));
 }
 
+// So sanh constant-time (crypto.subtle.timingSafeEqual khong co trong Node webcrypto
+// local, nen dung vong lap XOR — du cho guard test mode, khong phai nguyen ly bao mat chinh).
+function testCredEqual(got, want){
+  if(typeof got !== "string" || got.length !== want.length) return false;
+  let diff = 0;
+  for(let i = 0; i < want.length; i++) diff |= got.charCodeAt(i) ^ want.charCodeAt(i);
+  return diff === 0;
+}
+
 export async function getSession(request, env){
+  // ---- TEST MODE (BƯỚC 2): kiem tra TRUOC Bearer. Guard AND 2 lop, doc tai DUNG MOT CHO ----
+  //   (1) env.TEST_CREDENTIAL da set  -> production (worker fancy-wood-2b3c) khong bao gio
+  //       set secret nay, nen test mode chet han tren production.
+  //   (2) hostname == STAGING_HOST    -> phong thu khi secret vo tinh set nham len production:
+  //       request toi lethanhdong.one van bi bo qua.
+  // Thieu mot trong hai lop => khong vao nhanh nay, roi ve luong Bearer nhu cu (khong 401
+  // tai day; dispatcher/resolveCaller se 401 neu cung khong co Bearer hop le).
+  // @TEST-MODE-GUARD: AND(env.TEST_CREDENTIAL, hostname === STAGING_HOST)
+  const testCredentialActive = !!env && !!env.TEST_CREDENTIAL &&
+    new URL(request.url).hostname === STAGING_HOST;
+  if(testCredentialActive){
+    const got = request.headers.get(TEST_CREDENTIAL_HEADER) || "";
+    if(got && testCredEqual(got, String(env.TEST_CREDENTIAL))){
+      return { email: TEST_USER_EMAIL, exp: Date.now() + 3600_000, token: 'test' };
+    }
+  }
   const auth = request.headers.get("Authorization") || "";
   const m = auth.match(/^Bearer (.+)$/);
   if(!m) return null;
