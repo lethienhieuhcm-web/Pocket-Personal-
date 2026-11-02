@@ -1980,8 +1980,10 @@ export async function hStockPublish(request, env, url, ctx){
   }catch(e){ tickErrors.push({block:"tick_live", error:String((e&&e.message)||e).slice(0,200)}); } }
   // Chan VCI doc lap Tang B (Chot 19:39 21/10): chay tren ha tang
   // OVH/Botkeep (Modal bi VCI chan 403) — nguon ngoai DU BO thu hai.
-  // Chi ghi shadow rieng market/shadow_tick/vci/ de doi chieu +
-  // bao cao do on dinh; KHONG dung du lieu production.
+  // Intraday van shadow-only (nen VCI bi LOAI theo Chot 28/10 §6).
+  // Foreign nay dung production (Relay 4 chuyen sang dung that, lenh
+  // 02/11): MERGE vao market/foreign_flow.json nhu khoi tick_live,
+  // giu nguyen cac ma khong co trong payload.
   if(body.tick_vci){ try{
     const tv = body.tick_vci;
     if(tv.intraday) for(const key of Object.keys(tv.intraday)){
@@ -1991,6 +1993,12 @@ export async function hStockPublish(request, env, url, ctx){
     if(tv.foreign){
       await sPut(env, "market/shadow_tick/vci/foreign.json", doc({by_symbol:tv.foreign, src:(body._prov||{}).source||null, updated:now}));
       n++;
+      if(Object.keys(tv.foreign).length){
+        const cur = await sGet(env, "market/foreign_flow.json") || {by_symbol:{}};
+        const merged = Object.assign({}, cur.by_symbol || {}, tv.foreign);
+        await sPut(env, "market/foreign_flow.json", doc({by_symbol:merged}));
+        n++;
+      }
     }
     if(tv.status){
       await sPut(env, "market/shadow_tick/vci/status.json", doc(Object.assign({}, tv.status, {updated:now})));
