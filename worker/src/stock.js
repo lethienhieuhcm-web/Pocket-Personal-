@@ -1316,6 +1316,23 @@ function fanoutDoDay() {
   return new Date(Date.now() + 7 * 3600 * 1000).toISOString().slice(0, 10).replaceAll("-", "");
 }
 
+/* Kenh Ably `market` tach theo moi truong (burst 02/11: subscriber staging
+ * nhan batch live production qua kenh chung `market` — cung app/key Ably).
+ * Quy uoc phan biet = hostname, nhu docs/staging-and-rollback.md:
+ * staging = `staging.lethanhdong.one` hoac workers.dev cua worker
+ * `fancy-wood-2b3c-staging` (→ "market-staging"); production giu nguyen
+ * "market". */
+function isStagingHost(host) {
+  const h = String(host || "").toLowerCase();
+  return h.startsWith("staging.") || h.includes("-staging");
+}
+
+function ablyMarketChannel(request) {
+  let host = "";
+  try { host = new URL(request.url).hostname; } catch (e) {}
+  return isStagingHost(host) ? "market-staging" : "market";
+}
+
 async function fanoutIngestDo(env, frames) {
   if (!env.MARKET_ROOM) return null;
   const id = env.MARKET_ROOM.idFromName("market-" + fanoutDoDay());
@@ -1348,12 +1365,12 @@ async function fanoutIngestDo(env, frames) {
   }
 }
 
-async function fanoutSendAbly(env, frames) {
+async function fanoutSendAbly(env, frames, channel) {
   const creds = btoa(env.ABLY_ROOT_KEY.trim());
   const ctl = (typeof AbortSignal !== "undefined" && AbortSignal.timeout) ? AbortSignal.timeout(FANOUT.ABLY_TIMEOUT_MS) : undefined;
   // Batch 1 POST: Ably REST chap nhan mang message (moi frame 1 message,
   // name = t, data = JSON string cua frame — SDK ben nghe parse nhu cu).
-  const ablyResp = await fetch("https://rest.ably.io/channels/market/messages", {
+  const ablyResp = await fetch("https://rest.ably.io/channels/" + encodeURIComponent(channel || "market") + "/messages", {
     method: "POST",
     headers: { "Content-Type": "application/json", "Authorization": "Basic " + creds },
     body: JSON.stringify(frames.map(function (f) { return { name: f.t, data: JSON.stringify(f) }; })),
@@ -1365,10 +1382,10 @@ async function fanoutSendAbly(env, frames) {
   }
 }
 
-async function fanoutPublishAbly(env, ctx, frames) {
+async function fanoutPublishAbly(env, ctx, frames, channel) {
   if (!env.ABLY_ROOT_KEY || !frames.length) return false;
   const run = async function () {
-    try { await fanoutSendAbly(env, frames); } catch (e) {
+    try { await fanoutSendAbly(env, frames, channel); } catch (e) {
       ablySendFail++;
       console.error(`[fanout] Ably loi (fail #${ablySendFail}): ${e && e.message ? e.message : e}`);
     }
@@ -2146,7 +2163,7 @@ export async function hStockPublish(request, env, url, ctx){
       }
       if (built.truncated) console.error(`[fanout] cat bot ${built.truncated} frame q (vuot ${FANOUT.MAX_Q_PER_BATCH})`);
       if (anyFallback) console.error(`[fanout] seq du phong (DO khong cap du, tong fallback=${fanoutSeqFallback})`);
-      await fanoutPublishAbly(env, ctx, stamped);
+      await fanoutPublishAbly(env, ctx, stamped, ablyMarketChannel(request));
     }
   } catch (e) {
     console.error(`[fanout] loi: ${e && e.message ? e.message : e}`);
@@ -2159,7 +2176,10 @@ export async function hStockPublish(request, env, url, ctx){
 // Router 'user' da kiem session. Worker goi Ably REST requestToken bang
 // Root key (server-side, khong bao gio ra trinh duyet), tra NGUYEN VEN
 // TokenDetails ve cho Ably JS SDK dung. Chi cap quyen subscribe kenh
-// 'market' + kenh thu staging-h1-YYYYMMDD (neu duoc hoi dung ten).
+// duoc hoi — 'market' (prod), 'market-staging' (staging, tach theo
+// hostname, xem ablyMarketChannel), hoac kenh thu staging-h1-YYYYMMDD.
+// KHONG kem tu chon kenh khac (truoc day token nao cung mo 'market' ->
+// subscriber staging nhan frame live production, burst 02/11).
 export async function hAblyToken(request, env){
   if(!env.ABLY_ROOT_KEY) return jerr("Ably not configured", 500);
   const key = env.ABLY_ROOT_KEY.trim();
@@ -2167,8 +2187,8 @@ export async function hAblyToken(request, env){
   if(!keyName || key.indexOf(":") < 0) return jerr("Ably key malformed", 500);
   const url = new URL(request.url);
   const channel = (url.searchParams.get("channel") || "market").trim();
-  if(channel !== "market" && !/^staging-h1-\d{8}$/.test(channel)) return jerr("Bad channel", 400);
-  const capability = JSON.stringify({ [channel]: ["subscribe"], market: ["subscribe"] });
+  if(channel !== "market" && channel !== "market-staging" && !/^staging-h1-\d{8}$/.test(channel)) return jerr("Bad channel", 400);
+  const capability = JSON.stringify({ [channel]: ["subscribe"] });
   let resp;
   try{
     resp = await fetch(`https://rest.ably.io/keys/${encodeURIComponent(keyName)}/requestToken`, {

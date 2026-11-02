@@ -69,8 +69,15 @@
     return d;
   }
   function nextRetryDelay(attempt){ return RETRY_DELAYS[Math.min(attempt, RETRY_DELAYS.length - 1)] || 5000; }
-  function channelFor(search){
+  function channelFor(search, host){
     try{ var q = new URLSearchParams(search || "").get("pushchan") || ""; if(TEST_RE.test(q)) return q; }catch(e){}
+    /* Tach kenh theo moi truong (burst 02/11: subscriber staging nhan batch
+     * live production qua kenh chung `market`). Hostname staging bat dau
+     * bang "staging." hoac chua "-staging" (workers.dev) -> `market-staging`
+     * (khop ablyMarketChannel ben worker); production giu `market`. */
+    var h = "";
+    try{ h = String(host !== undefined ? host : (typeof location !== "undefined" ? location.hostname : "")).toLowerCase(); }catch(e){}
+    if(h.indexOf("staging.") === 0 || h.indexOf("-staging") >= 0) return "market-staging";
     return "market";
   }
   function isTestChannel(ch){ return TEST_RE.test(ch || ""); }
