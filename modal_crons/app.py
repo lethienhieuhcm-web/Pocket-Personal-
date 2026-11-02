@@ -1,7 +1,7 @@
 """
 Modal cron jobs for Pocket Personal (k1 Section 2).
 
-2 scheduled functions:
+4 scheduled functions (2 o day + 2 lane thi truong o cac doan duoi):
 1. book_processor  - daily 17:00 +07: process PDF uploads from R2 (English Lab Books)
 2. d1_backup        - daily: backup D1 to Modal Volume (keep 7 versions)
    (realtime_poller da xoa 28/10, lenh Henrry 17:35; thay bang doi ung InstaBox — xem thiet ke 28/10.)
@@ -10,6 +10,13 @@ Modal cron jobs for Pocket Personal (k1 Section 2).
 NHAP BUOC 2 (01/11, board-vci-wiring): +1 ham `stock_snapshot` tren stock_image
   — consumer DAU TIEN goi bundle /opt/direct_fetch.py (vnd_index_snapshot +
   vci_symbols). CHUA hen lich, CHUA deploy; xem work/CONSUMER_SPEC.md.
+  (P0 02/11 da hen lich */5 trong gio phien cho stock_snapshot.)
+
+PA-3a (02/11): +1 ham `publish_ohlcv_daily` tren stock_image — EOD
+  15:15 ICT (08:15 UTC) T2-T6, chi phat lane `ohlcv` (nen ngay cho
+  chart 1D). Lane nay chua producer tung phat: publish_snapshot (xoa
+  28/10) chi gui indices + quotes_patch, con stock_snapshot chi gui
+  indices/sector_indices/quotes.
 
 Secrets (Modal dashboard -> Secrets -> "pocket-personal"):
   - CF_API_TOKEN
@@ -21,6 +28,7 @@ Deploy:
 
 Test single run:
   modal run app.py::book_processor
+  modal run app.py::publish_ohlcv_daily
   modal run app.py::d1_backup
 """
 import os
@@ -181,6 +189,106 @@ def stock_snapshot(symbols: tuple = QUOTE_UNIVERSE):
         result = json.loads(resp.read().decode())
     print(f"stock_snapshot: {len(main)} chi so, {len(sector)} nganh, "
           f"{len(quotes)} ma -> {result}", flush=True)
+    return result
+
+
+def _post_publish(payload: dict) -> dict:
+    """POST payload toi lane noi bo cua Worker — cung URL + header tuyet
+    doi nhu khoai POST trong stock_snapshot. Secret lay tu env, khong
+    hardcode."""
+    import json
+    import urllib.request
+
+    url = os.environ.get("STOCKAPP_PUBLISH_URL",
+                         "https://lethanhdong.one/api/internal/stock-publish")
+    secret = os.environ.get("STOCK_PUBLISH_SECRET", "")
+    body = json.dumps(payload).encode()
+    req = urllib.request.Request(url, data=body, method="POST",
+                                 headers={"Content-Type": "application/json",
+                                          "X-Publish-Secret": secret,
+                                          "X-Internal-Secret": secret,
+                                          "User-Agent": "Mozilla/5.0"})
+    with urllib.request.urlopen(req, timeout=120) as resp:
+        return json.loads(resp.read().decode())
+
+
+def build_ohlcv_daily_payload(symbols, rt, days: int = 800, today=None):
+    """PA-3a (RC3): gom nen NGAY theo EOD thanh payload `body.ohlcv`.
+
+    `rt.ohlcv` = source_router (chuoi kbs -> vnstock), gia da chuan hoa
+    sang NGHIN dong (frontend nhan 1000 cho ma co phieu,
+    js/stocks/detail.js:508,548) va `v` = khoi luong co phieu. Doi ten
+    key date/open/high/low/close/volume -> {t,o,h,l,c,v} la dung contract
+    R2 ma doc tai stock.js:340,987,1240, de Worker
+    (stock.js:1501-1502, ghi tho `body.ohlcv[sym]` khong quy doi) ghi
+    market/ohlcv/<SYM>.json = lane chart 1D doc.
+
+    days=800 lich (~>500 phien) du cho chart xin count=400.
+
+    Ma loi het chuoi nguon bi bo qua de nhung ma con van duoc publish;
+    lan chay sau tu bo sung (nguon EOD nen lech 1 ngay, khong mat nen)."""
+    from datetime import datetime, timedelta, timezone
+
+    if today is None:
+        # Nguon D1 la EOD theo gio phien VN -> moc tinh la hom nay ICT.
+        today = datetime.now(timezone(timedelta(hours=7))).date()
+    start = (today - timedelta(days=days)).isoformat()
+    end = today.isoformat()
+    out, srcs = {}, []
+    for sym in symbols:
+        try:
+            rows, src = rt.ohlcv(sym, start, end)
+        except Exception as e:  # noqa: BLE001
+            print(f"[ohlcv-daily] {sym} het nguon: {str(e)[:120]}",
+                  flush=True)
+            continue
+        bars = [{
+            "t": r.get("date"), "o": r.get("open"), "h": r.get("high"),
+            "l": r.get("low"), "c": r.get("close"), "v": r.get("volume"),
+        } for r in (rows or []) if isinstance(r, dict) and r.get("date")]
+        if bars:
+            out[sym] = bars
+            if src not in srcs:
+                srcs.append(src)
+    payload = {"ohlcv": out,
+               "_prov": {"source": f"modal:ohlcv_daily({'+'.join(srcs)})",
+                         "retrieved_at": datetime.now(timezone.utc).isoformat(),
+                         "unit": "NGHIN_VND"}}
+    print(f"[ohlcv-daily] {len(out)}/{len(list(symbols))} ma, "
+          f"{start}..{end}, nguon={srcs or '-'}", flush=True)
+    return payload
+
+
+@app.function(
+    image=stock_image,
+    secrets=[modal.Secret.from_name("pocket-personal")],
+    # PA-3a (RC3, 02/11): khong con producer nao gui body.ohlcv tu
+    # 28/10 (publish_snapshot da xoa, chua tung co lane nen ngay;
+    # stock_snapshot */5 chi phat indices+sector_indices+quotes) ->
+    # nen 1D dung lai o phien cuoi duoc fetch tay. EOD: HOSE dong
+    # 14:45 ICT, nguon D1 (kbs -> vnstock) chi co nen hom nay sau
+    # khi dong phien -> 08:15 UTC = 15:15 ICT, T2-T6.
+    schedule=modal.Cron("15 8 * * 1-5", timezone="UTC"),
+    timeout=60*50,
+)
+def publish_ohlcv_daily(symbols: tuple = QUOTE_UNIVERSE):
+    """PA-3a: refresh nen ngay (chart 1D) mot lan moi phien, sau EOD.
+
+    Ham hep, CHI phat lane `ohlcv` — khong khoi phuc nguyen
+    publish_snapshot (de khong keo theo indices/quotes_patch da bi
+    khai tu 28/10) va khong cham lane intraday (PA-1 lo)."""
+    base_dir = os.environ.get("DIRECT_FETCH_DIR", DIRECT_FETCH_DIR)
+    _use_direct_fetch(base_dir)               # nap bundle tu /opt
+    import source_router as rt                # /opt da nam tren sys.path
+
+    payload = build_ohlcv_daily_payload(symbols, rt)
+    if not payload["ohlcv"]:
+        # Run that bai hoan toan -> raise de dashboard Modal hien Failed
+        # (same policy publish_snapshot dung cho lane cua no).
+        raise RuntimeError("publish_ohlcv_daily: khong lay duoc nen ma nao")
+    result = _post_publish(payload)
+    print(f"publish_ohlcv_daily: {len(payload['ohlcv'])} ma -> {result}",
+          flush=True)
     return result
 
 

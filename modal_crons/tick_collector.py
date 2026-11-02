@@ -96,6 +96,11 @@ CONFIG = {
     # H1 (DO realtime) moi la nguon live; KHONG bat lai tick_live.
     # tick_shadow van chay lam doi chieu.
     "live": False,
+    # CHART_CANDLE (PA-1, 02/11): lang nen 1m/5m/15m/1H cho
+    # /api/stock/ohlcv (RC1). Worker ghi body.intraday ->
+    # market/intraday/ (stock.js:1785), KHONG ke foreign_flow,
+    # KHONG cham tick_live (lenh Henrry 09:57 van duoc ton trong).
+    "chart_candles": True,
     # Resume giua phien (Dot 2): khoi dong lai -> nap checkpoint +
     # artifact theo nguon cua CHINH phien hom nay tu R2; loi/thieu
     # thi bat dau trang nhu cu, khong chan phien.
@@ -2207,6 +2212,11 @@ async def _collect(max_minutes=0):
                     if chunk:
                         live["tick_live"]["intraday"] = chunk
                     await asyncio.to_thread(publish, live, "multi")
+                elif CONFIG["chart_candles"] and chunk:
+                    # PA-1: chi gui NEN — body.intraday ->
+                    # market/intraday/<SYM>_<iv>.json (stock.js:1785).
+                    await asyncio.to_thread(
+                        publish, {"intraday": chunk}, "multi")
             elif chunk:
                 await asyncio.to_thread(
                     publish, {"tick_shadow": {"intraday": chunk}},
@@ -2215,6 +2225,9 @@ async def _collect(max_minutes=0):
                     await asyncio.to_thread(
                         publish, {"tick_live": {"intraday": chunk}},
                         "multi")
+                elif CONFIG["chart_candles"]:
+                    await asyncio.to_thread(
+                        publish, {"intraday": chunk}, "multi")
         # Bang khop lenh chi tiet (tape): publish kem chu ky nay,
         # loi thi chu ky sau gui lai (build_tape chi danh dau dirty
         # lai khi co tick moi — neu POST loi o day, lan publish ke

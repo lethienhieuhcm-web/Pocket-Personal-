@@ -228,5 +228,142 @@ class CollectHarness(unittest.TestCase):
         self.assertIn(True, closed_flags)
 
 
+class ChartCandleLaneTests(unittest.TestCase):
+    """PA-1 (RC1, 02/11): lane NEN CHART duoc tach khoi lane tick_live.
+
+    Lenh Henrry 09:57 van duoc ton trong — live=False thi KHONG co
+    tick_live/foreign_flow; chart_candles=True thi nen phai di duong
+    body.intraday (production lane market/intraday/: ghi tai
+    worker/src/stock.js:1785, chart doc tai :398).
+
+    Khong dung CollectHarness o tren: harness do duoc viet cho ban
+    tick_collector 29/10 (con `publish_checked` + `Aggregator
+    (session_date=...)`), ca hai da doi o HEAD nay.
+    """
+
+    # 3 ma x 4 khung (1m/5m/15m/1H) = 12 key -> 2 chunk (10 + 2),
+    # vat ly ca nhanh ci==0 (shadow day du) lan ci>0 (shadow nen tran).
+    SYMS = ["CTG", "DGC", "FRT"]
+
+    def setUp(self):
+        self.orig_config = dict(tc.CONFIG)
+        self.orig_adapters = tc.ADAPTERS
+        self.orig_now = tc.now_ict
+        self.orig_publish = tc.publish
+        self.calls = []  # (payload, source)
+
+    def tearDown(self):
+        tc.CONFIG.clear()
+        tc.CONFIG.update(self.orig_config)
+        tc.ADAPTERS = self.orig_adapters
+        tc.now_ict = self.orig_now
+        tc.publish = self.orig_publish
+        DummyAdapter.inject = []
+
+    def _run(self, live, chart_candles):
+        """Mot luot DONG phien (now_ict 15:06 ICT): vong lap while bo
+        qua, chi do_publish(closed=True) chay — khong sleep, khong mang."""
+        tc.CONFIG.update({
+            "sources": ["dnse"],
+            "universe": list(self.SYMS),
+            "resume": False,
+            "live": live,
+            "chart_candles": chart_candles,
+            "publish_sec": 1,
+        })
+        tc.ADAPTERS = {"dnse": DummyAdapter}
+        tc.now_ict = lambda: datetime(2026, 10, 29, 15, 6, tzinfo=ICT)
+        DummyAdapter.inject = [
+            (s, epoch(2026, 10, 29, 9, 15 + i), 10.0 + i, 100)
+            for i in range(3) for s in self.SYMS
+        ]
+
+        def fake_publish(payload, source):
+            self.calls.append((dict(payload), source))
+            return {"ok": True}
+
+        tc.publish = fake_publish
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            asyncio.run(tc._collect())
+        return buf.getvalue()
+
+    def _production_candles(self):
+        """Key nam trong payload dang body.intraday (lane production)."""
+        keys = set()
+        for payload, _ in self.calls:
+            keys.update(payload.get("intraday") or {})
+        return keys
+
+    def _shadow_candles(self):
+        keys = set()
+        for payload, _ in self.calls:
+            keys.update((payload.get("tick_shadow") or {}).get("intraday") or {})
+        return keys
+
+    def test_chart_candles_publishes_production_lane(self):
+        self._run(live=False, chart_candles=True)
+        keys = self._production_candles()
+        self.assertIn("CTG_1H", keys)      # chunk ci==0
+        self.assertIn("CTG_15m", keys)
+        self.assertIn("FRT_1H", keys)      # chunk ci>0 (keys 11-12)
+        self.assertIn("FRT_15m", keys)
+        # Day du 12 key: KHONG co nen roi ra ngoai 2 chunk.
+        self.assertEqual(len(keys), 12)
+        # Payload nen phai SACH: chi co key "intraday", khong ke
+        # foreign_flow, khong cham lane khac (ke ca lane nen ngay 1D).
+        for payload, source in self.calls:
+            if "intraday" in payload:
+                self.assertEqual(list(payload), ["intraday"], payload)
+                self.assertEqual(source, "multi")
+        self.assertTrue(any("tick_shadow" in p for p, _ in self.calls))
+
+    def test_chart_candles_khong_bao_gio_gui_tick_live(self):
+        """Dung lenh f4d49d1 (Henrry 09:57): KHONG khoi phuc tick_live."""
+        self._run(live=False, chart_candles=True)
+        self.assertFalse([p for p, _ in self.calls if "tick_live" in p])
+        for payload, _ in self.calls:
+            self.assertNotIn("foreign_flow", payload)
+            tl = payload.get("tick_live")
+            if tl is not None:
+                self.fail("live=False ma van gui tick_live: %s" % list(tl))
+
+    def test_flag_off_khong_publish_production(self):
+        """chart_candles=False = trang thai truoc PA-1: nen chi shadow."""
+        self._run(live=False, chart_candles=False)
+        self.assertEqual(self._production_candles(), set())
+        self.assertEqual(len(self._shadow_candles()), 12)
+        self.assertFalse([p for p, _ in self.calls if "tick_live" in p])
+
+    def test_live_true_giu_hanh_vi_cu(self):
+        """live=True (duong cu): tick_live van mang foreign + nen, va
+        KHONG nhan doi thanh body.intraday (elif — ghi 1 lan)."""
+        self._run(live=True, chart_candles=True)
+        lives = [p for p, _ in self.calls if "tick_live" in p]
+        self.assertTrue(lives, "live=True ma khong co tick_live")
+        first = lives[0]["tick_live"]
+        self.assertIn("foreign", first)
+        self.assertIn("intraday", first)
+        self.assertIn("CTG_1H", self._shadow_candles())
+        # Nhan ci==0/ci>0 deu di qua tick_live, khong overlap production
+        # payload — neu ca hai cung chay la double-write (hoi quy).
+        self.assertEqual(self._production_candles(), set())
+
+    def test_tape_va_shadow_khong_doi(self):
+        """Regression ranh: bat/co chart_candles thi shadow van day du
+        (status/foreign/raw_chunks/src_artifacts) va tape van duoc gui."""
+        for chart_candles in (False, True):
+            with self.subTest(chart_candles=chart_candles):
+                self.calls = []
+                self._run(live=False, chart_candles=chart_candles)
+                heads = [p["tick_shadow"] for p, _ in self.calls
+                         if "status" in (p.get("tick_shadow") or {})]
+                self.assertEqual(len(heads), 1, chart_candles)
+                for field in ("foreign", "raw_chunks", "src_artifacts"):
+                    self.assertIn(field, heads[0], chart_candles)
+                self.assertTrue(any("tape" in p for p, _ in self.calls),
+                                chart_candles)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
