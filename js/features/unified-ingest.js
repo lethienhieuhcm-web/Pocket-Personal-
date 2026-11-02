@@ -16,19 +16,57 @@
   var POLL_RETRY_MS = 5*60*1000, RETRY_DELAYS = [1000, 2000, 5000];
   var VIEW_WATCH_MS = 2000, TEST_RE = /^staging-h1-\d{8}$/;
   var SEQ_KEY = "ingest_last_seq";
+  /* P1-4 (§8 muc 10) — TACH HAI DONG HO. Truoc day SILENCE_MS=5s du dung
+   * lam ca bang chung "dut link" lan "thi truong im", nen mot phien yen
+   * lang bi gan toi thanh onBreak -> Ably -> poll (vong quay vong). Nay:
+   *  - LINK-ALIVE: chi duoc reset bang `hb` (server phat ~30s, hoac ping
+   *    ~25s cua ta duoc tra loi) hoac frame moi. Qua HB_LINK_DEAD_MS khong
+   *    co bang chung nao -> link chet that -> onBreak.
+   *  - DATA-STALE: chi duoc reset bang frame hop le (seq + ts dung phien).
+   *    Qua SILENCE_MS chua co frame nhung link van song -> nhan "quiet"
+   *    (thi truong yen lang), chu KHONG phai "retry". Qua DATA_STALE_MS
+   *    -> nhan "stale" (so lieu cu).
+   * IDLE_CLOSE_MS phia DO cung theo do (market-room.js): socket da kich
+   * hoat khong bi vo chi vi phia client im lang. */
+  var HB_PING_MS = 25000, HB_LINK_DEAD_MS = 70000;
+  var DATA_STALE_MS = 5 * 60 * 1000, POLL_FETCH_MS = 60000;
 
   /* ---------- Ham thuan (test duoc bang Node, khong DOM) ---------- */
   function shouldAcceptSeq(seq, lastSeq){
     return Number.isInteger(seq) && seq > 0 && seq > lastSeq;
   }
-  function parseFrame(raw){
+  /* Ngay phien theo gio ICT (+07) — trung cach Worker dat ten phong DO
+   * (stock.js hStockStream: Date.now()+7h -> "YYYY-MM-DD"). */
+  function ictDay(ms){
+    var n = Number(ms);
+    if(!Number.isFinite(n)) return null;
+    try{ return new Date(n + 7 * 3600 * 1000).toISOString().slice(0, 10); }catch(e){ return null; }
+  }
+  function sessionDay(now){ return ictDay(now === undefined ? Date.now() : now); }
+  /* P1-2 (§8 muc 7): frame phai mang `ts` = moc THI TRUONG va thuoc DUNG
+   * ngay phien. Thieu ts / sai dinh dang / khac phien -> tu choi (khong co
+   * bang chung cu thi khong duoc in ra nhu so live). */
+  function frameInSession(d, day){
+    if(!d || day === undefined || day === null) return true;
+    if(d.ts === undefined || d.ts === null) return false;
+    var t = Number(d.ts);
+    if(!Number.isFinite(t)) return false;
+    return ictDay(t) === day;
+  }
+  function parseFrame(raw, opts){
     var d = raw;
     if(typeof d === "string"){ try{ d = JSON.parse(d); }catch(e){ return null; } }
     if(!d || typeof d !== "object") return null;
     if(typeof d.seq !== "number") return null; // ping/control khong seq
-    if(d.t === "q"){ if(typeof d.s !== "string" || !d.s) return null; return d; }
-    if(d.t === "idx"){ if(!Array.isArray(d.rows)) return null; return d; }
-    return null;
+    var shaped = false;
+    if(d.t === "q") shaped = (typeof d.s === "string" && d.s.length > 0);
+    else if(d.t === "idx") shaped = Array.isArray(d.rows);
+    if(!shaped) return null;
+    if(opts && opts.sessionDate !== undefined && !frameInSession(d, opts.sessionDate)){
+      if(typeof opts.onStale === "function"){ try{ opts.onStale(d); }catch(e){} }
+      return null; // ngoai phien -> bo, chi de lai nhan "stale"
+    }
+    return d;
   }
   function nextRetryDelay(attempt){ return RETRY_DELAYS[Math.min(attempt, RETRY_DELAYS.length - 1)] || 5000; }
   function channelFor(search){
@@ -53,15 +91,30 @@
   var mode = "poll", path = "do", retries = 0;
   var errDo = 0, errAbly = 0, gotFrame = false;
   var lastSeq = 0, lastFrameAt = 0;
+  var linkAliveAt = 0;   // P1-4: reset bang hb HOAC frame moi
+  var lastDataAt = 0;    // P1-4: CHI reset bang frame hop le (ts dung phien)
   var wsDo = null, ablyClient = null, ablyChannel = null;
   var silenceTimer = null, connectTimer = null, retryTimer = null, pollTimer = null, viewTimer = null;
+  var hbTimer = null, linkTimer = null, staleTimer = null, pollFetchTimer = null;
   var lastView = null, lastSym = null, lastDeltaErrAt = 0, started = false;
+  var handshaked = false;  // DO đã trả {t:"ok"} = link sống, chưa cần dữ liệu
   try{ lastSeq = parseInt(sessionStorage.getItem(SEQ_KEY) || "0", 10) || 0; }catch(e){ lastSeq = 0; }
   function errCount(){ return errDo + errAbly; }
   function chanName(){
     try{ return channelFor(location.search); }catch(e){ return "market"; }
   }
   function testMode(){ return isTestChannel(chanName()); }
+  /* P1-2 (§8 muc 7): ca hai duong (DO + Ably) deu bo frame khac ngay
+   * phien va gan nhan "so lieu cu" thay vi in ra nhu so live. */
+  function frameOpts(){
+    return {
+      sessionDate: sessionDay(),
+      onStale: function(d){
+        try{ console.warn("[ingest] frame ngoai phien (ts=" + d.ts + ") -> bo, nhan stale"); }catch(e){}
+        setStatus("stale");
+      }
+    };
+  }
 
   function lang(){
     try{ if(typeof curLang !== "undefined" && curLang) return curLang; }catch(e){}
@@ -93,8 +146,13 @@
     clearTimeout(silenceTimer); clearTimeout(connectTimer);
     silenceTimer = connectTimer = null;
   }
+  /* P1-4: dong ho heartbeat + watchdog link/stale đi theo socket DO. */
+  function clearHb(){
+    clearInterval(hbTimer); clearTimeout(linkTimer); clearTimeout(staleTimer);
+    hbTimer = linkTimer = staleTimer = null;
+  }
   function closeDo(){
-    clearTimers();
+    clearTimers(); clearHb();
     try{ if(wsDo) wsDo.close(); }catch(e){}
     wsDo = null;
   }
@@ -246,13 +304,45 @@
   /* ---------- May trang thai ---------- */
   function armSilence(){
     clearTimeout(silenceTimer);
-    silenceTimer = setTimeout(function(){ onBreak(path, "im lang >5s"); }, SILENCE_MS);
+    // P1-4: mok 5s KHONG con là bang chứng "dut". Chua co frame sau 5s ma
+    // link van con hb -> thi truong chi yen lang, doi nhan, khong onBreak.
+    silenceTimer = setTimeout(function(){
+      if(Date.now() - linkAliveAt <= HB_LINK_DEAD_MS){ setStatus("quiet"); }
+      armStale();
+    }, SILENCE_MS);
+  }
+  function armStale(){
+    clearTimeout(staleTimer);
+    var age = Date.now() - lastDataAt;
+    if(age >= DATA_STALE_MS){ setStatus("stale"); return; }
+    staleTimer = setTimeout(function(){
+      if(Date.now() - lastDataAt >= DATA_STALE_MS) setStatus("stale");
+    }, DATA_STALE_MS - age);
+  }
+  /* P1-4: LINK-ALIVE. Bang chứng = hb (server phat ~30s hoac ping ~25s
+   * duoc tra loi) hoac frame moi. hb KHONG duoc tính la duoc tuoi. */
+  function markLinkAlive(){
+    linkAliveAt = Date.now();
+    clearTimeout(linkTimer);
+    linkTimer = setTimeout(function(){
+      if(Date.now() - linkAliveAt >= HB_LINK_DEAD_MS) onBreak(path, "khong hb >" + Math.round(HB_LINK_DEAD_MS / 1000) + "s");
+    }, HB_LINK_DEAD_MS);
+  }
+  /* P1-4: client gui ping ~25s khi socket DO mo (DO tra hb -> link song). */
+  function armHb(){
+    clearInterval(hbTimer);
+    hbTimer = setInterval(function(){
+      if(!wsDo || wsDo.readyState !== 1) return;
+      try{ wsDo.send(JSON.stringify({ t: "ping" })); }catch(e){ onBreak("do", "gui ping loi"); }
+    }, HB_PING_MS);
   }
   function onFrame(d){
     if(!shouldAcceptSeq(d.seq, lastSeq)) return; // trung/cu -> bo
     lastSeq = d.seq; lastFrameAt = Date.now(); gotFrame = true;
+    lastDataAt = Date.now();  // dong ho DATA: chi frame hop le moi reset
     saveSeq();
     clearTimeout(connectTimer); connectTimer = null;
+    markLinkAlive();          // frame moi cung là bang chứng link song
     if(mode === path) setStatus("live");
     applyFrame(d);
     armSilence();
@@ -273,25 +363,58 @@
       enterPoll();
     }
   }
+  /* P1-3 (§8 muc 6): poll PHAI fetch that. Truoc day enterPoll() chi gan
+   * chu "poll" roi ngon im 5 phut — khong phat request nao. Here goi duong
+   * nap cua chinh trang (reloadCurrentView, stocks.html:448) de so tai ve
+   * tu endpoint cong cong. */
+  function refreshSnapshot(){
+    try{
+      if(typeof reloadCurrentView === "function"){
+        Promise.resolve(reloadCurrentView()).catch(function(){});
+        return true;
+      }
+    }catch(e){ logDeltaErr("refreshSnapshot loi: " + (e && e.message)); }
+    logDeltaErr("reloadCurrentView khong ton tai -> poll khong fetch duoc");
+    return false;
+  }
   function enterPoll(){
     closeAll(); mode = "poll"; setStatus("poll");
-    clearTimeout(pollTimer);
-    pollTimer = setTimeout(function(){ retries = 0; startPath(firstPath()); }, POLL_RETRY_MS);
+    refreshSnapshot();                                            // lap tuc
+    clearTimeout(pollTimer); clearInterval(pollFetchTimer);
+    pollFetchTimer = setInterval(refreshSnapshot, POLL_FETCH_MS);  // moi 60s
+    pollTimer = setTimeout(function(){
+      clearInterval(pollFetchTimer); pollFetchTimer = null;
+      retries = 0; startPath(firstPath());
+    }, POLL_RETRY_MS);
   }
   function firstPath(){ return testMode() ? "ably" : "do"; }
   function startPath(p){
-    clearTimeout(retryTimer); clearTimeout(pollTimer);
-    retryTimer = pollTimer = null;
+    clearTimeout(retryTimer); clearTimeout(pollTimer); clearInterval(pollFetchTimer);
+    retryTimer = pollTimer = pollFetchTimer = null;
     if(p === "do" && testMode()) p = "ably";
-    path = p; mode = p; gotFrame = false; setStatus("retry");
-    if(!token()){ enterPoll(); return; }
+    path = p; mode = p; gotFrame = false; handshaked = false; setStatus("retry");
+    // Mốc cho đồng hồ DATA: lay = luc bat dau noi (mot lan/page-load), de
+    // nhan "yên ắng" xuat hien truoc, "số liệu cũ" sau DATA_STALE_MS —
+    // KHONG reset moi lan reconnect (se khong bao giờ in ra "cu").
+    if(!lastDataAt) lastDataAt = Date.now();
+    // P1-3: KHONG con chan realtime theo token. Duong chi-đoc (WS DO +
+    // Ably subscribe-only) mo cho khach chua dang nhap; cac thao van ghi
+    // (watchlist/portfolio/token ghi) van di qua route 'user' nhu cu.
     if(p === "do") connectDo(); else connectAbly();
-    connectTimer = setTimeout(function(){ if(!gotFrame) onBreak(p, "khong frame sau 30s"); }, CONNECT_MS);
+    // P1-4: watchdog 30s chi lap khi handshake CHUA xong. Duong DO da
+    // handshake (nb {t:"ok"} + hb ~30s) ma chua co duoc = thi truong YEN
+    // LANG, khong phai dut -> khong duoc pha socket (armSilence se doi
+    // nhan "quiet"). Ably khong co hb -> giu nguyen hanh vi cu.
+    connectTimer = setTimeout(function(){
+      if(p === "do" && handshaked) return;
+      if(!gotFrame) onBreak(p, "khong noi duoc sau 30s");
+    }, CONNECT_MS);
   }
   function reconnectCurrent(){
-    // Tab hien lai sau khi an: noi lai duong hien tai, khong tinh la loi.
+    // Tab hien lai sau khi an: chi noi lai khi LINK that chet. Link con hb
+    // ma chua co duoc = thi truong yen lang -> giu socket nguyen (P1-4).
     if(mode !== "do" && mode !== "ably") return;
-    if(Date.now() - lastFrameAt <= SILENCE_MS) return;
+    if(Date.now() - linkAliveAt <= HB_LINK_DEAD_MS) return;
     var p = path;
     if(p === "do") closeDo(); else closeAbly();
     retries = 0;
@@ -316,13 +439,15 @@
     try{ ws = new WebSocket(url); }catch(e){ logErr("do", "tao WebSocket loi: " + (e && e.message)); onBreak("do", "tao socket"); return; }
     wsDo = ws;
     ws.onopen = function(){
+      // P1-4: mo ping ~25s ngay khi socket mở; link clock bat dau tinh.
+      markLinkAlive(); armHb();
       try{ ws.send(JSON.stringify({ t: "auth", token: token() || "" })); }catch(e){ onBreak("do", "gui auth"); }
     };
     ws.onmessage = function(ev){
       var m = null;
       try{ m = JSON.parse(ev.data); }catch(e){ return; }
       if(!m || typeof m !== "object") return;
-      if(m.t === "ok"){ sendDoSub(); return; }
+      if(m.t === "ok"){ handshaked = true; markLinkAlive(); sendDoSub(); armSilence(); return; }
       if(m.t === "subbed"){
         try{ ws.send(JSON.stringify({ t: "resume", since: lastSeq })); }catch(e){}
         armSilence();
@@ -335,8 +460,8 @@
         armSilence();
         return;
       }
-      if(m.t === "hb") return; // heartbeat DO khong reset im lang
-      var d = parseFrame(m);
+      if(m.t === "hb"){ markLinkAlive(); return; } // P1-4: hb = LINK song, khong phai duoc tuoi
+      var d = parseFrame(m, frameOpts());
       if(d) onFrame(d);
     };
     ws.onclose = function(){ if(wsDo === ws) onBreak("do", "socket dong"); };
@@ -370,7 +495,7 @@
     try{
       ablyChannel = client.channels.get(ch);
       ablyChannel.subscribe(function(msg){
-        var d = parseFrame(msg && msg.data);
+        var d = parseFrame(msg && msg.data, frameOpts());
         if(d) onFrame(d);
       });
     }catch(e){ logErr("ably", "subscribe loi: " + (e && e.message)); onBreak("ably", "subscribe"); return; }
@@ -407,7 +532,7 @@
   var api = {
     init: init,
     start: function(){ retries = 0; startPath(firstPath()); },
-    stop: function(){ clearTimeout(retryTimer); clearTimeout(pollTimer); closeAll(); mode = "poll"; setStatus("poll"); },
+    stop: function(){ clearTimeout(retryTimer); clearTimeout(pollTimer); clearInterval(pollFetchTimer); clearHb(); closeAll(); mode = "poll"; setStatus("poll"); },
     mode: function(){ return mode; },
     path: function(){ return path; },
     lastSeq: function(){ return lastSeq; },
@@ -420,7 +545,7 @@
     window.DoIngest = { mode: api.mode, lastSeq: api.lastSeq, errCount: api.errCount };
   }
   if(typeof module !== "undefined" && module.exports){
-    module.exports = { shouldAcceptSeq: shouldAcceptSeq, parseFrame: parseFrame, nextRetryDelay: nextRetryDelay, channelFor: channelFor, isTestChannel: isTestChannel, buildDoSub: buildDoSub, deltaPlan: deltaPlan };
+    module.exports = { shouldAcceptSeq: shouldAcceptSeq, parseFrame: parseFrame, nextRetryDelay: nextRetryDelay, channelFor: channelFor, isTestChannel: isTestChannel, buildDoSub: buildDoSub, deltaPlan: deltaPlan, ictDay: ictDay, sessionDay: sessionDay, frameInSession: frameInSession };
   }
   if(typeof document !== "undefined"){
     if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);

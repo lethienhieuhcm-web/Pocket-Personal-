@@ -21,6 +21,27 @@ function numOrUndef(v) {
   return Number.isFinite(n) ? n : undefined;
 }
 
+/* Mốc đồng hồ thị trường (epoch ms) cho frame — §8 muc 7 (P1-2). Lay tu
+ * publish body: _prov.retrieved_at (VM ghi khi fetch), roi neu co den
+ * `time` ngay phien cua dong chi so dau tien. KHONG dung dong ho server
+ * luc fan-out — do la `srv_ts`, tam` riêng ben DO. Khong derived ->
+ * undefined (frame khong mang ts; DO se tu dung Date.now() lam fallback
+ * va dat dau tsFallback de client phat hien ts khong phai cua phien).
+ */
+export function deriveMarketTs(body) {
+  if (!body || typeof body !== "object") return undefined;
+  const p = body._prov && body._prov.retrieved_at;
+  if (p) { const t = Date.parse(String(p)); if (Number.isFinite(t)) return t; }
+  const lists = [body.indices, body.sector_indices];
+  for (const rows of lists) {
+    if (!Array.isArray(rows)) continue;
+    for (const r of rows) {
+      if (r && r.time != null) { const t = Date.parse(String(r.time)); if (Number.isFinite(t)) return t; }
+    }
+  }
+  return undefined;
+}
+
 /* Dung body publish (khoa chinh) -> {q:[frame], idx:frame|null, truncated}.
  * Frame q: {t:"q", s, p?, c?, pc?, v?, tv?, fb?, fs?, fn?} — chi field
  * co so moi co mat (client delta dung cai nao co). Frame idx:
@@ -73,7 +94,15 @@ export function buildFanoutFrames(body) {
     }
     if (rows.length >= FANOUT.MAX_IDX_ROWS) break;
   }
-  return { q: q, idx: rows.length ? { t: "idx", rows: rows } : null, truncated: truncated };
+  const idxFrame = rows.length ? { t: "idx", rows: rows } : null;
+  // Gan dong ho thi truong (ts) vao moi frame — §8 muc 7 (P1-2). Frame
+  // phat lai tu ring buffer giu ts goc (khong bi dong ho replay de).
+  const ts = deriveMarketTs(body);
+  if (ts !== undefined) {
+    for (const f of q) f.ts = ts;
+    if (idxFrame) idxFrame.ts = ts;
+  }
+  return { q: q, idx: idxFrame, truncated: truncated };
 }
 
 export function chunkFrames(frames, size) {

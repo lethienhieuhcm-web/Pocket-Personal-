@@ -220,8 +220,10 @@ const ROUTES = [
   ['POST',   '/api/internal/stock-publish', hStockPublish,   'internal'],
   ['GET',    '/api/internal/tick-state', hTickStateGet,      'internal'],
   ['GET',    '/api/internal/universe', hInternalUniverse,  'internal'],
-  // H1 staging: Ably token (subscribe-only) cho trinh duyet — session 'user'
-  ['POST',   '/api/ably-token',        hAblyToken,         'user'],
+  // H1: Ably token SUBSCRIBE-ONLY cho trinh duyet. P1-3 (Henrry Chot 13:38
+  // 02/11): bo gate login duong chi-đoc — hAblyToken chi cap quyen
+  // ["subscribe"] cho kenh 'market' / staging, khong mo quyen ghi nao.
+  ['POST',   '/api/ably-token',        hAblyToken,         'public'],
   // H1 pha DO: WebSocket stream (auth o frame dau) + do-test-publish (giu de verify binding production, Chot 01/11; xoa sau khi burst 02/11 xac nhan)
   ['GET',    '/api/stock/stream',     hStockStream,       'public'],
   ['POST',   '/api/internal/do-test-publish', hDoTestPublish, 'internal'],
@@ -254,6 +256,8 @@ const RATE_LIMITS = {
   "/api/analytics": [30, 60],         // 30 analytics/min per IP (spam prevention)
   "/api/tts": [20, 60],               // 20 TTS/min per IP (cost protection)
   "/api/browse": [100, 60],          // 100 browse/min per IP (1 page ≈ 50 asset requests)
+  // P1-3: duong chi-đoc mo cho khach vãng lai -> can tran chi phí token.
+  "/api/ably-token": [30, 60],       // 30 Ably token/min per IP
 };
 
 async function checkRateLimit(request, env, path){

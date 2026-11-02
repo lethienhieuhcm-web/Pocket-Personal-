@@ -17,7 +17,11 @@ const BREADTH_I18N = {vi:["tăng","giảm","trên","dưới"],en:["up","down","a
 const PUSH_I18N = {
   live:{vi:"Đang cập nhật theo giây",en:"Updating every second",zh:"每秒更新中",ko:"매초 업데이트 중"},
   poll:{vi:"Đang kéo lại theo phút",en:"Refreshing every minute",zh:"每分钟刷新中",ko:"매분 새로고침 중"},
-  retry:{vi:"Mất kết nối, đang thử lại",en:"Connection lost, retrying",zh:"连接已断开，正在重试",ko:"연결이 끊겼습니다. 다시 시도 중입니다."}
+  retry:{vi:"Mất kết nối, đang thử lại",en:"Connection lost, retrying",zh:"连接已断开，正在重试",ko:"연결이 끊겼습니다. 다시 시도 중입니다."},
+  // P1-4: hai trang thai tach ra — link song nhung khong co goc moi, va
+  // duoc den tu khong phai cua phien hom nay.
+  quiet:{vi:"Đang kết nối — thị trường yên ắng",en:"Connected — market quiet",zh:"已连接 — 市场平静",ko:"연결됨 — 시장이 조용합니다"},
+  stale:{vi:"Số liệu cũ (không phải phiên hôm nay)",en:"Stale data (not today's session)",zh:"数据已过时（非今日交易时段）",ko:"오래된 데이터 (오늘 장이 아님)"}
 };
 let _regime = null;
 function renderRegime(){
