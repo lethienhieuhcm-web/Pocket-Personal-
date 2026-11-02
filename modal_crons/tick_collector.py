@@ -92,12 +92,10 @@ CONFIG = {
     # bong, vao parity nhu cong thu 5). VCI = chan Botkeep relay-4
     # (adapter con trong code, khong chay trong loi).
     "sources": ["dnse", "kbs", "vndirect", "vps", "ssi-mqtt"],
-    # LAT PRODUCTION: True — BAT LAI 02/11 (lenh Henrry 09:40):
-    # commit E3 B2 6b9c1fd (31/10) vo tinh lat live True->False
-    # (khong co lenh tat), lam tick_live im tu 31/10, intraday live
-    # + foreign_flow production stale tu 28/10. tick_live ghi
-    # production, tick_shadow van chay lam doi chieu.
-    "live": True,
+    # LAT PRODUCTION: False — tick_live DA XOA theo lenh Henrry 02/11:
+    # H1 (DO realtime) moi la nguon live; KHONG bat lai tick_live.
+    # tick_shadow van chay lam doi chieu.
+    "live": False,
     # Resume giua phien (Dot 2): khoi dong lai -> nap checkpoint +
     # artifact theo nguon cua CHINH phien hom nay tu R2; loi/thieu
     # thi bat dau trang nhu cu, khong chan phien.
