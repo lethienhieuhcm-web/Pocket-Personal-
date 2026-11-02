@@ -36,13 +36,13 @@ async function loadMarket(){
   try{
     const j=await api("/indices");const rows=j.rows||[];
     $("idxRow").innerHTML=rows.map(r=>{const pc=r.pct_change,cls=pc>0?"up":pc<0?"down":"";const fs=idxFileSym(r.symbol);
-      return `<div class="idxcard"${fs?` style="cursor:pointer" onclick="openIndex('${fs}')" title="${esc(r.symbol)}"`:""}><div class="s">${esc(r.symbol)}</div><div class="p">${fmtN(r.close)}</div><div class="c ${cls}">${pc>0?"▲":pc<0?"▼":""} ${fmtPct(pc)}</div></div>`;}).join("")||'<div class="hint">Chưa có dữ liệu</div>';
-    if(j._prov){_lastMktSrc=j._prov.source;refreshSrc();}
+      return `<div class="idxcard"${fs?` style="cursor:pointer" onclick="openIndex('${fs}')" title="${esc(r.symbol)}"`:""}><div class="s">${esc(r.symbol)}</div><div class="p">${fmtN(r.close)}</div><div class="c ${cls}">${r.stale?'<span class="stale">— · số liệu cũ</span>':((pc>0?"▲":pc<0?"▼":"")+" "+fmtPct(pc))}</div></div>`;}).join("")||'<div class="hint">Chưa có dữ liệu</div>';
+    if(j._prov){_lastMktSrc=j._prov.source;_lastMktAsOf=j._prov.retrieved_at||j.updated||null;_lastMktStale=!!j.stale;refreshSrc();}
   }catch(e){$("idxRow").innerHTML='<div class="hint">Lỗi tải chỉ số</div>';}
   try{
     const j=await api("/sector-indices");const rows=j.rows||[];
     $("idxSecRow").innerHTML=rows.map(r=>{const pc=r.pct_change,cls=pc>0?"up":pc<0?"down":"";
-      return `<div class="idxcard" style="cursor:pointer" onclick="openIndex('${esc(r.symbol)}')" title="${esc(r.symbol)}"><div class="s">${esc(r.symbol)}</div><div class="p">${fmtN(r.close)}</div><div class="c ${cls}">${pc>0?"▲":pc<0?"▼":""} ${fmtPct(pc)}</div></div>`;}).join("")||'<div class="hint">Chưa có dữ liệu</div>';
+      return `<div class="idxcard" style="cursor:pointer" onclick="openIndex('${esc(r.symbol)}')" title="${esc(r.symbol)}"><div class="s">${esc(r.symbol)}</div><div class="p">${fmtN(r.close)}</div><div class="c ${cls}">${r.stale?'<span class="stale">— · số liệu cũ</span>':((pc>0?"▲":pc<0?"▼":"")+" "+fmtPct(pc))}</div></div>`;}).join("")||'<div class="hint">Chưa có dữ liệu</div>';
   }catch(e){$("idxSecRow").innerHTML='<div class="hint">Lỗi tải chỉ số</div>';}
   try{
     const j=await api("/regime");
@@ -432,7 +432,7 @@ function movToggle(){
 function movRenderIdx(rows){
   const el=$("idxRow"); if(!el) return;
   el.innerHTML=rows.map(r=>{const pc=r.pct_change,cls=pc>0?"up":pc<0?"down":"";const fs=idxFileSym(r.symbol);
-    return `<div class="idxcard"${fs?` style="cursor:pointer" onclick="openIndex('${fs}')" title="${esc(r.symbol)}"`:""}><div class="s">${esc(r.symbol)}</div><div class="p">${fmtN(r.close)}</div><div class="c ${cls}">${pc>0?"▲":pc<0?"▼":""} ${fmtPct(pc)}</div></div>`;}).join("")||'<div class="hint">Chưa có dữ liệu</div>';
+    return `<div class="idxcard"${fs?` style="cursor:pointer" onclick="openIndex('${fs}')" title="${esc(r.symbol)}"`:""}><div class="s">${esc(r.symbol)}</div><div class="p">${fmtN(r.close)}</div><div class="c ${cls}">${r.stale?'<span class="stale">— · số liệu cũ</span>':((pc>0?"▲":pc<0?"▼":"")+" "+fmtPct(pc))}</div></div>`;}).join("")||'<div class="hint">Chưa có dữ liệu</div>';
 }
 async function loadMarketOverview(){
   const g={};

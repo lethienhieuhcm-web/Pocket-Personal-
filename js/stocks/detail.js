@@ -60,10 +60,10 @@ async function loadIndexQuote(fs){
     if(!r){ box.innerHTML='<div class="hint">Chưa có dữ liệu</div>'; return; }
     const pc=r.pct_change, cls=pc>0?"up":pc<0?"down":"";
     let h=`<div class="row"><span class="k">Điểm</span><span class="v" style="font-size:17px">${fmtN(r.close)}</span></div>`;
-    h+=`<div class="row"><span class="k">Thay đổi</span><span class="v ${cls}">${r.change!=null?fmtN(r.change)+" ("+fmtPct(pc)+")":fmtPct(pc)}</span></div>`;
+    h+=`<div class="row"><span class="k">Thay đổi</span><span class="v ${cls}">${r.stale?"— · số liệu cũ":(r.change!=null?fmtN(r.change)+" ("+fmtPct(pc)+")":fmtPct(pc))}</span></div>`;
     if(r.volume!=null) h+=`<div class="row"><span class="k">Khối lượng</span><span class="v">${fmtN(r.volume)}</span></div>`;
     box.innerHTML=h;
-    if(j._prov){_lastDSrc=j._prov.source;refreshSrc();}
+    if(j._prov){_lastDSrc=j._prov.source;_lastDAsOf=j._prov.retrieved_at||j.updated||null;_lastDstale=!!j.stale;refreshSrc();}
   }catch(e){ box.innerHTML='<div class="hint">Lỗi tải</div>'; }
 }
 // Nhan quyen (Phuong an B, Chot Q1-Q7 29/10): hien khi q.corp_action
@@ -115,7 +115,7 @@ function renderQuote(q){
   $("dQuote").innerHTML=h;
   const _ob2=$("dOb");
   if(_ob2&&_obHtml) _ob2.innerHTML=_obHtml;
-  if(q._prov){_lastDSrc=q._prov.source;refreshSrc();}
+  if(q._prov){_lastDSrc=q._prov.source;_lastDAsOf=q._prov.retrieved_at||q.data_updated||null;_lastDstale=false;refreshSrc();}
 }
 async function loadDetail(sym){
   $("dQuote").innerHTML='<div class="hint">Đang tải…</div>';

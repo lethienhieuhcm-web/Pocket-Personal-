@@ -131,14 +131,69 @@ export function sScoreRows(rows, funds, closes){
 }
 
 
+/* ---------- P0-2: CONG CHAN STALE (khong phat so cu nhu so live) ---------- */
+// Goc loi G2 (REPORT §4): Worker tung tra `rows` nguyen khoi bat ke tuoi, nen
+// indices.json dong bang 28/10 van duoc doc la "so hom nay". Cong nay doi
+// ngay cua row (indices.time / screener.updated_at) voi NGAY PHIEN hom nay
+// theo gio ICT (UTC+7); row khac ngay -> change/pct_change = null +
+// `stale:true, as_of`. Frontend (market.js/detail.js) in "—", khong NaN.
+function _ictDateNow(){
+  try{ return new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Ho_Chi_Minh"}).format(new Date()); }
+  catch(e){ return new Date().toISOString().slice(0,10); }
+}
+// Lay ngay phien (YYYY-MM-DD theo ICT) tu gia tri ngay thuan or ISO timestamp.
+function _rowDate(r){
+  const v = r.time || r.updated_at || r.date || r.as_of || null;
+  if(!v) return null;
+  const s = String(v);
+  if(/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;                 // ngay thuan (indices[].time)
+  const dt = new Date(s); if(isNaN(dt)) return null;
+  try{ return new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Ho_Chi_Minh"}).format(dt); }
+  catch(e){ return s.slice(0,10); }
+}
+// Dao qua rows: row ngoai ngay phien hom nay -> null hoa change/pct + gan stale.
+function applyStaleGate(rows, today){
+  today = today || _ictDateNow();
+  let staleCount = 0;
+  if(Array.isArray(rows)){
+    for(const r of rows){
+      if(r && typeof r === "object"){
+        const rd = _rowDate(r);
+        if(rd !== today){
+          r.stale = true;
+          r.as_of = rd || (r.time || r.updated_at || null);
+          if("change" in r) r.change = null;
+          r.pct_change = null;
+          staleCount++;
+        }
+      }
+    }
+  }
+  return {session_date: today, stale: staleCount>0, stale_count: staleCount};
+}
+// Doc resp tu cachedMarket, ap cong stale len rows, tai dung Response (giu
+// header Cache-Control/ETag cua edge cache). Khong parse duoc thi tra nguyen.
+async function _gateMarketResp(resp){
+  let d;
+  try{ d = await resp.clone().json(); }catch(e){ return resp; }
+  if(!d || typeof d !== "object" || !Array.isArray(d.rows)) return resp;
+  const meta = applyStaleGate(d.rows);
+  d.session_date = meta.session_date;
+  d.stale = meta.stale;
+  d.stale_count = meta.stale_count;
+  return new Response(JSON.stringify(d), { status: resp.status, headers: resp.headers });
+}
+
 /* ---------- market (doc tu R2 snapshot, can login) ---------- */
 export async function hStockIndices(request, env){
-  return cachedMarket(request, env, "market/indices.json", 300);
+  const resp = await cachedMarket(request, env, "market/indices.json", 300);
+  return _gateMarketResp(resp);   // P0-2: chan so cu (khong con tra nguyen khoi)
 }
 
 // Chi so nganh (engine chi so Dot B): file rieng market/sector_indices.json
 export async function hStockSectorIndices(request, env){
-  return cachedMarket(request, env, "market/sector_indices.json", 300);
+  const resp = await cachedMarket(request, env, "market/sector_indices.json", 300);
+  return _gateMarketResp(resp);   // P0-2: cung ap cong stale (rows[].time)
 }
 
 // Tu chu: market regime (scripts/market_regime.py) + signals (scripts/signal_detector.py)
@@ -164,11 +219,32 @@ export async function hStockVersion(request, env){
   const files = ["indices", "quotes", "screener", "fundamentals", "regime",
                  "ohlcv/FPT", "company_profile/FPT", "statements/FPT"];
   const bySource = {};
+  // P0-4: KHONG che do stale. Truoc day chi tra `updated` = MAX tren 8 file,
+  // nen "indices chet tu 28/10" bi an sau "quotes tuoi". Giu `updated` (MAX)
+  // de pollVersion (stocks.html:1032) con doi-key tai du lieu, NHUNG them
+  // `datasets` = {ten: {updated, stale, as_of}} theo tung bo du lieu de
+  // UI/canh bao biet bao giu each dataset thuc su duoc ghi lan cuoi.
+  const today = _ictDateNow();
+  const _ictOf = (v) => {
+    if(!v) return null;
+    const s = String(v);
+    const dt = /^\d{4}-\d{2}-\d{2}$/.test(s) ? new Date(s+"T00:00:00Z") : new Date(s);
+    if(isNaN(dt)) return null;
+    try{ return new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Ho_Chi_Minh"}).format(dt); }
+    catch(e){ return s.slice(0,10); }
+  };
+  const datasets = {};
+  const staleDatasets = [];
   let updated = null;
   for(const f of files){
     const d = await sGet(env, "market/"+f+".json").catch(()=>null);
     if(!d) continue;
-    if(d.updated && (!updated || d.updated > updated)) updated = d.updated;
+    const u = d.updated || (d._prov && d._prov.retrieved_at) || null;
+    if(u && (!updated || u > updated)) updated = u;      // MAX giu nguyen cho polling
+    const ad = _ictOf(u);
+    const isStale = !ad || ad !== today;
+    datasets[f] = { updated: u, as_of: ad, stale: isStale };
+    if(isStale) staleDatasets.push(f);
     const p = d._prov;
     if(p && p.source){
       const cur = bySource[p.source] || {source: p.source, retrieved_at: p.retrieved_at || null, datasets: []};
@@ -182,7 +258,8 @@ export async function hStockVersion(request, env){
     const m = String(x.source).match(/vnstock(\d+)/g) || [];
     return m.map(t=>t.replace("vnstock",""));
   }))].sort();
-  resp = new Response(JSON.stringify({build: STOCK_BUILD_ID, updated, sources, versions}), {
+  resp = new Response(JSON.stringify({build: STOCK_BUILD_ID, updated, session_date: today,
+    stale: staleDatasets.length>0, stale_datasets: staleDatasets, datasets, sources, versions}), {
     headers: { "Content-Type": "application/json", "Cache-Control": "public, max-age=60" }
   });
   await cache.put(cacheKey, resp.clone());
@@ -411,7 +488,12 @@ export async function hStockScreener(request, env){
     for(const r of scored) if(r.score!=null) scoreBy[r.symbol] = r.score;
     for(const r of out) if(scoreBy[r.symbol]!=null) r.score = scoreBy[r.symbol];
   }catch(e){}
-  return sJson({updated:d?d.updated:null, count:rows.length, rows:out});
+  // P0-2: chan stale cho tung row — row khong thuoc ngay phien hom nay
+  // (screener EOD cua phien truoc, vd updated_at 01/11) -> change/pct = null
+  // + stale:true + as_of. Khong de topMovers dung gia TC phien truoc nhu so live.
+  const gate = applyStaleGate(out);
+  return sJson({updated:d?d.updated:null, session_date:gate.session_date,
+    stale:gate.stale, stale_count:gate.stale_count, count:rows.length, rows:out});
 }
 
 export async function hStockFundamentals(request, env){

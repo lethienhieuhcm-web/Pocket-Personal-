@@ -93,8 +93,11 @@ SECTOR_INDEX_SYMBOLS = ["VNFIN", "VNREAL", "VNIT", "VNIND", "VNMAT", "VNCONS"]
 @app.function(
     image=stock_image,
     secrets=[modal.Secret.from_name("pocket-personal")],
-    # NHAP — CHUA HEN LICH. Plan quyet suat + lane sau phien 02/11.
-    # schedule=modal.Cron("*/30 2-8 * * 1-5", timezone="UTC"),
+    # P0-1 (lenh Henrry 13:17 02/11): HEN LAI producer chi so — day la ly do
+    # R2 indices.json dong bang tu 28/10 (bo producer bi go lich).
+    # */5 2-7 * * 1-5 UTC = moi 5 phut trong gio phien 09:00-15:00 ICT
+    # (UTC+7 -> 02:00-07:59 UTC), thu 2-den thu 6.
+    schedule=modal.Cron("*/5 2-7 * * 1-5", timezone="UTC"),
     timeout=300,
 )
 def stock_snapshot(symbols: tuple = QUOTE_UNIVERSE):
@@ -148,8 +151,15 @@ def stock_snapshot(symbols: tuple = QUOTE_UNIVERSE):
         }
 
     payload = {"indices": main, "sector_indices": sector, "quotes": quotes,
+               # P0-1 CHUAN DON VI (quyet dinh, xem REPORT muc 1): moi gia tri
+               # tien (close/change/reference/value) trong payload nay = DONG
+               # (VND) — trung voi quotes.json (von la DONG, stock.js:437).
+               # screener.json moi la NGHIN dong. Them truong `unit` de fanout/
+               # UI nhan ra bac don vi va khong phat gia sai 1000 lan (REPORT §6.4).
+               "unit": "VND",
                "_prov": {"source": f"modal:direct_fetch({idx_src}+{board_src})",
-                         "retrieved_at": datetime.now(timezone.utc).isoformat()}}
+                         "retrieved_at": datetime.now(timezone.utc).isoformat(),
+                         "unit": "VND"}}
 
     # DRY=1: buoc POST (offline harness dung moc nay). Deploy that khong dat
     # env => mac dinh publish.

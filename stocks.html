@@ -546,9 +546,9 @@ if(!["vi","en","zh","ko"].includes(curLang)) curLang = "vi";
 
 function refreshSrc(){
   const suf=verSuffix();
-  if(_lastMktSrc) $("mktSrc").textContent=srcLabel(_lastMktSrc)+suf;
-  else $("mktSrc").textContent=srcLabel("direct:vci")+suf;
-  if(_lastDSrc) $("dSrc").textContent=srcLabel(_lastDSrc)+suf;
+  if(_lastMktSrc) $("mktSrc").textContent=srcLabel(_lastMktSrc,_lastMktStale,_lastMktAsOf)+suf;
+  else $("mktSrc").textContent=srcLabel("direct:vci",_lastMktStale,_lastMktAsOf)+suf;
+  if(_lastDSrc) $("dSrc").textContent=srcLabel(_lastDSrc,_lastDstale,_lastDAsOf)+suf;
   renderVerLine();
 }
 function syncLangUI(){
@@ -1001,8 +1001,28 @@ const I18N_FULL = {
 const LANG_IDX = {vi:-1, en:0, zh:1, ko:2};
 
 let _lastMktSrc=null, _lastDSrc=null;
-function srcLabel(src){
+// P0-3: co duoi do stale + moc thoi gian (as_of) cho nhan nguon. `stale` lay
+// tu Worker (row khac ngay phien hom nay), KHONG phai tu _prov cua file frozen.
+let _lastMktStale=false, _lastMktAsOf=null, _lastDstale=false, _lastDAsOf=null;
+// Dinh thoi gian ISO -> "HH:MM dd/MM" theo gio ICT (UTC+7). Ngay thuan -> "dd/MM".
+function _fmtICT(iso){
+  if(!iso) return "";
+  const s=String(iso), dateOnly=/^\d{4}-\d{2}-\d{2}$/.test(s);
+  const dt=dateOnly ? new Date(s+"T00:00:00Z") : new Date(s);
+  if(isNaN(dt)) return "";
+  try{
+    const p=new Intl.DateTimeFormat("en-GB",{timeZone:"Asia/Ho_Chi_Minh",day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit",hour12:false}).formatToParts(dt);
+    const g=k=>{ const x=p.find(y=>y.type===k); return x?x.value:""; };
+    return dateOnly ? (g("day")+"/"+g("month")) : (g("hour")+":"+g("minute")+" "+g("day")+"/"+g("month"));
+  }catch(e){ return s.slice(0,10); }
+}
+function srcLabel(src, stale, asOf){
   const s = (src||"").replace("direct:","").toUpperCase();
+  if(stale){   // du lieu khong phai phien hom nay -> khong duoc noi "truc tiep"
+    const at = _fmtICT(asOf) || "?";
+    const T = {vi:`Nguồn: ${s} — lúc ${at}`, en:`Source: ${s} — at ${at}`, zh:`来源: ${s} — ${at}`, ko:`출처: ${s} — ${at}`};
+    return T[curLang] || T.vi;
+  }
   const T = {vi:`Nguồn: ${s} trực tiếp`, en:`Source: ${s} live`, zh:`来源: ${s}直连`, ko:`출처: ${s} 직접`};
   return T[curLang] || T.vi;
 }
