@@ -133,23 +133,19 @@ export function sScoreRows(rows, funds, closes){
 
 /* ---------- market (doc tu R2 snapshot, can login) ---------- */
 export async function hStockIndices(request, env){
-  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
   return cachedMarket(request, env, "market/indices.json", 300);
 }
 
 // Chi so nganh (engine chi so Dot B): file rieng market/sector_indices.json
 export async function hStockSectorIndices(request, env){
-  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
   return cachedMarket(request, env, "market/sector_indices.json", 300);
 }
 
 // Tu chu: market regime (scripts/market_regime.py) + signals (scripts/signal_detector.py)
 export async function hStockRegime(request, env){
-  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
   return cachedMarket(request, env, "market/regime.json", 300);
 }
 export async function hStockSignals(request, env){
-  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
   return cachedMarket(request, env, "market/signals.json", 300);
 }
 
@@ -158,7 +154,6 @@ export async function hStockSignals(request, env){
 const STOCK_BUILD_ID = "__BUILD__"; // cf_deploy thay bang ma ban dung cua lan deploy
 
 export async function hStockVersion(request, env){
-  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
   const cache = caches.default;
   const cacheKey = new Request(request.url, {method: "GET"});
   let resp = await cache.match(cacheKey);
@@ -297,7 +292,6 @@ export async function getOhlcvSummary(env, sym, count){
 }
 
 export async function hStockQuote(request, env){
-  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
   const sym = (new URL(request.url).searchParams.get("symbol")||"").toUpperCase();
   if(!sym) return jerr("Symbol required", 400);
   const q = await getQuoteData(env, sym);
@@ -343,7 +337,6 @@ export async function hStockOhlcv(request, env){
 // tiet cua phien (bo thu tick, chan DNSE). Phia M/B suy theo luat
 // tick (side_method trong file). Khong co du lieu -> 404.
 export async function hStockTrades(request, env){
-  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
   const u = new URL(request.url);
   const sym = (u.searchParams.get("symbol")||"").toUpperCase();
   if(!sym) return jerr("Symbol required", 400);
@@ -368,7 +361,6 @@ export async function hStockTrades(request, env){
 }
 
 export async function hStockScreener(request, env){
-  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
   const u = new URL(request.url);
   const d = await sGet(env, "market/screener.json");
   let rows = (d && d.rows) || [];
@@ -423,7 +415,6 @@ export async function hStockScreener(request, env){
 }
 
 export async function hStockFundamentals(request, env){
-  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
   const sym = (new URL(request.url).searchParams.get("symbol")||"").toUpperCase();
   if(!sym) return jerr("Symbol required", 400);
   const f = await getFundamentalsData(env, sym);
@@ -450,7 +441,6 @@ export async function hStockFundamentals(request, env){
 }
 
 export async function hStockStatements(request, env){
-  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
   const sym = (new URL(request.url).searchParams.get("symbol")||"").toUpperCase();
   if(!sym) return jerr("Symbol required", 400);
   const d = await getStatementsData(env, sym);
@@ -459,7 +449,6 @@ export async function hStockStatements(request, env){
 }
 
 export async function hStockNews(request, env){
-  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
   const sym = (new URL(request.url).searchParams.get("symbol")||"").toUpperCase();
   const d = await getNewsData(env, sym);
   return sJson(d);
@@ -467,25 +456,21 @@ export async function hStockNews(request, env){
 
 /* Tin thi truong: gop tu top30 ma, dedupe, sort moi nhat (hoc FireAnt MarketNews) */
 export async function hStockMarketNews(request, env){
-  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
   return cachedMarket(request, env, "market/market_news.json", 900); // 15m cache
 }
 
 /* Dong thuan CTCK: tong hop toan thi truong (publish tu warehouse) */
 export async function hStockConsensus(request, env){
-  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
   return cachedMarket(request, env, "market/consensus.json", 300); // 5m cache
 }
 
 /* Tong hop nganh: bang 19 nganh (TTM + ROE + P/E) */
 export async function hStockSectors(request, env){
-  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
   return cachedMarket(request, env, "market/sectors.json", 900); // 15m cache
 }
 
 /* Tong hop nganh: chi tiet 1 nganh (chuoi ky + thanh vien) */
 export async function hStockSectorsDetail(request, env){
-  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
   const code = new URL(request.url).searchParams.get("code")||"";
   if(!/^[0-9]{4}$/.test(code)) return jerr("Bad code", 400);
   const d = await sGet(env, "market/sectors/"+code+".json");
@@ -494,13 +479,11 @@ export async function hStockSectorsDetail(request, env){
 
 /* Chi muc dao co dong: index tim kiem (toan bo co dong) */
 export async function hStockHolders(request, env){
-  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
   return cachedMarket(request, env, "market/holders_index.json", 900); // 15m cache
 }
 
 /* Chi muc dao co dong: shard chi tiet theo 2 ky tu dau cua id */
 export async function hStockHoldersShard(request, env){
-  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
   const sh = (new URL(request.url).searchParams.get("s")||"").toLowerCase();
   if(!/^[0-9a-f]{2}$/.test(sh)) return jerr("Bad shard", 400);
   const d = await sGet(env, "market/holders/"+sh+".json");
@@ -509,7 +492,6 @@ export async function hStockHoldersShard(request, env){
 
 /* Co dong theo ma: nhan dinh co dac so huu (publish warehouse-holders) */
 export async function hStockHoldersSymbol(request, env){
-  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
   const sym = (new URL(request.url).searchParams.get("symbol")||"").toUpperCase();
   if(!sym) return jerr("Symbol required", 400);
   const d = await sGet(env, "market/holders_by_symbol/"+sym+".json");
@@ -518,7 +500,6 @@ export async function hStockHoldersSymbol(request, env){
 
 /* Dong thuan theo ma: tung hang + chuoi gia muc tieu theo thoi gian */
 export async function hStockConsensusDetail(request, env){
-  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
   const sym = (new URL(request.url).searchParams.get("symbol")||"").toUpperCase();
   if(!sym) return jerr("Symbol required", 400);
   const d = await sGet(env, "market/consensus/"+sym+".json");
@@ -527,7 +508,6 @@ export async function hStockConsensusDetail(request, env){
 
 /* Foreign flow tu chu: tu price_board (thay Market().foreign_flow() bi khoa) */
 export async function hStockForeignFlow(request, env){
-  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
   return cachedMarket(request, env, "market/foreign_flow.json", 900); // 15m cache
 }
 
@@ -537,13 +517,11 @@ export async function hStockListing(request, env){
 }
 
 export async function hStockMacro(request, env){
-  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
   return cachedMarket(request, env, "market/macro/overview.json", 300);
 }
 
 /* Lich su vi mo theo series: ?series=gold_sjc&limit=250 */
 export async function hStockMacroHistory(request, env){
-  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
   const u = new URL(request.url);
   const sid = (u.searchParams.get("series")||"").toLowerCase();
   if(!/^[a-z0-9_]+$/.test(sid)) return jerr("Missing series", 400);
@@ -556,13 +534,11 @@ export async function hStockMacroHistory(request, env){
 
 /* Proprietary flow tu chu: tu PDF cua HOSE (thay Market().proprietary_flow() bi khoa) */
 export async function hStockProprietaryFlow(request, env){
-  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
   return cachedMarket(request, env, "market/proprietary_flow.json", 300); // 5m cache
 }
 
 /* Lich su proprietary flow theo ma: ?symbol=ACB&limit=30 */
 export async function hStockProprietaryHistory(request, env){
-  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
   const u = new URL(request.url);
   const sym = (u.searchParams.get("symbol")||"").toUpperCase();
   if(!sym) return jerr("Missing symbol", 400);
@@ -576,7 +552,6 @@ export async function hStockProprietaryHistory(request, env){
 
 /* Lich su foreign flow theo ma: ?symbol=ACB&limit=30 */
 export async function hStockForeignHistory(request, env){
-  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
   const u = new URL(request.url);
   const sym = (u.searchParams.get("symbol")||"").toUpperCase();
   if(!sym) return jerr("Missing symbol", 400);
@@ -671,7 +646,6 @@ const OB_SYM_RE = /^[A-Z]{3,10}$/;
    - time co -> snapshot gan nhat tai hoac truoc time trong ngay date
      (time dang "HH:MM", "HH:MM:SS" hoac ISO day du). */
 export async function hStockOrderbook(request, env){
-  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
   const u = new URL(request.url);
   const sym = (u.searchParams.get("symbol") || "").toUpperCase();
   if(!OB_SYM_RE.test(sym)) return jerr("Invalid symbol", 400);
@@ -734,7 +708,6 @@ export async function hStockOrderbook(request, env){
    Ngay la theo nguon (prefix orderbook-YYYYMMDD), giong nhau cho ca 40 ma
    cua nguon — symbol chi de kiem dinh dang, khong loc rieng tung ma. */
 export async function hStockOrderbookDates(request, env){
-  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
   const sym = (new URL(request.url).searchParams.get("symbol") || "").toUpperCase();
   if(sym && !OB_SYM_RE.test(sym)) return jerr("Invalid symbol", 400);
   const keys = await obListKeys(env, "stock/market/shadow_tick/src/orderbook-", 1000);
@@ -770,7 +743,6 @@ const FLOW_GROUPS = ["foreign", "proprietary"];
    group=foreign|proprietary -> doc file stock/flow/<group>/<symbol>.json
    (do batch EOD publish). Nhom khac -> payload no-data, KHONG dong gia. */
 export async function hStockFlowHistory(request, env){
-  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
   const u = new URL(request.url);
   const sym = (u.searchParams.get("symbol") || "").toUpperCase();
   if(!OB_SYM_RE.test(sym)) return jerr("Invalid symbol", 400);
@@ -838,7 +810,6 @@ export function flowJoinRow(frows, prows, screenDate){
    ngoai/tu doanh theo ma. Chi hien thi + xac nhan, KHONG gate, khong
    doi nhan thanh tin hieu mua. */
 export async function hStockFlowScreen(request, env){
-  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
   const u = new URL(request.url);
   const date = (u.searchParams.get("date") || "").trim();
   if(date && !/^[A-Za-z0-9_-]{1,32}$/.test(date)) return jerr("Invalid date", 400);
@@ -874,7 +845,6 @@ export async function hStockFlowScreen(request, env){
    nhat + as_of. Thieu file -> cachedMarket tra {updated:null, rows:[]},
    frontend hien "—", khong chan view. */
 export async function hStockDivergence(request, env){
-  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
   return cachedMarket(request, env, "market/divergence.json", 300);
 }
 
@@ -882,7 +852,6 @@ export async function hStockDivergence(request, env){
    realtime_poller ghi moi 5 phut (do rong/TRIN tu bang KBS toan thi
    truong). Cache ngan (60s) theo nhip poll cua frontend. */
 export async function hStockLiveOverview(request, env){
-  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
   return cachedMarket(request, env, "market/live_overview.json", 60);
 }
 
@@ -890,7 +859,6 @@ export async function hStockLiveOverview(request, env){
    theo ngay (?date=YYYY-MM-DD); thieu -> available:false (frontend
    hien "—", khong chan view). */
 export async function hStockMarketTotals(request, env){
-  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
   const u = new URL(request.url);
   const date = (u.searchParams.get("date") || "").trim();
   if(date && !/^\d{4}-\d{2}-\d{2}$/.test(date)) return jerr("Invalid date", 400);
@@ -915,7 +883,6 @@ export async function getCompanyProfile(env, sym){
 }
 
 export async function hStockCompanyProfile(request, env){
-  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
   const sym = (new URL(request.url).searchParams.get("symbol")||"").toUpperCase();
   if(!sym) return jerr("Symbol required", 400);
   const d = await getCompanyProfile(env, sym);
@@ -923,14 +890,12 @@ export async function hStockCompanyProfile(request, env){
 }
 
 export async function hStockEvents(request, env){
-  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
   const sym = (new URL(request.url).searchParams.get("symbol")||"").toUpperCase();
   const d = await sGet(env, "market/events/"+sym+".json");
   return sJson(d || {symbol:sym, items:[], updated:null});
 }
 
 export async function hStockCompare(request, env){
-  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
   const u = new URL(request.url);
   const syms = (u.searchParams.get("symbols")||"").toUpperCase().split(",").map(x=>x.trim()).filter(Boolean).slice(0,5);
   if(!syms.length) return jerr("Symbol required", 400);
