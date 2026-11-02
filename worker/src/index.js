@@ -219,7 +219,7 @@ const ROUTES = [
   ['GET',    '/api/internal/stock-rule-alerts', hRuleAlertsInternal, 'internal'],
   ['POST',   '/api/internal/stock-publish', hStockPublish,   'internal'],
   ['GET',    '/api/internal/tick-state', hTickStateGet,      'internal'],
-  ['GET',    '/api/internal/universe', hInternalUniverse,  'internal'],
+  ['GET',    '/api/internal/universe', hInternalUniverse,  'public'],
   // H1: Ably token SUBSCRIBE-ONLY cho trinh duyet. P1-3 (Henrry Chot 13:38
   // 02/11): bo gate login duong chi-đoc — hAblyToken chi cap quyen
   // ["subscribe"] cho kenh 'market' / staging, khong mo quyen ghi nao.
