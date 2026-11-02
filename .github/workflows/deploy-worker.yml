@@ -46,7 +46,7 @@ jobs:
       - name: Build worker bundle
         run: |
           cd worker
-          npx --yes esbuild src/index.js --bundle --format=esm --outfile=worker.js
+          npx --yes esbuild src/index.js --bundle --format=esm --external:cloudflare:workers --outfile=worker.js
           echo "Build OK"
 
       # Deploy tự động TẠM TẮT: cf_deploy.py dùng path local (/home/hatch/...)
