@@ -1433,6 +1433,9 @@ export async function hStockPublish(request, env, url, ctx){
   // vi ok lang; canh bao bat bien gom vao tra loi.
   const tickErrors = [];
   const tickAlerts = [];
+  // Nhanh watchlist: for_date/screen_date tra trong response de 09:00
+  // runonce kiem staleness (key co dinh latest.json, khong gate date).
+  let watchlistInfo = null;
   const put1 = async (key, val)=>{
     if(val===undefined) return;
     await sPut(env, "market/"+key+".json", doc(val));
@@ -1531,6 +1534,39 @@ export async function hStockPublish(request, env, url, ctx){
       basis: String(u.basis || ""),
       source: String(u.source || ""),
     });
+  }
+  // Watchlist bo loc dem (Chot 22:34 03/11): VM POST {"watchlist":{...}}
+  // -> market/shadow_tick/flow/watchlist/latest.json. Key CO DINH (Modal
+  // env tinh), khong gate for_date trong code (09:00 runonce tu check
+  // staleness). SSI M/B collector doc lai bang fetch_tick_state
+  // "flow/watchlist/latest.json" (tick-state = prefix shadow_tick).
+  // Validate chat nhu nhanh universe: sai -> 400 LOUD, KHONG ghi de.
+  if(body.watchlist){
+    const w = body.watchlist;
+    const okFor = /^\d{4}-\d{2}-\d{2}$/.test(String(w.for_date || ""));
+    const cands = Array.isArray(w.candidates) ? w.candidates : null;
+    const okCands = !!cands && cands.length > 0 && cands.every((c)=>
+      !!c && typeof c === "object" && !Array.isArray(c) &&
+      typeof c.symbol === "string" && c.symbol.trim().length > 0);
+    if(!okFor || !okCands) return jerr("Bad watchlist: for_date YYYY-MM-DD + candidates non-empty array of {symbol: non-empty string} required", 400);
+    const rows = [];
+    const seenW = new Set();
+    for(const c of cands){
+      const sym = c.symbol.trim().toUpperCase();
+      if(seenW.has(sym)) continue;  // dedup sau uppercase+strip
+      seenW.add(sym);
+      rows.push(Object.assign({}, c, {symbol: sym}));
+    }
+    await put1("shadow_tick/flow/watchlist/latest", {
+      screen_date: String(w.screen_date || ""),
+      for_date: String(w.for_date),
+      candidates: rows,
+    });
+    watchlistInfo = {
+      screen_date: String(w.screen_date || ""),
+      for_date: String(w.for_date),
+      count: rows.length,
+    };
   }
   if(body.screener) await put1("screener", {rows:body.screener});
   if(body.fundamentals) await put1("fundamentals", {by_symbol:body.fundamentals});
@@ -2192,6 +2228,7 @@ export async function hStockPublish(request, env, url, ctx){
     console.error(`[fanout] loi: ${e && e.message ? e.message : e}`);
   }
   return sJson(Object.assign({ok:true, written:n},
+    watchlistInfo ? {watchlist: watchlistInfo} : {},
     tickAlerts.length ? {alerts:tickAlerts} : {}));
 }
 

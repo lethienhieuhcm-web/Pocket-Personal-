@@ -59,6 +59,12 @@
 <div class="navgrid" id="mainTabs"></div>
 <div class="symsearch"><input id="symSearch" type="text" autocomplete="off" spellcheck="false" placeholder="Tìm mã hoặc tên công ty…"></div>
 
+<!-- ===== Watchlist bo loc dem (Henrry 22:05 03/11): cac ma dang trong danh sach ===== -->
+<div class="sec"><span id="wlSecT">Watchlist đêm</span><span class="trialbadge" id="wlBadge"></span></div>
+<div class="src" id="wlHead" style="text-align:left;padding:0 16px 2px"></div>
+<div class="card"><div id="wlChips"><div class="hint">Đang tải…</div></div></div>
+<div class="note" id="wlNote"></div>
+
 <div class="sec">Chỉ số</div>
 <div class="idx" id="idxRow"><div class="hint">Đang tải…</div></div>
 <div class="sec">Chỉ số ngành</div>
@@ -435,7 +441,7 @@ function _loadStockModScript(src,ready,triesLeft){
   document.head.appendChild(s);
 }
 const VIEW_LOADERS={
-  "v-market":()=>window.loadMarket(),
+  "v-market":()=>{ window.loadMarket(); loadStockMod("/english/js/stocks/watchlist.js?v=__BUILD__",function(){ return typeof window.loadFlowWatchlist==="function"; },function(){ window.loadFlowWatchlist(); }); },
   "v-screen":()=>loadStockMod("/english/js/stocks/screen.js?v=__BUILD__",function(){ return typeof window.loadScreener==="function"; },function(){ window.loadScreener(); }),
   "v-consensus":()=>loadStockMod("/english/js/stocks/consensus.js?v=__BUILD__",function(){ return typeof window.loadConsensus==="function"; },function(){ window.loadConsensus(); }),
   "v-holders":()=>loadStockMod("/english/js/stocks/holders.js?v=__BUILD__",function(){ return typeof window.loadHolders==="function"; },function(){ window.loadHolders(); }),
@@ -581,6 +587,7 @@ function setStkLang(l){
   if(typeof window.renderRegime==="function") window.renderRegime();
   if($("v-flow") && $("v-flow").classList.contains("on") && window.__fsTest && typeof window.__fsTest.rerender==="function") window.__fsTest.rerender();
   if($("v-market") && $("v-market").classList.contains("on")){ if(typeof window.renderMarketTotals==="function") window.renderMarketTotals(); if(typeof window.renderMarketOverview==="function") window.renderMarketOverview(); }
+  if($("v-market") && $("v-market").classList.contains("on") && window.__wlTest && typeof window.__wlTest.rerender==="function") window.__wlTest.rerender();
   if(window._caData) window.renderCA(window._caData);
   if(window._lastQuote) window.renderQuote(window._lastQuote);
 }
@@ -1297,6 +1304,9 @@ const BK_PRESETS = [
 })();
 byokLoad();
 applyLang();
+// Bloc Watchlist nam o view MAC DINH (Thi truong) nen phai nap ngay luc boot,
+// khong cho nguoi dung mo tab: cung kieu load lazy nhu cac module tab khac.
+loadStockMod("/english/js/stocks/watchlist.js?v=__BUILD__",function(){ return typeof window.loadFlowWatchlist==="function"; },function(){ window.loadFlowWatchlist(); });
 if(curLang!=="vi") translateDOM();
 if(!window._i18nObs){
   window._i18nObs = new MutationObserver(muts=>{
