@@ -1337,32 +1337,52 @@ async function fanoutIngestDo(env, frames) {
   if (!env.MARKET_ROOM) return null;
   const id = env.MARKET_ROOM.idFromName("market-" + fanoutDoDay());
   const stub = env.MARKET_ROOM.get(id);
-  let resp = null;
-  try {
-    const ctl = (typeof AbortSignal !== "undefined" && AbortSignal.timeout) ? AbortSignal.timeout(FANOUT.DO_TIMEOUT_MS) : undefined;
-    resp = await stub.fetch(new Request("https://do/ingest", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Internal-Secret": env.INTERNAL_SECRET || env.STOCK_PUBLISH_SECRET || "" },
-      body: JSON.stringify({ frames: frames }),
-      signal: ctl,
-    }));
-  } catch (e) {
-    fanoutDoFail++;
-    console.error(`[fanout] DO ingest loi (fail #${fanoutDoFail}): ${e && e.message ? e.message : e}`);
-    return null;
+  // Retry 1 lan (03/11): DO bi evict thi lan ingest dau phai cold-start
+  // (thuc DO + xu ly chunk) — neu vuot timeout hoac loi mang thi DO van
+  // trong, khach khong nhan frame nao. Lan thu 1 du co timeout van lam
+  // am DO (instance da duoc tao), nen retry sau 2s thuong gap DO am va
+  // thanh cong. Chi retry khi loi mang/timeout hoac HTTP 5xx (DO chua
+  // quyet dinh); 400/403 la tu choi dut khoat thi khong retry.
+  // Rui ro trung frame (lan 1 da nhan nhung mat phan hoi) chap nhan duoc:
+  // frame q chi la gia — client dedupe theo seq, gia trung khong doi hien thi.
+  for (let attempt = 0; attempt < 2; attempt++) {
+    if (attempt > 0) await new Promise((r) => setTimeout(r, 2000));
+    let resp = null;
+    try {
+      const ctl = (typeof AbortSignal !== "undefined" && AbortSignal.timeout) ? AbortSignal.timeout(FANOUT.DO_TIMEOUT_MS) : undefined;
+      resp = await stub.fetch(new Request("https://do/ingest", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Internal-Secret": env.INTERNAL_SECRET || env.STOCK_PUBLISH_SECRET || "" },
+        body: JSON.stringify({ frames: frames }),
+        signal: ctl,
+      }));
+    } catch (e) {
+      fanoutDoFail++;
+      console.error(`[fanout] DO ingest loi (fail #${fanoutDoFail}, attempt ${attempt + 1}/2): ${e && e.message ? e.message : e}`);
+      if (attempt === 0) continue;
+      return null;
+    }
+    if (!resp || !resp.ok) {
+      const status = resp ? resp.status : 0;
+      // Chi retry 5xx; 400/403 la tu choi dut khoat.
+      if (attempt === 0 && status >= 500) {
+        fanoutDoFail++;
+        console.error(`[fanout] DO ingest HTTP ${status} (fail #${fanoutDoFail}, attempt 1/2) — retry`);
+        continue;
+      }
+      fanoutDoFail++;
+      let txt = "";
+      try { txt = resp ? (await resp.text()).slice(0, 200) : ""; } catch (e) {}
+      console.error(`[fanout] DO ingest HTTP ${status || "?"} (fail #${fanoutDoFail}, attempt ${attempt + 1}/2): ${txt}`);
+      return null;
+    }
+    try { return await resp.json(); } catch (e) {
+      fanoutDoFail++;
+      console.error(`[fanout] DO ingest JSON loi (fail #${fanoutDoFail})`);
+      return null;
+    }
   }
-  if (!resp || !resp.ok) {
-    fanoutDoFail++;
-    let txt = "";
-    try { txt = resp ? (await resp.text()).slice(0, 200) : ""; } catch (e) {}
-    console.error(`[fanout] DO ingest HTTP ${resp ? resp.status : "?"} (fail #${fanoutDoFail}): ${txt}`);
-    return null;
-  }
-  try { return await resp.json(); } catch (e) {
-    fanoutDoFail++;
-    console.error(`[fanout] DO ingest JSON loi (fail #${fanoutDoFail})`);
-    return null;
-  }
+  return null;
 }
 
 async function fanoutSendAbly(env, frames, channel) {
