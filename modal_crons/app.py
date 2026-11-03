@@ -409,7 +409,13 @@ def _r2_get_json(bucket_key: str):
 
 def collector_today_bar_1m(sym: str, today_iso: str, reader=_r2_get_json):
     """Rollup 1m bucket cua BO THU -> 1D bar hom nay (ICT). None neu
-    thieu bucket / tong V<=0 / doc R2 loi."""
+    thieu bucket / tong V<=0 / doc R2 loi.
+
+    DON VI: bucket _1m.json cua modal collector DA o NGHIN_VND
+    (giong KBS) — kiem 03/11: FPT bucket 09:15 o=50.3/h=50.8/c=50.8,
+    14:45 c=50.4 (KBS C=50.4). KHONG chia 1000. Ban goc chia /1000
+    (tuong bucket la DONG) -> nen overlay nho hon 1000 lan (0.0504),
+    Plan bat duoc o trial VM 03/11 (FPT/VCB/HPG/MWG deu lech x1000)."""
     doc = reader(f"market/intraday/{sym}_1m.json")
     rows = (doc or {}).get("rows") or []
     today = [r for r in rows if isinstance(r, dict)
@@ -424,8 +430,8 @@ def collector_today_bar_1m(sym: str, today_iso: str, reader=_r2_get_json):
     if o is None or c is None or not hi or not lo or vol <= 0:
         return None
     return {"t": today_iso,
-            "o": o / 1000.0, "h": max(hi) / 1000.0,
-            "l": min(lo) / 1000.0, "c": c / 1000.0,
+            "o": o, "h": max(hi),
+            "l": min(lo), "c": c,
             "v": vol, "_n_buckets": len(today)}
 
 
