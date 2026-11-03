@@ -18,10 +18,18 @@ const PUSH_I18N = {
   live:{vi:"Đang cập nhật theo giây",en:"Updating every second",zh:"每秒更新中",ko:"매초 업데이트 중"},
   poll:{vi:"Đang kéo lại theo phút",en:"Refreshing every minute",zh:"每分钟刷新中",ko:"매분 새로고침 중"},
   retry:{vi:"Mất kết nối, đang thử lại",en:"Connection lost, retrying",zh:"连接已断开，正在重试",ko:"연결이 끊겼습니다. 다시 시도 중입니다."},
+  // Fix 03/11: lan dau ket noi (chua tung co duoc) khong phai "mat ket noi"
+  // — banner "Mất kết nối" no ra tren MOI lan tai trang chi vi startPath
+  // luon gan "retry". Lan 1 -> "connecting"; sau khi dut -> "retry" nhu cu.
+  connecting:{vi:"Đang kết nối bảng giao dịch",en:"Connecting to live board",zh:"正在连接行情表",ko:"실시간 시세판에 연결 중"},
   // P1-4: hai trang thai tach ra — link song nhung khong co goc moi, va
   // duoc den tu khong phai cua phien hom nay.
   quiet:{vi:"Đang kết nối — thị trường yên ắng",en:"Connected — market quiet",zh:"已连接 — 市场平静",ko:"연결됨 — 시장이 조용합니다"},
-  stale:{vi:"Số liệu cũ (không phải phiên hôm nay)",en:"Stale data (not today's session)",zh:"数据已过时（非今日交易时段）",ko:"오래된 데이터 (오늘 장이 아님)"}
+  stale:{vi:"Số liệu cũ (không phải phiên hôm nay)",en:"Stale data (not today's session)",zh:"数据已过时（非今日交易时段）",ko:"오래된 데이터 (오늘 장이 아님)"},
+  // Ingest dang nhan frame that nhung bang gia khong co the nao de ghi
+  // (khong co dong nao) — bao thay "live", de user + chan doan biet rang
+  // day la loi hien thi / du lieu, khong phai loi duong truyen.
+  norender:{vi:"Đã nhận realtime — bảng giá chưa có dòng nào để hiển thị",en:"Realtime received — price table has no rows to render",zh:"已收到实时数据 — 价格表暂无可显示的行",ko:"실시간 수신 — 표시할 가격 행이 없습니다"}
 };
 let _regime = null;
 function renderRegime(){
@@ -55,6 +63,56 @@ function mergeScreenerPx(rows, sspx){
   return sspx;
 }
 
+/* Gia live cua frame (DO/Ably) luu trong SS_PX — applyQMarket ghi, palette
+ * doc, con bang "Tang manh nhat HOSE" thi KHONG doc: no in `r.close` /
+ * `r.pct_change` tu payload /screener. Hai hau qua: (1) moi luot poll
+ * (~30s) lay lag gia HTTP de lap gia live da in truoc do; (2) ngay screener
+ * bi stale-gate (pct_change = null) thi bang rong hoan toan -> khong con
+ * the nao de frame ghi vao, gia thi truong ding tren man du stream van chay
+ * (do 03/11: 304 frame/90s, 1 mutation o #topMovers). */
+function livePx(sym){
+  const ss = (typeof window !== "undefined" && window.SS_PX) ? window.SS_PX : null;
+  const e = ss ? ss[String(sym || "").toUpperCase()] : null;
+  return (e && typeof e === "object") ? e : null;
+}
+function withLivePx(r){
+  const e = livePx(r && r.symbol);
+  if(!e) return r;
+  const out = Object.assign({}, r);
+  if(typeof e.c === "number") out.close = e.c;
+  if(typeof e.p === "number") out.pct_change = e.p;
+  return out;
+}
+/* Khi /screener khong con dong nao (pct_change null ca bang), dung chinh
+ * danh sach ma stream da bao dong lam nguon cho bang — khong de "Chưa có
+ * dữ liệu" trong khi gia live nam trong SS_PX. */
+function moversFromLivePx(limit){
+  const ss = (typeof window !== "undefined" && window.SS_PX) ? window.SS_PX : {};
+  return Object.keys(ss).map(function(s){
+    const e = ss[s] || {};
+    return { symbol: s, close: e.c, pct_change: e.p, foreign_net_value: null };
+  }).filter(function(r){ return typeof r.pct_change === "number"; })
+    .sort(function(a, b){ return Math.abs(b.pct_change) - Math.abs(a.pct_change); })
+    .slice(0, limit || 8);
+}
+function paintMovers(rows){
+  const tb = $("topMovers");
+  if(!tb) return 0;
+  tb.innerHTML=(rows||[]).map(r=>{const pc=r.pct_change,cls=pc>0?"up":pc<0?"down":"";
+    const ff=r.foreign_net_value,ffc=ff>0?"up":ff<0?"down":"";
+    return `<tr><td><b onclick="openSym('${esc(r.symbol)}')" style="cursor:pointer">${esc(r.symbol)}</b></td><td>${fmtN(r.close)}</td><td class="${cls}">${fmtPct(pc)}</td><td class="${ffc}">${fmtTy(ff)}</td></tr>`;}).join("")||'<tr><td colspan="4"><div class="hint">Chưa có dữ liệu</div></td></tr>';
+  return (rows||[]).length;
+}
+/* Frame song nap SS_PX trong khoang ~10s sau khi mo trang, con luot poll
+ * /screener chay ngay luc mo thi gia van null (stale-gate) -> bang trong.
+ * Goi lai tu module ingest de frame tim duoc cho in gia, thay vi trang in
+ * "Chưa có dữ liệu" den het chu ky poll 60s. */
+function refreshMoversFromLive(limit){
+  const rows = moversFromLivePx(limit || 8);
+  if(!rows.length) return 0;
+  return paintMovers(rows);
+}
+
 async function loadMarket(){
   try{
     const j=await api("/indices");const rows=j.rows||[];
@@ -78,10 +136,9 @@ async function loadMarket(){
   try{
     const j=await api("/screener?sort=pct_change&order=desc&exchange=HOSE&min_value=1000000000");
     mergeScreenerPx(j.rows, window.SS_PX);
-    const rows=(j.rows||[]).filter(r=>r.pct_change!=null).slice(0,8);
-    $("topMovers").innerHTML=rows.map(r=>{const pc=r.pct_change,cls=pc>0?"up":pc<0?"down":"";
-      const ff=r.foreign_net_value,ffc=ff>0?"up":ff<0?"down":"";
-      return `<tr><td><b onclick="openSym('${esc(r.symbol)}')" style="cursor:pointer">${esc(r.symbol)}</b></td><td>${fmtN(r.close)}</td><td class="${cls}">${fmtPct(pc)}</td><td class="${ffc}">${fmtTy(ff)}</td></tr>`;}).join("")||'<tr><td colspan="4"><div class="hint">Chưa có dữ liệu</div></td></tr>';
+    let rows=(j.rows||[]).filter(r=>r.pct_change!=null||livePx(r.symbol)).map(withLivePx).slice(0,8);
+    if(!rows.length) rows=moversFromLivePx(8);
+    paintMovers(rows);
   }catch(e){$("topMovers").innerHTML='<tr><td colspan="4"><div class="hint">Lỗi tải</div></td></tr>';}
   loadFF();
   loadPF();
@@ -624,12 +681,12 @@ function insBox(insight, srcText, asOf){
   if(typeof window!=="undefined"){
     window.REGIME_I18N=REGIME_I18N; window.BREADTH_I18N=BREADTH_I18N; window.PUSH_I18N=PUSH_I18N; window.CAL_I18N=CAL_I18N; window.FF_I18N=FF_I18N; window.PF_I18N=PF_I18N; window.MT_I18N=MT_I18N; window.MOV_I18N=MOV_I18N; window.MAC_I18N=MAC_I18N; window.MAC_SRC=MAC_SRC; window.INS_I18N=INS_I18N; window.INS_SRC=INS_SRC;
     Object.defineProperty(window,"_caData",{get:function(){ return _caData; },configurable:true});
-    window.loadMarket=loadMarket; window.loadMarketTotals=loadMarketTotals; window.renderMarketTotals=renderMarketTotals; window.renderRegime=renderRegime;
+    window.loadMarket=loadMarket; window.refreshMoversFromLive=refreshMoversFromLive; window.loadMarketTotals=loadMarketTotals; window.renderMarketTotals=renderMarketTotals; window.renderRegime=renderRegime;
     window.loadFF=loadFF; window.renderFF=renderFF; window.fmtTyF=fmtTyF; window.loadPF=loadPF; window.renderPF=renderPF; window.loadMN=loadMN; window.renderMN=renderMN;
     window.loadCA=loadCA; window.renderCA=renderCA; window.loadMarketOverview=loadMarketOverview; window.renderMarketOverview=renderMarketOverview; window.pollMarketOverview=pollMarketOverview;
     window.loadMacro=loadMacro; window.renderMacro=renderMacro; window.insBox=insBox; window.movToggle=movToggle; window.movRenderIdx=movRenderIdx;
     window.__mkTest={i18n:MT_I18N,load:loadMarket,totals:loadMarketTotals,renderTotals:renderMarketTotals,regime:renderRegime,ca:renderCA,overview:loadMarketOverview,renderOverview:renderMarketOverview,macro:loadMacro,insBox:insBox,fmtTyF:fmtTyF}; }
-  if(typeof module!=="undefined" && module.exports){ module.exports = { mergeScreenerPx: mergeScreenerPx }; }
+  if(typeof module!=="undefined" && module.exports){ module.exports = { mergeScreenerPx: mergeScreenerPx, livePx: livePx, withLivePx: withLivePx, moversFromLivePx: moversFromLivePx }; }
   if(typeof document!=="undefined") loadMarket();
 })();
 }catch(e){}

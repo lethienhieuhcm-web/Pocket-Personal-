@@ -31,8 +31,38 @@ export class MarketRoom extends DurableObject {
     this.env = env;
     this.buffer = []; // frame gan nhat, toi da 60, theo thu tu seq
     this.lastSeq = 0;
+    this.seqLoaded = false; // (fix 03/11) seq doc tu DO storage lan dau tien
     this.sockets = new Map(); // ws -> {authed, ro, email, syms:Set, views:Set, lastSeen, createdAt, activeAt, winStart, msgCount}
     this.alarmSet = false;
+  }
+
+  /* Fix stream 03/11 — seq PHAI song qua lan evict trong ngay. DO chi
+   * giu buffer trong bo nho ("khong ghi R2/D1" — van dung voi buffer),
+   * nhung lastSeq reset ve 0 khi DO bi day (cold-start, scale-in) giua
+   * hai lan ingest: frame tiep theo mang seq 1..N, va client da luu
+   * lastSeq lon hon (sessionStorage, ben mot lan Ably/phien tru) bo SAN
+   * tat ca — yen lang ca phien du duong van chay. DO storage la bo nho
+   * day manh cua chinh no, khong phai R2 — dung quy tac "khong ghi R2". */
+  async _loadSeq() {
+    if (this.seqLoaded) return;
+    this.seqLoaded = true;
+    try {
+      if (this.ctx.storage && typeof this.ctx.storage.get === "function") {
+        const v = await this.ctx.storage.get("mr_lastSeq");
+        if (Number.isInteger(v) && v > this.lastSeq) this.lastSeq = v;
+      }
+    } catch (e) {
+      console.error(`[do] doc lastSeq tu storage loi: ${e && e.message ? e.message : e}`);
+    }
+  }
+  async _saveSeq() {
+    try {
+      if (this.ctx.storage && typeof this.ctx.storage.put === "function") {
+        await this.ctx.storage.put("mr_lastSeq", this.lastSeq);
+      }
+    } catch (e) {
+      console.error(`[do] luu lastSeq loi: ${e && e.message ? e.message : e}`);
+    }
   }
 
   _state(ws) {
@@ -153,7 +183,9 @@ export class MarketRoom extends DurableObject {
       if (frames.length === 0 || frames.length > 60) {
         return new Response(JSON.stringify({ error: "Bad frames" }), { status: 400 });
       }
+      await this._loadSeq();
       const res = this._ingest(frames);
+      if (res.published) await this._saveSeq();
       return new Response(JSON.stringify({ ok: true, published: res.published, seq: this.lastSeq, seqs: res.seqs }), { status: 200 });
     }
     return new Response(JSON.stringify({ error: "Not found" }), { status: 404 });

@@ -145,6 +145,11 @@ class FakeWS {
 }
 
 const els = { pushStatus: { textContent: "" }, "v-market": {}, "v-detail": null };
+// Fixture #topMovers 1 dong ACB (fix 03/11): frame q phai ghi duoc o DOM
+// thi moi bao 'live' — khong co dong nao thi bao 'norender' (dung).
+const acbCells = [{ textContent: "", className: "" }, { textContent: "", className: "" }, { textContent: "", className: "" }, { textContent: "", className: "" }];
+const acbRow = { querySelector: (s) => (s === "b" ? { textContent: "ACB" } : null), querySelectorAll: (s) => (s === "td" ? acbCells : []) };
+els.topMovers = { querySelector: (s) => (s === "b" ? { textContent: "ACB" } : null), querySelectorAll: (s) => (s === "tr" ? [acbRow] : []) };
 const sandbox = {
   console: { log: () => {}, warn: () => {}, error: () => {} },
   setTimeout: timers.setTimeout, clearTimeout: timers.clearTimeout,
@@ -154,11 +159,14 @@ const sandbox = {
   URLSearchParams: URLSearchParams, WebSocket: FakeWS,
   sessionStorage: { getItem: () => "0", setItem: () => {} },
   localStorage: { getItem: () => null },                 // KHACH CHUA DANG NHAP
-  location: { search: "", protocol: "https:", host: "lethanhdong.one" },
+  location: { search: "?ingesc=0", protocol: "https:", host: "lethanhdong.one" },
+  // ?ingesc=0 (fix 03/11): tat dong ho THANG CAP im-lang-trong-phien de
+  // test nay giu nguyen hanh vi P1-4 (quiet/stale khong doi duong).
+  // Thang cap duoc test rieng trong stream-fix-20261103.test.mjs.
   document: {
     readyState: "complete", documentElement: { lang: "vi" }, hidden: false,
     getElementById: (id) => els[id] || null,
-    addEventListener: () => {}, querySelector: () => null,
+    addEventListener: () => {}, querySelector: (s) => (s === ".view.on" ? { id: "v-market" } : null),
   },
 };
 sandbox.window = {};
@@ -249,7 +257,10 @@ check("B18 ping duoc ngung khi socket dong (clearHb)", ws1.closedByClient === tr
   };
   vm.createContext(sandbox2);
   vm.runInContext(src, sandbox2);
-  check("B19 Ably khoi dong duoc khi CHUA dang nhap (khong bi day ve poll)", ablyCtor.length === 1 && els2.pushStatus.textContent === "retry", { calls: ablyCtor.length, st: els2.pushStatus.textContent });
+  check("B19 Ably khoi dong duoc khi CHUA dang nhap (khong bi day ve poll)", ablyCtor.length === 1 && els2.pushStatus.textContent === "connecting", { calls: ablyCtor.length, st: els2.pushStatus.textContent });
+  // fix 03/11: lan ket noi DAU TIEN (retries=0) in "connecting" — khong
+  // con "retry" ("banner Mất kết nối trên MỌI lần tải trang" la 1 phan
+  // trieu chung). Sai lan thu 2 tro di moi la "retry".
 }
 
 console.log("p1-heartbeat: " + passed + " pass, " + failed + " fail");
