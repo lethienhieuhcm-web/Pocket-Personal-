@@ -362,6 +362,105 @@ def build_index_ohlcv_payload(df, limit: int = 320, today=None):
     return payload
 
 
+# ---- PA-4a (03/11): "phat nen theo bo thu" (Henrry Chot 14:43) --------------
+# PA-3b lay nen hom nay TU KBS luc publish (rt.ohlcv), KHONG phai bo thu.
+# Bo thu modal (`stock-tick-collector`) DA ghi 1m buckets -> R2
+# `market/intraday/<SYM>_1m.json` (worker stock.js:1886, lane tick_live,
+# moi 30s). PA-4a: doc bucket 1m cua bo thu, rollup thanh 1D (o=first,
+# h=max, l=min, c=last, v=sum), ROI ghi de/nen vao dong cuoi payload KBS.
+# History (500 phien) van tu KBS — bo thu chua co. Chi so VAN thuoc PA-3c
+# (VCI+dchart) — bo thu CHUA co index buckets (see REPORT.md BLOCKED).
+#
+# Don vi: bucket gia = DONG (e.g. FPT o=50300) -> chart ky NGHIN_VND
+# (50.3), chia 1000. Volume GIU NGUYEN (co phieu).
+# Fallback: ma ngoai universe B200 42 (41/47 QU tru B200) hoac loi doc R2
+# -> GIU nen formed KBS (khong bao gio rong dong cuoi).
+
+
+def _r2_get_json(bucket_key: str):
+    """Doc R2 object (vi du 'market/intraday/FPT_1m.json') qua CF API.
+
+    Worker luu voi tien to 'stock/' (stock.js:35 `env.DATA.put('stock/'+key,...)`,
+    R2_PREFIX 'stock/' trong stock_config.py:38) — thienvao o day.
+    Token: CF_TOKEN (cung bien book_processor dung, da co trong secret
+    pocket-personal) — fallback CF_API_TOKEN neu secret doi ten sau nay.
+    Khong co token hoac loi -> tra None (ben goi xu ly fallback)."""
+    import json
+    import urllib.request
+
+    token = os.environ.get("CF_TOKEN", "") or os.environ.get("CF_API_TOKEN", "")
+    if not token:
+        return None
+    acct = os.environ.get("CF_ACCOUNT_ID",
+                          "25b2327e932d26e5487c2ba8ad058932")
+    bucket = os.environ.get("CF_R2_BUCKET", "english-lab-data")
+    prefix = os.environ.get("CF_R2_PREFIX", "stock/")
+    url = (f"https://api.cloudflare.com/client/v4/accounts/{acct}"
+           f"/r2/buckets/{bucket}/objects/{prefix}{bucket_key}")
+    req = urllib.request.Request(url, method="GET")
+    req.add_header("Authorization", f"Bearer {token}")
+    req.add_header("User-Agent", "Mozilla/5.0 (PA-4a)")
+    try:
+        with urllib.request.urlopen(req, timeout=30) as r:
+            return json.loads(r.read().decode())
+    except Exception:  # noqa: BLE001 — 404/token/thieu file/JSON hong
+        return None
+
+
+def collector_today_bar_1m(sym: str, today_iso: str, reader=_r2_get_json):
+    """Rollup 1m bucket cua BO THU -> 1D bar hom nay (ICT). None neu
+    thieu bucket / tong V<=0 / doc R2 loi."""
+    doc = reader(f"market/intraday/{sym}_1m.json")
+    rows = (doc or {}).get("rows") or []
+    today = [r for r in rows if isinstance(r, dict)
+             and str(r.get("t", ""))[:10] == today_iso]
+    if not today:
+        return None
+    o = today[0].get("o")
+    c = today[-1].get("c")
+    hi = [r.get("h") for r in today if r.get("h") is not None]
+    lo = [r.get("l") for r in today if r.get("l") is not None]
+    vol = sum(int(r.get("v") or 0) for r in today)
+    if o is None or c is None or not hi or not lo or vol <= 0:
+        return None
+    return {"t": today_iso,
+            "o": o / 1000.0, "h": max(hi) / 1000.0,
+            "l": min(lo) / 1000.0, "c": c / 1000.0,
+            "v": vol, "_n_buckets": len(today)}
+
+
+def apply_collector_today(payload: dict, today_iso: str,
+                          bar_fn=collector_today_bar_1m) -> dict:
+    """Ghi de/append dong `t == today_iso` trong payload['ohlcv'][sym]
+    bang rollup cua bo thu. Ma loi/thieu -> GIU nguyen KBS formed.
+    Return {sym: n_buckets} de lane log."""
+    stats = {}
+    for sym in list(payload.get("ohlcv", {})):
+        try:
+            bar = bar_fn(sym, today_iso)
+        except Exception:  # noqa: BLE001 — overlay loi khong chan POST
+            continue
+        if bar is None:
+            continue
+        clean = {k: v for k, v in bar.items() if not k.startswith("_")}
+        rows = payload["ohlcv"][sym]
+        hit = False
+        for i, r in enumerate(rows):
+            if r.get("t") == today_iso:
+                rows[i] = clean
+                hit = True
+                break
+        if not hit:
+            rows.append(clean)
+        stats[sym] = bar["_n_buckets"]
+    prov = payload.setdefault("_prov", {})
+    prov["collector_overlay"] = (
+        f"{len(stats)}/{len(payload.get('ohlcv', {}))} ma"
+        + (f" [{','.join(sorted(stats))}]" if stats else ""))
+    return stats
+
+
+
 @app.function(
     image=stock_image,
     secrets=[modal.Secret.from_name("pocket-personal")],
@@ -410,7 +509,7 @@ def publish_ohlcv_daily(symbols: tuple = QUOTE_UNIVERSE):
     timeout=60*30,
 )
 def publish_ohlcv_intraday(symbols: tuple = QUOTE_UNIVERSE):
-    """PA-3b: refresh nen ngay trong phien de chart 1D hien nen hom nay.
+    """PA-3b+PA-4a: refresh nen ngay trong phien, nen hom nay theo BO THU.
 
     Tai sao cron rieng, khong them ohlcv vao stock_snapshot:
       - stock_snapshot chay */5 = 47 lan/gi o; nhung 47x rt.ohlcv moi 5
@@ -436,6 +535,16 @@ def publish_ohlcv_intraday(symbols: tuple = QUOTE_UNIVERSE):
         print("publish_ohlcv_intraday: khong co nen du dai -> giu file cu "
               "(khong POST)", flush=True)
         return {"skipped": True, "reason": "no_full_history"}
+    # PA-4a: overlay nen hom nay tu bo thu (1m buckets). Loi -> giu KBS.
+    try:
+        from datetime import datetime, timedelta, timezone
+        today_iso = datetime.now(timezone(timedelta(hours=7))).date().isoformat()
+        stats = apply_collector_today(payload, today_iso)
+        print(f"publish_ohlcv_intraday: PA-4a collector overlay "
+              f"{len(stats)}/{len(kept)} ma, hom nay={today_iso}", flush=True)
+    except Exception as e:  # noqa: BLE001 — loi overlay khong chan POST
+        print(f"publish_ohlcv_intraday: PA-4a overlay loi "
+              f"({str(e)[:120]}) -> giu KBS formed", flush=True)
     result = _post_publish(payload)
     print(f"publish_ohlcv_intraday: {len(kept)} ma -> {result}", flush=True)
     return result
