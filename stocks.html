@@ -260,7 +260,7 @@
 <div class="sec" id="dRecSec" style="display:none">Khuyến nghị · Finhay</div>
 <div class="card" id="dRec" style="display:none"></div>
 <div class="sec" id="dChartSec">Biểu đồ</div>
-<div class="card"><div class="iv" id="dIdxBar" style="display:none;margin-top:0"></div><div class="iv" id="dIv"><button>15m</button><button>1H</button><button class="on">1D</button></div><div id="dFaLegend" style="margin-top:6px"></div><div id="dChart" style="min-height:150px;margin-top:8px"><div class="hint">Đang tải…</div></div><div id="dFaPct"></div><div id="dIndChips" style="margin-top:8px"></div><div id="dIndPanes"></div><div id="dIndPanel" style="display:none;margin-top:8px"></div><div id="dFaGrid"></div></div>
+<div class="card"><div class="iv" id="dIdxBar" style="display:none;margin-top:0"></div><div class="iv" id="dIv"><button>1m</button><button>5m</button><button>15m</button><button>1H</button><button class="on">1D</button></div><div id="dFaLegend" style="margin-top:6px"></div><div id="dChart" style="min-height:150px;margin-top:8px"><div class="hint">Đang tải…</div></div><div id="dFaPct"></div><div id="dIndChips" style="margin-top:8px"></div><div id="dIndPanes"></div><div id="dIndPanel" style="display:none;margin-top:8px"></div><div id="dFaGrid"></div></div>
 <div class="sec" id="dTapeSec" style="display:none">Khớp lệnh</div>
 <div class="card" id="dTapeCard" style="display:none"><div id="dTapeMini"></div><div style="text-align:center;margin-top:8px"><span class="nchev" style="cursor:pointer;color:var(--pp-accent);font-weight:600" onclick="dOpen('Tape')"><span id="dTapeMore">Xem đầy đủ</span> ›</span></div></div>
 <div class="sec" id="dTargetSec">Chốt lời / Cắt lỗ (%)</div>
@@ -1061,7 +1061,7 @@ async function pollVersion(){
         else if(on.id==="v-screen")loadScreener();
         else if(on.id==="v-alert")loadAlerts();
         else if(on.id==="v-mine")loadMine();
-        else if(on.id==="v-detail"){ if(window._idxMode&&window.curIdx){ if(typeof window.loadIndexQuote==="function")window.loadIndexQuote(window.curIdx); if(typeof window.loadChart==="function")window.loadChart(window.curIdx,"1D"); } else if(typeof window.curSym!=="undefined"&&window.curSym&&typeof window.loadDetail==="function")window.loadDetail(window.curSym); }
+        else if(on.id==="v-detail"){ const iv0=window._chartIv||"1D"; if(window._idxMode&&window.curIdx){ if(typeof window.loadIndexQuote==="function")window.loadIndexQuote(window.curIdx); if(typeof window.loadChart==="function")window.loadChart(window.curIdx,iv0); } else if(typeof window.curSym!=="undefined"&&window.curSym&&typeof window.loadDetail==="function")window.loadDetail(window.curSym,iv0); }
       }
     }
     _verKey=key;
@@ -1313,6 +1313,27 @@ if(!window._i18nObs){
   window._i18nObs.observe(document.body, {childList:true, subtree:true, characterData:true});
 }
 pollVersion(); setInterval(pollVersion, 5*60*1000);
+// Nen phut (1m/5m): duong DOC /ohlcv tuong duong 15m/1H, buoc nap lai theo
+// nhip 60s khi view chi tiet dang mo khung phut. Chi tai khi thuc su co nen
+// moi (so sanh chuoi "sig") de khong lat lai bieu do + zoom vo nghia do loi.
+let _minTickBusy=false;
+setInterval(async ()=>{
+  try{
+    if(_minTickBusy || (window._chartIv!=="1m" && window._chartIv!=="5m") || !window._chartSym) return;
+    const on=document.querySelector(".view.on");
+    if(!on || on.id!=="v-detail") return;
+    _minTickBusy=true;
+    try{
+      const cnt = window._chartIv==="1m" ? 400 : 200;
+      const j=await api("/ohlcv?symbol="+encodeURIComponent(window._chartSym)+"&count="+cnt+"&interval="+window._chartIv);
+      const rows=j.rows||[];
+      if(rows.length<2) return;
+      const sig=window.chartSig(rows,j);
+      if(sig===window._minTickSig) return;
+      window._minTickSig=sig; window._chartRows=rows; window.renderIndChart();
+    }finally{ _minTickBusy=false; }
+  }catch(e){}
+}, 60*1000);
 </script>
 <script src="/english/js/stocks/palette.js?v=__BUILD__"></script>
 <script src="/english/js/stocks/market.js?v=__BUILD__"></script>

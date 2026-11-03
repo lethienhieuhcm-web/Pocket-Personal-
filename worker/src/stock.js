@@ -383,7 +383,8 @@ export async function hStockOhlcv(request, env){
   const count = Math.max(10, Math.min(parseInt(u.searchParams.get("count")||"120",10)||120, 500));
   const iv = u.searchParams.get("interval")||"1D";
   if(!sym) return jerr("Symbol required", 400);
-  // Premium: intraday intervals
+  // Premium: intraday 15m/1H (giu nguyen). NEN PHUT 1m/5m = MIEN PHI
+  // (Henrry CHOT FREE 16:06 03/11; luat phase "APP dang xay dung = FREE het").
   if(iv==="1H" || iv==="15m"){
     try{
       const {getActivePlan, getUser} = await import('./auth.js');
@@ -394,10 +395,10 @@ export async function hStockOhlcv(request, env){
   let d;
   if(iv==="1D"){
     d = await sGet(env, "market/ohlcv/"+sym+".json");
-  }else if(iv==="1H" || iv==="15m"){
+  }else if(iv==="1H" || iv==="15m" || iv==="5m" || iv==="1m"){
     d = await sGet(env, "market/intraday/"+sym+"_"+iv+".json");
   }else{
-    return jerr("Invalid interval (1D/1H/15m)", 400);
+    return jerr("Invalid interval (1D/1H/15m/5m/1m)", 400);
   }
   if(!d) return jerr("No data for "+sym+" ("+iv+")", 404);
   let indicators = null;

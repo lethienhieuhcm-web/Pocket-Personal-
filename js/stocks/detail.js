@@ -42,7 +42,9 @@ function openIndex(fs){
   dShow(null);
   if($("dNav"))$("dNav").style.display="none"; if($("dNavTitle"))$("dNavTitle").style.display="none";
   ["dTargetSec","dTarget","dCostSec","dCost","dEventsSec","dEventsCard"].forEach(k=>{if($(k))$(k).style.display="none";});
-  document.querySelectorAll("#dIv button").forEach(b=>{b.style.display=b.textContent==="1D"?"":"none";});
+  // Nen phut 1m/5m chi so co duong doc rieng (lane dchart -> body.intraday);
+  // 15m/1H van khoa vi chi so chua co nguon phut do trong R2.
+  document.querySelectorAll("#dIv button").forEach(b=>{b.style.display=(b.textContent==="1D"||b.textContent==="1m"||b.textContent==="5m")?"":"none";});
   const bar=$("dIdxBar"); bar.style.display=""; bar.style.flexWrap="wrap";
   bar.innerHTML=IDX_LIST.concat(IDX_SEC_LIST).map(x=>`<button class="${x===fs?"on":""}" onclick="openIndex('${x}')">${x}</button>`).join("");
   loadIndexQuote(fs);
@@ -134,14 +136,14 @@ function renderQuote(q){
   if(_ob2&&_obHtml) _ob2.innerHTML=_obHtml;
   if(q._prov){_lastDSrc=q._prov.source;_lastDAsOf=q._prov.retrieved_at||q.data_updated||null;_lastDstale=false;refreshSrc();}
 }
-async function loadDetail(sym){
+async function loadDetail(sym, chartIv){
   $("dQuote").innerHTML='<div class="hint">Đang tải…</div>';
   try{
     const j=await api("/quote?symbol="+encodeURIComponent(sym));
     const q=j.quote||j; _lastQuote=q; renderFaPctGrid(); renderQuote(q);
   }catch(e){$("dQuote").innerHTML='<div class="hint">Lỗi tải</div>';}
   loadOrderbook(sym);
-  loadFlow(sym);loadNews(sym);loadChart(sym);loadTape(sym);
+  loadFlow(sym);loadNews(sym);loadChart(sym,chartIv);loadTape(sym);
   loadStockMod("/english/js/stocks/profile.js?v=__BUILD__",function(){ return typeof window.loadProfile==="function"; },function(){ window.loadProfile(sym); window.loadEvents(sym); window.loadTarget(sym); window.loadCost(sym); window.loadFund(sym); });
   loadStockMod("/english/js/stocks/consensus.js?v=__BUILD__",function(){ return typeof window.loadConsDetail==="function"; },function(){ window.loadConsDetail(sym); });
   try{ const rc=$("dRec"); if(rc) rc.style.display="none"; if(typeof window.loadFinhayRec==="function") window.loadFinhayRec(sym); }catch(e){}
@@ -355,7 +357,10 @@ async function doCompare(){
 }
 $("cmpBtn").onclick=doCompare;
 // ---- Bieu do nen (SVG nhe, du lieu /ohlcv) ----
-let _chartSym="";
+let _chartSym="", _minTickSig="";
+function chartSig(rows,j){ if(!rows||!rows.length) return "";
+  const r=rows[rows.length-1];
+  return rows.length+"|"+r.t+"|"+r.c+"|"+r.v+"|"+((j&&j.updated)||""); }
 function chartSvg(rows,scale){
   const W=340,H=150,volH=26,priceH=H-volH-2;
   let hi=-1e18,lo=1e18,vmax=0;
@@ -386,9 +391,10 @@ async function loadChart(sym, iv){
   ["dFaLegend","dFaPct","dFaGrid"].forEach(k=>{ const e=$(k); if(e) e.innerHTML=""; });
   const pnl=$("dIndPanel"); if(pnl) pnl.style.display="none";
   try{
-    const cnt = iv==="1D" ? 400 : 200;
+    const cnt = (iv==="1D"||iv==="1m") ? 400 : 200;
     const j=await api("/ohlcv?symbol="+encodeURIComponent(sym)+"&count="+cnt+"&interval="+iv);
     _chartRows=(j.rows||[]);
+    _minTickSig=chartSig(_chartRows,j);
     if(_chartRows.length<2){ box.innerHTML='<div class="hint">Chưa có dữ liệu biểu đồ</div>'; const pn=$("dIndPanes"); if(pn) pn.innerHTML=""; const cp=$("dIndChips"); if(cp) cp.innerHTML=""; return; }
     renderIndChart();
   }catch(e){
@@ -695,6 +701,13 @@ document.querySelectorAll("#dIv button").forEach(b=>b.onclick=()=>{ if(_chartSym
     Object.defineProperty(window,"_lastFund",{get:function(){ return _lastFund; },set:function(v){ _lastFund=v; },configurable:true});
     Object.defineProperty(window,"_lastProfile",{get:function(){ return _lastProfile; },set:function(v){ _lastProfile=v; },configurable:true});
     Object.defineProperty(window,"WLSET",{get:function(){ return WLSET; },set:function(v){ WLSET=v; },configurable:true});
+    // Bridges cho vong tuc 60s nen phut o stocks.html (hunk #8) — doc/ghi
+    // var tron g dong chai detail.js. Mot nguon that van o trong dong chai.
+    Object.defineProperty(window,"_chartSym",{get:function(){ return _chartSym; },set:function(v){ _chartSym=v; },configurable:true});
+    Object.defineProperty(window,"_chartIv",{get:function(){ return _chartIv; },set:function(v){ _chartIv=v; },configurable:true});
+    Object.defineProperty(window,"_chartRows",{get:function(){ return _chartRows; },set:function(v){ _chartRows=v; },configurable:true});
+    Object.defineProperty(window,"_minTickSig",{get:function(){ return _minTickSig; },set:function(v){ _minTickSig=v; },configurable:true});
+    window.renderIndChart=renderIndChart; window.chartSig=chartSig;
     window.__dtOpenSym=openSym; window.__dtOpenIndex=openIndex; window.__dtLoadWatchlist=loadWatchlist;
     window.loadDetail=loadDetail; window.loadChart=loadChart; window.loadIndexQuote=loadIndexQuote; window.renderDNav=renderDNav; window.renderQuote=renderQuote; window.renderFaPctGrid=renderFaPctGrid;
     window.dOpen=dOpen; window.dBack=dBack; window.dShow=dShow; window.wlRemove=wlRemove; window.paintWatchBtn=paintWatchBtn; window.BL=BL;
