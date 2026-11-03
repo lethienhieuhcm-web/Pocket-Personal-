@@ -462,6 +462,17 @@
       }
       if(m.t === "auth-required" || (m.t === "error" && m.code === 4401)){ onBreak("do", "auth"); return; }
       if(m.t === "resumed"){
+        // DO restart: DO bi evict thi seq quay ve 0, nhung client giu
+        // lastSeq cu (cao) trong sessionStorage -> moi frame moi deu bi
+        // shouldAcceptSeq loai (seq <= lastSeq) -> trang ket "quiet" mai
+        // du DO dang phat frame. Neu resumed seq < lastSeq thi DO da
+        // restart -> reset lastSeq ve resumed seq de nhan frame moi.
+        // An toan: DO khong restart thi lastSeq cua no luon >= lastSeq
+        // client (client chi nhan seq DO da cap), nen resumed seq < lastSeq
+        // chi xay ra khi DO restart.
+        if(typeof m.seq === "number" && m.seq < lastSeq){
+          lastSeq = m.seq; saveSeq();
+        }
         var cv = currentView();
         if(cv.view === "v-market") reloadMarketView();
         armSilence();
