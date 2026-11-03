@@ -58,9 +58,11 @@ async function loadIndexQuote(fs){
       r=rows2.find(x=>x.symbol===fs);
     }
     if(!r){ box.innerHTML='<div class="hint">Chưa có dữ liệu</div>'; return; }
-    const pc=r.pct_change, cls=pc>0?"up":pc<0?"down":"";
+    const ix=chgFromRef(r.close, r.change, r.prev_close, 0.005);
+    const pc=ix?ix.pct:r.pct_change, cls=pc>0?"up":pc<0?"down":"";
+    const chg=ix?ix.change:r.change;
     let h=`<div class="row"><span class="k">Điểm</span><span class="v" style="font-size:17px">${fmtN(r.close)}</span></div>`;
-    h+=`<div class="row"><span class="k">Thay đổi</span><span class="v ${cls}">${r.stale?"— · số liệu cũ":(r.change!=null?fmtN(r.change)+" ("+fmtPct(pc)+")":fmtPct(pc))}</span></div>`;
+    h+=`<div class="row"><span class="k">Thay đổi</span><span class="v ${cls}">${r.stale?"— · số liệu cũ":(chg!=null?fmtN(chg)+" ("+fmtPct(pc)+")":fmtPct(pc))}</span></div>`;
     if(r.volume!=null) h+=`<div class="row"><span class="k">Khối lượng</span><span class="v">${fmtN(r.volume)}</span></div>`;
     box.innerHTML=h;
     if(j._prov){_lastDSrc=j._prov.source;_lastDAsOf=j._prov.retrieved_at||j.updated||null;_lastDstale=!!j.stale;refreshSrc();}
@@ -78,11 +80,26 @@ ko:{stock_div:"주식 배당 {pct}%",cash_div:"현금 배당 주당 {amt} VND",s
 // quyen chi render 1 lan o loadDetail, doi EN khong ve lai #dQuote —
 // cung ho loi i18n Lich quyen: renderCA(_caData) o setStkLang).
 // Giu nguyen noi dung #dOb (so lenh) qua lan ve lai.
+// "Thay đổi" phai khop voi chinh cap (close, reference) hien tren man.
+// Trieu chung 03/11 13:29: o "Giá khớp" = 54.200 (frame live) nhung
+// "Thay đổi" = 0 (0.00%) — change/pct lay tu ban doc HTTP cu hon ban vừa
+// in, hai o khong cung mot thoi diem. helper nay TÍNH LẠI change tử
+// reference khi hai ben lech nhau qua nguong (mac dinh 1 đồng), chỉ sửa
+// phép tính hiển thị, không đụng logic giá. Return null = giữ số của API.
+function chgFromRef(close, change, ref, tol){
+  const c = Number(close), r0 = Number(ref), ch = Number(change);
+  if(!Number.isFinite(c) || !Number.isFinite(r0) || r0 <= 0) return null;
+  const calc = c - r0;
+  if(Number.isFinite(ch) && Math.abs(calc - ch) <= (Number.isFinite(tol) ? tol : 1)) return null;
+  return { change: +calc.toFixed(2), pct: +(calc / r0 * 100).toFixed(4) };
+}
 function renderQuote(q){
   const _ob=$("dOb"), _obHtml=_ob?_ob.innerHTML:"";
-  const pc=q.pct_change,cls=pc>0?"up":pc<0?"down":"";
+  const fix = chgFromRef(q.close, q.change, q.reference);
+  const pc = fix ? fix.pct : q.pct_change, cls=pc>0?"up":pc<0?"down":"";
+  const chg = fix ? fix.change : q.change;
   let h=`<div class="row"><span class="k">Giá khớp</span><span class="v" style="font-size:17px">${fmtN(q.close)}</span></div>`;
-  h+=`<div class="row"><span class="k">Thay đổi</span><span class="v ${cls}">${q.change!=null?fmtN(q.change)+" ("+fmtPct(pc)+")":fmtPct(pc)}</span></div>`;
+  h+=`<div class="row"><span class="k">Thay đổi</span><span class="v ${cls}">${chg!=null?fmtN(chg)+" ("+fmtPct(pc)+")":fmtPct(pc)}</span></div>`;
   // Nhan quyen + tham chieu (Phuong an B): chi hien khi co du lieu.
   if(q.corp_action||(q.reference!=null&&q.reference>0)){
     const ca=q.corp_action, L=CA_I18N[curLang]||CA_I18N.vi;
@@ -680,7 +697,7 @@ document.querySelectorAll("#dIv button").forEach(b=>b.onclick=()=>{ if(_chartSym
     window.__dtOpenSym=openSym; window.__dtOpenIndex=openIndex; window.__dtLoadWatchlist=loadWatchlist;
     window.loadDetail=loadDetail; window.loadChart=loadChart; window.loadIndexQuote=loadIndexQuote; window.renderDNav=renderDNav; window.renderQuote=renderQuote; window.renderFaPctGrid=renderFaPctGrid;
     window.dOpen=dOpen; window.dBack=dBack; window.dShow=dShow; window.wlRemove=wlRemove; window.paintWatchBtn=paintWatchBtn; window.BL=BL;
-    window.__dtTest={open:openSym,openIndex:openIndex,load:loadDetail,chart:loadChart,quote:renderQuote,dShow:dShow,dOpen:dOpen,dBack:dBack,watchlist:loadWatchlist}; }
+    window.__dtTest={open:openSym,openIndex:openIndex,load:loadDetail,chart:loadChart,quote:renderQuote,chgFromRef:chgFromRef,dShow:dShow,dOpen:dOpen,dBack:dBack,watchlist:loadWatchlist}; }
 })();
 }catch(e){}
 // __DT_END__

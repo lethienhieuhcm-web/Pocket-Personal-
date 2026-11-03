@@ -343,7 +343,31 @@
     try{ t = (typeof T === "function") ? T(vi) : null; }catch(e){}
     return typeof t === "string" && t && s === t;
   }
-  function applyIdx(rows){
+  /* SS_IDX — bang gia chi so LIVE (theo ma, KHONG theo nhan the) gan nhu
+   * SS_PX cua co phieu: moi frame idx luu {p, pc, ts} vong bo nho nay de
+   * market.js ve the tu do, va de khong cho luot poll HTTP (cache 5 phut)
+   * de GIA CU UP lai gia MOI. Bang chung live 03/11: frame
+   * {"s":"VNINDEX","p":1708.46} toi 06:45:17Z -> the in 1.708,46 luc
+   * 06:45:18Z; luot poll 60s luc 06:45:48Z in lai 1.708,97 (ban doc R2
+   * 06:40:16Z) -> man hinh quay lui 0,51 diem. */
+  function rememberIdx(rows, ts){
+    try{
+      if(typeof window === "undefined") return;
+      if(!window.SS_IDX || typeof window.SS_IDX !== "object") window.SS_IDX = {};
+      var t = Number(ts);
+      for(var i = 0; i < rows.length; i++){
+        var r = rows[i];
+        if(!r || typeof r.s !== "string") continue;
+        window.SS_IDX[String(r.s).toUpperCase()] = {
+          p: typeof r.p === "number" ? r.p : null,
+          pc: typeof r.pc === "number" ? r.pc : null,
+          ts: Number.isFinite(t) ? t : Date.now(),
+        };
+      }
+    }catch(e){}
+  }
+  function applyIdx(rows, ts){
+    rememberIdx(rows, ts);
     var n = 0;
     var ids = ["idxRow", "idxSecRow"];
     for(var i = 0; i < rows.length; i++){
@@ -468,7 +492,7 @@
     try{
       var cv = currentView();
       var plan = deltaPlan(d, cv.view, cv.sym, cv.idxMode);
-      if(plan === "idx") return applyIdx(d.rows);
+      if(plan === "idx") return applyIdx(d.rows, d.ts);
       if(plan === "q-market") return applyQMarket(d);
       if(plan === "q-detail") return applyQDetail(d);
       dropView++;

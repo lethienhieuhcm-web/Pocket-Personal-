@@ -55,7 +55,8 @@ export function deriveMarketTs(body) {
 /* Dung body publish (khoa chinh) -> {q:[frame], idx:frame|null, truncated}.
  * Frame q: {t:"q", s, p?, c?, pc?, v?, tv?, fb?, fs?, fn?} — chi field
  * co so moi co mat (client delta dung cai nao co). Frame idx:
- * {t:"idx", rows:[{s, p?, pc?}]} tu body.indices + body.sector_indices.
+ * {t:"idx", rows:[{s, p?, pc?, c?}]} tu body.indices_live (uu tien)
+ * + body.indices + body.sector_indices, trung ma -> ban dau thang.
  * Entry khong co field so nao (chi t+s) -> bo.
  */
 export function buildFanoutFrames(body) {
@@ -88,17 +89,27 @@ export function buildFanoutFrames(body) {
     truncated = q.length - FANOUT.MAX_Q_PER_BATCH;
     q.length = FANOUT.MAX_Q_PER_BATCH;
   }
+  /* Rows chi so cho frame idx. Thu tu uu tien: indices_live (nguon.song,
+   * refresher 1 phut — CHI fan-out, KHONG ghi R2) > indices > sector_indices.
+   * Ly do (03/11): `indices` do job snapshot ~5 phut gui; frame vi the toi
+   * trinh duyet thua toi ~5 phut trong khi gia co phieu (frame q) chay ~1s.
+   * KHONG cho phep `indices_live` ghi de market/indices.json: ban do thieu
+   * open/high/low/volume/prev_close se lam mat cac cot do tren trang chi
+   * tiet chi so — R2 van la cua snapshot job, stream la cua refresher. */
+  const seen = new Set();
   const rows = [];
-  for (const src of [body && body.indices, body && body.sector_indices]) {
+  for (const src of [body && body.indices_live, body && body.indices, body && body.sector_indices]) {
     if (!Array.isArray(src)) continue;
     for (const r of src) {
       if (!r || typeof r !== "object") continue;
       const s = String(r.symbol || r.code || "").toUpperCase();
-      if (!s) continue;
+      if (!s || seen.has(s)) continue;
       const row = { s: s };
       const p = numOrUndef(r.close); if (p !== undefined) row.p = p;
       const pc = numOrUndef(r.pct_change); if (pc !== undefined) row.pc = pc;
+      const c = numOrUndef(r.change); if (c !== undefined) row.c = c;
       if (Object.keys(row).length <= 1) continue;
+      seen.add(s);
       rows.push(row);
       if (rows.length >= FANOUT.MAX_IDX_ROWS) break;
     }

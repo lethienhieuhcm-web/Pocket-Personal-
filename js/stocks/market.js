@@ -113,15 +113,50 @@ function refreshMoversFromLive(limit){
   return paintMovers(rows);
 }
 
+/* CHỈ SỐ: frame `idx` (SS_IDX do module ingest ghi) là bản MỚI NHẤT; Doc
+ * R2 /api/stock/indices phục vụ qua Cache-Control max-age=300 nên một lượt
+ * poll 60s gần như luôn trả về bản cũ hơn. Trước khi có hàm này, poll
+ * 60s VẼ LẠI giá cũ đè lên giá live vừa in — đo live 03/11: card
+ * "VNINDEX 1.708,46" (frame 06:45:17Z) bị poll 06:45:48Z vẽ thành
+ * "1.708,97" (doc R2 06:40:16Z), màn hình quay lui 0,51 điểm.
+ * mergeIdxWithLive: chỉ nhận HTTP row khi nó MỚI HƠN frame (theo ts);
+ * frame thắng thì giữ nguyên giá + % của frame. Không bịa số: SS_IDX
+ * trống => trả nguyên bản rows HTTP. */
+function mergeIdxWithLive(rows, docMs){
+  var live = null;
+  try{ live = (typeof SS_IDX === "object" && SS_IDX) ? SS_IDX : (typeof globalThis !== "undefined" ? globalThis.SS_IDX : null); }catch(e){ live = null; }
+  if(!live) return rows || [];
+  const out = (rows || []).map(r=>{
+    const L = live[String(r.symbol||"").toUpperCase()];
+    if(!L) return r;
+    if(!(L.ts > (Number(docMs)||0))) return r;
+    const merged = Object.assign({}, r);
+    if(typeof L.p === "number") merged.close = L.p;
+    if(typeof L.pc === "number"){ merged.pct_change = L.pc; merged.stale = false; }
+    if(typeof L.p === "number" && typeof r.prev_close === "number") merged.change = +(L.p - r.prev_close).toFixed(2);
+    return merged;
+  });
+  /* Mã chỉ số có trong frame nhưng chưa có trong doc HTTP (vd doc lan dau
+   * trong phien la cua hom qua) -> bo qua, khong tu ve the moi. */
+  return out;
+}
+/* ts cua ban doc R2: _prov.retrieved_at truoc, den updated; khong co => 0
+ * (moi frame duoc coi la moi hon). */
+function idxDocMs(j){
+  const s = (j && j._prov && j._prov.retrieved_at) || (j && j.updated) || "";
+  const t = Date.parse(s);
+  return Number.isFinite(t) ? t : 0;
+}
+
 async function loadMarket(){
   try{
-    const j=await api("/indices");const rows=j.rows||[];
+    const j=await api("/indices");const rows=mergeIdxWithLive(j.rows||[], idxDocMs(j));
     $("idxRow").innerHTML=rows.map(r=>{const pc=r.pct_change,cls=pc>0?"up":pc<0?"down":"";const fs=idxFileSym(r.symbol);
       return `<div class="idxcard"${fs?` style="cursor:pointer" onclick="openIndex('${fs}')" title="${esc(r.symbol)}"`:""}><div class="s">${esc(r.symbol)}</div><div class="p">${fmtN(r.close)}</div><div class="c ${cls}">${r.stale?'<span class="stale">— · số liệu cũ</span>':((pc>0?"▲":pc<0?"▼":"")+" "+fmtPct(pc))}</div></div>`;}).join("")||'<div class="hint">Chưa có dữ liệu</div>';
     if(j._prov){_lastMktSrc=j._prov.source;_lastMktAsOf=j._prov.retrieved_at||j.updated||null;_lastMktStale=!!j.stale;refreshSrc();}
   }catch(e){$("idxRow").innerHTML='<div class="hint">Lỗi tải chỉ số</div>';}
   try{
-    const j=await api("/sector-indices");const rows=j.rows||[];
+    const j=await api("/sector-indices");const rows=mergeIdxWithLive(j.rows||[], idxDocMs(j));
     $("idxSecRow").innerHTML=rows.map(r=>{const pc=r.pct_change,cls=pc>0?"up":pc<0?"down":"";
       return `<div class="idxcard" style="cursor:pointer" onclick="openIndex('${esc(r.symbol)}')" title="${esc(r.symbol)}"><div class="s">${esc(r.symbol)}</div><div class="p">${fmtN(r.close)}</div><div class="c ${cls}">${r.stale?'<span class="stale">— · số liệu cũ</span>':((pc>0?"▲":pc<0?"▼":"")+" "+fmtPct(pc))}</div></div>`;}).join("")||'<div class="hint">Chưa có dữ liệu</div>';
   }catch(e){$("idxSecRow").innerHTML='<div class="hint">Lỗi tải chỉ số</div>';}
@@ -509,8 +544,12 @@ function movToggle(){
   _movOpen=!(_movOpen!=null?_movOpen:movLiveFresh());
   renderMarketOverview();
 }
-function movRenderIdx(rows){
+function movRenderIdx(rows, doc){
   const el=$("idxRow"); if(!el) return;
+  /* DUONG VEE CARD THU HAI (poll 60s cua pollMarketOverview) — cung phai
+   * merge frame kieu loadMarket: đo live 03/11 07:00:25Z card in frame
+   * "1.705,36" roi 07:00:30Z duong nay ve lai "1.706,61" (doc cu hon). */
+  rows = mergeIdxWithLive(rows||[], idxDocMs(doc));
   el.innerHTML=rows.map(r=>{const pc=r.pct_change,cls=pc>0?"up":pc<0?"down":"";const fs=idxFileSym(r.symbol);
     return `<div class="idxcard"${fs?` style="cursor:pointer" onclick="openIndex('${fs}')" title="${esc(r.symbol)}"`:""}><div class="s">${esc(r.symbol)}</div><div class="p">${fmtN(r.close)}</div><div class="c ${cls}">${r.stale?'<span class="stale">— · số liệu cũ</span>':((pc>0?"▲":pc<0?"▼":"")+" "+fmtPct(pc))}</div></div>`;}).join("")||'<div class="hint">Chưa có dữ liệu</div>';
 }
@@ -532,7 +571,7 @@ async function pollMarketOverview(){
   const f=async(k,p)=>{ try{ g[k]=await api(p); }catch(e){ g[k]=null; } };
   await Promise.all([f("indices","/indices"),f("live","/live-overview"),f("foreign","/foreign-flow"),f("divergence","/divergence")]);
   _movB=movBuildB(g);
-  try{ if(g.indices) movRenderIdx(g.indices.rows||[]); }catch(e){}
+  try{ if(g.indices) movRenderIdx(g.indices.rows||[], g.indices); }catch(e){}
   renderMarketOverview();
 }
 
@@ -685,8 +724,9 @@ function insBox(insight, srcText, asOf){
     window.loadFF=loadFF; window.renderFF=renderFF; window.fmtTyF=fmtTyF; window.loadPF=loadPF; window.renderPF=renderPF; window.loadMN=loadMN; window.renderMN=renderMN;
     window.loadCA=loadCA; window.renderCA=renderCA; window.loadMarketOverview=loadMarketOverview; window.renderMarketOverview=renderMarketOverview; window.pollMarketOverview=pollMarketOverview;
     window.loadMacro=loadMacro; window.renderMacro=renderMacro; window.insBox=insBox; window.movToggle=movToggle; window.movRenderIdx=movRenderIdx;
+    window.mergeIdxWithLive=mergeIdxWithLive; window.idxDocMs=idxDocMs;
     window.__mkTest={i18n:MT_I18N,load:loadMarket,totals:loadMarketTotals,renderTotals:renderMarketTotals,regime:renderRegime,ca:renderCA,overview:loadMarketOverview,renderOverview:renderMarketOverview,macro:loadMacro,insBox:insBox,fmtTyF:fmtTyF}; }
-  if(typeof module!=="undefined" && module.exports){ module.exports = { mergeScreenerPx: mergeScreenerPx, livePx: livePx, withLivePx: withLivePx, moversFromLivePx: moversFromLivePx }; }
+  if(typeof module!=="undefined" && module.exports){ module.exports = { mergeScreenerPx: mergeScreenerPx, livePx: livePx, withLivePx: withLivePx, moversFromLivePx: moversFromLivePx, mergeIdxWithLive: mergeIdxWithLive, idxDocMs: idxDocMs }; }
   if(typeof document!=="undefined") loadMarket();
 })();
 }catch(e){}
