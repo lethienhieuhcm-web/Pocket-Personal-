@@ -54,6 +54,11 @@ stock_image = (
     # nam cung choi direct_fetch.py tren duong /opt de `from direct_fetch
     # import ...` ben trong ham router tim thay module.
     .add_local_file("./source_router.py", "/opt/source_router.py")
+    # DOI CHIEU FINHAY (TASK muc 1): 2 file nay nam canh app.py trong modal_crons/,
+    # duoc nap len /opt giong direct_fetch.py. Cross-check chi DOC gia, khong ghi
+    # vao quotes cua lane realtime.
+    .add_local_file("./finhay_client.py", "/opt/finhay_client.py")
+    .add_local_file("./finhay_crosscheck.py", "/opt/finhay_crosscheck.py")
 )
 
 # (Nhat ban nhap: dinh nghia `app` day len truoc khoai wiring duoi day vi
@@ -839,3 +844,69 @@ def d1_backup():
         print(f"  deleted old: {old_key}")
 
     volume.commit()
+
+
+# ==================== FINHAY — doi chieu gia (bo sung 03/11) ====================
+# TASK muc 1: moi 15 phut trong gio phien (09:00-15:00 ICT = 02:00-08:00 UTC, T2-T6),
+# lay gia Finhay cua 47 ma QUOTE_UNIVERSE (1 goi `symbols=` batch — da do 03/11: tra du
+# 47/47, ~3.1s) va so voi gia he thong doc tu /api/stock/quote (tuc quotes.json).
+# LUAT: Finhay la chuan DOI CHIEU, khong phai nguon chart/chi so — lane realtime
+# (stock_snapshot/indices/PA-3b/3c/4a) giuyen vo, khong thay doi.
+# Fail-open: Finhay loi / ngoai gio phien -> in 1 dong, return None, KHONG crash cron.
+# canh bao: ALERT cung ma lap lai >= 2 luot lien tiep -> day len /api/internal/modal-alert
+# (Telegram) dung ham co san, khong mo kenh bao cao moi.
+FINHAY_ALERT_URL = os.environ.get(
+    "STOCKAPP_ALERT_URL", "https://lethanhdong.one/api/internal/modal-alert")
+
+
+@app.function(
+    image=stock_image,
+    secrets=[modal.Secret.from_name("pocket-personal"),
+             modal.Secret.from_name("finhay-credentials")],
+    schedule=modal.Cron("*/15 2-7 * * 1-5", timezone="UTC"),
+    timeout=300,
+)
+def finhay_price_crosscheck():
+    sys.path.insert(0, "/opt")
+    import finhay_crosscheck
+
+    doc = finhay_crosscheck.run(finhay_crosscheck.parse_cfg())
+    if not doc:
+        return None
+    s = doc["summary"]
+    print(f"finhay_price_crosscheck: compared={s['compared']} ok={s['counts'].get('ok', 0)} "
+          f"warn={s['counts'].get('warn', 0)} alert={len(s['alert_symbols'])} "
+          f"escalated={s['escalated_symbols']} maxDiff={s['max_abs_diff_pct']}% "
+          f"refFlags={s['ref_flags']} calls={s['finhay_calls']}", flush=True)
+    if s["escalated_symbols"]:
+        _finhay_alert(
+            "finhay_price_crosscheck",
+            f"{len(s['escalated_symbols'])} ma lech gia >=2 luot lien tiep: "
+            + ", ".join(
+                f"{r['symbol']} {r['diff_vnd']}d ({r['diff_pct']}%)"
+                for r in doc["rows"] if r.get("escalated")),
+        )
+    return s
+
+
+def _finhay_alert(fn: str, detail: str) -> None:
+    """Gui canh bao qua /api/internal/modal-alert (Worker -> Telegram), cung secret
+    nhu _post_publish. Loi mang thi lang — canh bao khong duoc lam chet luot doi chieu."""
+    import json
+    import urllib.request
+
+    secret = os.environ.get("STOCK_PUBLISH_SECRET", "")
+    if not secret:
+        print("finhay_alert: khong co STOCK_PUBLISH_SECRET -> bo qua", flush=True)
+        return
+    body = json.dumps({"fn": fn, "detail": detail[:900]}).encode()
+    req = urllib.request.Request(FINHAY_ALERT_URL, data=body, method="POST",
+                                 headers={"Content-Type": "application/json",
+                                          "X-Publish-Secret": secret,
+                                          "X-Internal-Secret": secret,
+                                          "User-Agent": "Mozilla/5.0"})
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            print(f"finhay_alert -> {resp.read().decode()[:120]}", flush=True)
+    except Exception as e:  # noqa: BLE001 - fail-open
+        print(f"finhay_alert loi (fail-open): {str(e)[:120]}", flush=True)

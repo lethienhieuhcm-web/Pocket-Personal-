@@ -19,6 +19,8 @@ import { rateLimits } from "./schema.js";
 import {getSession, getUser, OWNER_EMAIL} from './auth.js';
 import {jerr} from './utils.js';
 export { MarketRoom } from "./market-room.js";
+// lop du lieu bo sung tu Finhay (BAN NHAP - work/finhay-integration-20261103/REPORT.md)
+import {hStockFinhay, hFinhayPut} from './stock_finhay.js';
 import {hStockVersion, hStockIndices, hStockSectorIndices, hStockRegime, hStockSignals, hStockQuote, hStockOhlcv, hStockTrades, hStockScreener, hStockFundamentals, hStockStatements, hStockNews, hStockMarketNews, hStockForeignFlow, hStockForeignHistory, hStockProprietaryFlow, hStockProprietaryHistory, hStockFlowScreen, hStockOrderbook, hStockOrderbookDates, hStockFlowHistory, hStockDivergence, hStockLiveOverview, hStockMarketTotals, hStockMacro, hStockMacroHistory, hStockConsensus, hStockConsensusDetail, hStockHolders, hStockHoldersShard, hStockHoldersSymbol, hStockSectors, hStockSectorsDetail, hStockListing, hStockEvents, hStockCompanyProfile, hStockCompare, hWatchlistGet, hWatchlistAdd, hWatchlistDel, hPortfolio, hTxnAdd, hCostHistory, hTargetsGet, hTargetsSet, hTargetsDel, hStockPublish, hModalAlert, hStockReportData, hStockAlertDone, hStockTargetDone, hStockRisk, hStockStrategyReview, hRuleAlertsGet, hRuleAlertsAdd, hRuleAlertsDel, hRuleAlertsInternal, hTickStateGet, hInternalUniverse, hCorporateActions, hAblyToken, hStockStream, hDoTestPublish} from './stock.js';
 
 // Build ID - replaced with timestamp on every deploy (see cf_deploy.py)
@@ -193,6 +195,8 @@ const ROUTES = [
   ['GET',    '/api/stock/events',    hStockEvents,           'public'],
   ['GET',    '/api/stock/company/profile', hStockCompanyProfile, 'public'],
   ['GET',    '/api/stock/compare',   hStockCompare,          'public'],
+  // Finhay bo sung (NHAP): doc JSON public duoi market/finhay/ (macro, vang, quy, bao cao, 1D, crosscheck)
+  ['GET',    '/api/stock/finhay/*',  hStockFinhay,           'public'],
   ['GET',    '/api/stock/watchlist', hWatchlistGet,          'user'],
   ['GET',    '/api/stock/risk',      hStockRisk,             'user'],
   ['GET',    '/api/stock/strategy_review', hStockStrategyReview, 'user'],
@@ -218,6 +222,7 @@ const ROUTES = [
   // --- internal (VM crons / processor) ---
   ['GET',    '/api/internal/stock-rule-alerts', hRuleAlertsInternal, 'internal'],
   ['POST',   '/api/internal/stock-publish', hStockPublish,   'internal'],
+  ['POST',   '/api/internal/finhay-put',      hFinhayPut,        'internal'],
   ['GET',    '/api/internal/tick-state', hTickStateGet,      'internal'],
   ['GET',    '/api/internal/universe', hInternalUniverse,  'public'],
   // H1: Ably token SUBSCRIBE-ONLY cho trinh duyet. P1-3 (Henrry Chot 13:38
