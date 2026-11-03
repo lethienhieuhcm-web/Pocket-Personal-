@@ -6,11 +6,14 @@ DIRECT_FETCH_DIR=/home/agentuser/modal-crons
 FINHAY_DATA_DIR=/home/agentuser/modal-crons/data
 # NEW jobs only (NOT on Modal v32): ohlcv intraday (PA-3b stocks + PA-3c indices)
 # and finhay crosscheck. They fill the gap Modal could not deploy (5-fn limit).
-# */15 10-15 CST = 09:00-14:45 ICT, Mon-Fri (== old */15 2-7 UTC).
-*/15 10-15 * * 1-5 /home/agentuser/modal-crons/venv/bin/python /home/agentuser/modal-crons/cron_jobs.py ohlcv --mode intraday >> /home/agentuser/modal-crons/logs/ohlcv_intraday.log 2>&1
-*/15 10-15 * * 1-5 /home/agentuser/modal-crons/venv/bin/python /home/agentuser/modal-crons/cron_jobs.py finhay_crosscheck >> /home/agentuser/modal-crons/logs/finhay_crosscheck.log 2>&1
+# */15 9-15 CST = 08:00-14:45 ICT, Mon-Fri. Start 08:00 ICT (Henrry 21:33 03/11:
+# chay som hon, 09:00 sat gio giao dich qua). Pre-session runs are safe:
+# ohlcv intraday posts KBS candles (no today overlay yet) / skips if empty;
+# finhay crosscheck is read-only, compares yesterday close (tested 22:05 ok).
+*/15 9-15 * * 1-5 /home/agentuser/modal-crons/venv/bin/python /home/agentuser/modal-crons/cron_jobs.py ohlcv --mode intraday >> /home/agentuser/modal-crons/logs/ohlcv_intraday.log 2>&1
+*/15 9-15 * * 1-5 /home/agentuser/modal-crons/venv/bin/python /home/agentuser/modal-crons/cron_jobs.py finhay_crosscheck >> /home/agentuser/modal-crons/logs/finhay_crosscheck.log 2>&1
 # PENDING cutover (still on Modal v32 — do NOT enable here until Modal stops them):
-# */5 10-15 * * 1-5 .../cron_jobs.py stock_snapshot
+# */5 9-15 * * 1-5 .../cron_jobs.py stock_snapshot
 # 15 16 * * 1-5 .../cron_jobs.py ohlcv --mode eod  (15:15 ICT = 16:15 CST)
 # MAINTENANCE STAYS ON MODAL (Henrry Chot 21:28 03/11) - do NOT enable here:
 # 0 18 * * * .../cron_jobs.py maintenance --mode books  (17:00 ICT = 18:00 CST)
