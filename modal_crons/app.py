@@ -259,6 +259,109 @@ def build_ohlcv_daily_payload(symbols, rt, days: int = 800, today=None):
     return payload
 
 
+# (PA-3c, 03/11) Chi so -> (ten file R2, ten tren VCI IQ, ma tren dchart).
+#Trung _INDEX_OHLCV_MAP o publish_snapshot.py:428-445 (san xuat EOD goc).
+INDEX_OHLCV_MAP = (
+    ("VNINDEX", "VNINDEX", "VNINDEX"),
+    ("VN30", "VN30", "VN30"),
+    ("HNX", "HNXIndex", "HNX"),
+    ("UPCOM", "HNXUpcomIndex", "UPCOM"),
+    ("VNFIN", "VNFIN", "VNFIN"),
+    ("VNREAL", "VNREAL", "VNREAL"),
+    ("VNIT", "VNIT", "VNIT"),
+    ("VNIND", "VNIND", "VNIND"),
+    ("VNMAT", "VNMAT", "VNMAT"),
+    ("VNCONS", "VNCONS", "VNCONS"),
+)
+
+
+def _dchart_index_bars(sym: str, days: int = 500) -> dict:
+    """Nen ngay chi so tu VNDirect dchart, {date: {t,o,h,l,c,v}}.
+
+    Chi gui User-Agent (them Accept -> 406, cung le nhu _dchart_daily_close
+    trong publish_snapshot.py). Dung (1) doi chieu close voi VCI va
+    (2) lay nen hom nay dang formed (VCI IQ chi phat EOD, muon hon trong
+    phien)."""
+    import json
+    import time
+    import urllib.request
+    from datetime import datetime, timedelta, timezone
+
+    to = int(time.time())
+    frm = to - days * 86400
+    url = ("https://dchart-api.vndirect.com.vn/dchart/history"
+           f"?symbol={sym}&resolution=D&from={frm}&to={to}")
+    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+    with urllib.request.urlopen(req, timeout=30) as resp:
+        d = json.loads(resp.read().decode())
+    ict = timezone(timedelta(hours=7))
+    ts = d.get("t") or []
+    n = len(ts)
+    out = {}
+    for i, t in enumerate(ts):
+        date = datetime.fromtimestamp(t, ict).strftime("%Y-%m-%d")
+        out[date] = {"t": date,
+                     "o": (d.get("o") or [None] * n)[i],
+                     "h": (d.get("h") or [None] * n)[i],
+                     "l": (d.get("l") or [None] * n)[i],
+                     "c": (d.get("c") or [None] * n)[i],
+                     "v": (d.get("v") or [None] * n)[i]}
+    return out
+
+
+def build_index_ohlcv_payload(df, limit: int = 320, today=None):
+    """PA-3c: nen ngay CHI SO cho market/ohlcv/<IDX>.json (4 chinh + 6
+    nganh). Dong cau vang 22/10 giu nguyen nhu _publish_index_ohlcv
+    (publish_snapshot.py:464-515): VCI IQ history -> doi chieu close voi
+    dchart, lech > 0.05 hoac < 20 phien chung hoac phien cuoi VCI khong
+    co trong dchart -> BO QUA rieng chi so do.
+
+    KHAC ban EOD: neu dchart co phien HOM NAY (VCI IQ chua cap nhat
+    trong phien), nen formed duoc noi vao cuoi -> chart 1D chi so nhay
+    theo phien (dung chat nhu PA-3b voi ma co phieu). Suat slow 17:00
+    van la ban chot VCI, ghi de phia sau."""
+    from datetime import datetime, timezone
+
+    if today is None:
+        from datetime import timedelta
+        today = datetime.now(timezone(timedelta(hours=7))).date().isoformat()
+    out, n_live = {}, 0
+    for file_sym, vci_name, dch_sym in INDEX_OHLCV_MAP:
+        try:
+            by_date = {}
+            for r in df.vci_index_history(vci_name, limit):
+                if r.get("date") and r.get("close") is not None:
+                    by_date[r["date"]] = {
+                        "t": r["date"], "o": r.get("open"),
+                        "h": r.get("high"), "l": r.get("low"),
+                        "c": r.get("close"),
+                        "v": int(r.get("volume") or 0)}
+            rows = [by_date[x] for x in sorted(by_date)]
+            ref = _dchart_index_bars(dch_sym)
+            common = [x for x in sorted(by_date) if x in ref]
+            worst = max((abs(by_date[x]["c"] - ref[x]["c"]) for x in common),
+                        default=None)
+            if not rows or len(common) < 20 or worst is None \
+                    or worst > 0.05 or rows[-1]["t"] not in ref:
+                print(f"[ohlcv-index] {file_sym}: BO QUA ({len(rows)} phien "
+                      f"VCI, doi chung {len(common)}, lech close max={worst})",
+                      flush=True)
+                continue
+            if today in ref and today > rows[-1]["t"]:
+                rows.append(ref[today])       # nen hom nay dang formed
+                n_live += 1
+            out[file_sym] = rows[-limit:]
+        except Exception as e:  # noqa: BLE001
+            print(f"[ohlcv-index] {file_sym} loi: {str(e)[:120]}", flush=True)
+    payload = {"ohlcv": out,
+               "_prov": {"source": "modal:ohlcv_index(vci-iq+dchart-xcheck)",
+                         "retrieved_at": datetime.now(timezone.utc).isoformat(),
+                         "unit": "DIEM"}}
+    print(f"[ohlcv-index] {len(out)}/{len(INDEX_OHLCV_MAP)} chi so, "
+          f"{n_live} nen formed {today}", flush=True)
+    return payload
+
+
 @app.function(
     image=stock_image,
     secrets=[modal.Secret.from_name("pocket-personal")],
@@ -335,6 +438,42 @@ def publish_ohlcv_intraday(symbols: tuple = QUOTE_UNIVERSE):
         return {"skipped": True, "reason": "no_full_history"}
     result = _post_publish(payload)
     print(f"publish_ohlcv_intraday: {len(kept)} ma -> {result}", flush=True)
+    return result
+
+
+@app.function(
+    image=stock_image,
+    secrets=[modal.Secret.from_name("pocket-personal")],
+    # PA-3c (03/11): chart CHI SO 1D dung 30/10 (ca 4 chinh + 6 nganh,
+    # 320 nen, doc truc tiep tu R2 03/11). Producer duy nhat cua lane
+    # nay la publish_snapshot.py --mode slow (_publish_index_ohlcv,
+    # ~17:00 ICT); suat 02/11 khong tien duoc file. rt.ohlcv (kbs ->
+    # vnstock) tra RONG cho symbol chi so (kiem 03/11: "kbs: rong",
+    # count=500) -> PA-3b KHONG tu dong khoa duoc nen chi so. Cron
+    # rieng */15 nhu PA-3b; nguon VCI IQ + doi chieu dchart (gate
+    # 22/10), noi nen formed tu dchart trong phien. Payload hoac chi so
+    # nao hong -> BO QUA rieng, khong POST khi khong co gi dat.
+    schedule=modal.Cron("*/15 2-7 * * 1-5", timezone="UTC"),
+    timeout=60*30,
+)
+def publish_ohlcv_index_intraday():
+    """PA-3c: refresh nen ngay chi so trong phien (chart 1D chi so).
+
+    KHONG cham stock_snapshot (lane gia realtime */5 dang chay dung,
+    nen chi so Van nam ngoai no nhu PA-3b) va KHONG cham suat slow
+    17:00 cua collector (ban chot VCI, ghi de phia sau)."""
+    base_dir = os.environ.get("DIRECT_FETCH_DIR", DIRECT_FETCH_DIR)
+    _use_direct_fetch(base_dir)               # nap bundle tu /opt
+    import direct_fetch as df                 # /opt da nam tren sys.path
+
+    payload = build_index_ohlcv_payload(df)
+    if not payload["ohlcv"]:
+        print("publish_ohlcv_index_intraday: khong chi so nao qua gate -> "
+              "giu file cu (khong POST)", flush=True)
+        return {"skipped": True, "reason": "no_index_passed_xcheck"}
+    result = _post_publish(payload)
+    print(f"publish_ohlcv_index_intraday: {len(payload['ohlcv'])} chi so "
+          f"-> {result}", flush=True)
     return result
 
 
