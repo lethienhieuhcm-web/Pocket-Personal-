@@ -134,6 +134,19 @@
     var d = null;
     try{ d = (typeof PUSH_I18N !== "undefined" && PUSH_I18N[key]) || null; }catch(e){}
     el.textContent = d ? (d[lang()] || d.vi) : key;
+    // DEBUG TAM 03/11 (chan doan stream): ghi state ingest vao #ingestDbg
+    // de browser task doc duoc (khong mo duoc DevTools). XOA SAU KHI XONG.
+    try{
+      var dbg = document.getElementById("ingestDbg");
+      if(!dbg){
+        dbg = document.createElement("div");
+        dbg.id = "ingestDbg";
+        dbg.style.cssText = "font-size:10px;color:#888;padding:2px 8px;";
+        var foot = document.querySelector("footer") || document.body;
+        foot.appendChild(dbg);
+      }
+      dbg.textContent = "INGEST mode=" + mode + " path=" + path + " lastSeq=" + lastSeq + " gotFrame=" + (gotFrame ? "1" : "0") + " err=" + errCount();
+    }catch(e){}
   }
   function logErr(p, msg){
     if(p === "do") errDo++; else errAbly++;
