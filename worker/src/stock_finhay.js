@@ -6,7 +6,7 @@
 import { jerr, sJson } from './utils.js';
 import { sGet, sPut, cachedMarket } from './stock.js';
 
-const KEY_RE = /^[a-z0-9][a-z0-9_\/-]{0,79}$/;          // không "." / "..", không dấu cách
+const KEY_RE = /^[a-zA-Z0-9][a-zA-Z0-9_\/-]{0,79}$/;       // không "." / "..", không dấu cách; A-Z cho mã CK (reports/FPT)
 const MAX_DOC_BYTES = 3 * 1024 * 1024;                   // 3MB/lượt ghi
 const MAX_KEYS_PER_PUT = 8;
 

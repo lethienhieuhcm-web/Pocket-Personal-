@@ -180,6 +180,7 @@ async function loadMarket(){
   loadMarketTotals();
   loadMarketOverview();
   loadMacro();
+  try{ if(typeof window.loadFinhay==="function") window.loadFinhay(); }catch(e){}
   loadMN();
   loadCA();
 }
