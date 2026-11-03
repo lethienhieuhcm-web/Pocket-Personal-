@@ -330,6 +330,15 @@
     // link van con hb -> thi truong chi yen lang, doi nhan, khong onBreak.
     silenceTimer = setTimeout(function(){
       if(Date.now() - linkAliveAt <= HB_LINK_DEAD_MS){ setStatus("quiet"); }
+      // WATCHDOG 03/11: link song (hb chay) nhung KHONG co frame >90s.
+      // DO evict lam mat socket khoi broadcast set; client tuong van noi
+      // (err=0) nhung khong nhan frame nao. Chi kich khi DA tung nhan
+      // frame (lastFrameAt>0) — tranh pha ket noi luc moi mo trang.
+      // Refresher publish moi phut trong phien nen 90s khong frame la loi.
+      if(mode === "do" && lastFrameAt > 0 && Date.now() - lastFrameAt > 90000){
+        onBreak("do", "khong frame >90s");
+        return;
+      }
       armStale();
     }, SILENCE_MS);
   }
