@@ -36,6 +36,25 @@ function renderRegime(){
   $("regimeD").textContent = `Breadth: ${b.up || 0} ${w[0]} / ${b.down || 0} ${w[1]} · VNINDEX ${j.above_ma50 ? w[2] : w[3]} MA50`;
 }
 
+/* poll-stale (hàng đợi #17d): gộp giá /screener vào SS_PX.
+ * screener.json là snapshot EOD toàn thị trường; khi đường poll (reloadCurrentView
+ * -> loadMarket) chạy giữa phiên, row của phiên trước vẫn giữ nguyên `close`
+ * (worker applyStaleGate chỉ null hoá pct + gắn `stale:true`, không xoá close).
+ * SS_PX là giá live do frame DO/Ably ghi (applyQMarket) — không để giá EOD stale
+ * của poll đè lên giá live (đó là bug VCB=56.300 che mất giá burst). Chỉ ghi row
+ * đúng phiên (không stale, close là số) → poll vẫn nạp được khi live im mà dữ
+ * liệu tươi, mà không che giá live. */
+function mergeScreenerPx(rows, sspx){
+  if(!sspx || typeof sspx !== "object" || !Array.isArray(rows)) return sspx;
+  for(const r of rows){
+    if(!r || typeof r.symbol !== "string") continue;
+    if(r.stale) continue;                        // giá ngoài phiên -> bo qua
+    if(typeof r.close !== "number") continue;    // khong co gia so -> bo qua
+    sspx[r.symbol] = { c: r.close, p: r.pct_change };
+  }
+  return sspx;
+}
+
 async function loadMarket(){
   try{
     const j=await api("/indices");const rows=j.rows||[];
@@ -58,7 +77,7 @@ async function loadMarket(){
   }catch(e){}
   try{
     const j=await api("/screener?sort=pct_change&order=desc&exchange=HOSE&min_value=1000000000");
-    (j.rows||[]).forEach(r=>{try{window.SS_PX[r.symbol]={c:r.close,p:r.pct_change};}catch(e){}});
+    mergeScreenerPx(j.rows, window.SS_PX);
     const rows=(j.rows||[]).filter(r=>r.pct_change!=null).slice(0,8);
     $("topMovers").innerHTML=rows.map(r=>{const pc=r.pct_change,cls=pc>0?"up":pc<0?"down":"";
       const ff=r.foreign_net_value,ffc=ff>0?"up":ff<0?"down":"";
@@ -610,7 +629,8 @@ function insBox(insight, srcText, asOf){
     window.loadCA=loadCA; window.renderCA=renderCA; window.loadMarketOverview=loadMarketOverview; window.renderMarketOverview=renderMarketOverview; window.pollMarketOverview=pollMarketOverview;
     window.loadMacro=loadMacro; window.renderMacro=renderMacro; window.insBox=insBox; window.movToggle=movToggle; window.movRenderIdx=movRenderIdx;
     window.__mkTest={i18n:MT_I18N,load:loadMarket,totals:loadMarketTotals,renderTotals:renderMarketTotals,regime:renderRegime,ca:renderCA,overview:loadMarketOverview,renderOverview:renderMarketOverview,macro:loadMacro,insBox:insBox,fmtTyF:fmtTyF}; }
-  loadMarket();
+  if(typeof module!=="undefined" && module.exports){ module.exports = { mergeScreenerPx: mergeScreenerPx }; }
+  if(typeof document!=="undefined") loadMarket();
 })();
 }catch(e){}
 // __MK_END__
