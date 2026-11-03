@@ -475,7 +475,18 @@
         armSilence();
         return;
       }
-      if(m.t === "auth-required" || (m.t === "error" && m.code === 4401)){ onBreak("do", "auth"); return; }
+      // DO mat state socket (evict) nhung WebSocket van song: DO tra
+      // "auth-required" vi no khong nho client da handshake. Day la
+      // tinh huong KHOI PHUC DUOC — gui lai auth, khong phai dut duong.
+      // Truoc day goi onBreak("do","auth") -> retry -> het MAX_RETRY
+      // -> roi sang Ably, khong bao gio nhan frame (10:56 03/11:
+      // lastErr=do:duong dut (auth), gotFrame=0). Chi 4401 that
+      // (token sai bi tu choi) moi la loi auth va can onBreak.
+      if(m.t === "auth-required"){
+        try{ ws.send(JSON.stringify({ t: "auth", token: token() || "" })); }catch(e){ onBreak("do", "gui auth"); }
+        return;
+      }
+      if(m.t === "error" && m.code === 4401){ onBreak("do", "auth"); return; }
       if(m.t === "resumed"){
         // DO restart: DO bi evict thi seq quay ve 0, nhung client giu
         // lastSeq cu (cao) trong sessionStorage -> moi frame moi deu bi
