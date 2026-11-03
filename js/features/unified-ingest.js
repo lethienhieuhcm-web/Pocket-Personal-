@@ -97,6 +97,7 @@
   /* ---------- Trang thai ---------- */
   var mode = "poll", path = "do", retries = 0;
   var errDo = 0, errAbly = 0, gotFrame = false;
+  var lastErr = ""; // DEBUG TAM: loi gan nhat de browser task doc duoc
   var lastSeq = 0, lastFrameAt = 0;
   var linkAliveAt = 0;   // P1-4: reset bang hb HOAC frame moi
   var lastDataAt = 0;    // P1-4: CHI reset bang frame hop le (ts dung phien)
@@ -145,11 +146,12 @@
         var foot = document.querySelector("footer") || document.body;
         foot.appendChild(dbg);
       }
-      dbg.textContent = "INGEST mode=" + mode + " path=" + path + " lastSeq=" + lastSeq + " gotFrame=" + (gotFrame ? "1" : "0") + " err=" + errCount();
+      dbg.textContent = "INGEST mode=" + mode + " path=" + path + " lastSeq=" + lastSeq + " gotFrame=" + (gotFrame ? "1" : "0") + " err=" + errCount() + " lastErr=" + lastErr;
     }catch(e){}
   }
   function logErr(p, msg){
     if(p === "do") errDo++; else errAbly++;
+    try{ lastErr = p + ":" + String(msg || "").slice(0, 60); }catch(e){}
     try{ console.error("[ingest:" + p + "] " + msg + " (err #" + errCount() + ")"); }catch(e){}
   }
   function logDeltaErr(msg){
