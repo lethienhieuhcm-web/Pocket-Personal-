@@ -293,6 +293,52 @@ def publish_ohlcv_daily(symbols: tuple = QUOTE_UNIVERSE):
 
 
 @app.function(
+    image=stock_image,
+    secrets=[modal.Secret.from_name("pocket-personal")],
+    # PA-3b (03/11): chart 1D co "nen hom nay dang formed" TRONG phien.
+    # Bang chung offline (03/11 ~14:00 ICT): KBS rt.ohlcv DA tra nen
+    # 2026-11-03 cho 25/25 ma dau QUOTE_UNIVERSE (miss=0, err=0), OHLCV
+    # la nen partial dang tich luy. Chi phat lane `ohlcv`; KHONG cham
+    # stock_snapshot (lane gia realtime dang chay dung) va KHONG cham
+    # publish_ohlcv_daily (EOD 15:15 van la ban chot, over-write sau).
+    # */15 UTC 2-7 = 09:00..14:45 ICT, T2-T6 (khop cua so phien HOSE).
+    # Min-bar guard tranh wipe lich su khi nguon tra ve day qua ngan.
+    schedule=modal.Cron("*/15 2-7 * * 1-5", timezone="UTC"),
+    timeout=60*30,
+)
+def publish_ohlcv_intraday(symbols: tuple = QUOTE_UNIVERSE):
+    """PA-3b: refresh nen ngay trong phien de chart 1D hien nen hom nay.
+
+    Tai sao cron rieng, khong them ohlcv vao stock_snapshot:
+      - stock_snapshot chay */5 = 47 lan/gi o; nhung 47x rt.ohlcv moi 5
+        phut la nang can nguon (KBS) khong can thiet -> */15 du cho
+        "nen formed" nhay theo phien.
+      - Tach lane giu don lap that bai: loi ohlcv khong lam chet lane
+        quotes/indices realtime.
+    Payload rong -> KHONG POST (giu file cu), khac voi EOD (EOD raise de
+    dashboard Modal bao Failed vi no la ban chot cua ca phien)."""
+    base_dir = os.environ.get("DIRECT_FETCH_DIR", DIRECT_FETCH_DIR)
+    _use_direct_fetch(base_dir)               # nap bundle tu /opt
+    import source_router as rt                # /opt da nam tren sys.path
+
+    payload = build_ohlcv_daily_payload(symbols, rt)
+    MIN_BARS = 100                            # >= 100 phien moi du de ghi de
+    kept = {s: b for s, b in payload["ohlcv"].items() if len(b) >= MIN_BARS}
+    dropped = len(payload["ohlcv"]) - len(kept)
+    if dropped:
+        print(f"publish_ohlcv_intraday: bo {dropped} ma nen < {MIN_BARS} phien "
+              f"(tranh wipe lich su)", flush=True)
+    payload["ohlcv"] = kept
+    if not kept:
+        print("publish_ohlcv_intraday: khong co nen du dai -> giu file cu "
+              "(khong POST)", flush=True)
+        return {"skipped": True, "reason": "no_full_history"}
+    result = _post_publish(payload)
+    print(f"publish_ohlcv_intraday: {len(kept)} ma -> {result}", flush=True)
+    return result
+
+
+@app.function(
     image=book_image,
     secrets=[modal.Secret.from_name("pocket-personal")],
     volumes={"/data": volume},
