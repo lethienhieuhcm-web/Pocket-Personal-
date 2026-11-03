@@ -11,7 +11,14 @@ export const FANOUT = {
   MAX_Q_PER_BATCH: 180,
   MAX_DO_PER_CALL: 60,
   MAX_IDX_ROWS: 30,
-  DO_TIMEOUT_MS: 2000,
+  // DO ingest timeout 10s (tang tu 2s, 03/11): DO bi evict/recreate
+  // trong ngay thi lan ingest dau tien phai cold-start (thuc day DO +
+  // xu ly 60 frame) — 2s khong du, fetch abort, DO khong nhan frame
+  // nao, client noi DO xong chi thay im lang ("quiet") du refresher
+  // van publish moi phut. Day la goc cua (c) seq-fallback 1..103 lap.
+  // 10s du cho cold-start; khong retry (DO cap seq — retry co the
+  // trung frame).
+  DO_TIMEOUT_MS: 10000,
   ABLY_TIMEOUT_MS: 5000,
 };
 
