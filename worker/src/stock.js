@@ -2168,14 +2168,20 @@ export async function hStockPublish(request, env, url, ctx){
   // Loi fan-out KHONG lam hong publish: log + dem, tra loi R2 giu nguyen.
   // Chi khoa chinh (quotes_patch/quotes/indices/sector_indices); _ib
   // KHONG fan-out (nhanh _ib ghi file rieng, xoa khi cat production).
+  // DEBUG 03/11 (tam, de chan doan DO trong): tra them fanout outcome
+  // trong response — doSeq = seq cuoi DO cap (null = DO khong cap),
+  // doFail = so lan ingest loi tich luy, frames = so frame da build.
+  let fanoutDbg = null;
   try {
     const built = buildFanoutFrames(body);
     const allFrames = built.idx ? [built.idx].concat(built.q) : built.q;
     if (allFrames.length) {
       const stamped = [];
       let anyFallback = false;
+      let doSeq = null;
       for (const ch of chunkFrames(allFrames, FANOUT.MAX_DO_PER_CALL)) {
         const doRes = await fanoutIngestDo(env, ch);
+        if (doRes && doRes.seq != null) doSeq = doRes.seq;
         const r = assignFrameSeqs(ch, doRes, lastDoSeq);
         lastDoSeq = r.lastSeq;
         if (r.fallback) { anyFallback = true; fanoutSeqFallback += ch.length; }
@@ -2183,13 +2189,16 @@ export async function hStockPublish(request, env, url, ctx){
       }
       if (built.truncated) console.error(`[fanout] cat bot ${built.truncated} frame q (vuot ${FANOUT.MAX_Q_PER_BATCH})`);
       if (anyFallback) console.error(`[fanout] seq du phong (DO khong cap du, tong fallback=${fanoutSeqFallback})`);
+      fanoutDbg = { frames: allFrames.length, doSeq: doSeq, fallback: anyFallback, doFail: fanoutDoFail, seqFallback: fanoutSeqFallback };
       await fanoutPublishAbly(env, ctx, stamped, ablyMarketChannel(request));
     }
   } catch (e) {
     console.error(`[fanout] loi: ${e && e.message ? e.message : e}`);
+    fanoutDbg = { error: String((e && e.message) || e).slice(0, 200) };
   }
   return sJson(Object.assign({ok:true, written:n},
-    tickAlerts.length ? {alerts:tickAlerts} : {}));
+    tickAlerts.length ? {alerts:tickAlerts} : {},
+    (fanoutDbg && body && body._debug_fanout) ? {fanout: fanoutDbg} : {}));
 }
 
 /* ---------- H1 staging: cap Ably token cho trinh duyet (subscribe-only) ---------- */
