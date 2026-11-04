@@ -192,23 +192,42 @@
   };
 
   // ---------------- tick vao nen dang hinh (1m/5m) ----------------
-  // Tick cung bucket -> hop nhat IN PLACE vao nen cuoi (h/l/c). Khong tao nen
-  // moi (60s poll la nguon chuan), khong setData lai (giu zoom). Volume chi
-  // cong khi tick mang volume per-tick; tick hien tai mang v luy ke phien
-  // nen thuong la null -> 60s poll sua volume.
+  // Tick cung bucket voi nen cuoi -> hop nhat IN PLACE vao nen do (h/l/c).
+  // Tick o bucket sau (nen poll chua kip ve) -> moc nen dang hinh tai bucket
+  // cua tick. Poll 60s van la nguon chuan (va sua volume); KHONG bao gio
+  // setData lai khi nhan tick (giu zoom/khung nhin). Volume chi cong khi tick
+  // mang volume per-tick; tick hien tai mang v luy ke phien nen thuong la
+  // null -> 60s poll sua volume.
   function bucketStart(sec, stepSec) {
     var s = Math.floor(Number(sec)), st = Math.floor(Number(stepSec));
     if(!isFinite(s) || !isFinite(st) || st <= 0) return null;
     return s - (((s % st) + st) % st);
   }
+  // Poll 60s LUON tre 1–2 bucket: bar cua phut M chi duoc collector cong bo
+  // vao khoang M+0:05–M+2:00, nen khi tick chay ra phiu thi `tt > live.time`
+  // la trang thai CHU CAN cua nen dang hinh (do lag cua poll), khong phai
+  // ngoai le. Thu vien cho phep update() them bar o bucket sau -> moc bucket
+  // le thi m nen dang hinh IN PLACE tai chinh bucket cua tick va hop nhat
+  // cac tick ke tiep vao do. MAX_SEED_STEPS chan lag do (1–2 bucket) va mot
+  // lu lot du lieu ngan, dong thoi tu choi ts bo sai (vi du nen poll van la
+  // cuoc phien hom truoc -> bucket le cach do hon 10 buoc).
+  // Chieu nguoc lai cung xay ra (do 09:54:51: /ohlcv da co bar 09:54 trong khi
+  // refresher van phat frame ts 09:52): nen cuoi van la nen dang hinh nen tick
+  // le 1 bucket duoc phep ap H/L/C vao no; le hon nua la duoc qua cu, de poll.
+  var MAX_SEED_STEPS = 10, MAX_OLD_STEPS = 1;
   function planTick(live, tick) {
     if(!live || !tick) return { action: 'skip' };
     var px = Number(tick.price), tt = Number(tick.time);
     if(!isFinite(px) || px <= 0 || !isFinite(tt)) return { action: 'skip' };
-    if(tt < live.time) return { action: 'old' };
-    if(tt > live.time) return { action: 'new' };          // mac 60s poll lay nen moi
     var close = Number(live.close);
     if(isFinite(close) && close > 0 && (px < close * 0.1 || px > close * 10)) return { action: 'unit' };
+    var st = Math.floor(Number(tick.stepSec)) || 0;
+    if(tt > live.time) {
+      if(st <= 0 || tt - live.time > st * MAX_SEED_STEPS) return { action: 'new' };
+      return { action: 'merge', seeded: true, volume: null,
+               candle: { time: tt, open: px, high: px, low: px, close: px } };
+    }
+    if(tt < live.time && (st <= 0 || live.time - tt > st * MAX_OLD_STEPS)) return { action: 'old' };
     var out = { time: live.time, open: live.open, close: px,
                 high: Math.max(live.high, px), low: Math.min(live.low, px) };
     var vol = null, tv = Number(tick.volume);
@@ -222,7 +241,8 @@
     if(!isFinite(step) || step <= 0) step = 60;
     var bucket = bucketStart(Number(tick.time) + (Math.floor(Number(tick.offsetSec)) || 0), step);
     if(bucket === null) return 'skip';
-    var plan = planTick(state.liveCandle, { time: bucket, price: tick.price, volume: tick.volume });
+    var plan = planTick(state.liveCandle, { time: bucket, price: tick.price,
+                                            volume: tick.volume, stepSec: step });
     if(plan.action !== 'merge') return plan.action;
     state.liveCandle = plan.candle;
     try { state.candleSeries.update(plan.candle); } catch(e) { return 'err'; }

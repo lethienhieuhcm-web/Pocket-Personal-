@@ -1370,8 +1370,9 @@ setInterval(async ()=>{
     }finally{ _minTickBusy=false; }
   }catch(e){}
 }, 60*1000);
-// Nen phut dang hinh: tick cung bucket -> hop nhat IN PLACE (h/l/c). Khong tao
-// nen moi (60s poll la nguon chuan), khong ve lai bieu do (giu zoom).
+// Nen phut dang hinh: tick -> PP_CHART.applyTick hop nhat IN PLACE (h/l/c),
+// co moc nen dang hinh khi poll 60s chua kip ve bucket hien tai. Poll van la
+// nguon chuan (va sua volume); khong ve lai bieu do (giu zoom).
 function normSym(s){ return String(s == null ? "" : s).toUpperCase().replace(/\s+/g, ""); }
 function idxSymKey(s){
   var k = normSym(s);
