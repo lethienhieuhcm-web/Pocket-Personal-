@@ -948,15 +948,16 @@ const MF_B200_42 = [
   "VJC", "VPL",
 ];
 
-/* Phan loai gia tri `side` cua SSI (quy uoc VIE: M = mua, B = ban;
-   mock collector dung "M"/"B"). Gia tri la -> dem vao side_unknown
-   trong meta de probe live. */
+/* Phan loai gia tri `side`. GIA TRI LIVE DA CHUNG MINH 04/11 09:02 (probe
+   SSI WS): "bu" (mua chu dong) va "sd" (ban chu dong). Quy uoc VIE
+   "M"/"B" + cac biet the khac giu nguyen de phong SSI doi ma. Gia tri la
+   -> dem vao side_unknown trong meta de probe. */
 export function mfSideClass(side){
   if(side == null) return "none";
   const s = String(side).trim().toUpperCase();
   if(!s) return "none";
-  if(s === "M" || s === "MUA" || s === "BUY") return "buy";
-  if(s === "B" || s === "BAN" || s === "SELL") return "sell";
+  if(s === "M" || s === "MUA" || s === "BUY" || s === "BU") return "buy";
+  if(s === "B" || s === "BAN" || s === "SELL" || s === "SD") return "sell";
   return "unk";
 }
 

@@ -24,6 +24,9 @@ check("side sell -> sell", mfSideClass("SELL") === "sell");
 check("side null -> none", mfSideClass(null) === "none");
 check("side empty -> none", mfSideClass(" ") === "none");
 check("side junk -> unk", mfSideClass("XX") === "unk");
+// Gia tri LIVE da ghi nhan probe SSI WS 04/11 09:02 ICT:
+check("side live 'bu' -> buy (probe 04/11)", mfSideClass("bu") === "buy");
+check("side live 'sd' -> sell (probe 04/11)", mfSideClass("sd") === "sell");
 
 // --- 2. pure aggregation: buy/sell/net + units (gia nghin dong x1000) ----
 {
@@ -76,6 +79,33 @@ check("side junk -> unk", mfSideClass("XX") === "unk");
   check("threshold = 1e9 VND", MF_THRESHOLD_VND === 1e9);
   check("rows sort theo net giam dan", out[0].symbol === "MSH" && out[1].symbol === "TRI" &&
     out[2].symbol === "HDC" && out[3].symbol === "ACB", out.map(r => r.symbol));
+}
+
+// --- 3b. replay hang dong LIVE ghi duoc tu probe SSI WS (04/11 09:02) ----
+{
+  // The 7 rows captured live (mb_probe_ticks.jsonl), src doi thanh
+  // "ssi-mqtt" nhu collector ghi; window cua so 09:00-09:20.
+  const rows = [
+    ["ssi-mqtt", "QTP", 1793757726.0, 1793757726.441, 11.1, 100, 100, "sd"],
+    ["ssi-mqtt", "QTP", 1793757726.0, 1793757726.441, 11.1, 100, 200, "sd"],
+    ["ssi-mqtt", "SHS", 1793757779.0, 1793757779.376, 12.4, 1500, 3700, "bu"],
+    ["ssi-mqtt", "AAS", 1793757792.0, 1793757792.854, 9.8, 1100, 1200, "bu"],
+    ["ssi-mqtt", "VGS", 1793757794.0, 1793757794.374, 19.1, 100, 100, "bu"],
+    ["ssi-mqtt", "VGS", 1793757810.0, 1793757811.089, 19.4, 100, 200, "bu"],
+    ["ssi-mqtt", "SHS", 1793757812.0, 1793757812.229, 12.4, 400, 4100, "bu"],
+  ];
+  const cut = 1793757720, nowSec = 1793757900;
+  const { rows: out } = mfAggregateRows(rows, ["QTP", "SHS", "AAS", "VGS"], cut, nowSec);
+  const by = Object.fromEntries(out.map(r => [r.symbol, r]));
+  check("live replay: QTP sell 200 CP = 2.22 trieu VND, net am",
+    by.QTP.sell_vol === 200 && by.QTP.sell_val === 2220000 &&
+    by.QTP.buy_vol === 0 && by.QTP.net_val === -2220000, by.QTP);
+  check("live replay: SHS buy 1900 CP = 23.56 trieu, duoi nguong -> khong co",
+    by.SHS.buy_vol === 1900 && by.SHS.buy_val === Math.round(12.4 * 1000 * 1900) &&
+    by.SHS.net_val === 23560000 && by.SHS.flagged === false, by.SHS);
+  check("live replay: VGS 2 tick acc khac nhau tinh du (200 CP, 3.85 trieu)",
+    by.VGS.buy_vol === 200 && by.VGS.buy_val === 19.1 * 1000 * 100 + 19.4 * 1000 * 100, by.VGS);
+  check("live replay: AAS buy 1100 = 10.78 trieu", by.AAS.buy_val === 10780000, by.AAS);
 }
 
 // --- 4. handler end-to-end mock R2 (gzip chunks + watchlist latest) ------
@@ -137,7 +167,11 @@ const gzLines = (rows) => gzipSync(Buffer.from(rows.map(r => JSON.stringify(r)).
     body.meta.files_read === 2 && body.meta.files_scanned === 2, body.meta);
   check("handler: window 15 phut, ISO +07:00",
     body.window.minutes === 15 && /\+07:00$/.test(body.window.from) && /\+07:00$/.test(body.window.to), body.window);
-  check("handler: window.from/to parse ve dung epoch ICT (isoOf +7h, hoi quy bug cham 7h)",
+  check("handler: window ISO dung gio ICT (epoch doi chieu <=2s, do dai 900s)",
+    Math.abs(Date.parse(body.window.to) - Date.now()) <= 2000 &&
+    Date.parse(body.window.to) - Date.parse(body.window.from) === 900000,
+    { to: body.window.to, from: body.window.from });
+  check("handler: window.from/to parse ve dung epoch ICT (hoi quy isoOf, Plan 04/11)",
     Math.abs(new Date(body.window.from).getTime() / 1000 - (t.sec - MF_WINDOW_SEC)) < 3 &&
     Math.abs(new Date(body.window.to).getTime() / 1000 - t.sec) < 3, body.window);
   check("handler: chi tra row cua watchlist (khong co ma la)",
