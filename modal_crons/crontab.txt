@@ -13,8 +13,8 @@ FINHAY_DATA_DIR=/home/agentuser/modal-crons/data
 */15 9-15 * * 1-5 /home/agentuser/modal-crons/venv/bin/python /home/agentuser/modal-crons/cron_jobs.py ohlcv --mode intraday >> /home/agentuser/modal-crons/logs/ohlcv_intraday.log 2>&1
 */15 9-15 * * 1-5 /home/agentuser/modal-crons/venv/bin/python /home/agentuser/modal-crons/cron_jobs.py finhay_crosscheck >> /home/agentuser/modal-crons/logs/finhay_crosscheck.log 2>&1
 # PENDING cutover (still on Modal v32 — do NOT enable here until Modal stops them):
-# */5 9-15 * * 1-5 .../cron_jobs.py stock_snapshot
-# 15 16 * * 1-5 .../cron_jobs.py ohlcv --mode eod  (15:15 ICT = 16:15 CST)
+*/5 9-15 * * 1-5 /home/agentuser/modal-crons/venv/bin/python /home/agentuser/modal-crons/cron_jobs.py stock_snapshot >> /home/agentuser/modal-crons/logs/stock_snapshot.log 2>&1
+15 16 * * 1-5 /home/agentuser/modal-crons/venv/bin/python /home/agentuser/modal-crons/cron_jobs.py ohlcv --mode eod >> /home/agentuser/modal-crons/logs/ohlcv_eod.log 2>&1
 # MAINTENANCE STAYS ON MODAL (Henrry Chot 21:28 03/11) - do NOT enable here:
 # 0 18 * * * .../cron_jobs.py maintenance --mode books  (17:00 ICT = 18:00 CST)
 # 0 1 * * * .../cron_jobs.py maintenance --mode backup  (00:00 ICT = 01:00 CST)

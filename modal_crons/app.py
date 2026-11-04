@@ -1,9 +1,12 @@
 """
 Modal cron jobs for Pocket Personal (k1 Section 2).
 
-4 scheduled functions (2 o day + 2 lane thi truong o cac doan duoi):
+2 scheduled functions (bao tri) — cat Modal 04/11 (Henrry Chot 21:46 03/11):
 1. book_processor  - daily 17:00 +07: process PDF uploads from R2 (English Lab Books)
 2. d1_backup        - daily: backup D1 to Modal Volume (keep 7 versions)
+(Cac job nen/gia — stock_snapshot, publish_ohlcv_daily, publish_ohlcv_intraday,
+ publish_ohlcv_index_intraday, finhay_price_crosscheck — da chuyen sang LightVela,
+ chay bang modal_crons/cron_jobs.py; code cu van con trong git + cron_jobs.py.)
    (realtime_poller da xoa 28/10, lenh Henrry 17:35; thay bang doi ung InstaBox — xem thiet ke 28/10.)
    (publish_snapshot da xoa 28/10 de don 1 suat lich Modal; code con trong git.)
 
@@ -101,100 +104,6 @@ QUOTE_UNIVERSE = (
 # khong thay doi hop dong.
 MAIN_INDEX_SYMBOLS = ["VNINDEX", "VN30", "HNXIndex", "UPCOMIndex"]
 SECTOR_INDEX_SYMBOLS = ["VNFIN", "VNREAL", "VNIT", "VNIND", "VNMAT", "VNCONS"]
-
-
-@app.function(
-    image=stock_image,
-    secrets=[modal.Secret.from_name("pocket-personal")],
-    # P0-1 (lenh Henrry 13:17 02/11): HEN LAI producer chi so — day la ly do
-    # R2 indices.json dong bang tu 28/10 (bo producer bi go lich).
-    # */5 2-7 * * 1-5 UTC = moi 5 phut trong gio phien 09:00-15:00 ICT
-    # (UTC+7 -> 02:00-07:59 UTC), thu 2-den thu 6.
-    schedule=modal.Cron("*/5 2-7 * * 1-5", timezone="UTC"),
-    timeout=300,
-)
-def stock_snapshot(symbols: tuple = QUOTE_UNIVERSE):
-    """NHAP BUOC 2: consumer dau tien cua bundle /opt/direct_fetch.py.
-
-    Lai 2 lane ma realtime_poller (da xoa 28/10) tung phat, bang dung bundle:
-      indices/sector_indices  <- vnd_index_snapshot()  (VNDirect dchart, 10 dong)
-      quotes                  <- vci_symbols()          (VietCap trading, qua router)
-    Du lieu publish thay cho: khong co gi (bundle chua tung duoc goi).
-
-    Chay thu ma khong ghi Worker: dat env STOCK_SNAPSHOT_DRY=1."""
-    import json
-    import urllib.request
-    from datetime import datetime, timezone
-
-    base_dir = os.environ.get("DIRECT_FETCH_DIR", DIRECT_FETCH_DIR)
-    _use_direct_fetch(base_dir)               # nap bundle tu /opt
-    import source_router as rt                # /opt da nam tren sys.path
-
-    idx, idx_src = rt.index_snapshot(MAIN_INDEX_SYMBOLS + SECTOR_INDEX_SYMBOLS)
-    main = [r for r in idx if r["symbol"] in MAIN_INDEX_SYMBOLS]
-    sector = [r for r in idx if r["symbol"] in SECTOR_INDEX_SYMBOLS]
-
-    board, board_src = rt.price_board(list(symbols), prefer="vci")
-    quotes = {}
-    for sym, q in board.items():
-        close = q.get("close")
-        # Scale: vci_symbols/kbs_price_board deu tra gia bang DONG
-        # (probe: VIC matchPrice 241000, KBS CP 241000). R2 quotes.json
-        # CUNG dung DONG (worker/src/stock.js:437, do that 22/10: FPT
-        # 57400; chi screener.json moi la NGHIN dong, FPT 57,4).
-        # publish_snapshot.py:606 chia 1000 la khi ghi DB screener_cache
-        # (thang nghin), KHONG phai R2 — dung vao day la lech 1000 lan.
-        # (Plan sua 01/11: bo /1000 cua ban nhap.)
-        # value_vnd: router VCI phat `value_vnd` (dong, x1e6 tu
-        # accumulatedValue trieu dong); chuoi KBS khong co key do nen
-        # roi ve `value` = KBS TV (cung la dong) — giong het
-        # publish_snapshot.py:601.
-        value_vnd = q.get("value_vnd", q.get("value"))
-        quotes[sym] = {
-            "close": close,
-            "change": q.get("change"),
-            "pct_change": q.get("pct_change"),
-            "volume": q.get("volume"),
-            "value_vnd": value_vnd,
-            "exchange": q.get("exchange"),
-            "foreign_buy_volume": q.get("foreign_buy_volume"),
-            "foreign_sell_volume": q.get("foreign_sell_volume"),
-            "foreign_buy_value": q.get("foreign_buy_value"),
-            "foreign_sell_value": q.get("foreign_sell_value"),
-        }
-
-    payload = {"indices": main, "sector_indices": sector, "quotes": quotes,
-               # P0-1 CHUAN DON VI (quyet dinh, xem REPORT muc 1): moi gia tri
-               # tien (close/change/reference/value) trong payload nay = DONG
-               # (VND) — trung voi quotes.json (von la DONG, stock.js:437).
-               # screener.json moi la NGHIN dong. Them truong `unit` de fanout/
-               # UI nhan ra bac don vi va khong phat gia sai 1000 lan (REPORT §6.4).
-               "unit": "VND",
-               "_prov": {"source": f"modal:direct_fetch({idx_src}+{board_src})",
-                         "retrieved_at": datetime.now(timezone.utc).isoformat(),
-                         "unit": "VND"}}
-
-    # DRY=1: buoc POST (offline harness dung moc nay). Deploy that khong dat
-    # env => mac dinh publish.
-    if os.environ.get("STOCK_SNAPSHOT_DRY", "0") == "1":
-        print(f"stock_snapshot DRY: {len(main)} chi so, {len(sector)} nganh, "
-              f"{len(quotes)} ma (khong POST)", flush=True)
-        return payload
-
-    url = os.environ.get("STOCKAPP_PUBLISH_URL",
-                         "https://lethanhdong.one/api/internal/stock-publish")
-    secret = os.environ.get("STOCK_PUBLISH_SECRET", "")
-    body = json.dumps(payload).encode()
-    req = urllib.request.Request(url, data=body, method="POST",
-                                 headers={"Content-Type": "application/json",
-                                          "X-Publish-Secret": secret,
-                                          "X-Internal-Secret": secret,
-                                          "User-Agent": "Mozilla/5.0"})
-    with urllib.request.urlopen(req, timeout=120) as resp:
-        result = json.loads(resp.read().decode())
-    print(f"stock_snapshot: {len(main)} chi so, {len(sector)} nganh, "
-          f"{len(quotes)} ma -> {result}", flush=True)
-    return result
 
 
 def _post_publish(payload: dict) -> dict:
@@ -473,131 +382,6 @@ def apply_collector_today(payload: dict, today_iso: str,
 
 
 @app.function(
-    image=stock_image,
-    secrets=[modal.Secret.from_name("pocket-personal")],
-    # PA-3a (RC3, 02/11): khong con producer nao gui body.ohlcv tu
-    # 28/10 (publish_snapshot da xoa, chua tung co lane nen ngay;
-    # stock_snapshot */5 chi phat indices+sector_indices+quotes) ->
-    # nen 1D dung lai o phien cuoi duoc fetch tay. EOD: HOSE dong
-    # 14:45 ICT, nguon D1 (kbs -> vnstock) chi co nen hom nay sau
-    # khi dong phien -> 08:15 UTC = 15:15 ICT, T2-T6.
-    schedule=modal.Cron("15 8 * * 1-5", timezone="UTC"),
-    timeout=60*50,
-)
-def publish_ohlcv_daily(symbols: tuple = QUOTE_UNIVERSE):
-    """PA-3a: refresh nen ngay (chart 1D) mot lan moi phien, sau EOD.
-
-    Ham hep, CHI phat lane `ohlcv` — khong khoi phuc nguyen
-    publish_snapshot (de khong keo theo indices/quotes_patch da bi
-    khai tu 28/10) va khong cham lane intraday (PA-1 lo)."""
-    base_dir = os.environ.get("DIRECT_FETCH_DIR", DIRECT_FETCH_DIR)
-    _use_direct_fetch(base_dir)               # nap bundle tu /opt
-    import source_router as rt                # /opt da nam tren sys.path
-
-    payload = build_ohlcv_daily_payload(symbols, rt)
-    if not payload["ohlcv"]:
-        # Run that bai hoan toan -> raise de dashboard Modal hien Failed
-        # (same policy publish_snapshot dung cho lane cua no).
-        raise RuntimeError("publish_ohlcv_daily: khong lay duoc nen ma nao")
-    result = _post_publish(payload)
-    print(f"publish_ohlcv_daily: {len(payload['ohlcv'])} ma -> {result}",
-          flush=True)
-    return result
-
-
-@app.function(
-    image=stock_image,
-    secrets=[modal.Secret.from_name("pocket-personal")],
-    # PA-3b (03/11): chart 1D co "nen hom nay dang formed" TRONG phien.
-    # Bang chung offline (03/11 ~14:00 ICT): KBS rt.ohlcv DA tra nen
-    # 2026-11-03 cho 25/25 ma dau QUOTE_UNIVERSE (miss=0, err=0), OHLCV
-    # la nen partial dang tich luy. Chi phat lane `ohlcv`; KHONG cham
-    # stock_snapshot (lane gia realtime dang chay dung) va KHONG cham
-    # publish_ohlcv_daily (EOD 15:15 van la ban chot, over-write sau).
-    # */15 UTC 2-7 = 09:00..14:45 ICT, T2-T6 (khop cua so phien HOSE).
-    # Min-bar guard tranh wipe lich su khi nguon tra ve day qua ngan.
-    schedule=modal.Cron("*/15 2-7 * * 1-5", timezone="UTC"),
-    timeout=60*30,
-)
-def publish_ohlcv_intraday(symbols: tuple = QUOTE_UNIVERSE):
-    """PA-3b+PA-4a: refresh nen ngay trong phien, nen hom nay theo BO THU.
-
-    Tai sao cron rieng, khong them ohlcv vao stock_snapshot:
-      - stock_snapshot chay */5 = 47 lan/gi o; nhung 47x rt.ohlcv moi 5
-        phut la nang can nguon (KBS) khong can thiet -> */15 du cho
-        "nen formed" nhay theo phien.
-      - Tach lane giu don lap that bai: loi ohlcv khong lam chet lane
-        quotes/indices realtime.
-    Payload rong -> KHONG POST (giu file cu), khac voi EOD (EOD raise de
-    dashboard Modal bao Failed vi no la ban chot cua ca phien)."""
-    base_dir = os.environ.get("DIRECT_FETCH_DIR", DIRECT_FETCH_DIR)
-    _use_direct_fetch(base_dir)               # nap bundle tu /opt
-    import source_router as rt                # /opt da nam tren sys.path
-
-    payload = build_ohlcv_daily_payload(symbols, rt)
-    MIN_BARS = 100                            # >= 100 phien moi du de ghi de
-    kept = {s: b for s, b in payload["ohlcv"].items() if len(b) >= MIN_BARS}
-    dropped = len(payload["ohlcv"]) - len(kept)
-    if dropped:
-        print(f"publish_ohlcv_intraday: bo {dropped} ma nen < {MIN_BARS} phien "
-              f"(tranh wipe lich su)", flush=True)
-    payload["ohlcv"] = kept
-    if not kept:
-        print("publish_ohlcv_intraday: khong co nen du dai -> giu file cu "
-              "(khong POST)", flush=True)
-        return {"skipped": True, "reason": "no_full_history"}
-    # PA-4a: overlay nen hom nay tu bo thu (1m buckets). Loi -> giu KBS.
-    try:
-        from datetime import datetime, timedelta, timezone
-        today_iso = datetime.now(timezone(timedelta(hours=7))).date().isoformat()
-        stats = apply_collector_today(payload, today_iso)
-        print(f"publish_ohlcv_intraday: PA-4a collector overlay "
-              f"{len(stats)}/{len(kept)} ma, hom nay={today_iso}", flush=True)
-    except Exception as e:  # noqa: BLE001 — loi overlay khong chan POST
-        print(f"publish_ohlcv_intraday: PA-4a overlay loi "
-              f"({str(e)[:120]}) -> giu KBS formed", flush=True)
-    result = _post_publish(payload)
-    print(f"publish_ohlcv_intraday: {len(kept)} ma -> {result}", flush=True)
-    return result
-
-
-@app.function(
-    image=stock_image,
-    secrets=[modal.Secret.from_name("pocket-personal")],
-    # PA-3c (03/11): chart CHI SO 1D dung 30/10 (ca 4 chinh + 6 nganh,
-    # 320 nen, doc truc tiep tu R2 03/11). Producer duy nhat cua lane
-    # nay la publish_snapshot.py --mode slow (_publish_index_ohlcv,
-    # ~17:00 ICT); suat 02/11 khong tien duoc file. rt.ohlcv (kbs ->
-    # vnstock) tra RONG cho symbol chi so (kiem 03/11: "kbs: rong",
-    # count=500) -> PA-3b KHONG tu dong khoa duoc nen chi so. Cron
-    # rieng */15 nhu PA-3b; nguon VCI IQ + doi chieu dchart (gate
-    # 22/10), noi nen formed tu dchart trong phien. Payload hoac chi so
-    # nao hong -> BO QUA rieng, khong POST khi khong co gi dat.
-    schedule=modal.Cron("*/15 2-7 * * 1-5", timezone="UTC"),
-    timeout=60*30,
-)
-def publish_ohlcv_index_intraday():
-    """PA-3c: refresh nen ngay chi so trong phien (chart 1D chi so).
-
-    KHONG cham stock_snapshot (lane gia realtime */5 dang chay dung,
-    nen chi so Van nam ngoai no nhu PA-3b) va KHONG cham suat slow
-    17:00 cua collector (ban chot VCI, ghi de phia sau)."""
-    base_dir = os.environ.get("DIRECT_FETCH_DIR", DIRECT_FETCH_DIR)
-    _use_direct_fetch(base_dir)               # nap bundle tu /opt
-    import direct_fetch as df                 # /opt da nam tren sys.path
-
-    payload = build_index_ohlcv_payload(df)
-    if not payload["ohlcv"]:
-        print("publish_ohlcv_index_intraday: khong chi so nao qua gate -> "
-              "giu file cu (khong POST)", flush=True)
-        return {"skipped": True, "reason": "no_index_passed_xcheck"}
-    result = _post_publish(payload)
-    print(f"publish_ohlcv_index_intraday: {len(payload['ohlcv'])} chi so "
-          f"-> {result}", flush=True)
-    return result
-
-
-@app.function(
     image=book_image,
     secrets=[modal.Secret.from_name("pocket-personal")],
     volumes={"/data": volume},
@@ -859,54 +643,3 @@ FINHAY_ALERT_URL = os.environ.get(
     "STOCKAPP_ALERT_URL", "https://lethanhdong.one/api/internal/modal-alert")
 
 
-@app.function(
-    image=stock_image,
-    secrets=[modal.Secret.from_name("pocket-personal"),
-             modal.Secret.from_name("finhay-credentials")],
-    schedule=modal.Cron("*/15 2-7 * * 1-5", timezone="UTC"),
-    timeout=300,
-)
-def finhay_price_crosscheck():
-    sys.path.insert(0, "/opt")
-    import finhay_crosscheck
-
-    doc = finhay_crosscheck.run(finhay_crosscheck.parse_cfg())
-    if not doc:
-        return None
-    s = doc["summary"]
-    print(f"finhay_price_crosscheck: compared={s['compared']} ok={s['counts'].get('ok', 0)} "
-          f"warn={s['counts'].get('warn', 0)} alert={len(s['alert_symbols'])} "
-          f"escalated={s['escalated_symbols']} maxDiff={s['max_abs_diff_pct']}% "
-          f"refFlags={s['ref_flags']} calls={s['finhay_calls']}", flush=True)
-    if s["escalated_symbols"]:
-        _finhay_alert(
-            "finhay_price_crosscheck",
-            f"{len(s['escalated_symbols'])} ma lech gia >=2 luot lien tiep: "
-            + ", ".join(
-                f"{r['symbol']} {r['diff_vnd']}d ({r['diff_pct']}%)"
-                for r in doc["rows"] if r.get("escalated")),
-        )
-    return s
-
-
-def _finhay_alert(fn: str, detail: str) -> None:
-    """Gui canh bao qua /api/internal/modal-alert (Worker -> Telegram), cung secret
-    nhu _post_publish. Loi mang thi lang — canh bao khong duoc lam chet luot doi chieu."""
-    import json
-    import urllib.request
-
-    secret = os.environ.get("STOCK_PUBLISH_SECRET", "")
-    if not secret:
-        print("finhay_alert: khong co STOCK_PUBLISH_SECRET -> bo qua", flush=True)
-        return
-    body = json.dumps({"fn": fn, "detail": detail[:900]}).encode()
-    req = urllib.request.Request(FINHAY_ALERT_URL, data=body, method="POST",
-                                 headers={"Content-Type": "application/json",
-                                          "X-Publish-Secret": secret,
-                                          "X-Internal-Secret": secret,
-                                          "User-Agent": "Mozilla/5.0"})
-    try:
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            print(f"finhay_alert -> {resp.read().decode()[:120]}", flush=True)
-    except Exception as e:  # noqa: BLE001 - fail-open
-        print(f"finhay_alert loi (fail-open): {str(e)[:120]}", flush=True)
