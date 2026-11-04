@@ -137,6 +137,7 @@ function renderQuote(q){
   if(q._prov){_lastDSrc=q._prov.source;_lastDAsOf=q._prov.retrieved_at||q.data_updated||null;_lastDstale=false;refreshSrc();}
 }
 async function loadDetail(sym, chartIv){
+  clearDetailOnSwitch(sym);
   $("dQuote").innerHTML='<div class="hint">Đang tải…</div>';
   try{
     const j=await api("/quote?symbol="+encodeURIComponent(sym));
@@ -234,13 +235,13 @@ function tapeLevelsHtml(levels,lastP){
 //     giu tick-rule cu. Khong tao poll rieng: gan voi loadTape (tu dong
 //     reload 60s cua v-detail o stocks.html). Loi mang -> an khoi, bang
 //     van chay nhu cu (khong bao loi, khong vo layout).
-let _mbSym=null,_mbSum=null,_mbWin=null,_mbSide=null,_mbMatched=0,_mbSeq=0;
+let _mbSym=null,_mbSum=null,_mbWin=null,_mbSide=null,_mbMatched=0,_mbSeq=0,_tapeSym=null;
 function mbTy(vnd){ if(vnd==null||!isFinite(+vnd)) return "—"; const t=+vnd/1e9; return (t>0?"+":"")+t.toFixed(3); }
 function renderMBBlock(){
   const secE=$("dMBSecT"), card=$("dMBCard"), body=$("dMBBody"), note=$("dMBNote");
   if(!secE||!card||!body) return;
   const L=TPL();
-  if(!_tape||!curSym){ secE.style.display="none"; card.style.display="none"; return; }
+  if(!curSym){ secE.style.display="none"; card.style.display="none"; return; }
   secE.textContent=L.mbTitle; secE.style.display=""; card.style.display="";
   const r=_mbSum;
   if(!r){ body.innerHTML='<div class="hint">'+esc(L.mbWait)+'</div>'; if(note) note.textContent=""; return; }
@@ -263,40 +264,60 @@ async function loadMB(sym){
   const seq=++_mbSeq;
   let live=null,tr=null;
   try{ live=await api("/money-flow-live"); }catch(e){}
-  if(seq!==_mbSeq||curSym!==sym||!_tape) return;
+  if(seq!==_mbSeq||curSym!==sym) return;
   if(live&&live.available&&Array.isArray(live.rows)){
     _mbWin=live.window||null;
     _mbSum=live.rows.find(x=>x.symbol===sym)||{absent:true};
     renderMBBlock();
   }
   try{ tr=await api("/money-flow-trades?symbol="+encodeURIComponent(sym)+"&limit=300"); }catch(e){}
-  if(seq!==_mbSeq||curSym!==sym||!_tape) return;
+  if(seq!==_mbSeq||curSym!==sym) return;
   if(tr&&tr.available){
     _mbSide=new Map((tr.trades||[]).map(x=>[x.ts,x.side]));
     _mbMatched=tr.matched||0;
     renderTapePage();
   }
 }
+// Xoa DOM chi tiet khi doi ma (khuyet diem 2 — stale carryover): trang khong
+// bao gio hien so cua ma khac — ve nan loading/trong cho data moi ve.
+function clearDetailOnSwitch(sym){
+  if(_tapeSym===sym&&_mbSym===sym) return false;
+  _tapeSym=sym; _mbSym=sym;
+  _mbSum=null; _mbWin=null; _mbSide=null; _mbMatched=0; _mbSeq++;
+  const sec=$("dTapeSec"),card=$("dTapeCard");
+  if(sec)sec.style.display="none"; if(card)card.style.display="none";
+  const l=$("dTapeList"); if(l) l.innerHTML="";
+  const nt=$("dTapeNote"); if(nt) nt.textContent="";
+  const c=$("dTapeCards"); if(c) c.innerHTML="";
+  const lv=$("dTapeLevels"); if(lv) lv.innerHTML="";
+  const m=$("dTapeMini"); if(m) m.innerHTML="";
+  renderMBBlock();
+  return true;
+}
 async function loadTape(sym){
   _tape=null;
-  if(_mbSym!==sym){ _mbSym=sym; _mbSum=null; _mbWin=null; _mbSide=null; _mbMatched=0; }
+  clearDetailOnSwitch(sym);
   _mbSeq++;
   const sec=$("dTapeSec"),card=$("dTapeCard");
   try{
     const j=await api("/trades?symbol="+encodeURIComponent(sym)+"&limit=300");
-    if(j.empty){ if(sec)sec.style.display="none"; if(card)card.style.display="none"; renderMBBlock(); return; }
-    if(j.trades) j.trades.sort((a,b)=>(a.ts||0)-(b.ts||0));
-    _tape=j;
-    if(sec)sec.style.display=""; if(card)card.style.display="";
-    renderTapeMini(); renderTapePage(); renderMBBlock();
-    loadMB(sym);
+    if(curSym!==sym) return;
+    if(!j.empty){
+      if(j.trades) j.trades.sort((a,b)=>(a.ts||0)-(b.ts||0));
+      _tape=j;
+      if(sec)sec.style.display=""; if(card)card.style.display="";
+      renderTapeMini(); renderTapePage();
+    }
+    // tape trong (ma khong co DNSE nhu CTD): bang lenh van an/fallback nhu
+    // cu; khoi tom tat M/B doc money-flow-live nen van hien (khuyet diem 1).
   }catch(e){
+    if(curSym!==sym) return;
     if(sec)sec.style.display="none"; if(card)card.style.display="none";
-    renderMBBlock();
     const l=$("dTapeList"); if(l) l.innerHTML='<div class="hint">'+esc(TPL().none)+'</div>';
     const c=$("dTapeCards"); if(c) c.innerHTML="";
     const lv=$("dTapeLevels"); if(lv) lv.innerHTML="";
   }
+  loadMB(sym);
 }
 function renderTapeMini(){
   const el=$("dTapeMini"); if(!el||!_tape) return;
@@ -773,7 +794,7 @@ document.querySelectorAll("#dIv button").forEach(b=>b.onclick=()=>{ if(_chartSym
     window.__dtOpenSym=openSym; window.__dtOpenIndex=openIndex; window.__dtLoadWatchlist=loadWatchlist;
     window.loadDetail=loadDetail; window.loadChart=loadChart; window.loadIndexQuote=loadIndexQuote; window.renderDNav=renderDNav; window.renderQuote=renderQuote; window.renderFaPctGrid=renderFaPctGrid;
     window.dOpen=dOpen; window.dBack=dBack; window.dShow=dShow; window.wlRemove=wlRemove; window.paintWatchBtn=paintWatchBtn; window.BL=BL;
-    window.__dtTest={open:openSym,openIndex:openIndex,load:loadDetail,chart:loadChart,quote:renderQuote,chgFromRef:chgFromRef,dShow:dShow,dOpen:dOpen,dBack:dBack,watchlist:loadWatchlist}; }
+    window.__dtTest={open:openSym,openIndex:openIndex,load:loadDetail,chart:loadChart,quote:renderQuote,chgFromRef:chgFromRef,dShow:dShow,dOpen:dOpen,dBack:dBack,watchlist:loadWatchlist,tape:loadTape,mb:{load:loadMB,render:renderMBBlock,clear:clearDetailOnSwitch,state:function(){return{sym:_mbSym,sum:_mbSum,win:_mbWin,side:_mbSide,matched:_mbMatched,tape:_tape,tapeSym:_tapeSym};}}}; }
 })();
 }catch(e){}
 // __DT_END__
