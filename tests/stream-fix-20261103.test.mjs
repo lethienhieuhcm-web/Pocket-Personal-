@@ -160,7 +160,7 @@ function makeTimers(start){
 
   // TRIEU CHUNG 03/11: hb deu (link "song") nhung DO trong tay, im lang.
   // Chi echo hb — khong co frame. linkAliveAt phai luoi moi hon 70s de
-  // watchdog LINK khong xen vao truoc khi nguong DATA 120s kip bat.
+  // watchdog LINK khong xen vao truoc khi nguong DATA 180s kip bat.
   function hbUntil(target){
     while(timers.now() < target){
       const step = Math.min(30000, target - timers.now());
@@ -168,11 +168,13 @@ function makeTimers(start){
       sockets[sockets.length - 1]._emit({ t: "hb", ts: timers.now(), srv_ts: timers.now() });
     }
   }
-  hbUntil(T0 + 175000);
-  check("E2b 175s im lang = DUOI nguong -> chua doi duong", ablyCtor.length === 0 && sockets.length === 1 && api.mode() === "do", { n: sockets.length, mode: api.mode() });
+  hbUntil(T0 + 115000);
+  check("E2b 115s im lang = DUOI nguong -> chua doi duong", ablyCtor.length === 0 && sockets.length === 1 && api.mode() === "do", { n: sockets.length, mode: api.mode() });
+  hbUntil(T0 + 175000);   // van duoi nguong 180s, chi echo hb — chua thang cap
   timers.advance(6000); // cham nguong 180s (khong co hb nua — thang cap noi len TRUOC)
   check("E3 im lang >180s TRONG phien -> duong do bi coi la chet, DO thu lai (socket 2)", ablyCtor.length === 0 && sockets.length === 2 && ws.closedByClient === true, { n: sockets.length, ably: ablyCtor.length });
   // Cac lan retry roi van hb-deu-khong-frame (dung nhu 03/11) -> thang sang Ably.
+  // Nhip 195s/loop (> nguong 180s) de moi vong the hien mot lan im lang vuot nguong.
   for(let round = 0; round < 6 && ablyCtor.length === 0; round++){
     const cur = sockets[sockets.length - 1];
     if(cur.readyState === 0){ cur._open(); cur._emit({ t: "ok", ro: true }); cur._emit({ t: "subbed" }); }
