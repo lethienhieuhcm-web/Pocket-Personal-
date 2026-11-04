@@ -84,6 +84,29 @@ from datetime import datetime, timedelta, timezone
 ICT = timezone(timedelta(hours=7))
 PUBLISH_URL = "https://lethanhdong.one/api/internal/stock-publish"
 
+# Hai tap ma dat ten rieng de mot lan nua khong the "ghi de" len nhau:
+# 2d5b63f (28/10) doi universe sang B200, 6b9c1fd (31/10) doi nguoc lai
+# 40 ma — ca hai lan deu im lang, va phien 04/11 mat tape 38 ma.
+UNIVERSE_BLUECHIP = {
+    "VCB", "BID", "CTG", "TCB", "MBB", "VPB", "HPG", "VHM",
+    "VIC", "VNM", "MSN", "FPT", "MWG", "SSI", "VND", "HCM",
+    "STB", "ACB", "SHB", "POW", "GAS", "PLX", "BVH", "VRE",
+    "VJC", "PNJ", "SAB", "GVR", "BCM", "HDB", "TPB", "LPB",
+    "VIB", "EIB", "NLG", "KDH", "DGC", "FRT", "DGW", "GEX",
+}
+# 42 ma B200 (tieu chi CMF200>0 + cua sang) — nguon cua flow-screen.
+UNIVERSE_B200 = {
+    "AAS", "ABB", "BFC", "BWE", "C69", "CDC", "CTF", "CTI",
+    "DCL", "DPG", "GMD", "HAG", "HDA", "HDB", "HHP", "HTN",
+    "HVH", "IDC", "KBC", "KSB", "MCH", "MSR", "MWG", "NAB",
+    "NAF", "ORS", "PDR", "PTB", "QNS", "SHB", "SSB", "TCX",
+    "TDP", "TIN", "TNG", "TOS", "TVN", "VEA", "VGR", "VGT",
+    "VJC", "VPL",
+}
+# Ma chien canh cua tape_stall_watchdog.py (TAPE_CANARY mac dinh).
+TAPE_CANARIES = frozenset({"VCB", "FPT", "HPG"})
+
+
 CONFIG = {
     # Chu ky publish (giay)
     "publish_sec": 30,
@@ -105,14 +128,34 @@ CONFIG = {
     # artifact theo nguon cua CHINH phien hom nay tu R2; loi/thieu
     # thi bat dau trang nhu cu, khong chan phien.
     "resume": True,
-    "universe": [
-        "VCB", "BID", "CTG", "TCB", "MBB", "VPB", "HPG", "VHM",
-        "VIC", "VNM", "MSN", "FPT", "MWG", "SSI", "VND", "HCM",
-        "STB", "ACB", "SHB", "POW", "GAS", "PLX", "BVH", "VRE",
-        "VJC", "PNJ", "SAB", "GVR", "BCM", "HDB", "TPB", "LPB",
-        "VIB", "EIB", "NLG", "KDH", "DGC", "FRT", "DGW", "GEX",
-    ],
+    # Universe = UNION cua hai tap ma, KHONG phai chon mot.
+    # - UNIVERSE_BLUECHIP: tap hien thi cua bang khop lenh (/trades)
+    #   va cac ma chien canh cua tape_stall_watchdog.
+    # - UNIVERSE_B200: tap sieve cua flow-screen/SSI M/B (Chot Henrry
+    #   15:16 28/10, hieu luc phien 29/10).
+    # Vu 04/11: ban deploy mang UNIVERSE_B200 doc (nganh truong cua
+    # 2d5b63f, chua duoc 6b9c1fd dua ve 40 ma xanh) -> DNSE khong con
+    # subscribe VCB/FPT/HPG, tape cua 38 ma dung tung lai o phien
+    # 03/11 (Worker khong co guard theo ngay nen van tra 200 + du lieu
+    # cu). Xem modal_crons/tests/test_tape_universe.py.
+    "universe": sorted(UNIVERSE_BLUECHIP | UNIVERSE_B200),
 }
+
+
+def assert_tape_universe(universe):
+    """Guard: moi lan khoi dong, tap ma phai bao dam cac ma chien canh
+    cua bang khop lenh. That bai -> CHET LOI ngay tai khoi dong, thay
+    vi chay bong va im lang dong bang tape nhu phien 04/11."""
+    have = {str(s).upper() for s in universe}
+    missing = sorted(TAPE_CANARIES - have)
+    if missing:
+        raise RuntimeError(
+            "universe thieu ma chien canh tape: " + ",".join(missing)
+            + " — bo thu tick SE DONG BANG tape cua cac ma nay; "
+              "them chung vao UNIVERSE_BLUECHIP truoc khi deploy")
+
+
+assert_tape_universe(CONFIG["universe"])
 
 # Uu tien hop nhat (cao -> thap)
 SRC_PRIORITY = ["dnse", "kbs", "vndirect", "vps", "vci", "ssi-mqtt"]
