@@ -24,7 +24,7 @@ FINHAY_DATA_DIR=/home/agentuser/modal-crons/data
 # dong giua phien. cron_jobs.py bay gio co flock singleton per job (bao
 # hiem cho mot cutover tuong lai lap lai hai runtime cung goi 1 job).
 # F4: index_guard.py + source_router.py + cron_jobs.py phai duoc COPY THU
-CONG sang /home/agentuser/modal-crons (khong co CI tu dong hoa; xem REPORT).
+# CONG sang /home/agentuser/modal-crons (khong co CI tu dong hoa; xem REPORT).
 */5 9-16 * * 1-5 /home/agentuser/modal-crons/venv/bin/python /home/agentuser/modal-crons/cron_jobs.py stock_snapshot >> /home/agentuser/modal-crons/logs/stock_snapshot.log 2>&1
 15 16 * * 1-5 /home/agentuser/modal-crons/venv/bin/python /home/agentuser/modal-crons/cron_jobs.py ohlcv --mode eod >> /home/agentuser/modal-crons/logs/ohlcv_eod.log 2>&1
 # MAINTENANCE STAYS ON MODAL (Henrry Chot 21:28 03/11) - do NOT enable here:
