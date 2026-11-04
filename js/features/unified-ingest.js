@@ -488,13 +488,17 @@
     }
     return n;
   }
+  function notifyChartTick(frame){
+    try{ if(typeof window !== "undefined" && typeof window.onIngestTick === "function") window.onIngestTick(frame); }
+    catch(e){ logDeltaErr("onIngestTick loi: " + (e && e.message)); }
+  }
   function applyFrame(d){
     try{
       var cv = currentView();
       var plan = deltaPlan(d, cv.view, cv.sym, cv.idxMode);
-      if(plan === "idx") return applyIdx(d.rows, d.ts);
+      if(plan === "idx"){ var wIdx = applyIdx(d.rows, d.ts); notifyChartTick(d); return wIdx; }
       if(plan === "q-market") return applyQMarket(d);
-      if(plan === "q-detail") return applyQDetail(d);
+      if(plan === "q-detail"){ var wDet = applyQDetail(d); notifyChartTick(d); return wDet; }
       dropView++;
     }catch(e){ logDeltaErr("apply loi: " + (e && e.message)); }
     return 0;

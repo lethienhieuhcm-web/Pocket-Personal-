@@ -191,6 +191,50 @@
     return out;
   };
 
+  // ---------------- tick vao nen dang hinh (1m/5m) ----------------
+  // Tick cung bucket -> hop nhat IN PLACE vao nen cuoi (h/l/c). Khong tao nen
+  // moi (60s poll la nguon chuan), khong setData lai (giu zoom). Volume chi
+  // cong khi tick mang volume per-tick; tick hien tai mang v luy ke phien
+  // nen thuong la null -> 60s poll sua volume.
+  function bucketStart(sec, stepSec) {
+    var s = Math.floor(Number(sec)), st = Math.floor(Number(stepSec));
+    if(!isFinite(s) || !isFinite(st) || st <= 0) return null;
+    return s - (((s % st) + st) % st);
+  }
+  function planTick(live, tick) {
+    if(!live || !tick) return { action: 'skip' };
+    var px = Number(tick.price), tt = Number(tick.time);
+    if(!isFinite(px) || px <= 0 || !isFinite(tt)) return { action: 'skip' };
+    if(tt < live.time) return { action: 'old' };
+    if(tt > live.time) return { action: 'new' };          // mac 60s poll lay nen moi
+    var close = Number(live.close);
+    if(isFinite(close) && close > 0 && (px < close * 0.1 || px > close * 10)) return { action: 'unit' };
+    var out = { time: live.time, open: live.open, close: px,
+                high: Math.max(live.high, px), low: Math.min(live.low, px) };
+    var vol = null, tv = Number(tick.volume);
+    if(isFinite(tv) && tv > 0) vol = (Number(live.volume) || 0) + tv;   // chi khi tick co volume
+    return { action: 'merge', candle: out, volume: vol };
+  }
+  function applyTick(tick) {                              // IN PLACE, khong setData, khong doi zoom
+    if(!state.chart || !state.candleSeries || !state.liveCandle) return 'nochart';
+    if(!tick || typeof tick !== 'object') return 'skip';
+    var step = Math.floor(Number(tick.stepSec));
+    if(!isFinite(step) || step <= 0) step = 60;
+    var bucket = bucketStart(Number(tick.time) + (Math.floor(Number(tick.offsetSec)) || 0), step);
+    if(bucket === null) return 'skip';
+    var plan = planTick(state.liveCandle, { time: bucket, price: tick.price, volume: tick.volume });
+    if(plan.action !== 'merge') return plan.action;
+    state.liveCandle = plan.candle;
+    try { state.candleSeries.update(plan.candle); } catch(e) { return 'err'; }
+    if(plan.volume !== null && state.volSeries) {
+      try { state.volSeries.update({ time: plan.candle.time, value: plan.volume,
+        color: plan.candle.close >= plan.candle.open ? 'rgba(22,163,74,0.5)' : 'rgba(22,38,38,0.5)' }); } catch(e) {}
+      state.liveVolume = plan.volume;
+    }
+    return 'merge';
+  }
+  function lastCandleTime() { return state.liveCandle ? state.liveCandle.time : null; }
+
   // ---------------- theme ----------------
   function themeColors() {
     var fb = { bg: '#ffffff', ink: '#222222', mut: '#888888', line: 'rgba(140,140,140,0.25)' };
@@ -219,6 +263,7 @@
     if (state.ro) { try { state.ro.disconnect(); } catch (e) {} state.ro = null; }
     if (state.chart) { try { state.chart.remove(); } catch (e) {} state.chart = null; }
     state.container = null; state.legendEl = null;
+    state.candleSeries = null; state.volSeries = null; state.liveCandle = null; state.liveVolume = null;
   }
 
   function fmtVal(v, mul) {
@@ -320,6 +365,8 @@
     }, 0);
     var candles = candleData(bars, scale);
     candleSeries.setData(candles);
+    state.candleSeries = candleSeries;
+    state.liveCandle = candles.length ? Object.assign({}, candles[candles.length - 1]) : null;
     registry.push({ series: candleSeries, kind: 'candles', label: '', color: '', mul: 1 });
 
     // (3) Volume tren thang gia an 'vol' cua pane 0 + 2 duong MA khoi luong.
@@ -328,6 +375,7 @@
       crosshairMarkerVisible: false
     }, 0);
     volSeries.setData(volumeData(bars));
+    state.volSeries = volSeries;
     try {
       chart.priceScale('vol', 0).applyOptions({ scaleMargins: { top: 0.84, bottom: 0 } });
       chart.priceScale('right', 0).applyOptions({ scaleMargins: { top: 0.02, bottom: 0.18 } });
@@ -518,7 +566,11 @@
     plotData: plotData,
     bandData: bandData,
     fillFor: fillFor,
-    _BandSeries: BandSeries
+    _BandSeries: BandSeries,
+    applyTick: applyTick,
+    planTick: planTick,
+    bucketStart: bucketStart,
+    lastCandleTime: lastCandleTime
   };
   if (typeof window !== 'undefined') window.PP_CHART = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

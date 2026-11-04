@@ -1344,6 +1344,44 @@ setInterval(async ()=>{
     }finally{ _minTickBusy=false; }
   }catch(e){}
 }, 60*1000);
+// Nen phut dang hinh: tick cung bucket -> hop nhat IN PLACE (h/l/c). Khong tao
+// nen moi (60s poll la nguon chuan), khong ve lai bieu do (giu zoom).
+function normSym(s){ return String(s == null ? "" : s).toUpperCase().replace(/\s+/g, ""); }
+function idxSymKey(s){
+  var k = normSym(s);
+  var m = { VNINDEX:"VNINDEX", VN30:"VN30", HNX:"HNX", HNXINDEX:"HNX", UPCOM:"UPCOM", UPCOMINDEX:"UPCOM" };
+  return m[k] || k;
+}
+function tickPrice(frame, sym){
+  if(frame.t === "q"){
+    if(window._idxMode || normSym(frame.s) !== normSym(sym)) return null;
+    return typeof frame.p === "number" ? frame.p : null;
+  }
+  if(frame.t === "idx"){
+    if(!window._idxMode) return null;
+    var rows = Array.isArray(frame.rows) ? frame.rows : [];
+    for(var i = 0; i < rows.length; i++){
+      var r = rows[i];
+      if(r && typeof r.s === "string" && typeof r.p === "number" && idxSymKey(r.s) === idxSymKey(sym)) return r.p;
+    }
+    return null;
+  }
+  return null;
+}
+window.onIngestTick = function(frame){
+  try{
+    var iv = window._chartIv;
+    if(iv !== "1m" && iv !== "5m") return;
+    var on = document.querySelector(".view.on");
+    if(!on || on.id !== "v-detail") return;
+    var ts = Number(frame && frame.ts);
+    if(!Number.isFinite(ts)) return;              // khong co moc -> bo, khong fake bang dong ho may
+    var price = tickPrice(frame, window._chartSym);
+    if(price == null || !window.PP_CHART || typeof window.PP_CHART.applyTick !== "function") return;
+    window.PP_CHART.applyTick({ time: Math.floor(ts / 1000), price: price,
+                                stepSec: iv === "1m" ? 60 : 300 });
+  }catch(e){}
+};
 </script>
 <script src="/english/js/stocks/palette.js?v=__BUILD__"></script>
 <script src="/english/js/stocks/market.js?v=__BUILD__"></script>
