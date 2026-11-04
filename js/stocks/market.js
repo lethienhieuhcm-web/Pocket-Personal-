@@ -183,7 +183,47 @@ async function loadMarket(){
   try{ if(typeof window.loadFinhay==="function") window.loadFinhay(); }catch(e){}
   loadMN();
   loadCA();
+  loadVolAlert();
 }
+
+/* ---- Canh bao bien dong manh (VNINDEX ±1% so voi tham chieu) ----
+ * Doc /api/stock/market-alert (blob R2 nho, edge-cache 60s — khong parse
+ * ca thi truong). Card xuat hien tren tab Thi truong, khong can dang nhap,
+ * mien phi; "Kiểm tra ngay" mo view chi so (openIndex VNINDEX — khung
+ * biểu đồ chi tiet cua chi so, cung duong voi card trong bang "Chi so";
+ * fallback ve thi truong neu khong mo duoc). An card khi khong co alert
+ * hoac du lieu thieu — khong de lai so cu. */
+const VOL_I18N={
+  vi:{t:"Cảnh báo biến động",btn:"Kiểm tra ngay",ict:"giờ"},
+  en:{t:"Volatility alert",btn:"Check now",ict:"local time"}
+};
+async function loadVolAlert(){
+  const card=$("volAlertCard"); if(!card) return;
+  try{
+    const j=await api("/market-alert");
+    if(!j || j.active!==true || (j.direction!=="up" && j.direction!=="down")
+       || typeof j.pct_change!=="number"){ card.style.display="none"; return; }
+    const L=VOL_I18N[curLang]||VOL_I18N.vi;
+    const up=j.direction==="up", cls=up?"up":"down";
+    card.innerHTML=
+      `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px">`
+      +`<b style="font-size:14px">${esc(L.t)}</b>`
+      +`<span class="${cls}" style="font-weight:700;font-size:14px">${up?"▲":"▼"} ${fmtPct(j.pct_change)}</span></div>`
+      +`<div style="margin-top:6px;font-size:14px">${esc(String(j.index_name||j.symbol||"VNINDEX"))} · <b>${fmtN(j.value)}</b>`
+      +(typeof j.change==="number"?` <span class="${cls}">${(j.change>0?"+":"")+fmtN(j.change)}</span>`:"")+`</div>`
+      +`<div style="font-size:12px;color:var(--pp-mut);margin-top:4px">${esc(String(j.ts_ict||""))} ${L.ict}</div>`
+      +`<div style="font-size:12px;color:var(--pp-mut);margin-top:4px">${esc(String(j.message||""))}</div>`
+      +`<div style="margin-top:10px"><button onclick="volAlertGo()" style="padding:8px 14px;border-radius:8px;background:var(--pp-accent);color:#fff;border:none;font-size:14px;font-weight:600;cursor:pointer">${esc(L.btn)}</button></div>`;
+    card.style.display="";
+  }catch(e){ card.style.display="none"; }
+}
+window.volAlertGo=function(){
+  try{
+    const fs=typeof idxFileSym==="function"?idxFileSym("VNINDEX"):null;
+    if(fs && typeof openIndex==="function"){ openIndex(fs); return; }
+  }catch(e){}
+  try{ if(typeof go==="function") go("v-market"); }catch(e){}
+};
 
 // ---- Khoi ngoai hom nay (GET /foreign-flow): du lieu publish gom 30 ma
 // thanh khoan cao nhat -> tong ghi dung pham vi nay, khong goi la toan

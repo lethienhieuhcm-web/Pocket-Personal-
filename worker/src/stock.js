@@ -251,6 +251,113 @@ export async function hStockSectorIndices(request, env){
   return _gateMarketResp(resp);   // P0-2: cung ap cong stale (rows[].time)
 }
 
+/* ---------- CANH BAO BIEN DONG MANH (VNINDEX cross ±1% trong phien) ----------
+   Cong vao nhanh `indices` cua hStockPublish: khi VNINDEX pct_change vuot
+   +/-MARKET_ALERT_THRESHOLD_PCT so voi gia tham chieu (row tu /api/stock/indices
+   — KHONG dung regime/signals, stale tu 03/11) -> 1 push Telegram + ghi card
+   R2 doc qua GET /api/stock/market-alert. One-shot: toi da MOT lan/chieu/phien;
+   state nam trong R2 (market/market_alert_state.json) de Worker restart hay
+   isolate moi khong replay. KHONG fire khi du lieu stale (row khong dung ngay
+   phien hom nay ICT, hoac gan `stale:true`) hoac pct_change thieu.
+   Telegram: dung CHINH duong cua Worker — env.TELEGRAM_BOT_TOKEN/CHAT_ID nhu
+   route /api/internal/modal-alert (cung bot, khong token moi, secret khong
+   nam trong code). */
+export const MARKET_ALERT_THRESHOLD_PCT = 1.0;
+export const MARKET_ALERT_SYMBOL = "VNINDEX";
+const MA_ALERT_KEY = "market/market_alert.json";
+const MA_STATE_KEY = "market/market_alert_state.json";
+
+function maNum(v){
+  const n = Number(v);
+  if(!Number.isFinite(n)) return "—";
+  try{ return n.toLocaleString("vi-VN",{minimumFractionDigits:2, maximumFractionDigits:2}); }
+  catch(e){ return n.toFixed(2); }
+}
+function maSigned(v){ const n = Number(v); return Number.isFinite(n) ? (n>0?"+":"")+maNum(n) : "—"; }
+function maIctStamp(){
+  try{
+    // formatToParts: thu tu "date, time" cua en-GB doi theo ICU/Node -> lap
+    // cung bo phan, bao dam dinh dang "13:35 · 04/11/2026" moi moi truong.
+    const parts = new Intl.DateTimeFormat("en-GB",{timeZone:"Asia/Ho_Chi_Minh",
+      hour:"2-digit", minute:"2-digit", day:"2-digit", month:"2-digit", year:"numeric"})
+      .formatToParts(new Date());
+    const g = (t) => (parts.find(p => p.type === t) || {}).value || "";
+    return g("hour") + ":" + g("minute") + " · " + g("day") + "/" + g("month") + "/" + g("year");
+  }catch(e){ return new Date().toISOString().slice(0,16).replace("T"," ")+" UTC"; }
+}
+function maTgText(d){
+  const arrow = d.direction === "up" ? "🔼" : "🔽";
+  return arrow + " <b>Thị trường biến động mạnh</b>\n"
+    + (d.index_name || d.symbol) + " (" + d.symbol + "): <b>" + maNum(d.value) + "</b>"
+    + " · " + maSigned(d.change) + " · <b>" + maSigned(d.pct_change) + "%</b>\n"
+    + "🕘 " + d.ts_ict + " (giờ ICT)\n"
+    + "Ý nghĩa: VNINDEX vượt ngưỡng ±" + maNum(d.threshold_pct) + "% so với giá tham chiếu trong phiên — nên kiểm lại danh mục và bảng hàng.";
+}
+async function maSendTg(env, d){
+  const token = env.TELEGRAM_BOT_TOKEN || "";
+  const chatId = env.TELEGRAM_CHAT_ID || "";
+  if(!token || !chatId) return false;
+  try{
+    const r = await fetch("https://api.telegram.org/bot" + token + "/sendMessage", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: chatId, text: maTgText(d), parse_mode: "HTML" }),
+    });
+    if(!r.ok) console.log("[market-alert] tg fail status=" + r.status);
+    return r.ok === true;
+  }catch(e){ console.log("[market-alert] tg error"); return false; }
+}
+export async function evalMarketAlert(env, rows){
+  try{
+    const today = _ictDateNow();
+    const row = (Array.isArray(rows) ? rows : [])
+      .find(r => r && typeof r === "object" && String(r.symbol || "").toUpperCase() === MARKET_ALERT_SYMBOL);
+    if(!row) return { fired: false, reason: "no_row" };
+    if(row.stale === true) return { fired: false, reason: "stale" };
+    if(_rowDate(row) !== today) return { fired: false, reason: "stale" };   // time thieu hoac khac ngay phien hom nay
+    const pct = Number(row.pct_change);
+    if(!Number.isFinite(pct)) return { fired: false, reason: "no_pct" };
+    const dir = pct >= MARKET_ALERT_THRESHOLD_PCT ? "up"
+      : pct <= -MARKET_ALERT_THRESHOLD_PCT ? "down" : null;
+    if(!dir) return { fired: false, reason: "under_threshold" };
+    const { data: cur } = await sGetWithEtag(env, MA_STATE_KEY);
+    const state = (cur && cur.session_date === today)
+      ? Object.assign({}, cur)
+      : { session_date: today, fired_up: false, fired_down: false };
+    const flag = "fired_" + dir;
+    if(state[flag] === true) return { fired: false, reason: "already_fired" };
+    state[flag] = true;
+    state.updated = new Date().toISOString();
+    // Danh dau TRUOC khi gui/pghi card: at-most-once — Worker restart giua
+    // chung khong replay push (dung nghia one-shot cua alert per-symbol).
+    await sPut(env, MA_STATE_KEY, state);
+    const d = {
+      active: true,
+      symbol: MARKET_ALERT_SYMBOL,
+      index_name: "VN-Index",
+      direction: dir,
+      value: Number.isFinite(Number(row.close)) ? Number(row.close) : null,
+      change: Number.isFinite(Number(row.change)) ? Number(row.change) : null,
+      pct_change: pct,
+      threshold_pct: MARKET_ALERT_THRESHOLD_PCT,
+      session_date: today,
+      ts_ict: maIctStamp(),
+      fired_at: state.updated,
+      message: "VN-Index " + (dir === "up" ? "tăng" : "giảm") + " hơn "
+        + MARKET_ALERT_THRESHOLD_PCT + "% so với giá tham chiếu trong phiên — kiểm tra danh mục và bảng hàng.",
+    };
+    await sPut(env, MA_ALERT_KEY, Object.assign({ updated: state.updated }, d));
+    await maSendTg(env, d);
+    return { fired: true, direction: dir };
+  }catch(e){ console.log("[market-alert] eval error: " + String(e && e.message || e)); return { fired: false, reason: "error" }; }
+}
+
+// Doc card cho frontend (public, mien phi): blob nho, edge-cache 60s —
+// khong parse ca thi truong moi luot doc (dung cachedMarket nhu indices).
+export async function hStockMarketAlert(request, env){
+  return cachedMarket(request, env, MA_ALERT_KEY, 60);
+}
+
 // Tu chu: market regime (scripts/market_regime.py) + signals (scripts/signal_detector.py)
 export async function hStockRegime(request, env){
   return cachedMarket(request, env, "market/regime.json", 300);
@@ -1960,6 +2067,14 @@ export async function hStockPublish(request, env, url, ctx){
     }
   };
   if(body.indices) await put1("indices", {rows:body.indices});
+  // Canh bao bien dong VNINDEX (±1%): chi khoa chinh `indices`; danh dau
+  // R2 + Telegram dien ra NGOAI duong tra loi publish khi co ctx.waitUntil
+  // (nguon lat nhat cua H1 khong bi cham boi fetch Telegram).
+  if(body.indices){
+    const maJob = evalMarketAlert(env, body.indices);
+    if(ctx && typeof ctx.waitUntil === "function") ctx.waitUntil(maJob);
+    else await maJob;
+  }
   // Chi so nganh (engine chi so Dot B, Chot 22/10): publish_snapshot gui
   // kem khoa sector_indices de ghi file R2 rieng — dai chi so chinh cua
   // frontend khong doc khoa nay (giu nguyen 4 the). Thieu nhanh nay thi

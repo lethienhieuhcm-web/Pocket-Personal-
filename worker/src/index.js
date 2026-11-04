@@ -21,7 +21,7 @@ import {jerr} from './utils.js';
 export { MarketRoom } from "./market-room.js";
 // lop du lieu bo sung tu Finhay (BAN NHAP - work/finhay-integration-20261103/REPORT.md)
 import {hStockFinhay, hFinhayPut} from './stock_finhay.js';
-import {hStockVersion, hStockIndices, hStockSectorIndices, hStockRegime, hStockSignals, hStockQuote, hStockOhlcv, hStockTrades, hStockScreener, hStockFundamentals, hStockStatements, hStockNews, hStockMarketNews, hStockForeignFlow, hStockForeignHistory, hStockProprietaryFlow, hStockProprietaryHistory, hStockFlowScreen, hStockMoneyFlowLive, hStockMoneyFlowTrades, hStockOrderbook, hStockOrderbookDates, hStockFlowHistory, hStockDivergence, hStockLiveOverview, hStockMarketTotals, hStockMacro, hStockMacroHistory, hStockConsensus, hStockConsensusDetail, hStockHolders, hStockHoldersShard, hStockHoldersSymbol, hStockSectors, hStockSectorsDetail, hStockListing, hStockEvents, hStockCompanyProfile, hStockCompare, hWatchlistGet, hWatchlistAdd, hWatchlistDel, hPortfolio, hTxnAdd, hCostHistory, hTargetsGet, hTargetsSet, hTargetsDel, hStockPublish, hModalAlert, hStockReportData, hStockAlertDone, hStockTargetDone, hStockRisk, hStockStrategyReview, hRuleAlertsGet, hRuleAlertsAdd, hRuleAlertsDel, hRuleAlertsInternal, hTickStateGet, hInternalUniverse, hCorporateActions, hAblyToken, hStockStream, hDoTestPublish} from './stock.js';
+import {hStockVersion, hStockIndices, hStockSectorIndices, hStockMarketAlert, hStockRegime, hStockSignals, hStockQuote, hStockOhlcv, hStockTrades, hStockScreener, hStockFundamentals, hStockStatements, hStockNews, hStockMarketNews, hStockForeignFlow, hStockForeignHistory, hStockProprietaryFlow, hStockProprietaryHistory, hStockFlowScreen, hStockMoneyFlowLive, hStockMoneyFlowTrades, hStockOrderbook, hStockOrderbookDates, hStockFlowHistory, hStockDivergence, hStockLiveOverview, hStockMarketTotals, hStockMacro, hStockMacroHistory, hStockConsensus, hStockConsensusDetail, hStockHolders, hStockHoldersShard, hStockHoldersSymbol, hStockSectors, hStockSectorsDetail, hStockListing, hStockEvents, hStockCompanyProfile, hStockCompare, hWatchlistGet, hWatchlistAdd, hWatchlistDel, hPortfolio, hTxnAdd, hCostHistory, hTargetsGet, hTargetsSet, hTargetsDel, hStockPublish, hModalAlert, hStockReportData, hStockAlertDone, hStockTargetDone, hStockRisk, hStockStrategyReview, hRuleAlertsGet, hRuleAlertsAdd, hRuleAlertsDel, hRuleAlertsInternal, hTickStateGet, hInternalUniverse, hCorporateActions, hAblyToken, hStockStream, hDoTestPublish} from './stock.js';
 
 // Build ID - replaced with timestamp on every deploy (see cf_deploy.py)
 const BUILD_ID = "__BUILD__";
@@ -160,6 +160,7 @@ const ROUTES = [
   ['GET',    '/api/stock/corporate-actions', hCorporateActions, 'public'],
   ['GET',    '/api/stock/indices',   hStockIndices,          'public'],
   ['GET',    '/api/stock/sector-indices', hStockSectorIndices, 'public'],
+  ['GET',    '/api/stock/market-alert', hStockMarketAlert,   'public'],
   ['GET',    '/api/stock/regime',    hStockRegime,           'public'],
   ['GET',    '/api/stock/signals',   hStockSignals,          'public'],
   ['GET',    '/api/stock/quote',     hStockQuote,            'public'],
