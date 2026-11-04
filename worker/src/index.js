@@ -163,7 +163,9 @@ const ROUTES = [
   ['GET',    '/api/stock/regime',    hStockRegime,           'public'],
   ['GET',    '/api/stock/signals',   hStockSignals,          'public'],
   ['GET',    '/api/stock/quote',     hStockQuote,            'public'],
-  ['GET',    '/api/stock/ohlcv',     hStockOhlcv,            'user'],
+  // TAM TAT AUTH /ohlcv 04/11 (Chot Henrry 06:38 + dau moi quyet): /ohlcv 'user'->'public'
+  // de kiem live nen phut (1m/5m FREE) khong can login. Chi route nay; cac route 'user' khac giu nguyen.
+  ['GET',    '/api/stock/ohlcv',     hStockOhlcv,            'public'],
   ['GET',    '/api/stock/trades',    hStockTrades,           'public'],
   ['GET',    '/api/stock/screener',  hStockScreener,         'public'],
   ['GET',    '/api/stock/fundamentals', hStockFundamentals,  'public'],

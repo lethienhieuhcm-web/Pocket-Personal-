@@ -377,7 +377,10 @@ export async function hStockQuote(request, env){
 }
 
 export async function hStockOhlcv(request, env){
-  const s = await getSession(request, env); if(!s) return jerr("Not logged in", 401);
+  // AUTH TAT TREN /ohlcv 04/11 (Chot Henrry 06:38, dau moi quyet): an danh duoc phep
+  // doc nen (kien live 1m khong can login). Session van duoc doc neu co de giu
+  // gate premium 1H/15m cho user that o duoi.
+  const s = await getSession(request, env).catch(()=>null);
   const u = new URL(request.url);
   const sym = (u.searchParams.get("symbol")||"").toUpperCase();
   const count = Math.max(10, Math.min(parseInt(u.searchParams.get("count")||"120",10)||120, 500));
@@ -388,7 +391,7 @@ export async function hStockOhlcv(request, env){
   if(iv==="1H" || iv==="15m"){
     try{
       const {getActivePlan, getUser} = await import('./auth.js');
-      const usr = await getUser(env, s.email);
+      const usr = s ? await getUser(env, s.email) : null;
       if(!STOCK_DEV_OPEN_GATES && getActivePlan(usr).plan === 'free') return jerr("Premium feature: intraday charts. Upgrade to continue.", 402);
     }catch(e){ if(e.status===402) throw e; }
   }
