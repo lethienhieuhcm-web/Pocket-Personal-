@@ -146,8 +146,8 @@ CONFIG = {
     # NGANH (VNFIN/VNREAL/VNIT/VNIND/VNMAT/VNCONS) DNSE KHONG co.
     # Thu o day van an toan: ban tin ve thieu truong -> fail-open
     # (khong bucket, khong crash), thieu topic -> broker khong day.
-    "index_universe": ["VNINDEX", "VN30", "HNX", "UPCOM",
-                       "VNXALLSHARE"],
+    "index_universe": ["VNINDEX", "VN30", "HNX", "HNX30", "UPCOM",
+                       "VNXALLSHARE", "VN100"],
     # Chan do schema ban tin index CHUA reverse-engineer xong
     # (SSI i/*, KBS INDEX:*, VNDirect kind khac ST/SMA): ghi CAU
     # TRUC vao status de phien ke tiep ket luan co OHLCV hay khong.

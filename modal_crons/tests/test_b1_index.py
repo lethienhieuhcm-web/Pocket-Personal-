@@ -90,8 +90,19 @@ class TestConfig(unittest.TestCase):
 
     def test_index_keys_present(self):
         self.assertTrue(self.tc.CONFIG.get("index_probe"))
-        for want in ("VNINDEX", "VN30", "HNX", "UPCOM", "VNXALLSHARE"):
+        for want in ("VNINDEX", "VN30", "HNX", "HNX30", "UPCOM",
+                     "VNXALLSHARE", "VN100"):
             self.assertIn(want, self.tc.CONFIG["index_universe"])
+        # 7 ten, thu tu 5 ten cu giu nguyen (HNX30 chen sau HNX,
+        # VN100 cuoi):
+        self.assertEqual(
+            ["VNINDEX", "VN30", "HNX", "HNX30", "UPCOM",
+             "VNXALLSHARE", "VN100"],
+            self.tc.CONFIG["index_universe"])
+        # 6 chi so NGANH DNSE khong co — tuyet doi khong them:
+        for nganh in ("VNFIN", "VNREAL", "VNIT", "VNIND",
+                      "VNMAT", "VNCONS"):
+            self.assertNotIn(nganh, self.tc.CONFIG["index_universe"])
 
     def test_live_stays_off(self):
         """Luat 02/11: rebase B1 KHÔNG được kéo theo tick_live."""
