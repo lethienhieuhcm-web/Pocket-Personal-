@@ -1,0 +1,82 @@
+{
+  "schema": "ctg-banks.v1",
+  "as_of": "2026-10-28",
+  "run_id": "gd2-real-20261028-28codes",
+  "source": "REPORT-GD2-28.md §4 + §3 (ban chay THAT GĐ2 28 ma, 02/11/2026) — so chep nguyen van, khong tinh lai, khong bia",
+  "gate": { "min_sessions": 2000, "lag_days_a": 75, "lag_days_b": 45 },
+  "counts": { "publishable": 17, "blocked": 11 },
+  "publishable": [
+    { "code": "CTG", "canary": true, "pb_a": 1.3272, "pb_b": 1.1909, "cheap_a_pct": 4.85, "cheap_b_pct": 3.50, "p80_a_mult": 0.9551, "p80_a_dong": 22092.0, "p80_b_mult": 0.9367, "p80_b_dong": 24145.3, "sessions_a": 3152, "sessions_b": 3197, "basis_a": "2025-12-31", "basis_b": "2026-06-30", "basis_a_kind": "reported", "shares_override": null, "pb_b_unaudited": false },
+    { "code": "VCB", "pb_a": 2.1395, "pb_b": 1.9335, "cheap_a_pct": 6.12, "cheap_b_pct": 15.76, "p80_a_mult": 1.9604, "p80_a_dong": 52685.4, "p80_b_mult": 1.8743, "p80_b_dong": 55741.2, "sessions_a": 3152, "sessions_b": 3197, "basis_a": "2025-12-31", "basis_b": "2026-06-30", "basis_a_kind": "reported", "shares_override": null, "pb_b_unaudited": false },
+    { "code": "STB", "pb_a": 2.1413, "pb_b": 2.0411, "cheap_a_pct": 4.82, "cheap_b_pct": 3.47, "p80_a_mult": 1.5569, "p80_a_dong": 49440.8, "p80_b_mult": 1.4518, "p80_b_dong": 48366.2, "sessions_a": 3152, "sessions_b": 3197, "basis_a": "2025-12-31", "basis_b": "2026-06-30", "basis_a_kind": "reported", "shares_override": null, "pb_b_unaudited": false },
+    { "code": "BID", "pb_a": 1.3614, "pb_b": 1.2324, "cheap_a_pct": 38.36, "cheap_b_pct": 39.64, "p80_a_mult": 1.5812, "p80_a_dong": 39084.2, "p80_b_mult": 1.4763, "p80_b_dong": 40309.5, "sessions_a": 3152, "sessions_b": 3181, "basis_a": "2025-12-31", "basis_b": "2026-06-30", "basis_a_kind": "reported", "shares_override": null, "pb_b_unaudited": false },
+    { "code": "NVB", "pb_a": 2.0814, "pb_b": 1.9792, "cheap_a_pct": 15.96, "cheap_b_pct": 16.17, "p80_a_mult": 1.7794, "p80_a_dong": 12567.4, "p80_b_mult": 1.7753, "p80_b_dong": 13185.4, "sessions_a": 3152, "sessions_b": 3197, "basis_a": "2025-12-31", "basis_b": "2026-06-30", "basis_a_kind": "audited", "shares_override": 1924632751, "pb_b_unaudited": true },
+    { "code": "LPB", "pb_a": 2.4117, "pb_b": 2.6450, "cheap_a_pct": 10.96, "cheap_b_pct": 12.96, "p80_a_mult": 1.7992, "p80_a_dong": 28422.8, "p80_b_mult": 1.7024, "p80_b_dong": 24523.0, "sessions_a": 2253, "sessions_b": 2253, "basis_a": "2025-12-31", "basis_b": "2026-06-30", "basis_a_kind": "reported", "shares_override": null, "pb_b_unaudited": false },
+    { "code": "EIB", "pb_a": 1.1926, "pb_b": 1.1747, "cheap_a_pct": 32.14, "cheap_b_pct": 31.65, "p80_a_mult": 1.3932, "p80_a_dong": 19451.2, "p80_b_mult": 1.3368, "p80_b_dong": 18947.0, "sessions_a": 3152, "sessions_b": 3197, "basis_a": "2025-12-31", "basis_b": "2026-06-30", "basis_a_kind": "audited", "shares_override": 1862720607, "pb_b_unaudited": true },
+    { "code": "HDB", "pb_a": 1.4609, "pb_b": 1.2676, "cheap_a_pct": 0.09, "cheap_b_pct": 0.27, "p80_a_mult": 0.8297, "p80_a_dong": 12976.8, "p80_b_mult": 0.7436, "p80_b_dong": 13404.7, "sessions_a": 2198, "sessions_b": 2198, "basis_a": "2025-12-31", "basis_b": "2026-06-30", "basis_a_kind": "reported", "shares_override": null, "pb_b_unaudited": false },
+    { "code": "ACB", "pb_a": 1.1603, "pb_b": 1.1042, "cheap_a_pct": 4.39, "cheap_b_pct": 8.77, "p80_a_mult": 0.9267, "p80_a_dong": 17052.8, "p80_b_mult": 0.9149, "p80_b_dong": 17689.1, "sessions_a": 3147, "sessions_b": 3192, "basis_a": "2025-12-31", "basis_b": "2026-06-30", "basis_a_kind": "reported", "shares_override": null, "pb_b_unaudited": false },
+    { "code": "MBB", "pb_a": 1.1173, "pb_b": 1.0123, "cheap_a_pct": 4.03, "cheap_b_pct": 7.79, "p80_a_mult": 0.6551, "p80_a_dong": 11549.7, "p80_b_mult": 0.6511, "p80_b_dong": 12671.7, "sessions_a": 3152, "sessions_b": 3197, "basis_a": "2025-12-31", "basis_b": "2026-06-30", "basis_a_kind": "reported", "shares_override": null, "pb_b_unaudited": false },
+    { "code": "VIB", "pb_a": 1.0269, "pb_b": 1.0069, "cheap_a_pct": 12.13, "cheap_b_pct": 18.36, "p80_a_mult": 0.9649, "p80_a_dong": 13295.6, "p80_b_mult": 0.9928, "p80_b_dong": 13951.8, "sessions_a": 2440, "sessions_b": 2440, "basis_a": "2025-12-31", "basis_b": "2026-06-30", "basis_a_kind": "reported", "shares_override": null, "pb_b_unaudited": false },
+    { "code": "VPB", "pb_a": 1.0342, "pb_b": 0.9751, "cheap_a_pct": 7.27, "cheap_b_pct": 9.19, "p80_a_mult": 0.8984, "p80_a_dong": 20414.0, "p80_b_mult": 0.8653, "p80_b_dong": 20855.3, "sessions_a": 2297, "sessions_b": 2297, "basis_a": "2025-12-31", "basis_b": "2026-06-30", "basis_a_kind": "reported", "shares_override": null, "pb_b_unaudited": false },
+    { "code": "TCB", "pb_a": 0.8815, "pb_b": 0.8372, "cheap_a_pct": 10.86, "cheap_b_pct": 12.52, "p80_a_mult": 0.7680, "p80_a_dong": 19454.6, "p80_b_mult": 0.7768, "p80_b_dong": 20716.8, "sessions_a": 2100, "sessions_b": 2100, "basis_a": "2025-12-31", "basis_b": "2026-06-30", "basis_a_kind": "reported", "shares_override": null, "pb_b_unaudited": false },
+    { "code": "SHB", "pb_a": 0.7181, "pb_b": 0.6497, "cheap_a_pct": 18.80, "cheap_b_pct": 20.38, "p80_a_mult": 0.6894, "p80_a_dong": 10225.5, "p80_b_mult": 0.6605, "p80_b_dong": 10826.7, "sessions_a": 3149, "sessions_b": 3194, "basis_a": "2025-12-31", "basis_b": "2026-06-30", "basis_a_kind": "audited", "shares_override": 4593703838, "pb_b_unaudited": true },
+    { "code": "BAB", "pb_a": 0.7915, "pb_b": 0.8194, "cheap_a_pct": 81.17, "cheap_b_pct": 65.71, "p80_a_mult": 1.0213, "p80_a_dong": 13548.8, "p80_b_mult": 1.0066, "p80_b_dong": 12899.4, "sessions_a": 2199, "sessions_b": 2199, "basis_a": "2025-12-31", "basis_b": "2026-06-30", "basis_a_kind": "reported", "shares_override": null, "pb_b_unaudited": false },
+    { "code": "TPB", "pb_a": 0.7831, "pb_b": 0.7276, "cheap_a_pct": 24.33, "cheap_b_pct": 25.69, "p80_a_mult": 0.8096, "p80_a_dong": 13438.8, "p80_b_mult": 0.7504, "p80_b_dong": 13408.4, "sessions_a": 2129, "sessions_b": 2129, "basis_a": "2025-12-31", "basis_b": "2026-06-30", "basis_a_kind": "reported", "shares_override": null, "pb_b_unaudited": false },
+    { "code": "KLB", "pb_a": 0.7525, "pb_b": 0.6863, "cheap_a_pct": 22.18, "cheap_b_pct": 26.31, "p80_a_mult": 0.7696, "p80_a_dong": 11200.0, "p80_b_mult": 0.7691, "p80_b_dong": 12271.3, "sessions_a": 2326, "sessions_b": 2326, "basis_a": "2025-12-31", "basis_b": "2026-06-30", "basis_a_kind": "audited", "shares_override": 578370526, "pb_b_unaudited": true }
+  ],
+  "blocked": [
+    { "code": "PCB", "reason": "coverage:short(55<2000)", "sessions": 55, "first_session": "2026-08-12", "listed": "2026", "inputs_shares_ok": true, "inputs_equity_ok": true, "pb_a": null, "pb_b": null },
+    { "code": "VAB", "reason": "coverage:short(1310<2000)", "sessions": 1310, "first_session": "2021-07-20", "listed": "2021", "inputs_shares_ok": true, "inputs_equity_ok": true, "pb_a": null, "pb_b": null },
+    { "code": "SSB", "reason": "coverage:short(1399<2000)", "sessions": 1399, "first_session": "2021-03-24", "listed": "2021", "inputs_shares_ok": true, "inputs_equity_ok": true, "pb_a": null, "pb_b": null },
+    { "code": "OCB", "reason": "coverage:short(1433<2000)", "sessions": 1433, "first_session": "2021-01-28", "listed": "2021", "inputs_shares_ok": true, "inputs_equity_ok": true, "pb_a": null, "pb_b": null },
+    { "code": "ABB", "reason": "coverage:short(1455<2000)", "sessions": 1455, "first_session": "2020-12-28", "listed": "2020-12", "inputs_shares_ok": true, "inputs_equity_ok": true, "pb_a": null, "pb_b": null },
+    { "code": "PGB", "reason": "coverage:short(1457<2000)", "sessions": 1457, "first_session": "2020-12-24", "listed": "2020-12", "inputs_shares_ok": true, "inputs_equity_ok": true, "pb_a": null, "pb_b": null },
+    { "code": "MSB", "reason": "coverage:short(1458<2000)", "sessions": 1458, "first_session": "2020-12-23", "listed": "2020-12", "inputs_shares_ok": true, "inputs_equity_ok": true, "pb_a": null, "pb_b": null },
+    { "code": "NAB", "reason": "coverage:short(1505<2000)", "sessions": 1505, "first_session": "2020-10-09", "listed": "2020-10", "inputs_shares_ok": true, "inputs_equity_ok": true, "pb_a": null, "pb_b": null },
+    { "code": "SGB", "reason": "coverage:short(1506<2000)", "sessions": 1506, "first_session": "2020-10-15", "listed": "2020-10", "inputs_shares_ok": true, "inputs_equity_ok": true, "pb_a": null, "pb_b": null },
+    { "code": "BVB", "reason": "coverage:short(1568<2000)", "sessions": 1568, "first_session": "2020-07-09", "listed": "2020-07", "inputs_shares_ok": true, "inputs_equity_ok": true, "pb_a": null, "pb_b": null },
+    { "code": "VBB", "reason": "coverage:short(1803<2000)", "sessions": 1803, "first_session": "2019-07-30", "listed": "2019-07", "inputs_shares_ok": true, "inputs_equity_ok": true, "pb_a": null, "pb_b": null }
+  ],
+  "ctg_detail": {
+    "code": "CTG",
+    "bvps_2025_dong": 23130.72,
+    "bvps_source": "BCTC kiem toan PwC · H7 DA DONG (so dung la so dung)",
+    "price_as_of_dong": 30700,
+    "pb_a": 1.3272,
+    "pb_a_label": "PROVEN UNRECONCILABLE",
+    "pb_a_template": {
+      "pb": 1.22,
+      "tolerance": 0.01,
+      "bvps_band_dong": [24959.35, 25371.90],
+      "shares_needed_min": 7080865248,
+      "shares_needed_max": 7197903992,
+      "audited_shares": 7766944637,
+      "candidates_tested": 19,
+      "candidates_pass": 0,
+      "note": "Muc 1,22 cua ban mau yeu cau 7.080.865.248–7.197.903.992 cp trong khi Thuyet minh kiem toan 20.3(a) = 7.766.944.637 cp; 19 ung vien co so, 0 dat. KHONG phai la so 1,22 dat duoc."
+    },
+    "pb_b": 1.1909,
+    "pb_b_status": "DAT",
+    "percentile_a_pct": 4.85,
+    "percentile_b_pct": 3.50,
+    "canary": { "pb_a_expected": 1.3272, "pb_b_expected": 1.1909, "match": true }
+  },
+  "decisions": [
+    { "id": "D1", "verdict": "CHOT theo de xuat", "line": "GĐ2 CTG thi diem truoc; dat chap nhan §2 roi moi mo 28 ma — khong lam 28 ma cung luc." },
+    { "id": "D2", "verdict": "CHOT theo de xuat", "line": "Dung sai ±0,5% cho 4 moc (Base/Bear/Bull/eab); ±0,5 diem % cho percentile P/B." },
+    { "id": "D3", "verdict": "CHOT co dieu kien", "line": "Khoi phuc quy tac bien eab truoc khi code GĐ3; khong duoc thi dung ti le eab/Base = 0,8632 lam gia dinh v1, ghi ro la gia dinh + versioned." },
+    { "id": "D4", "verdict": "CHOT theo de xuat", "line": "ROE kich ban Bear ≈ 13,2%, Bull ≈ 23,5% la gia thuyet v1 (suy nguoc tu 4 moc), can doi chieu khi tim duoc dinh nghia kich ban that." },
+    { "id": "D5", "verdict": "CHOT theo de xuat", "line": "Ke 7,94% lay hang so v1 (tai tao dung); hoan dung CAPM (Rf/beta/ERP) sang ban sau; bang do nhay Ke phai kem ket qua GĐ3." },
+    { "id": "D6", "verdict": "CHOT theo de xuat", "line": "GĐ4 chi CTG thi diem; chu PHAN DOAN do AI soan nap + Henrry duyet tung cau, khong tu sinh cho 27 ma con lai." },
+    { "id": "D7", "verdict": "PROVEN UNRECONCILABLE (chap nhan cho thi diem, hoan PDF — khong bo)", "line": "Cong D7 (PDF goc HOSE/IR) da dieu tra: muc 1,22 ±0,01 cua ban mau khong tai tao duoc bang bat ky co so BVPS/so cp nao — mau thuan noi tai cua chinh ban mau; P/B A 1,3272 la so dung tren co so kiem toan." }
+  ],
+  "notes": [
+    "Chuoi A = gia / BVPS nam gan nhat da biet (lag 75 ngay) · chuoi B = gia / BVPS quy gan nhat da biet (lag 45 ngay), as_known — cam nhin truoc.",
+    "\"% re\" = ti le phien co P/B cao hon hom nay (dinh nghia ban mau).",
+    "p80 = tran lich su 80% cua chuoi P/B, KHONG phai moc gia tri; p80 quy doi ra dong theo BVPS basis nen mang ca loi mau so ghi o CTG.",
+    "Ma co dau ⟳ = dung so cp Thuyet minh kiem toan @2025-12-31 (chuoi A); chuoi B cua cac nay van dung so finfo @2026-06-30 CHUA KIEM CHUNG.",
+    "11 ma blocked: shares + equity input deu OK (0 loi input), ket trinh duoi lich su gia ngan (< 2000 phien); P/B hien la \"—\", khong bia so.",
+    "Lag ngay cong bo 75/45 la gia dinh (equity CSV khong co created_date), khong phai ngay cong bo that.",
+    "Day la ban trinh de doc, khong phai khuyen nghi mua/ban."
+  ]
+}

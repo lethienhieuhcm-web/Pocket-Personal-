@@ -371,6 +371,23 @@
 <div class="card"><div class="flowwrap"><table><thead id="mbTableHead"></thead><tbody id="mbTableBody"><tr><td colspan="7"><div class="hint">Đang tải…</div></td></tr></tbody></table></div></div>
 <div class="note" id="mbNote"></div>
 </div>
+
+<!-- ===== MAN CTG + 28 MA NGAN HANG (P5 module js/stocks/ctg.js, doc ban
+     cong bo tinh ctg-banks.json). Khong nam trong GATED — tab free. Khong
+     dung vao bieu do / poll / so lenh / dong tien. ===== -->
+<div class="view" id="v-ctg">
+<div class="hdr"><a href="/hub" class="pp-back" style="text-decoration:none;font-size:20px" title="Về Pocket Personal" aria-label="Về Pocket Personal">‹</a><h1 id="ctgSrc">CTG & ngân hàng</h1><span class="src" id="ctgHead"></span></div>
+<div class="pagebar" id="ctgTabs"></div>
+<div class="sec" id="ctgCtgT"></div>
+<div id="ctgCtg"><div class="hint">Đang tải…</div></div>
+<div class="sec" id="ctgPubT"></div>
+<div class="card"><table><thead id="ctgPubHead"></thead><tbody id="ctgPubBody"><tr><td colspan="9"><div class="hint">Đang tải…</div></td></tr></tbody></table></div>
+<div class="sec" id="ctgBlockT"></div>
+<div class="card"><table><thead id="ctgBlockHead"></thead><tbody id="ctgBlockBody"><tr><td colspan="7"><div class="hint">Đang tải…</div></td></tr></tbody></table><div class="note" id="ctgBlockNote"></div></div>
+<div class="sec" id="ctgDecT"></div>
+<div id="ctgDec"></div>
+<div id="ctgNotes"></div>
+</div>
 <script>
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
@@ -387,7 +404,7 @@ async function api(p){
   return r.json();
 }
 // Nav pill trên đầu — theo mockup
-const NAV=[["v-market","Thị trường"],["v-screen","Sàng lọc"],["v-consensus","Đồng thuận"],["v-holders","Cổ đông"],["v-sectors","Ngành"],["v-margin","Margin"],["v-foreign","Khối ngoại"],["v-prop","Tự doanh"],["v-flow","Dòng tiền"],["v-alert","Cảnh báo"],["v-mine","Của tôi"],["v-chat","AI Chat"]];
+const NAV=[["v-market","Thị trường"],["v-screen","Sàng lọc"],["v-consensus","Đồng thuận"],["v-holders","Cổ đông"],["v-sectors","Ngành"],["v-ctg","CTG & ngân hàng"],["v-margin","Margin"],["v-foreign","Khối ngoại"],["v-prop","Tự doanh"],["v-flow","Dòng tiền"],["v-alert","Cảnh báo"],["v-mine","Của tôi"],["v-chat","AI Chat"]];
 const NAVLBL=Object.fromEntries(NAV);
 // Trang lien ket (Chot 08:41 + phan hoi 09:06 22/10): bo thanh tab
 // chen chuc; trang Thi truong la muc luc cac muc, trang con chi co
@@ -453,6 +470,7 @@ const VIEW_LOADERS={
   "v-consensus":()=>loadStockMod("/english/js/stocks/consensus.js?v=__BUILD__",function(){ return typeof window.loadConsensus==="function"; },function(){ window.loadConsensus(); }),
   "v-holders":()=>loadStockMod("/english/js/stocks/holders.js?v=__BUILD__",function(){ return typeof window.loadHolders==="function"; },function(){ window.loadHolders(); }),
   "v-sectors":()=>loadStockMod("/english/js/stocks/sectors.js?v=__BUILD__",function(){ return typeof window.loadSectors==="function"; },function(){ window.loadSectors(); }),
+  "v-ctg":()=>loadStockMod("/english/js/stocks/ctg.js?v=__BUILD__",function(){ return typeof window.loadCtg==="function"; },function(){ window.loadCtg(); }),
   "v-margin":()=>loadStockMod("/english/js/stocks/margin.js?v=__BUILD__",function(){ return typeof window.loadMargin==="function"; },function(){ window.loadMargin(); }),
   "v-foreign":()=>loadStockMod("/english/js/stocks/flow.js?v=__BUILD__",function(){ return typeof window.loadForeign==="function"; },function(){ window.loadForeign(); }),
   "v-prop":()=>loadStockMod("/english/js/stocks/flow.js?v=__BUILD__",function(){ return typeof window.loadProp==="function"; },function(){ window.loadProp(); }),
@@ -483,10 +501,10 @@ function go(v){
   document.querySelectorAll(".view").forEach(s=>s.classList.remove("on"));
   $(v).classList.add("on");window.scrollTo(0,0);
   $("aiFab").style.display=(v==="v-chat")?"none":"";
-  ["mainTabs","screenTabs","consTabs","holdTabs","secTabs","marginTabs","foreignTabs","propTabs","flowTabs","alertTabs","mineMainTabs","chatTabs"].forEach(e=>{if($(e))buildNav(e,v);});
+  ["mainTabs","screenTabs","consTabs","holdTabs","secTabs","ctgTabs","marginTabs","foreignTabs","propTabs","flowTabs","alertTabs","mineMainTabs","chatTabs"].forEach(e=>{if($(e))buildNav(e,v);});
   const _vl=VIEW_LOADERS[v]; if(_vl)_vl();
 }
-["mainTabs","screenTabs","consTabs","holdTabs","secTabs","alertTabs","mineMainTabs","chatTabs"].forEach(e=>{if($(e))buildNav(e,"v-market");});
+["mainTabs","screenTabs","consTabs","holdTabs","secTabs","ctgTabs","alertTabs","mineMainTabs","chatTabs"].forEach(e=>{if($(e))buildNav(e,"v-market");});
 document.querySelectorAll("#mineTabs .tab").forEach(t=>t.onclick=()=>{
   document.querySelectorAll("#mineTabs .tab").forEach(x=>x.classList.remove("on"));t.classList.add("on");
   ["mPort","mJournal","mRisk","mSettings"].forEach(k=>$(k).style.display="none");
@@ -553,10 +571,10 @@ function fmtTyAbs(v){
 }
 
 const LANGS = {
-  vi: {market:"Thị trường",screen:"Sàng lọc",cons:"Đồng thuận",hold:"Cổ đông",sec:"Ngành",margin:"Margin",foreign:"Khối ngoại",prop:"Tự doanh",flow:"Dòng tiền",alert:"Cảnh báo",mine:"Của tôi",chat:"AI Chat",send:"Gửi",askPh:"Hỏi về cổ phiếu…"},
-  en: {market:"Market",screen:"Screener",cons:"Consensus",hold:"Shareholders",sec:"Sectors",margin:"Margin",foreign:"Foreign",prop:"Proprietary",flow:"Money flow",alert:"Alerts",mine:"Mine",chat:"AI Chat",send:"Send",askPh:"Ask about stocks…"},
-  zh: {market:"市场",screen:"筛选",cons:"共识",hold:"股东",sec:"行业",margin:"融资余额",foreign:"外资",prop:"自营",flow:"资金流",alert:"提醒",mine:"我的",chat:"AI Chat",send:"发送",askPh:"询问股票…"},
-  ko: {market:"시장",screen:"스크리너",cons:"컨센서스",hold:"주주",sec:"업종",margin:"신용융자 잔고",foreign:"외국인",prop:"자기매매",flow:"자금 흐름",alert:"알림",mine:"내 정보",chat:"AI Chat",send:"보내기",askPh:"주식에 대해 질문…"}
+  vi: {market:"Thị trường",screen:"Sàng lọc",cons:"Đồng thuận",hold:"Cổ đông",sec:"Ngành",ctg:"CTG & ngân hàng",margin:"Margin",foreign:"Khối ngoại",prop:"Tự doanh",flow:"Dòng tiền",alert:"Cảnh báo",mine:"Của tôi",chat:"AI Chat",send:"Gửi",askPh:"Hỏi về cổ phiếu…"},
+  en: {market:"Market",screen:"Screener",cons:"Consensus",hold:"Shareholders",sec:"Sectors",ctg:"CTG & banks",margin:"Margin",foreign:"Foreign",prop:"Proprietary",flow:"Money flow",alert:"Alerts",mine:"Mine",chat:"AI Chat",send:"Send",askPh:"Ask about stocks…"},
+  zh: {market:"市场",screen:"筛选",cons:"共识",hold:"股东",sec:"行业",ctg:"CTG 与银行",margin:"融资余额",foreign:"外资",prop:"自营",flow:"资金流",alert:"提醒",mine:"我的",chat:"AI Chat",send:"发送",askPh:"询问股票…"},
+  ko: {market:"시장",screen:"스크리너",cons:"컨센서스",hold:"주주",sec:"업종",ctg:"CTG·은행",margin:"신용융자 잔고",foreign:"외국인",prop:"자기매매",flow:"자금 흐름",alert:"알림",mine:"내 정보",chat:"AI Chat",send:"보내기",askPh:"주식에 대해 질문…"}
 };
 let curLang = (localStorage.getItem("elab_uiLang") || localStorage.getItem("stk_lang") || "vi").replace(/"/g, "");
 if(!["vi","en","zh","ko"].includes(curLang)) curLang = "vi";
@@ -584,15 +602,16 @@ function setStkLang(l){
   try{ localStorage.setItem("elab_uiLang", l); }catch(e){}
   localStorage.setItem("stk_lang", l);
   const L = LANGS[curLang];
-  NAVLBL["v-market"] = L.market; NAVLBL["v-screen"] = L.screen; NAVLBL["v-consensus"] = L.cons; NAVLBL["v-holders"] = L.hold; NAVLBL["v-sectors"] = L.sec;
+  NAVLBL["v-market"] = L.market; NAVLBL["v-screen"] = L.screen; NAVLBL["v-consensus"] = L.cons; NAVLBL["v-holders"] = L.hold; NAVLBL["v-sectors"] = L.sec; NAVLBL["v-ctg"] = L.ctg;
   NAVLBL["v-alert"] = L.alert; NAVLBL["v-mine"] = L.mine; NAVLBL["v-margin"] = L.margin; NAVLBL["v-foreign"] = L.foreign; NAVLBL["v-prop"] = L.prop; NAVLBL["v-flow"] = L.flow;
-  ["mainTabs","screenTabs","consTabs","holdTabs","secTabs","marginTabs","foreignTabs","propTabs","flowTabs","alertTabs","mineMainTabs","chatTabs"].forEach(e=>{if($(e))buildNav(e, document.querySelector(".view.on")?.id || "v-market");});
+  ["mainTabs","screenTabs","consTabs","holdTabs","secTabs","ctgTabs","marginTabs","foreignTabs","propTabs","flowTabs","alertTabs","mineMainTabs","chatTabs"].forEach(e=>{if($(e))buildNav(e, document.querySelector(".view.on")?.id || "v-market");});
   syncLangUI();
   applyLang();
   translateDOM();
   refreshSrc();
   if(typeof window.renderRegime==="function") window.renderRegime();
   if($("v-flow") && $("v-flow").classList.contains("on") && window.__fsTest && typeof window.__fsTest.rerender==="function") window.__fsTest.rerender();
+  if($("v-ctg") && $("v-ctg").classList.contains("on") && window.__ctgTest && typeof window.__ctgTest.rerender==="function") window.__ctgTest.rerender();
   if($("v-market") && $("v-market").classList.contains("on")){ if(typeof window.renderMarketTotals==="function") window.renderMarketTotals(); if(typeof window.renderMarketOverview==="function") window.renderMarketOverview(); }
   if($("v-market") && $("v-market").classList.contains("on") && window.__wlTest && typeof window.__wlTest.rerender==="function") window.__wlTest.rerender();
   if(window._caData) window.renderCA(window._caData);
