@@ -203,14 +203,17 @@ def index_snapshot(symbols):
     try:
         import index_guard
         rows = index_guard.apply_index_guard(rows, now=now_ict)
-    except Exception as e:  # noqa: BLE001 — fail-open, khong chet lane
-        print(f"[router:index] guard loi (fail-open): {str(e)[:150]}",
-              flush=True)
-        for r in rows:
-            r.pop("_date_mismatch", None)
-            r.setdefault("stale", False)
-            r.setdefault("age_s", None)
-            r.setdefault("suspect", False)
+    except Exception as e:  # noqa: BLE001 — fail-open for AVAILABILITY,
+        # never for EVIDENCE. (F4, IMPL-PLAN B1.) Before index_guard.py
+        # shipped, this branch was the ONLY path taken: it popped
+        # `_date_mismatch` and setdefault `stale=False`, re-tagging dead
+        # index snapshots as fresh and deleting the mismatch marker. Now
+        # it logs ONLY — the router keeps whatever `_normalize_index_dates`
+        # already set (null change/pct + `_date_mismatch`), so a guard
+        # failure degrades availability but cannot erase the evidence the
+        # read-side gate (stock.js applyStaleGate) re-derives by date.
+        print(f"[router:index] index_guard loi (fail-open, GIU _date_mismatch"
+              f" + khong dat stale=False): {str(e)[:150]}", flush=True)
     return rows, src
 
 

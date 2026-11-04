@@ -17,6 +17,14 @@ resume=False, publish 30s. Do tai trong phien: CPU/RAM container (cgroup
 + getrusage), tre publish moi chu ky, toc do match, hien tuong dong bang
 (log obs moi chu ky + tom tat cuoi phien). LAT LIVE CHI SAU KHI XEM SO DO
 (cho lenh rieng) — file nay khong bao gio tu lat live.
+
+F14 (IMPL-PLAN B1, 04/11) — LICH SU DO LAY: ban bong nay dung mang FIELD_MAP
+"dnse" cua GĐ0 (f13=day_low, f22=atc_volume, f58/f59=*_value_matched) ma da
+bi lui ve mapping CU (f13=last, f22=total_volume, f58/f59=buy_value/sell_value,
+verified=True) — dung cai thu ma tests/test_field_map_dnse.py sinh ra de cam.
+Nay da align lai 1-1 voi ban main. LUU Y: du lieu crosscheck/parity cua ban
+bong TINH THEO mapping CU truoc doi khong con so sanh duoc sau doi — doi chieu
+chi tin tu phien dau tien chay bang mapping moi tro di.
 """
 import modal
 
@@ -99,15 +107,20 @@ SRC_PRIORITY = ["dnse", "kbs", "vndirect", "vps", "vci", "ssi-mqtt"]
 # _gate_value (2 lop: gate_snap_fields tai adapter + Aggregator).
 FIELD_MAP = {
     "dnse": {
-        "total_volume": ("stockinfo f22", 10, False),   # dinh danh lai
+        # F14 (IMPL-PLAN B1): align sang main `tick_collector.py:223-235`.
+        # GĐ0 30/10 (probe + doi chieu that): f13=day-low, f22=ATC-bucket,
+        # f58/f59=matched-only. Ban bong truoc day ship DUNG cai mapping CU
+        # (last/total_volume/buy_value/sell_value) ma tests/test_field_map_dnse.py
+        # sinh ra de cam — nay doi chieu 1-1 voi ban main.
+        "atc_volume": ("stockinfo f22", 10, False),
         "total_value": ("stockinfo f25", 10**9, False),
         "buy_volume": ("stockinfo f17", 10, True),
-        "buy_value": ("stockinfo f58", 10**9, True),
+        "buy_value_matched": ("stockinfo f58", 10**9, False),
         "sell_volume": ("stockinfo f18", 10, True),
-        "sell_value": ("stockinfo f59", 10**9, True),
+        "sell_value_matched": ("stockinfo f59", 10**9, False),
         "room": ("stockinfo f20", 10, False),           # sentinel GVR
         "total_room": ("stockinfo f60", 10, False),
-        "last": ("stockinfo f13", 1, True),
+        "day_low": ("stockinfo f13", 1, False),
     },
     "ssi-mqtt": {
         "total_volume": ("snapshot nmTotalTradedQty", 1, False),
@@ -159,9 +172,13 @@ FIELD_MAP = {
     },
 }
 
-# Truong so luong phai qua cong hop le (don vi CP/dong sau scale)
-QTY_FIELDS = ("total_volume", "total_value", "buy_volume", "buy_value",
-              "sell_volume", "sell_value", "room", "total_room")
+# Truong so luong phai qua cong hop le (don vi CP/dong sau scale) — F14:
+# align danh sach nay voi ban main `tick_collector.py:288-290` (them
+# atc_volume/buy_value_matched/sell_value_matched; giu total_volume/buy_value/
+# sell_value vi cac nguon khac (ssi-mqtt/vci) van phat ten do).
+QTY_FIELDS = ("total_volume", "atc_volume", "total_value", "buy_volume", "buy_value",
+              "buy_value_matched", "sell_volume", "sell_value",
+              "sell_value_matched", "room", "total_room")
 # Chan tren tuyet doi: vuot = sentinel/thieu du lieu (vd 2^64 qua
 # float). 2^62 du lon cho moi KL/GD hop le cua 1 ma trong 1 phien.
 ABSURD_CAP = 2 ** 62
@@ -785,13 +802,14 @@ class DnseAdapter:
                     sym = topic.rsplit("/", 1)[-1]
                 self.agg.on_snapshot(self.name, sym,
                     gate_snap_fields(self.name, {
-                    "last": self._num(m, "f13"),
-                    "total_volume": self._num(m, "f22", 10),
+                    # F14: phat ten truong GĐ0 (khop ban main :1120-1128).
+                    "day_low": self._num(m, "f13"),
+                    "atc_volume": self._num(m, "f22", 10),
                     "total_value": self._num(m, "f25", 10**9),
                     "buy_volume": self._num(m, "f17", 10),
-                    "buy_value": self._num(m, "f58", 10**9),
+                    "buy_value_matched": self._num(m, "f58", 10**9),
                     "sell_volume": self._num(m, "f18", 10),
-                    "sell_value": self._num(m, "f59", 10**9),
+                    "sell_value_matched": self._num(m, "f59", 10**9),
                     "room": self._num(m, "f20", 10),
                     "total_room": self._num(m, "f60", 10),
                     }, self.agg.gate_stats))

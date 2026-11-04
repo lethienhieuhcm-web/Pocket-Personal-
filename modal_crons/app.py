@@ -14,6 +14,11 @@ NHAP BUOC 2 (01/11, board-vci-wiring): +1 ham `stock_snapshot` tren stock_image
   — consumer DAU TIEN goi bundle /opt/direct_fetch.py (vnd_index_snapshot +
   vci_symbols). CHUA hen lich, CHUA deploy; xem work/CONSUMER_SPEC.md.
   (P0 02/11 da hen lich */5 trong gio phien cho stock_snapshot.)
+  (F5 / CUT OVER 03-04/11: stock_snapshot KHONG con lich tren Modal nua —
+   da thu thuoc LightVela (modal_crons/cron_jobs.py + crontab.txt). Modal
+   schedule verified EMPTY (chi book_processor + d1_backup) via `cat Modal`
+   04/11; REEVAL §1.2. Dong "lich */5 tren Modal" o tren la CU, giu lai de
+   doc lich su thoi.)
 
 PA-3a (02/11): +1 ham `publish_ohlcv_daily` tren stock_image — EOD
   15:15 ICT (08:15 UTC) T2-T6, chi phat lane `ohlcv` (nen ngay cho
@@ -57,6 +62,11 @@ stock_image = (
     # nam cung choi direct_fetch.py tren duong /opt de `from direct_fetch
     # import ...` ben trong ham router tim thay module.
     .add_local_file("./source_router.py", "/opt/source_router.py")
+    # F4 (IMPL-PLAN B1): source_router.index_snapshot `import index_guard`
+    # (dong 204). File nay phai nam cung choi /opt giong router; truoc day
+    # no KHONG co trong image -> import luon that -> nhanh fail-open xoa
+    # bang chung stale. Ship no vao image la mot nua cua ban fix.
+    .add_local_file("./index_guard.py", "/opt/index_guard.py")
     # DOI CHIEU FINHAY (TASK muc 1): 2 file nay nam canh app.py trong modal_crons/,
     # duoc nap len /opt giong direct_fetch.py. Cross-check chi DOC gia, khong ghi
     # vao quotes cua lane realtime.

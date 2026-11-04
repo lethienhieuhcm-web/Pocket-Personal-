@@ -10,10 +10,22 @@ FINHAY_DATA_DIR=/home/agentuser/modal-crons/data
 # chay som hon, 09:00 sat gio giao dich qua). Pre-session runs are safe:
 # ohlcv intraday posts KBS candles (no today overlay yet) / skips if empty;
 # finhay crosscheck is read-only, compares yesterday close (tested 22:05 ok).
-*/15 9-15 * * 1-5 /home/agentuser/modal-crons/venv/bin/python /home/agentuser/modal-crons/cron_jobs.py ohlcv --mode intraday >> /home/agentuser/modal-crons/logs/ohlcv_intraday.log 2>&1
+# F5b (IMPL-PLAN B1): ohlcv intraday duoc mo 9-15 -> 9-16 (last fire 16:45 CST
+# = 15:45 ICT) de phu gio dong cua phien 14:45-15:00 ICT; post-session fires
+# an toan nhu note tren. finhay_crosscheck giu 9-15 (read-only, can doi chieu
+# luc dong qua). Snapshot */5 cung mo toi gio 16 (last useful 16:00 = 15:00 ICT).
+*/15 9-16 * * 1-5 /home/agentuser/modal-crons/venv/bin/python /home/agentuser/modal-crons/cron_jobs.py ohlcv --mode intraday >> /home/agentuser/modal-crons/logs/ohlcv_intraday.log 2>&1
 */15 9-15 * * 1-5 /home/agentuser/modal-crons/venv/bin/python /home/agentuser/modal-crons/cron_jobs.py finhay_crosscheck >> /home/agentuser/modal-crons/logs/finhay_crosscheck.log 2>&1
-# PENDING cutover (still on Modal v32 — do NOT enable here until Modal stops them):
-*/5 9-15 * * 1-5 /home/agentuser/modal-crons/venv/bin/python /home/agentuser/modal-crons/cron_jobs.py stock_snapshot >> /home/agentuser/modal-crons/logs/stock_snapshot.log 2>&1
+# CUT OVER 03-04/11 (F5, IMPL-PLAN B1): stock_snapshot + ohlcv-eod ben duoi
+# DA co MOT owner o day (LightVela). Modal schedule verified EMPTY qua
+# `cat Modal` 04/11 — chi con book_processor + d1_backup (app.py header).
+# Chu "PENDING cutover / still on Modal v32" la CU (REEVAL §1.2). DO NOT
+# comment :16-17 out — do la ZERO owner lane snapshot + EOD, quotes.json
+# dong giua phien. cron_jobs.py bay gio co flock singleton per job (bao
+# hiem cho mot cutover tuong lai lap lai hai runtime cung goi 1 job).
+# F4: index_guard.py + source_router.py + cron_jobs.py phai duoc COPY THU
+CONG sang /home/agentuser/modal-crons (khong co CI tu dong hoa; xem REPORT).
+*/5 9-16 * * 1-5 /home/agentuser/modal-crons/venv/bin/python /home/agentuser/modal-crons/cron_jobs.py stock_snapshot >> /home/agentuser/modal-crons/logs/stock_snapshot.log 2>&1
 15 16 * * 1-5 /home/agentuser/modal-crons/venv/bin/python /home/agentuser/modal-crons/cron_jobs.py ohlcv --mode eod >> /home/agentuser/modal-crons/logs/ohlcv_eod.log 2>&1
 # MAINTENANCE STAYS ON MODAL (Henrry Chot 21:28 03/11) - do NOT enable here:
 # 0 18 * * * .../cron_jobs.py maintenance --mode books  (17:00 ICT = 18:00 CST)

@@ -934,6 +934,41 @@ def _run_finhay_crosscheck():
     return 0
 
 
+_LOCK_KEEPALIVE = []
+
+
+def _acquire_job_lock(job):
+    """flock-style singleton per job name (F5, IMPL-PLAN B1).
+
+    Hom nay LightVela la owner DUY NHAT cua moi job nen day chi la no-op.
+    Muc dich: bao hiem cho mot cutover tuong lai khi hai runtime (Modal +
+    LightVela) cung goi 1 lane — ngan hai process ghi de quotes.json /
+    phien ban cua nhau (lost-update). Non-blocking:
+
+      - tra ve file handle dang GIU LOCK → chay job thong thuong (fd duoc
+        giu trong _LOCK_KEEPALIVE den khi process thoat, flock tu dong
+        Release khi dong file/diet process);
+      - tra "BUSY" → mot instance khac dang chay, bo qua luot nay;
+      - tra None → khong thiet lap duoc lock (khong co thu muc / quyen).
+        FAIL-OPEN: van chay job — freeze lane con hai hon chen lant, va
+        hom nay lock chi la bao hiem nen that bai cap lock khong duoc
+        dung du lieu."""
+    import fcntl
+    lock_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".locks")
+    try:
+        os.makedirs(lock_dir, exist_ok=True)
+        fh = open(os.path.join(lock_dir, f"{job}.lock"), "w")
+    except OSError:
+        return None
+    try:
+        fcntl.flock(fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        fh.close()
+        return "BUSY"
+    _LOCK_KEEPALIVE.append(fh)
+    return fh
+
+
 def main(argv=None):
     import argparse
     ap = argparse.ArgumentParser(
@@ -946,6 +981,13 @@ def main(argv=None):
     m.add_argument("--mode", choices=["books", "backup"], required=True)
     sub.add_parser("finhay_crosscheck")
     args = ap.parse_args(argv)
+
+    lock = _acquire_job_lock(args.job)
+    if lock == "BUSY":
+        print(f"[cron_jobs] {args.job}: mot instance khac dang giu flock, "
+              f"bo qua luot chay nay (tranh ghi de cua hai runtime)",
+              flush=True)
+        return 0
 
     if args.job == "stock_snapshot":
         _load_publish_secret()
