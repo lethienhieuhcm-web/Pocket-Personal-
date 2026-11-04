@@ -39,8 +39,14 @@
    * qua SILENT_ESCALATE_MS khong co frame hop le -> coi duong du lieu CHET
    * (khong phai thi truong im): do -> onBreak (thang Ably), ably -> poll.
    * Ngoai phien (dem/T7/TCN) van giu hanh vi P1-4: "quiet" la dung.
-   * Ghi de: ?ingesc=<giay> (0 = tat) — test cu cua P1-4 van chay duoc. */
-  var SILENT_ESCALATE_MS = 120 * 1000;
+   * Ghi de: ?ingesc=<giay> (0 = tat) — test cu cua P1-4 van chay duoc.
+   * Do phien 04/11 (evidence-ably-cadence.txt, 600s nam ben kenh `market`):
+   * 508 frame ve thanh 6 DOT (48–103 ma/dot), gap thuc đo 8/41/126/133/134s
+   * — 80% vuot 30s, 60% vuot 120s. Nguon KHONG phat deu tay theo giay, nen
+   * nguong 120s NGAN HON nhip binh thuong: duong du phong bi pha truoc kip
+   * nhan dot ke tiep. Nang len 180s (> max 134s, van < DATA_STALE_MS 300s)
+   * de nguong bat cat ngat that, khong phai nhip cua nguon. */
+  var SILENT_ESCALATE_MS = 180 * 1000;
   /* (f) SEQ THEO NGAY PHIEN: phong DO ten "market-<YYYYMMDD>" — moi ngay
    * seq BAT DAU LAI TU 1 (va DO evict trong ngay cung restart — ben worker
    * phai luu lastSeq, xem market-room.js). lastSeq cua client luu trong
@@ -534,7 +540,13 @@
     linkAliveAt = Date.now();
     clearTimeout(linkTimer);
     linkTimer = setTimeout(function(){
-      if(Date.now() - linkAliveAt >= HB_LINK_DEAD_MS) onBreak(path, "khong hb >" + Math.round(HB_LINK_DEAD_MS / 1000) + "s");
+      if(Date.now() - linkAliveAt < HB_LINK_DEAD_MS) return;
+      /* Duong Ably khong phat `hb` nhu DO — do sang bang chinh trang thai
+       * cua no (connected + attached). Neu khong, mot DOT frame cach nhau
+       * 126–134s (nhip thuc cua nguon, do 600s: evidence-ably-cadence.txt)
+       * bi gan toi thanh "link chet >70s" va pha ket noi tru dot ke tiep. */
+      if(path === "ably" && ablyAlive()){ markLinkAlive(); return; }
+      onBreak(path, "khong hb >" + Math.round(HB_LINK_DEAD_MS / 1000) + "s");
     }, HB_LINK_DEAD_MS);
   }
   /* P1-4: client gui ping ~25s khi socket DO mo (DO tra hb -> link song). */
@@ -664,9 +676,18 @@
     // P1-4: watchdog 30s chi lap khi handshake CHUA xong. Duong DO da
     // handshake (nb {t:"ok"} + hb ~30s) ma chua co duoc = thi truong YEN
     // LANG, khong phai dut -> khong duoc pha socket (armSilence se doi
-    // nhan "quiet"). Ably khong co hb -> giu nguyen hanh vi cu.
+    // nhan "quiet").
+    // Fix stream 04/11 — nhan "Ably khong co hb -> giu nguyen hanh vi cu"
+    // la NGUYEN NHAN duong du phong bi pha truoc kip giao frame: watchdog
+    // dem bang gotFrame, ma gotFrame chi to khi DOT frame ke tiep toi; duong
+    // Ably attach xong trong ~1s nhung dot frame lai cach 8–134s -> bi
+    // "khong noi duoc sau 30s" pha, mo lai, lai bi pha, khong bao gio co
+    // frame (chung minh 04/11: mode=poll path=ably lastSeq=0 gotFrame=0
+    // err=8 = 4 lan cascade do->ably->poll). Voi Ably, bang chung "noi duoc"
+    // la attached (ablyAlive()), KHONG phai "da co duoc".
     connectTimer = setTimeout(function(){
       if(p === "do" && handshaked) return;
+      if(p === "ably" && ablyAlive()) return;
       if(!gotFrame) onBreak(p, "khong noi duoc sau 30s");
     }, CONNECT_MS);
   }
@@ -751,6 +772,19 @@
   }
 
   /* ---------- Duong Ably ---------- */
+  /* Ably khong phat `hb` rieng nhu duong DO: bang chung "duong van song" la
+   * chinh trang thai no — connection=connected va kenh=attached. Ably tu do
+   * tim hop va tu phat hien cat ngat; moi mat ket noi that da co handler
+   * failed/suspended/disconnected trong connectAbly bao. Ham nay dung de
+   * chan watchdog: khong duoc coi "dot frame chua toi" la "duong chet" — do
+   * nhip publish 04/11, frame ve theo DOT cach nhau toi 134s
+   * (evidence-ably-cadence.txt), trong khi watchdog dem 30s/70s/120s. */
+  function ablyAlive(){
+    try{
+      return !!(ablyClient && ablyClient.connection && ablyClient.connection.state === "connected" &&
+                ablyChannel && ablyChannel.state === "attached");
+    }catch(e){ return false; }
+  }
   function fetchTokenDetails(ch){
     return fetch("/api/ably-token?channel=" + encodeURIComponent(ch), {
       method: "POST",

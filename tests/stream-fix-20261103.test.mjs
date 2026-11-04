@@ -44,10 +44,10 @@ function check(name, cond, extra){
   check("S6 thu bay 10:00 ICT = ngoai phien", U.inTradingSession(sat + (10-7)*3600e3) === false);
   check("S7 input nan -> false", U.inTradingSession(NaN) === false && U.inTradingSession(undefined) === false);
 
-  check("S8 escalate mac dinh 120s", U.escalateMsFrom("") === 120000);
+  check("S8 escalate mac dinh 180s", U.escalateMsFrom("") === 180000);
   check("S9 ?ingesc=0 tat thang cap", U.escalateMsFrom("?ingesc=0") === 0);
   check("S10 ?ingesc=30 -> 30s", U.escalateMsFrom("?a=1&ingesc=30") === 30000);
-  check("S11 ?ingesc=abc -> mac dinh", U.escalateMsFrom("?ingesc=abc") === 120000);
+  check("S11 ?ingesc=abc -> mac dinh", U.escalateMsFrom("?ingesc=abc") === 180000);
 
   const now = tue;
   check("S12 trong phien + im 130s -> can thang cap", U.needEscalate(now, now - 130000, 120000) === true);
@@ -168,15 +168,15 @@ function makeTimers(start){
       sockets[sockets.length - 1]._emit({ t: "hb", ts: timers.now(), srv_ts: timers.now() });
     }
   }
-  hbUntil(T0 + 115000);
-  check("E2b 115s im lang = DUOI nguong -> chua doi duong", ablyCtor.length === 0 && sockets.length === 1 && api.mode() === "do", { n: sockets.length, mode: api.mode() });
-  timers.advance(6000); // cham nguong 120s (khong co hb nua — thang cap noi len TRUOC)
-  check("E3 im lang >120s TRONG phien -> duong do bi coi la chet, DO thu lai (socket 2)", ablyCtor.length === 0 && sockets.length === 2 && ws.closedByClient === true, { n: sockets.length, ably: ablyCtor.length });
+  hbUntil(T0 + 175000);
+  check("E2b 175s im lang = DUOI nguong -> chua doi duong", ablyCtor.length === 0 && sockets.length === 1 && api.mode() === "do", { n: sockets.length, mode: api.mode() });
+  timers.advance(6000); // cham nguong 180s (khong co hb nua — thang cap noi len TRUOC)
+  check("E3 im lang >180s TRONG phien -> duong do bi coi la chet, DO thu lai (socket 2)", ablyCtor.length === 0 && sockets.length === 2 && ws.closedByClient === true, { n: sockets.length, ably: ablyCtor.length });
   // Cac lan retry roi van hb-deu-khong-frame (dung nhu 03/11) -> thang sang Ably.
   for(let round = 0; round < 6 && ablyCtor.length === 0; round++){
     const cur = sockets[sockets.length - 1];
     if(cur.readyState === 0){ cur._open(); cur._emit({ t: "ok", ro: true }); cur._emit({ t: "subbed" }); }
-    hbUntil(T0 + 121000 + 135000 * (round + 1));
+    hbUntil(T0 + 181000 + 195000 * (round + 1));
   }
   check("E4 DO van im lang -> thang sang ABLY (duong du phong)", ablyCtor.length >= 1, { ably: ablyCtor.length, sockets: sockets.length });
   check("E5 Ably dung authCallback lay token tu /api/ably-token", typeof ablyCtor[0].authCallback === "function");
