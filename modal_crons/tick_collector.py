@@ -2686,9 +2686,29 @@ async def _collect(max_minutes=0):
         # tiep se khong co dirty cho ma khong phat sinh tick moi;
         # chap nhan duoc vi tape la du lieu hien thi, khong phai
         # artifact kiem toan).
+        # (6) 503/1102 — day la BATCH LO That cua lane nay (khong phai
+        # intraday, da chunk 10 tu truoc): MOT lenh POST nay chua toi 78
+        # ma x 1000 lenh ≈ 2.7 MB (do 04/11, xem REPORT) va Worker phai
+        # chay 78 R2 PUT trong CUNG mot request → vuot tran CPU (1102) la
+        # ca chunk chet den, tape dong bang ca nhom (cohort 13 ma/5 ma
+        # phien 04/11). Chunk 10 ma/POST (bang nguong intraday): mot lan
+        # 1102 chi blackout toi da 10 ma, cac chunk con van vao R2, va ma
+        # bi loi duoc dat dirty lai → chu ky 30s sau gui lai.
         tape = agg.build_tape()
-        if tape:
-            await asyncio.to_thread(publish, {"tape": tape}, "multi")
+        TAPE_CHUNK = 10
+        tkeys = sorted(tape.keys())
+        for i in range(0, len(tkeys), TAPE_CHUNK):
+            ck = tkeys[i:i + TAPE_CHUNK]
+            chunk = {k: tape[k] for k in ck}
+            try:
+                await asyncio.to_thread(publish, {"tape": chunk}, "multi")
+            except Exception as e:  # noqa: BLE001
+                print(f"[tick-multi] tape chunk loi ({len(ck)} ma): "
+                      f"{str(e)[:150]}", flush=True)
+                for k in ck:
+                    rec = agg.tape.get(k)
+                    if rec is not None:
+                        rec["dirty"] = True   # gui lai chu ky toi
         # Publish xong moi xoa dirty: POST loi giua chung -> dirty
         # con nguyen, chu ky sau gui lai (Worker merge idempotent,
         # intraday ghi de theo ma). Xoa truoc POST se lam mat

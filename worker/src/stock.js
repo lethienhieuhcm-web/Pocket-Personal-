@@ -53,6 +53,48 @@ export async function cachedMarket(request, env, key, ttlSec=300){
   return resp;
 }
 
+// (503/1102 §5.1) Edge cache cho handler PHAI TINH — cachedMarket o tren chi
+// passthrough 1 blob, con day can dua ra Response da tinh xong (screener).
+// Cung URL trong TTL -> CPU chi chay 1 lan/POP, triet tinh phu thuoc tan suat
+// cua 1102 (REPORT: screener khong cache 503 ~75% o ~1 req/s, indices/version
+// cached 0/40). caches khong ton tai (Node test) -> tinh thang, khong 500.
+export async function cachedCompute(request, ttlSec, produce){
+  let cache = null;
+  try{ cache = caches.default; }catch(e){ cache = null; }
+  if(!cache) return produce();
+  const cacheKey = new Request(request.url, {method: "GET"});
+  try{
+    const hit = await cache.match(cacheKey);
+    if(hit) return hit;
+  }catch(e){ /* cache doc loi -> tinh thang */ }
+  const fresh = await produce();
+  if(!fresh || fresh.status !== 200) return fresh;
+  const headers = new Headers(fresh.headers);
+  headers.set("Cache-Control", `public, max-age=${ttlSec}`);
+  const resp = new Response(fresh.body, {status: fresh.status, headers});
+  try{ await cache.put(cacheKey, resp.clone()); }catch(e){ /* ghi cache loi -> van tra du */ }
+  return resp;
+}
+
+// Ghi R2 SONG SONG theo chunk (§5.4). Dung CHO KEY DOC LAP nhau (moi symbol
+// mot file rieng) — phat hanh theo thu tu cu, chi doi CACH CHO, nen thu tu
+// va noi dung ghi khong doi. Read-modify-write CUNG key van phai tuan tu,
+// khong qua day. Loi = fail-fast nhu vong await tuan tu cu (nem loi dau tien,
+// da gom san de khong sinh unhandled rejection).
+export const R2_PUT_CHUNK = 24;
+export async function r2Parallel(jobs, chunkSize){
+  const size = Math.max(1, (chunkSize || R2_PUT_CHUNK) | 0);
+  for(let i = 0; i < jobs.length; i += size){
+    const batch = jobs.slice(i, i + size);
+    const errs = await Promise.all(batch.map(async (run)=>{
+      try{ await run(); return null; }catch(e){ return e; }
+    }));
+    const bad = errs.find(Boolean);
+    if(bad) throw bad;
+  }
+  return jobs.length;
+}
+
 // Put with ETag check (throws on conflict)
 export async function sPutIfMatch(env, key, val, etag){
   const opts = {httpMetadata:{contentType:"application/json"}};
@@ -137,9 +179,23 @@ export function sScoreRows(rows, funds, closes){
 // ngay cua row (indices.time / screener.updated_at) voi NGAY PHIEN hom nay
 // theo gio ICT (UTC+7); row khac ngay -> change/pct_change = null +
 // `stale:true, as_of`. Frontend (market.js/detail.js) in "—", khong NaN.
+// §5.2: MOT instance Intl.DateTimeFormat dung chung ca request (dinh dang
+// Intl la phan dat nhat o V8 — cu moi row mot lan nhu cu). Isolate-scoped,
+// khong trang thai, chi cach tro instance.
+let _ICT_FMT = null;
+function _ictFmt(){
+  if(_ICT_FMT === null){
+    try{ _ICT_FMT = new Intl.DateTimeFormat("en-CA", {timeZone: "Asia/Ho_Chi_Minh"}); }
+    catch(e){ _ICT_FMT = false; }
+  }
+  return _ICT_FMT || null;
+}
+function _ictDateOf(fmt, d){
+  if(!fmt) return d.toISOString().slice(0,10);
+  try{ return fmt.format(d); }catch(e){ return d.toISOString().slice(0,10); }
+}
 function _ictDateNow(){
-  try{ return new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Ho_Chi_Minh"}).format(new Date()); }
-  catch(e){ return new Date().toISOString().slice(0,10); }
+  return _ictDateOf(_ictFmt(), new Date());
 }
 // Lay ngay phien (YYYY-MM-DD theo ICT) tu gia tri ngay thuan or ISO timestamp.
 function _rowDate(r){
@@ -148,8 +204,7 @@ function _rowDate(r){
   const s = String(v);
   if(/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;                 // ngay thuan (indices[].time)
   const dt = new Date(s); if(isNaN(dt)) return null;
-  try{ return new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Ho_Chi_Minh"}).format(dt); }
-  catch(e){ return s.slice(0,10); }
+  return _ictDateOf(_ictFmt(), dt);
 }
 // Dao qua rows: row ngoai ngay phien hom nay -> null hoa change/pct + gan stale.
 function applyStaleGate(rows, today){
@@ -441,25 +496,101 @@ export async function hStockTrades(request, env){
     levels, trades, updated: d.updated});
 }
 
+/* ---------- screener: §5.1 edge-cache + §5.2 doc view da tinh san ----------
+   TTL 60s = gia Tri ban (TASK: nhieu luot goi trong 1 TTL chi tinh CPU 1 lan,
+   do tuoi toi da 60s so voi duong cu). */
+const SCREENER_EDGE_TTL = 60;
+const SCREENER_VIEW_MAX = 2000;   // bang cap cua `all=1` cu -> view = ca universe
+
+// §5.2: sinh san toan bo vong tinh cua screener (enrich fundamentals +
+// foreign net + score O(n^2) + thu tu thanh khoan) TAI PHIA PUBLISH, ghi
+// market/screener_view.json. Read-path chi con sGet + loc/sort nhe + gate.
+// Pipeline trung voi duong cu duoi day (cung thu tu phep).
+export function buildScreenerView(screenerDoc, funds, bySym){
+  const all = ((screenerDoc && screenerDoc.rows) || []).map((r)=>Object.assign({}, r));
+  all.sort((a,b)=>{ const av=a.value_vnd??-1e18, bv=b.value_vnd??-1e18; return bv-av; });
+  const rows = all.slice(0, SCREENER_VIEW_MAX);
+  for(const r of rows){
+    const f = funds[r.symbol], q = bySym[r.symbol];
+    if(f){
+      if(f.eps>0 && r.close) r.pe_ttm = Math.round(r.close*1000/f.eps*100)/100;
+      if(f.bvps>0 && r.close) r.pb = Math.round(r.close*1000/f.bvps*100)/100;
+      if(f.roe!=null) r.roe_ttm = f.roe;
+      r.industry = f.industry ?? null;
+      r.eps = f.eps ?? null; r.bvps = f.bvps ?? null;
+      r.roa = f.roa ?? null; r.net_margin = f.net_margin ?? null;
+      r.debt_to_equity = f.debt_to_equity ?? null;
+      r.altman_z = f.altman_z ?? null; r.piotroski = f.piotroski ?? null;
+    }
+    if(q && q.foreign_buy_value!=null && q.foreign_sell_value!=null)
+      r.foreign_net_value = q.foreign_buy_value - q.foreign_sell_value;
+  }
+  // Score tong hop — pool nhu cu: close >= 10 nghin, top 200 thanh khoan
+  // (tinh tren CA universe, khong phai tap sau loc — dung nghia /screener2).
+  const closes = {};
+  for(const k of Object.keys(bySym)) closes[k] = bySym[k].close;
+  const cand = all.filter(r=>(r.close||0) >= 10)
+    .sort((a,b)=>((b.value_vnd||0)-(a.value_vnd||0))).slice(0,200);
+  const scored = sScoreRows(cand.map(r=>Object.assign({},r)), funds, closes);
+  const scoreBy = {};
+  for(const r of scored) if(r.score!=null) scoreBy[r.symbol] = r.score;
+  for(const r of rows) if(scoreBy[r.symbol]!=null) r.score = scoreBy[r.symbol];
+  return rows;
+}
+
 export async function hStockScreener(request, env){
+  return cachedCompute(request, SCREENER_EDGE_TTL, ()=>_screenerCompute(request, env));
+}
+
+async function _screenerCompute(request, env){
   const u = new URL(request.url);
-  const d = await sGet(env, "market/screener.json");
-  let rows = (d && d.rows) || [];
   const ex = (u.searchParams.get("exchange")||"").toUpperCase();
+  const sort = u.searchParams.get("sort")||"value_vnd", order = u.searchParams.get("order")||"desc";
   const minP = parseFloat(u.searchParams.get("min_pct")), maxP = parseFloat(u.searchParams.get("max_pct"));
   const minV = parseFloat(u.searchParams.get("min_volume")), minVal = parseFloat(u.searchParams.get("min_value"));
+  const outMax = u.searchParams.get("all") ? 2000 : 500;
+  const cut = (rows)=>{
+    let r = rows;
+    if(!isNaN(minP)) r = r.filter(x=>x.pct_change!=null && x.pct_change>=minP);
+    if(!isNaN(maxP)) r = r.filter(x=>x.pct_change!=null && x.pct_change<=maxP);
+    if(!isNaN(minV)) r = r.filter(x=>(x.volume||0)>=minV);
+    if(!isNaN(minVal)) r = r.filter(x=>(x.value_vnd||0)>=minVal);
+    return r;
+  };
+
+  // DUONG NHANH (§5.2): view da enrich + score san. Chi con loc + slice +
+  // cong stale (O(n), 1 Intl ca request). Khong dung khi co `exchange`:
+  // duong cu cham diem theo pool cua tung san, view chi co pool toan thi
+  // truong -> lenh loc san phai qua duong cu (van duoc edge-cache o tren).
+  if(!ex){
+    const v = await sGet(env, "market/screener_view.json");
+    if(v && Array.isArray(v.rows) && v.rows.length){
+      const rows = cut(v.rows);
+      const count = rows.length;
+      // View da xep theo value_vnd desc = mac dinh cua cu -> khoi sort lai.
+      const sorted = (sort === "value_vnd" && order !== "asc")
+        ? rows
+        : [...rows].sort((a,b)=>{ const av=a[sort]??-1e18, bv=b[sort]??-1e18; return order==="asc"? av-bv : bv-av; });
+      const out = sorted.slice(0, outMax);
+      const gate = applyStaleGate(out);
+      return sJson({updated: v.src_updated || v.updated || null,
+        session_date: gate.session_date, stale: gate.stale,
+        stale_count: gate.stale_count, count, rows: out});
+    }
+  }
+
+  // DUONG CU (fallback giai doan chuyen tiep — view chua ton tai): giu
+  // nguyen tung dong nhu base d15188a, khong 500.
+  const d = await sGet(env, "market/screener.json");
+  let rows = (d && d.rows) || [];
   if(ex) rows = rows.filter(r=>(r.exchange||"").toUpperCase()===ex);
   const baseRows = rows; // pool cham diem: chi loc san (nhu screener2 cu)
-  if(!isNaN(minP)) rows = rows.filter(r=>r.pct_change!=null && r.pct_change>=minP);
-  if(!isNaN(maxP)) rows = rows.filter(r=>r.pct_change!=null && r.pct_change<=maxP);
-  if(!isNaN(minV)) rows = rows.filter(r=>(r.volume||0)>=minV);
-  if(!isNaN(minVal)) rows = rows.filter(r=>(r.value_vnd||0)>=minVal);
-  const sort = u.searchParams.get("sort")||"value_vnd", order = u.searchParams.get("order")||"desc";
+  rows = cut(rows);
   rows = [...rows].sort((a,b)=>{ const av=a[sort]??-1e18, bv=b[sort]??-1e18; return order==="asc"? av-bv : bv-av; });
   // Merge fundamentals (pe_ttm/pb/roe_ttm) + foreign net tu quotes vao tung row:
   // truoc day frontend doc cac field nay tu /screener nhung khong ai ghi -> luon "—".
   // all=1: tra toan bo tap da loc (khoi Nhan dinh o client tinh tren tap nay).
-  const out = u.searchParams.get("all") ? rows.slice(0,2000) : rows.slice(0,500);
+  const out = rows.slice(0,outMax);
   try{
     const fd = await sGet(env, "market/fundamentals.json");
     const qt = await sGet(env, "market/quotes.json");
@@ -1763,7 +1894,42 @@ export async function hStockPublish(request, env, url, ctx){
   const put1 = async (key, val)=>{
     if(val===undefined) return;
     await sPut(env, "market/"+key+".json", doc(val));
+    bump(key);                       // (8): ghi dem theo khoa don (indices/quotes/...)
+  };
+  /* (8) INSTRUMENT PUBLISH — REPORT §5.8. Dem moi lan ghi R2 theo NHOM
+     (indices/quotes/tape/...) va theo SYMBOL, in MOT dong tong ket bang
+     console.error kieu `[fanout]`/`ablySendFail` da co trong code -> ra
+     Worker logs. Muc dich: lan sau doi chieu duoc `updated` cua tape voi
+     thoi diem POST fail (cohort 10:48/11:31 phien 04/11). KHONG log secret,
+     token, header auth — chi so dem + nguon tu _prov. */
+  const _pub = {t0: Date.now(), groups: {}, symbols: {}};
+  const bump = (grp, sym)=>{
+    _pub.groups[grp] = (_pub.groups[grp] || 0) + 1;
+    if(sym) _pub.symbols[sym] = (_pub.symbols[sym] || 0) + 1;
     n++;
+  };
+  const pubLog = (tag, extra)=>{
+    const syms = Object.keys(_pub.symbols);
+    const o = {tag, src: (prov && prov.source) || null, written: n,
+      puts: _pub.groups, syms: syms.length,
+      symPuts: syms.length > 200 ? null : _pub.symbols,   // tran dung luong log
+      ms: Date.now() - _pub.t0};
+    if(extra) Object.assign(o, extra);
+    try{ console.error("[publish] " + JSON.stringify(o)); }catch(e){}
+  };
+  /* (4) Vong ghi per-symbol MA KEY DOC LAP nhau (moi symbol mot file
+     rieng): song song theo chunk 24 thay vi `await sPut` tuan tu — REPORT
+     §2.2: N symbol = N subrequest + N stringify trong MUNG request. Thu tu
+     phat hanh giu nguyen, chi doi CACH CHO. Read-modify-write CUNG key
+     (quotes/foreign_flow patch, buckets) KHONG qua day. */
+  const putMany = async (grp, obj, mk, keep)=>{
+    const keys = Object.keys(obj || {}).filter((k)=> !keep || keep(k));
+    if(!keys.length) return;
+    await r2Parallel(keys.map((sym)=> async ()=>{
+      const [key, val] = mk(sym, obj[sym]);
+      await sPut(env, key, doc(val));
+      bump(grp, sym);
+    }));
   };
   // Helpers dung chung cho nhanh chinh + nhanh _ib (lenh Henrry 19:10
   // 28/10): MOT duong code, chi khac key file dau ra. Nhanh _ib la TAM
@@ -1850,7 +2016,7 @@ export async function hStockPublish(request, env, url, ctx){
     const okSyms = syms && syms.length > 0 && syms.every((s)=> typeof s === "string" && s.trim().length > 0);
     const okUniq = okSyms && new Set(syms.map((s)=> s.trim().toUpperCase())).size === syms.length;
     const okDate = /^\d{4}-\d{2}-\d{2}$/.test(String(u.as_of || ""));
-    if(!okSyms || !okUniq || !okDate) return jerr("Bad universe: symbols non-empty unique + as_of YYYY-MM-DD required", 400);
+    if(!okSyms || !okUniq || !okDate){ pubLog("reject", {status:400, block:"universe"}); return jerr("Bad universe: symbols non-empty unique + as_of YYYY-MM-DD required", 400); }
     await put1("universe", {
       symbols: syms.map((s)=> s.trim().toUpperCase()),
       count: syms.length,
@@ -1872,7 +2038,7 @@ export async function hStockPublish(request, env, url, ctx){
     const okCands = !!cands && cands.length > 0 && cands.every((c)=>
       !!c && typeof c === "object" && !Array.isArray(c) &&
       typeof c.symbol === "string" && c.symbol.trim().length > 0);
-    if(!okFor || !okCands) return jerr("Bad watchlist: for_date YYYY-MM-DD + candidates non-empty array of {symbol: non-empty string} required", 400);
+    if(!okFor || !okCands){ pubLog("reject", {status:400, block:"watchlist"}); return jerr("Bad watchlist: for_date YYYY-MM-DD + candidates non-empty array of {symbol: non-empty string} required", 400); }
     const rows = [];
     const seenW = new Set();
     for(const c of cands){
@@ -1896,51 +2062,33 @@ export async function hStockPublish(request, env, url, ctx){
   if(body.fundamentals) await put1("fundamentals", {by_symbol:body.fundamentals});
   if(body.symbols) await put1("symbols", {rows:body.symbols});
   if(body.listing) await put1("listing", {rows:body.listing});
-  if(body.ohlcv) for(const sym of Object.keys(body.ohlcv)){
-    await sPut(env, "market/ohlcv/"+sym+".json", doc({rows:body.ohlcv[sym]}));
-    n++;
-  }
-  if(body.indicators) for(const sym of Object.keys(body.indicators)){
-    await sPut(env, "market/indicators/"+sym+".json", doc({rows:body.indicators[sym]}));
-    n++;
-  }
-  if(body.news) for(const sym of Object.keys(body.news)){
-    await sPut(env, "market/news/"+sym+".json", doc({symbol:sym, items:body.news[sym]}));
-    n++;
-  }
-  if(body.tape) for(const sym of Object.keys(body.tape)){
-    await sPut(env, "market/tape/"+sym+".json", doc(body.tape[sym]));
-    n++;
-  }
+  if(body.ohlcv) await putMany("ohlcv", body.ohlcv,
+    (s,v)=>["market/ohlcv/"+s+".json", {rows:v}]);
+  if(body.indicators) await putMany("indicators", body.indicators,
+    (s,v)=>["market/indicators/"+s+".json", {rows:v}]);
+  if(body.news) await putMany("news", body.news,
+    (s,v)=>["market/news/"+s+".json", {symbol:s, items:v}]);
+  // Tape: vong NAY la thu pham truc tiep cua 1102 duong ghi (REPORT §2.2,
+  // §3) — 78 ma x toi da 1000 lenh/POST, truoc day 78 `await sPut` tuan tu.
+  if(body.tape) await putMany("tape", body.tape,
+    (s,v)=>["market/tape/"+s+".json", v]);
   // Tape cua ban bong universe B: prefix rieng, khong de len tape live.
-  if(body.tape_b) for(const sym of Object.keys(body.tape_b)){
-    await sPut(env, "market/shadow_tick_b/tape/"+sym+".json", doc(body.tape_b[sym]));
-    n++;
-  }
-  if(body.statements) for(const sym of Object.keys(body.statements)){
-    await sPut(env, "market/statements/"+sym+".json", doc(body.statements[sym]));
-    n++;
-  }
+  if(body.tape_b) await putMany("tape_b", body.tape_b,
+    (s,v)=>["market/shadow_tick_b/tape/"+s+".json", v]);
+  if(body.statements) await putMany("statements", body.statements,
+    (s,v)=>["market/statements/"+s+".json", v]);
   if(body.market_news) await put1("market_news", {items:body.market_news});
   if(body.consensus) await put1("consensus", body.consensus);
-  if(body.consensus_detail) for(const sym of Object.keys(body.consensus_detail)){
-    await sPut(env, "market/consensus/"+sym+".json", doc(body.consensus_detail[sym]));
-    n++;
-  }
+  if(body.consensus_detail) await putMany("consensus_detail", body.consensus_detail,
+    (s,v)=>["market/consensus/"+s+".json", v]);
   // PA2 runlog (Chot 06:38 23/10): ban ghi chu trinh dong thuan co cau
   // truc do consensus_runlog.py publish — khoa R2 rieng theo cycle_id,
   // frontend khong doc; phuc vu bao cao van hanh (failover/by_connector).
-  if(body.consensus_runs) for(const cyc of Object.keys(body.consensus_runs)){
-    if(!/^\d{8}_\d{6}$/.test(cyc)) continue;
-    await sPut(env, "market/consensus_runs/"+cyc+".json", doc(body.consensus_runs[cyc]));
-    n++;
-  }
+  if(body.consensus_runs) await putMany("consensus_runs", body.consensus_runs,
+    (c,v)=>["market/consensus_runs/"+c+".json", v], (c)=>/^\d{8}_\d{6}$/.test(c));
   if(body.sectors) await put1("sectors", body.sectors);
-  if(body.sectors_detail) for(const code of Object.keys(body.sectors_detail)){
-    if(!/^[0-9]{4}$/.test(code)) continue;
-    await sPut(env, "market/sectors/"+code+".json", doc(body.sectors_detail[code]));
-    n++;
-  }
+  if(body.sectors_detail) await putMany("sectors_detail", body.sectors_detail,
+    (c,v)=>["market/sectors/"+c+".json", v], (c)=>/^[0-9]{4}$/.test(c));
   if(body.holders_index) await put1("holders_index", body.holders_index);
   // Dot C (MCP GD2, Chot 12:11 23/10): snapshot tien tinh cho khoi
   // xu huong nhieu phien cua analyze_sector/analyze_market — publisher
@@ -1953,28 +2101,24 @@ export async function hStockPublish(request, env, url, ctx){
   // O-1/O-2 (Chot 19:05 23/10): du lieu cho analyze_holders +
   // divergence cua analyze_market — publisher publish_holders_detail.py
   // / publish_foreign_room.py / publish_divergence.py.
-  if(body.holders_detail) for(const sym of Object.keys(body.holders_detail)){
-    await sPut(env, "market/holders_detail/"+sym+".json", doc(body.holders_detail[sym]));
-    n++;
-  }
+  if(body.holders_detail) await putMany("holders_detail", body.holders_detail,
+    (s,v)=>["market/holders_detail/"+s+".json", v]);
   if(body.foreign_room) await put1("foreign_room", body.foreign_room);
   if(body.divergence) await put1("divergence", body.divergence);
-  if(body.holders_shards) for(const sh of Object.keys(body.holders_shards)){
-    if(!/^[0-9a-f]{2}$/.test(sh)) continue;
-    await sPut(env, "market/holders/"+sh+".json", doc(body.holders_shards[sh]));
-    n++;
-  }
-  if(body.holders_by_symbol) for(const sym of Object.keys(body.holders_by_symbol)){
-    await sPut(env, "market/holders_by_symbol/"+sym+".json", doc(body.holders_by_symbol[sym]));
-    n++;
-  }
+  if(body.holders_shards) await putMany("holders_shards", body.holders_shards,
+    (sh,v)=>["market/holders/"+sh+".json", v], (sh)=>/^[0-9a-f]{2}$/.test(sh));
+  if(body.holders_by_symbol) await putMany("holders_by_symbol", body.holders_by_symbol,
+    (s,v)=>["market/holders_by_symbol/"+s+".json", v]);
   if(body.regime) await put1("regime", body.regime);
   if(body.signals) await put1("signals", {signals:body.signals});
-  // Batch history upload cho backfill (nhanh hon nhieu so voi tung ngay)
+  // Batch history upload cho backfill (nhanh hon nhieu so voi tung ngay).
+  // (4) Read-modify-write nhung MOI SYMOT MOT KEY RIEN → song song duoc
+  // giua cac symbol; trong mot symbol van get→merge→put nhu cu.
   if(body.foreign_flow_history_batch){
-    for(const sym of Object.keys(body.foreign_flow_history_batch)){
+    const syms = Object.keys(body.foreign_flow_history_batch);
+    const job = async (sym)=>{
       const days = body.foreign_flow_history_batch[sym];
-      if(!Array.isArray(days) || !days.length) continue;
+      if(!Array.isArray(days) || !days.length) return;
       const hkey = "market/foreign_flow_history/"+sym+".json";
       const h = await sGet(env, hkey) || {rows:[]};
       const rows = h.rows || [];
@@ -1996,14 +2140,16 @@ export async function hStockPublish(request, env, url, ctx){
       merged.sort((a,b)=>(a.trade_date||"").localeCompare(b.trade_date||""));
       const trimmed = merged.slice(-500);
       await sPut(env, hkey, doc({symbol:sym, rows:trimmed}));
-      n++;
-    }
+      bump("foreign_flow_history", sym);
+    };
+    await r2Parallel(syms.map((sym)=> ()=>job(sym)));
   }
   // Batch history upload cho backfill tu doanh (doi xung foreign)
   if(body.proprietary_flow_history_batch){
-    for(const sym of Object.keys(body.proprietary_flow_history_batch)){
+    const syms = Object.keys(body.proprietary_flow_history_batch);
+    const job = async (sym)=>{
       const days = body.proprietary_flow_history_batch[sym];
-      if(!Array.isArray(days) || !days.length) continue;
+      if(!Array.isArray(days) || !days.length) return;
       const hkey = "market/proprietary_flow_history/"+sym+".json";
       const h = await sGet(env, hkey) || {rows:[]};
       const rows = h.rows || [];
@@ -2025,8 +2171,9 @@ export async function hStockPublish(request, env, url, ctx){
       merged.sort((a,b)=>(a.trade_date||"").localeCompare(b.trade_date||""));
       const trimmed = merged.slice(-500);
       await sPut(env, hkey, doc({symbol:sym, rows:trimmed}));
-      n++;
-    }
+      bump("proprietary_flow_history", sym);
+    };
+    await r2Parallel(syms.map((sym)=> ()=>job(sym)));
   }
   // Sang loc dong tien ngay (Chot F4 27/10/2026): dataset ghi DE
   // (overwrite) — view /api/stock/flow-screen doc file nay + join lich
@@ -2064,11 +2211,11 @@ export async function hStockPublish(request, env, url, ctx){
     const fdoc = doc({for_date:String(fs.for_date || ""),
       screen_date:String(fs.screen_date || ""), candidates:rows});
     await sPut(env, "flow/flow_screen_latest.json", fdoc);
-    n++;
+    bump("flow_screen");
     const fd = String(fs.for_date || "");
     if(/^[A-Za-z0-9_-]{1,32}$/.test(fd)){
       await sPut(env, "flow/flow_screen/"+fd+".json", fdoc);
-      n++;
+      bump("flow_screen");
     }
   }
   // Tong thi truong chuan HSX (Chot 22:23 27/10): tong khoi luong/gia
@@ -2099,10 +2246,10 @@ export async function hStockPublish(request, env, url, ctx){
           etf_fund:bkRow(bk.etf_fund)},
         basis_note:String(mt.basis_note || ""),
         verification:String(mt.verification || "")});
-      await sPut(env, "market/market_totals_latest.json", mdoc);
-      n++;
-      await sPut(env, "market/market_totals/"+mdate+".json", mdoc);
-      n++;
+      await r2Parallel([
+        async ()=>{ await sPut(env, "market/market_totals_latest.json", mdoc); bump("market_totals"); },
+        async ()=>{ await sPut(env, "market/market_totals/"+mdate+".json", mdoc); bump("market_totals"); },
+      ]);
     }
   }
   // Vi mo Tier 2 (Henrry Chot T2-1 20/10/2026): overview + history
@@ -2110,10 +2257,11 @@ export async function hStockPublish(request, env, url, ctx){
   // viec). Nguon: scripts/fetch_macro.py (SBV/VCB/SJC/NYFed/Treasury).
   if(body.macro_overview) await put1("macro/overview", body.macro_overview);
   if(body.macro_history_batch){
-    for(const sid of Object.keys(body.macro_history_batch)){
+    const sids = Object.keys(body.macro_history_batch)
+      .filter((sid)=>/^[a-z0-9_]+$/.test(sid));
+    const job = async (sid)=>{
       const days = body.macro_history_batch[sid];
-      if(!Array.isArray(days) || !days.length) continue;
-      if(!/^[a-z0-9_]+$/.test(sid)) continue;
+      if(!Array.isArray(days) || !days.length) return;
       const hkey = "market/macro/history/"+sid+".json";
       const h = await sGet(env, hkey) || {rows:[]};
       const rows = h.rows || [];
@@ -2123,17 +2271,19 @@ export async function hStockPublish(request, env, url, ctx){
       const merged = Object.values(byDate);
       merged.sort((a,b)=>(a.date||"").localeCompare(b.date||""));
       await sPut(env, hkey, doc({series:sid, rows:merged.slice(-1200)}));
-      n++;
-    }
+      bump("macro_history", sid);
+    };
+    await r2Parallel(sids.map((sid)=> ()=>job(sid)));
   }
   if(body.foreign_flow){
     await put1("foreign_flow", {by_symbol:body.foreign_flow});
     // Append lich su foreign flow theo tung ma
     // Ho tro backfill: neu payload co trade_date thi dung, khong thi dung today
     const defaultDate = new Date().toISOString().slice(0,10);
-    for(const sym of Object.keys(body.foreign_flow)){
+    const syms = Object.keys(body.foreign_flow);
+    const job = async (sym)=>{
       const d = body.foreign_flow[sym];
-      if(!d || d.buy_volume==null) continue;
+      if(!d || d.buy_volume==null) return;
       const tdate = d.trade_date || defaultDate;
       const hkey = "market/foreign_flow_history/"+sym+".json";
       const h = await sGet(env, hkey) || {rows:[]};
@@ -2147,15 +2297,17 @@ export async function hStockPublish(request, env, url, ctx){
       rows.sort((a,b)=>(a.trade_date||"").localeCompare(b.trade_date||""));
       const trimmed = rows.slice(-500);
       await sPut(env, hkey, doc({symbol:sym, rows:trimmed}));
-      n++;
-    }
+      bump("foreign_flow", sym);
+    };
+    await r2Parallel(syms.map((sym)=> ()=>job(sym)));
   }
   if(body.proprietary_flow){
     await put1("proprietary_flow", {by_symbol:body.proprietary_flow});
     // Append vao lich su theo tung ma (giu toi da 500 phien ~2 nam)
-    for(const sym of Object.keys(body.proprietary_flow)){
+    const syms = Object.keys(body.proprietary_flow);
+    const job = async (sym)=>{
       const d = body.proprietary_flow[sym];
-      if(!d || d.buy_volume==null) continue;
+      if(!d || d.buy_volume==null) return;
       const hkey = "market/proprietary_flow_history/"+sym+".json";
       const h = await sGet(env, hkey) || {rows:[]};
       const rows = h.rows || [];
@@ -2169,42 +2321,37 @@ export async function hStockPublish(request, env, url, ctx){
       // Giu 500 phien moi nhat
       const trimmed = rows.slice(-500);
       await sPut(env, hkey, doc({symbol:sym, rows:trimmed}));
-      n++;
-    }
+      bump("proprietary_flow", sym);
+    };
+    await r2Parallel(syms.map((sym)=> ()=>job(sym)));
   }
-  if(body.events) for(const sym of Object.keys(body.events)){
-    await sPut(env, "market/events/"+sym+".json", doc({symbol:sym, items:body.events[sym]}));
-    n++;
-  }
-  if(body.company_profile) for(const sym of Object.keys(body.company_profile)){
-    await sPut(env, "market/company_profile/"+sym+".json", doc(Object.assign({symbol:sym}, body.company_profile[sym])));
-    n++;
-  }
-  if(body.intraday) for(const key of Object.keys(body.intraday)){
-    await sPut(env, "market/intraday/"+key+".json", doc({rows:body.intraday[key]}));
-    n++;
-  }
+  if(body.events) await putMany("events", body.events,
+    (s,v)=>["market/events/"+s+".json", {symbol:s, items:v}]);
+  if(body.company_profile) await putMany("company_profile", body.company_profile,
+    (s,v)=>["market/company_profile/"+s+".json", Object.assign({symbol:s}, v)]);
+  if(body.intraday) await putMany("intraday", body.intraday,
+    (k,v)=>["market/intraday/"+k+".json", {rows:v}]);
   // Bo thu tick chay bong (Chot 21/10): chi ghi duoi prefix
   // market/shadow_tick/ — KHONG consumer production nao doc.
   if(body.tick_shadow){ try{
     const ts = body.tick_shadow;
-    if(ts.intraday) for(const key of Object.keys(ts.intraday)){
-      await sPut(env, "market/shadow_tick/intraday/"+key+".json",
-        doc({rows:ts.intraday[key], src:(body._prov||{}).source||null, updated:now}));
-      n++;
-    }
+    if(ts.intraday) await putMany("ts_intraday", ts.intraday,
+      (k,v)=>["market/shadow_tick/intraday/"+k+".json",
+        {rows:v, src:(body._prov||{}).source||null, updated:now}]);
     if(ts.foreign){
       await sPut(env, "market/shadow_tick/foreign.json",
         doc({by_symbol:ts.foreign, src:(body._prov||{}).source||null, updated:now}));
-      n++;
+      bump("ts_foreign");
     }
     if(ts.status){
       await sPut(env, "market/shadow_tick/status.json", doc(Object.assign({}, ts.status, {updated:now})));
-      n++;
+      bump("ts_status");
     }
     // Dot 2 (thiet ke tong the bo thu): raw tick chunks (gzip
     // JSONL, base64) + artifact theo nguon — van duoi prefix
     // shadow_tick, khong consumer production nao doc.
+    // GIU TUAN TU: ten file chua Date.now() — ghi song song trong cung
+    // one ms de trung key va lot ghi de nhan thuong tick.
     if(ts.raw_chunks){
       const day = (ts.status && ts.status.session_date) || now.slice(0, 10);
       for(const src of Object.keys(ts.raw_chunks)){
@@ -2216,7 +2363,7 @@ export async function hStockPublish(request, env, url, ctx){
           const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
           await env.DATA.put("stock/market/shadow_tick/raw/"+day+"/"+src+"/"+hour+"/"+Date.now()+".jsonl.gz",
             bytes, {httpMetadata:{contentType:"application/gzip"}});
-          n++;
+          bump("ts_raw", src);
         }
       }
     }
@@ -2227,12 +2374,12 @@ export async function hStockPublish(request, env, url, ctx){
         if(a.snapshot){
           await sPut(env, "market/shadow_tick/src/"+src+"/snapshot.json",
             doc(Object.assign({}, a.snapshot, {src, updated:now})));
-          n++;
+          bump("ts_snapshot", src);
         }
         if(a.health){
           await sPut(env, "market/shadow_tick/src/"+src+"/health.json",
             doc(Object.assign({}, a.health, {src, updated:now})));
-          n++;
+          bump("ts_health", src);
         }
         const hasBk = a.buckets_dirty && Object.keys(a.buckets_dirty).length;
         const hasPt = a.buckets_pt_dirty && Object.keys(a.buckets_pt_dirty).length;
@@ -2263,30 +2410,29 @@ export async function hStockPublish(request, env, url, ctx){
             bp[sym] = Object.assign({}, bp[sym] || {}, a.buckets_pt_dirty[sym]);
           }
           await sPut(env, bkey, doc({buckets:bk, buckets_pt:bp, src, updated:now}));
-          n++;
+          bump("ts_buckets", src);
         }
       }
     }
   }catch(e){ tickErrors.push({block:"tick_shadow", error:String((e&&e.message)||e).slice(0,200)}); } }
   if(body.tick_shadow_b){ try{
     const ts = body.tick_shadow_b;
-    if(ts.intraday) for(const key of Object.keys(ts.intraday)){
-      await sPut(env, "market/shadow_tick_b/intraday/"+key+".json",
-        doc({rows:ts.intraday[key], src:(body._prov||{}).source||null, updated:now}));
-      n++;
-    }
+    if(ts.intraday) await putMany("tsb_intraday", ts.intraday,
+      (k,v)=>["market/shadow_tick_b/intraday/"+k+".json",
+        {rows:v, src:(body._prov||{}).source||null, updated:now}]);
     if(ts.foreign){
       await sPut(env, "market/shadow_tick_b/foreign.json",
         doc({by_symbol:ts.foreign, src:(body._prov||{}).source||null, updated:now}));
-      n++;
+      bump("tsb_foreign");
     }
     if(ts.status){
       await sPut(env, "market/shadow_tick_b/status.json", doc(Object.assign({}, ts.status, {updated:now})));
-      n++;
+      bump("tsb_status");
     }
     // Dot 2 (thiet ke tong the bo thu): raw tick chunks (gzip
     // JSONL, base64) + artifact theo nguon — van duoi prefix
     // shadow_tick, khong consumer production nao doc.
+    // GIU TUAN TU (Date.now() trong ten file — song song de trung key).
     if(ts.raw_chunks){
       const day = (ts.status && ts.status.session_date) || now.slice(0, 10);
       for(const src of Object.keys(ts.raw_chunks)){
@@ -2298,7 +2444,7 @@ export async function hStockPublish(request, env, url, ctx){
           const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
           await env.DATA.put("stock/market/shadow_tick_b/raw/"+day+"/"+src+"/"+hour+"/"+Date.now()+".jsonl.gz",
             bytes, {httpMetadata:{contentType:"application/gzip"}});
-          n++;
+          bump("tsb_raw", src);
         }
       }
     }
@@ -2309,12 +2455,12 @@ export async function hStockPublish(request, env, url, ctx){
         if(a.snapshot){
           await sPut(env, "market/shadow_tick_b/src/"+src+"/snapshot.json",
             doc(Object.assign({}, a.snapshot, {src, updated:now})));
-          n++;
+          bump("tsb_snapshot", src);
         }
         if(a.health){
           await sPut(env, "market/shadow_tick_b/src/"+src+"/health.json",
             doc(Object.assign({}, a.health, {src, updated:now})));
-          n++;
+          bump("tsb_health", src);
         }
         const hasBk = a.buckets_dirty && Object.keys(a.buckets_dirty).length;
         const hasPt = a.buckets_pt_dirty && Object.keys(a.buckets_pt_dirty).length;
@@ -2345,7 +2491,7 @@ export async function hStockPublish(request, env, url, ctx){
             bp[sym] = Object.assign({}, bp[sym] || {}, a.buckets_pt_dirty[sym]);
           }
           await sPut(env, bkey, doc({buckets:bk, buckets_pt:bp, src, updated:now}));
-          n++;
+          bump("ts_buckets", src);
         }
       }
     }
@@ -2425,19 +2571,17 @@ export async function hStockPublish(request, env, url, ctx){
   // consumer production nao doc, khong ghi khoa production.
   if(body.tick_merged){ try{
     const tm = body.tick_merged;
-    if(tm.intraday) for(const key of Object.keys(tm.intraday)){
-      await sPut(env, "market/shadow_tick/merged/intraday/"+key+".json",
-        doc({rows:tm.intraday[key], src:(body._prov||{}).source||null, updated:now}));
-      n++;
-    }
+    if(tm.intraday) await putMany("tm_intraday", tm.intraday,
+      (k,v)=>["market/shadow_tick/merged/intraday/"+k+".json",
+        {rows:v, src:(body._prov||{}).source||null, updated:now}]);
     if(tm.foreign){
       await sPut(env, "market/shadow_tick/merged/foreign.json",
         doc({by_symbol:tm.foreign, src:(body._prov||{}).source||null, updated:now}));
-      n++;
+      bump("tm_foreign");
     }
     if(tm.status){
       await sPut(env, "market/shadow_tick/merged/status.json", doc(Object.assign({}, tm.status, {updated:now})));
-      n++;
+      bump("tm_status");
     }
   }catch(e){ tickErrors.push({block:"tick_merged", error:String((e&&e.message)||e).slice(0,200)}); } }
   // Bo thu tick DA CONG — ban LAT (Chot Henrry 19:39 21/10): du lieu
@@ -2447,15 +2591,14 @@ export async function hStockPublish(request, env, url, ctx){
   // thu (40 ma), giu nguyen moi ma con lai do luong publish cham ghi.
   if(body.tick_live){ try{
     const tl = body.tick_live;
-    if(tl.intraday) for(const key of Object.keys(tl.intraday)){
-      await sPut(env, "market/intraday/"+key+".json", doc({rows:tl.intraday[key]}));
-      n++;
-    }
+    if(tl.intraday) await putMany("tl_intraday", tl.intraday,
+      (k,v)=>["market/intraday/"+k+".json", {rows:v}]);
     if(tl.foreign && Object.keys(tl.foreign).length){
+      // Read-modify-write MOT key (foreign_flow.json) — giu tuan tu.
       const cur = await sGet(env, "market/foreign_flow.json") || {by_symbol:{}};
       const merged = Object.assign({}, cur.by_symbol || {}, tl.foreign);
       await sPut(env, "market/foreign_flow.json", doc({by_symbol:merged}));
-      n++;
+      bump("tl_foreign");
     }
   }catch(e){ tickErrors.push({block:"tick_live", error:String((e&&e.message)||e).slice(0,200)}); } }
   // Chan VCI doc lap Tang B (Chot 19:39 21/10): chay tren ha tang
@@ -2466,23 +2609,22 @@ export async function hStockPublish(request, env, url, ctx){
   // giu nguyen cac ma khong co trong payload.
   if(body.tick_vci){ try{
     const tv = body.tick_vci;
-    if(tv.intraday) for(const key of Object.keys(tv.intraday)){
-      await sPut(env, "market/shadow_tick/vci/intraday/"+key+".json", doc({rows:tv.intraday[key]}));
-      n++;
-    }
+    if(tv.intraday) await putMany("tv_intraday", tv.intraday,
+      (k,v)=>["market/shadow_tick/vci/intraday/"+k+".json", {rows:v}]);
     if(tv.foreign){
       await sPut(env, "market/shadow_tick/vci/foreign.json", doc({by_symbol:tv.foreign, src:(body._prov||{}).source||null, updated:now}));
-      n++;
+      bump("tv_foreign");
       if(Object.keys(tv.foreign).length){
+        // Read-modify-write MOT key (foreign_flow.json) — giu tuan tu.
         const cur = await sGet(env, "market/foreign_flow.json") || {by_symbol:{}};
         const merged = Object.assign({}, cur.by_symbol || {}, tv.foreign);
         await sPut(env, "market/foreign_flow.json", doc({by_symbol:merged}));
-        n++;
+        bump("tv_flow_merge");
       }
     }
     if(tv.status){
       await sPut(env, "market/shadow_tick/vci/status.json", doc(Object.assign({}, tv.status, {updated:now})));
-      n++;
+      bump("tv_status");
     }
   }catch(e){ tickErrors.push({block:"tick_vci", error:String((e&&e.message)||e).slice(0,200)}); } }
   // KE SHELF 27/10 (Chot 09:59): batch EOD publish lich su nhom NDT.
@@ -2493,6 +2635,7 @@ export async function hStockPublish(request, env, url, ctx){
   //   theo ngay (cung ngay publish lai thi ghi de), sap xep tang dan,
   //   giu toi da 500 ngay. API /api/stock/flow-history doc file nay.
   if(body.flow_history){
+    const jobs = [];
     for(const group of FLOW_GROUPS){
       const bySym = body.flow_history[group];
       if(!bySym || typeof bySym !== "object") continue;
@@ -2501,26 +2644,72 @@ export async function hStockPublish(request, env, url, ctx){
         if(!OB_SYM_RE.test(sym)) continue;
         const days = bySym[symRaw];
         if(!Array.isArray(days) || !days.length) continue;
-        const fkey = "flow/" + group + "/" + sym + ".json";
-        const cur = await sGet(env, fkey) || {rows: []};
-        const byDate = {};
-        for(const r of (cur.rows || [])){
-          const nr = obNormalizeFlowRow(r);
-          if(nr) byDate[nr.date] = nr;
-        }
-        for(const r of days){
-          const nr = obNormalizeFlowRow(r);
-          if(nr) byDate[nr.date] = nr;
-        }
-        const merged = Object.values(byDate)
-          .sort((a, b)=> (a.date || "").localeCompare(b.date || ""))
-          .slice(-500);
-        await sPut(env, fkey, doc({symbol: sym, group, rows: merged}));
-        n++;
+        jobs.push(async ()=>{
+          const fkey = "flow/" + group + "/" + sym + ".json";
+          const cur = await sGet(env, fkey) || {rows: []};
+          const byDate = {};
+          for(const r of (cur.rows || [])){
+            const nr = obNormalizeFlowRow(r);
+            if(nr) byDate[nr.date] = nr;
+          }
+          for(const r of days){
+            const nr = obNormalizeFlowRow(r);
+            if(nr) byDate[nr.date] = nr;
+          }
+          const merged = Object.values(byDate)
+            .sort((a, b)=> (a.date || "").localeCompare(b.date || ""))
+            .slice(-500);
+          await sPut(env, fkey, doc({symbol: sym, group, rows: merged}));
+          bump("flow_history", sym);
+        });
       }
     }
+    await r2Parallel(jobs);
+  }
+  /* (2) PRECOMPUTE SCREENER VIEW (REPORT §5.2) — toan bo CPU doc
+     `/api/stock/screener` (parse 3 blob, 2 sort, score O(n^2·log), Intl)
+     duoc chuyen sang day va ghi 1 file market/screener_view.json. Chi tai
+     LANHN mang du lieu nen cua screener (key screener / fundamentals /
+     quotes — publish_snapshot va stock_snapshot, lich 5 phut); lane tape
+     30 giay (chi co tape + intraday) KHONG kich rebuild. That bai → view
+     cu giu nguyen, hStockScreener tu dong ve duong tinh cu, khong 500/502.
+     VIEC NANG (~20ms cho 1600 ma, do bench Node 04/11) chay TRONG
+     ctx.waitUntil: POST da tra loi 200 nen no KHONG the bi 1102 lam mat
+     ca chunk du lieu (inline se rui do chinh sach ma (2) cua REPORT §2.2
+     da canh bao); neu CPU waitUntil bi cat giua chuong thi chi mat lan
+     rebuild nay, blob du lieu van da ghi, /screener fallback duong cu. */
+  if(body.screener || body.fundamentals || body.quotes){
+    const viewJob = async ()=>{
+      // Nhuong cho POST tra loi xong (response + `written` log) moi bat dau
+      // tinh — toan bo CPU nang nam hau response.
+      await new Promise((r)=>setTimeout(r, 0));
+      const scrD = body.screener ? {rows: body.screener, updated: now}
+                                 : await sGet(env, "market/screener.json");
+      const fdD  = body.fundamentals ? {by_symbol: body.fundamentals}
+                                     : await sGet(env, "market/fundamentals.json");
+      const qtD  = body.quotes ? {by_symbol: body.quotes}
+                               : await sGet(env, "market/quotes.json");
+      // `updated` cua /screener (doc cu) = timestamp cua blob screener.json.
+      // POST nay co body.screener thi screener.json vua duoc ghi bang `now`
+      // (dong put1("screener") o tren) -> view phai mang cung `now`; nguoc
+      // lai dung timestamp cua blob dang nam trong R2.
+      const scrUpd = (scrD && scrD.updated) || null;
+      const rows = buildScreenerView(scrD, (fdD && fdD.by_symbol) || {},
+        (qtD && qtD.by_symbol) || {});
+      if(!rows.length) return;
+      await sPut(env, "market/screener_view.json",
+        doc({src_updated: scrUpd, n_rows: rows.length, rows: rows}));
+      bump("screener_view");
+      pubLog("view", {n_rows: rows.length, src_updated: scrUpd});
+    };
+    const viewGuard = viewJob().catch((e)=>{
+      console.error(`[publish] screener_view loi: ${String((e && e.message) || e).slice(0,200)}`);
+    });
+    if(ctx && typeof ctx.waitUntil === "function") ctx.waitUntil(viewGuard);
+    else await viewGuard;          // khong co ctx (test/harness) -> cho inline
   }
   if(tickErrors.length){
+    pubLog("fail", {status:502, errors:tickErrors.length, alerts:tickAlerts.length});
     return jerr("Publish block failed", 502,
       {written:n, errors:tickErrors, alerts:tickAlerts});
   }
@@ -2551,6 +2740,7 @@ export async function hStockPublish(request, env, url, ctx){
   } catch (e) {
     console.error(`[fanout] loi: ${e && e.message ? e.message : e}`);
   }
+  pubLog("ok", {status: 200});
   return sJson(Object.assign({ok:true, written:n},
     watchlistInfo ? {watchlist: watchlistInfo} : {},
     tickAlerts.length ? {alerts:tickAlerts} : {}));
