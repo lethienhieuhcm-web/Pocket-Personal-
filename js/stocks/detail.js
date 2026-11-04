@@ -204,16 +204,21 @@ async function loadFlow(sym){
 }
 // ===== Khop lenh chi tiet (tape, chan DNSE; phia M/B suy luat tick) =====
 const TP_I18N={
-vi:{tot:"Tổng KL khớp",buy:"MUA chủ động",sell:"BÁN chủ động",more:"Xem đầy đủ",lvl:"Phân bổ khối lượng theo giá",list:"Chi tiết từng lệnh",time:"Thời gian",price:"Giá",vol:"KL",side:"M/B",none:"Chưa có dữ liệu khớp lệnh chi tiết cho mã này.",note:"Phía M/B ước lượng theo luật tick (giá lên = mua chủ động, giá xuống = bán chủ động).",partial:"Dữ liệu từ giữa phiên (bộ thu khởi động lại) — tổng có thể thiếu đầu phiên."},
-en:{tot:"Total matched",buy:"Active buy",sell:"Active sell",more:"See all",lvl:"Volume by price",list:"Trade details",time:"Time",price:"Price",vol:"Vol",side:"B/S",none:"No detailed trade data for this symbol yet.",note:"Buy/sell side estimated by the tick rule (uptick = active buy, downtick = active sell).",partial:"Data starts mid-session (collector restarted) — totals may miss the open."},
-zh:{tot:"总成交量",buy:"主动买入",sell:"主动卖出",more:"查看全部",lvl:"按价格的成交量分布",list:"逐笔明细",time:"时间",price:"价格",vol:"量",side:"买/卖",none:"该股票暂无逐笔成交数据。",note:"买卖方向按逐笔规则估算(上涨=主动买入,下跌=主动卖出)。",partial:"数据从盘中开始(采集器重启)—总量可能缺少开盘部分。"},
-ko:{tot:"총 체결량",buy:"능동 매수",sell:"능동 매도",more:"전체 보기",lvl:"가격별 거래량 분포",list:"체결 상세",time:"시간",price:"가격",vol:"수량",side:"매수/매도",none:"이 종목의 체결 상세 데이터가 아직 없습니다.",note:"매수/매도 방향은 틱 규칙으로 추정합니다(상승=능동 매수, 하락=능동 매도).",partial:"장중에 시작된 데이터입니다(수집기 재시작)—합계에 시가 부분이 누락될 수 있습니다."}};
+vi:{tot:"Tổng KL khớp",buy:"MUA chủ động",sell:"BÁN chủ động",more:"Xem đầy đủ",lvl:"Phân bổ khối lượng theo giá",list:"Chi tiết từng lệnh",time:"Thời gian",price:"Giá",vol:"KL",side:"M/B",none:"Chưa có dữ liệu khớp lệnh chi tiết cho mã này.",note:"Phía M/B ước lượng theo luật tick (giá lên = mua chủ động, giá xuống = bán chủ động).",partial:"Dữ liệu từ giữa phiên (bộ thu khởi động lại) — tổng có thể thiếu đầu phiên.",mbTitle:"M/B SSI (15 phút)",mbBuyK:"Mua KL",mbBuyV:"Mua GT (tỷ)",mbSellK:"Bán KL",mbSellV:"Bán GT (tỷ)",mbNet:"Net (tỷ)",mbFlagT:"Cờ >1 tỷ/15p",mbFlag:"⚑ MUA RÒNG >1 tỷ",mbFlagSell:"BÁN RÒNG >1 tỷ",mbNoWl:"Chưa có dữ liệu M/B (mã ngoài watchlist SSI)",mbNoTick:"Chưa có tick M/B trong 15 phút gần nhất (mã trong watchlist SSI)",mbWait:"Đang tải M/B…",mbWin:"Cửa sổ 15 phút",mbSrc:"Nguồn SSI · cùng chuẩn bảng Dòng tiền",noteSsi:"Lệnh khớp được tick SSI hiển thị side THẬT (viền đậm); phần còn lại theo luật tick.",ssiT:"side thật SSI",ruleT:"luật tick"},
+en:{tot:"Total matched",buy:"Active buy",sell:"Active sell",more:"See all",lvl:"Volume by price",list:"Trade details",time:"Time",price:"Price",vol:"Vol",side:"B/S",none:"No detailed trade data for this symbol yet.",note:"Buy/sell side estimated by the tick rule (uptick = active buy, downtick = active sell).",partial:"Data starts mid-session (collector restarted) — totals may miss the open.",mbTitle:"B/S SSI (15 min)",mbBuyK:"Buy vol",mbBuyV:"Buy val (B VND)",mbSellK:"Sell vol",mbSellV:"Sell val (B VND)",mbNet:"Net (B VND)",mbFlagT:"Flag >1B/15m",mbFlag:"⚑ NET BUY >1B",mbFlagSell:"NET SELL >1B",mbNoWl:"No B/S data (symbol outside SSI watchlist)",mbNoTick:"No B/S tick in the last 15 minutes (symbol in SSI watchlist)",mbWait:"Loading B/S…",mbWin:"15-minute window",mbSrc:"SSI source · same rule as the Money-flow table",noteSsi:"Trades matched to an SSI tick show the REAL side (bold border); the rest use the tick rule.",ssiT:"real SSI side",ruleT:"tick rule"},
+zh:{tot:"总成交量",buy:"主动买入",sell:"主动卖出",more:"查看全部",lvl:"按价格的成交量分布",list:"逐笔明细",time:"时间",price:"价格",vol:"量",side:"买/卖",none:"该股票暂无逐笔成交数据。",note:"买卖方向按逐笔规则估算(上涨=主动买入,下跌=主动卖出)。",partial:"数据从盘中开始(采集器重启)—总量可能缺少开盘部分。",mbTitle:"SSI 买/卖(15分钟)",mbBuyK:"买入量",mbBuyV:"买入额(十亿)",mbSellK:"卖出量",mbSellV:"卖出额(十亿)",mbNet:"净额(十亿)",mbFlagT:"信号>10亿/15分",mbFlag:"⚑ 净买入>10亿",mbFlagSell:"净卖出>10亿",mbNoWl:"暂无买卖数据(该股票不在SSI观察名单)",mbNoTick:"近15分钟无买卖逐笔(股票在SSI观察名单)",mbWait:"加载买卖…",mbWin:"15分钟窗口",mbSrc:"来源SSI·与资金流表同标准",noteSsi:"与SSI逐笔匹配的成交显示真实方向(粗边框);其余按逐笔规则。",ssiT:"SSI真实方向",ruleT:"逐笔规则"},
+ko:{tot:"총 체결량",buy:"능동 매수",sell:"능동 매도",more:"전체 보기",lvl:"가격별 거래량 분포",list:"체결 상세",time:"시간",price:"가격",vol:"수량",side:"매수/매도",none:"이 종목의 체결 상세 데이터가 아직 없습니다.",note:"매수/매도 방향은 틱 규칙으로 추정합니다(상승=능동 매수, 하락=능동 매도).",partial:"장중에 시작된 데이터입니다(수집기 재시작)—합계에 시가 부분이 누락될 수 있습니다.",mbTitle:"SSI 매수/매도(15분)",mbBuyK:"매수 수량",mbBuyV:"매수 대금(10억)",mbSellK:"매도 수량",mbSellV:"매도 대금(10억)",mbNet:"순액(10억)",mbFlagT:"신호 >10억/15분",mbFlag:"⚑ 순매수 >10억",mbFlagSell:"순매도 >10억",mbNoWl:"매수/매도 데이터 없음(SSI 워치리스트 밖)",mbNoTick:"최근 15분 매수/매도 틱 없음(SSI 워치리스트 종목)",mbWait:"불러오는 중…",mbWin:"15분 창",mbSrc:"SSI 출처 · 자금 흐름 표와 동일 기준",noteSsi:"SSI 틱과 일치한 체결은 실제 방향(진한 테두리)을 표시; 나머지는 틱 규칙.",ssiT:"SSI 실제 방향",ruleT:"틱 규칙"}};
 function TPL(){return TP_I18N[curLang]||TP_I18N.vi;}
 let _tape=null;
 function fmtK(v){ if(v==null) return "—"; const a=Math.abs(v); if(a>=1e6) return (v/1e6).toFixed(1).replace(".",",")+"M"; if(a>=1e3) return (v/1e3).toFixed(1).replace(".",",")+"K"; return String(v); }
 function tapeRef(){ const q=_lastQuote||{}; if(q.close!=null&&q.change!=null) return q.close-q.change; return null; }
 function tapePCls(p){ const r=tapeRef(); if(r==null||p==null) return ""; return p>r?"up":p<r?"down":""; }
-function tapeBadge(s){ if(s==="M") return '<span style="display:inline-block;min-width:22px;text-align:center;padding:1px 5px;border-radius:9px;background:#e5f6ec;color:#0a7a42;font-weight:700;font-size:11px">M</span>'; if(s==="B") return '<span style="display:inline-block;min-width:22px;text-align:center;padding:1px 5px;border-radius:9px;background:#fdecec;color:#c22727;font-weight:700;font-size:11px">B</span>'; return ""; }
+function tapeBadge(s,ssi){
+  const ttl=esc(ssi?TPL().ssiT:TPL().ruleT);
+  if(s==="M") return '<span title="'+ttl+'" style="display:inline-block;min-width:22px;text-align:center;padding:1px 5px;border-radius:9px;background:'+(ssi?"#c9efdb":"#e5f6ec")+';color:#0a7a42;font-weight:700;font-size:11px'+(ssi?";border:1px solid #0a7a42":"")+'">M</span>';
+  if(s==="B") return '<span title="'+ttl+'" style="display:inline-block;min-width:22px;text-align:center;padding:1px 5px;border-radius:9px;background:'+(ssi?"#f8d0d0":"#fdecec")+';color:#c22727;font-weight:700;font-size:11px'+(ssi?";border:1px solid #c22727":"")+'">B</span>';
+  return "";
+}
 function tapeLevelsHtml(levels,lastP){
   if(!levels||!levels.length) return '<div class="hint">—</div>';
   const max=Math.max(...levels.map(l=>l.v||0),1);
@@ -221,18 +226,73 @@ function tapeLevelsHtml(levels,lastP){
   return rows.map(l=>{const w=Math.max(2,(l.v||0)/max*100);const hot=lastP!=null&&l.p===lastP;
     return `<div style="display:flex;align-items:center;gap:8px;padding:1.5px 0"><span style="width:64px;text-align:right;font-weight:${hot?"800":"600"}" class="${tapePCls(l.p)}">${fmtN(l.p)}</span><div style="flex:1;background:var(--pp-bg2);border-radius:3px"><div style="width:${w}%;height:11px;border-radius:3px;background:${hot?"#d6336c":"var(--pp-accent)"}"></div></div><span style="width:58px;font-size:12px;color:var(--pp-mut)">${fmtK(l.v)}</span></div>`;}).join("");
 }
+// ===== M/B per-code trong v-detail (Chot Henrry 10:43 04/11) =====
+// (a) khoi tom tat 15 phut: loc /money-flow-live theo ma dang mo ( cung
+//     nguon, cung chuan voi bang tab Dong tien — khong endpoint moi).
+// (b) side that tung lenh: /money-flow-trades?symbol=X tra ve ts->side
+//     (worker join tick SSI voi bang khop lenh DNSE); lenh khong khop
+//     giu tick-rule cu. Khong tao poll rieng: gan voi loadTape (tu dong
+//     reload 60s cua v-detail o stocks.html). Loi mang -> an khoi, bang
+//     van chay nhu cu (khong bao loi, khong vo layout).
+let _mbSym=null,_mbSum=null,_mbWin=null,_mbSide=null,_mbMatched=0,_mbSeq=0;
+function mbTy(vnd){ if(vnd==null||!isFinite(+vnd)) return "—"; const t=+vnd/1e9; return (t>0?"+":"")+t.toFixed(3); }
+function renderMBBlock(){
+  const secE=$("dMBSecT"), card=$("dMBCard"), body=$("dMBBody"), note=$("dMBNote");
+  if(!secE||!card||!body) return;
+  const L=TPL();
+  if(!_tape||!curSym){ secE.style.display="none"; card.style.display="none"; return; }
+  secE.textContent=L.mbTitle; secE.style.display=""; card.style.display="";
+  const r=_mbSum;
+  if(!r){ body.innerHTML='<div class="hint">'+esc(L.mbWait)+'</div>'; if(note) note.textContent=""; return; }
+  if(r.absent){ body.innerHTML='<div class="hint">'+esc(L.mbNoWl)+'</div>'; if(note) note.textContent=""; return; }
+  if(!r.has_data){ body.innerHTML='<div class="hint">'+esc(L.mbNoTick)+'</div>'; if(note) note.textContent=""; return; }
+  const net=Number(r.net_val)||0, cls=net>0?"up":net<0?"down":"";
+  const flag=r.flagged?'<span class="up" style="font-weight:800">'+esc(L.mbFlag)+'</span>'
+    :(net<-1e9?'<span class="down" style="font-weight:800">'+esc(L.mbFlagSell)+'</span>':"—");
+  const row=(k,v,c)=>`<div class="row"><span class="k">${esc(k)}</span><span class="v ${c||""}">${v}</span></div>`;
+  body.innerHTML=
+    row(L.mbBuyK,fmtN(r.buy_vol||0))
+    +row(L.mbBuyV,`<span class="${Number(r.buy_val)>0?"up":""}">${mbTy(r.buy_val)}</span>`)
+    +row(L.mbSellK,fmtN(r.sell_vol||0))
+    +row(L.mbSellV,`<span class="${Number(r.sell_val)>0?"down":""}">${mbTy(r.sell_val)}</span>`)
+    +row(L.mbNet,`<b class="${cls}">${mbTy(net)}</b>`)
+    +row(L.mbFlagT,flag);
+  if(note){ const w=_mbWin||{}; note.textContent=L.mbWin+": "+String(w.from||"").slice(11,16)+"–"+String(w.to||"").slice(11,16)+" · "+L.mbSrc; }
+}
+async function loadMB(sym){
+  const seq=++_mbSeq;
+  let live=null,tr=null;
+  try{ live=await api("/money-flow-live"); }catch(e){}
+  if(seq!==_mbSeq||curSym!==sym||!_tape) return;
+  if(live&&live.available&&Array.isArray(live.rows)){
+    _mbWin=live.window||null;
+    _mbSum=live.rows.find(x=>x.symbol===sym)||{absent:true};
+    renderMBBlock();
+  }
+  try{ tr=await api("/money-flow-trades?symbol="+encodeURIComponent(sym)+"&limit=300"); }catch(e){}
+  if(seq!==_mbSeq||curSym!==sym||!_tape) return;
+  if(tr&&tr.available){
+    _mbSide=new Map((tr.trades||[]).map(x=>[x.ts,x.side]));
+    _mbMatched=tr.matched||0;
+    renderTapePage();
+  }
+}
 async function loadTape(sym){
   _tape=null;
+  if(_mbSym!==sym){ _mbSym=sym; _mbSum=null; _mbWin=null; _mbSide=null; _mbMatched=0; }
+  _mbSeq++;
   const sec=$("dTapeSec"),card=$("dTapeCard");
   try{
     const j=await api("/trades?symbol="+encodeURIComponent(sym)+"&limit=300");
-    if(j.empty){ if(sec)sec.style.display="none"; if(card)card.style.display="none"; return; }
+    if(j.empty){ if(sec)sec.style.display="none"; if(card)card.style.display="none"; renderMBBlock(); return; }
     if(j.trades) j.trades.sort((a,b)=>(a.ts||0)-(b.ts||0));
     _tape=j;
     if(sec)sec.style.display=""; if(card)card.style.display="";
-    renderTapeMini(); renderTapePage();
+    renderTapeMini(); renderTapePage(); renderMBBlock();
+    loadMB(sym);
   }catch(e){
     if(sec)sec.style.display="none"; if(card)card.style.display="none";
+    renderMBBlock();
     const l=$("dTapeList"); if(l) l.innerHTML='<div class="hint">'+esc(TPL().none)+'</div>';
     const c=$("dTapeCards"); if(c) c.innerHTML="";
     const lv=$("dTapeLevels"); if(lv) lv.innerHTML="";
@@ -262,11 +322,13 @@ function renderTapePage(){
   const ref=tapeRef();
   const rows=(_tape.trades||[]).slice().reverse().map(t=>{
     const chg=(ref!=null&&t.p!=null)?t.p-ref:null;
-    return `<div style="display:flex;align-items:center;padding:4px 0;border-bottom:1px solid var(--pp-line)"><span style="width:70px;color:var(--pp-mut)">${esc(t.time||"")}</span><span class="${tapePCls(t.p)}" style="width:76px;text-align:right;font-weight:700">${fmtN(t.p)}</span><span class="${tapePCls(t.p)}" style="width:70px;text-align:right">${chg==null?"":(chg>0?"+":"")+fmtN(chg)}</span><span style="flex:1;text-align:right">${fmtN(t.v)}</span><span style="width:34px;text-align:right">${tapeBadge(t.s)}</span></div>`;}).join("");
+    const real=(_mbSide&&_mbSide.get(t.ts))||null;
+    const sv=real?(real==="buy"?"M":"B"):t.s;
+    return `<div style="display:flex;align-items:center;padding:4px 0;border-bottom:1px solid var(--pp-line)"><span style="width:70px;color:var(--pp-mut)">${esc(t.time||"")}</span><span class="${tapePCls(t.p)}" style="width:76px;text-align:right;font-weight:700">${fmtN(t.p)}</span><span class="${tapePCls(t.p)}" style="width:70px;text-align:right">${chg==null?"":(chg>0?"+":"")+fmtN(chg)}</span><span style="flex:1;text-align:right">${fmtN(t.v)}</span><span style="width:34px;text-align:right">${tapeBadge(sv,!!real)}</span></div>`;}).join("");
   const l=$("dTapeList");
   if(l) l.innerHTML=`<div style="display:flex;padding:2px 0;color:var(--pp-mut);font-size:12px"><span style="width:70px">${esc(L.time)}</span><span style="width:76px;text-align:right">${esc(L.price)}</span><span style="width:70px;text-align:right">+/−</span><span style="flex:1;text-align:right">${esc(L.vol)}</span><span style="width:34px;text-align:right">${esc(L.side)}</span></div>`+(rows||'<div class="hint">—</div>');
   const n=$("dTapeNote");
-  if(n) n.textContent=L.note+(_tape.partial?" "+L.partial:"");
+  if(n) n.textContent=(_mbMatched?L.noteSsi:L.note)+(_tape.partial?" "+L.partial:"");
 }
 
 async function loadNews(sym){

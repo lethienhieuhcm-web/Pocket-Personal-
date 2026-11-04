@@ -303,6 +303,12 @@
 <div id="dTapeH" style="display:none"><div class="pagebar"><span class="backrow" onclick="dBack()">‹ <span class="dbacksym"></span></span></div><div class="sec dtitle" data-k="tape"></div></div>
 <div id="dTape" style="display:none">
 <div id="dTapeCards"></div>
+<!-- ===== M/B per-code trong v-detail (Chot Henrry 10:43 04/11): khoi tom
+     tat mua/ban SSI 15 phut CUA MA DANG MO, nguon /api/stock/money-flow-live
+     (loc row theo ma o client — cung chuan voi bang Dong tien). Lenh khop
+     hien side THAT SSI khi khop duoc tick (money-flow-trades). Mien phi. ===== -->
+<div class="sec" id="dMBSecT" style="display:none">M/B SSI (15 phút)</div>
+<div class="card" id="dMBCard" style="display:none"><div id="dMBBody"></div><div class="hint" id="dMBNote" style="margin-top:6px"></div></div>
 <div class="sec" id="dTapeLvlT">Phân bổ khối lượng theo giá</div>
 <div class="card"><div id="dTapeLevels"></div></div>
 <div class="sec" id="dTapeListT">Chi tiết từng lệnh</div>

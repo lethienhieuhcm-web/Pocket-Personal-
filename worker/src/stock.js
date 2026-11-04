@@ -1101,6 +1101,152 @@ export async function hStockMoneyFlowLive(request, env){
   });
 }
 
+/* ================= M/B per-code trong v-detail (Chot Henrry 10:43 04/11) =================
+   (b) Side THAT tung lenh khop lenh: cung duong doc raw chunk SSI nhu
+   money-flow-live, nhung loc theo MA, roi JOIN voi bang khop lenh DNSE
+   (market/tape/<sym>.json) theo (gia doi dong, KL, |dt| <= MF_JOIN_TOL_SEC).
+   JOIN o server: scale gia hai ben duoc quy doi cung mot cho, frontend chi
+   tra cuoc ts -> side; lenh khong khop khong co entry -> giu tick-rule cu
+   (khong de trong). Mien phi: route 'public', khong gate. */
+
+export const MF_JOIN_TOL_SEC = 5;
+
+/* Loc tick SSI co side that cua MOT ma trong cua so [cutoff, nowSec+120].
+   Row = [src, sym, ts_event, ts_recv, price, vol, acc, side]; dong PUT
+   (6 cot) va khong side loai. Dedup (src|sym|acc) nhu mfAggregateRows. */
+export function mfSsiTicksForSymbol(lines, sym, cutoff, nowSec){
+  const out = [];
+  const seenAcc = new Set();
+  const stats = { lines: 0, used: 0, dedup_dropped: 0, out_of_window: 0,
+    other_symbol: 0, no_side: 0, side_unknown: {} };
+  for(const ln of lines){
+    stats.lines++;
+    if(!Array.isArray(ln) || ln.length < 8) continue;
+    const src = ln[0], s = String(ln[1] || "").toUpperCase();
+    if(s !== sym){ stats.other_symbol++; continue; }
+    const tsEv = Number(ln[2]), tsRecv = Number(ln[3]);
+    const ts = Number.isFinite(tsEv) ? tsEv : tsRecv;
+    if(!Number.isFinite(ts) || ts < cutoff || ts > nowSec + 120){
+      stats.out_of_window++; continue; }
+    const price = Number(ln[4]), vol = Number(ln[5]), acc = ln[6], side = ln[7];
+    if(acc != null){
+      const k = src + "|" + sym + "|" + acc;
+      if(seenAcc.has(k)){ stats.dedup_dropped++; continue; }
+      seenAcc.add(k);
+    }
+    if(!Number.isFinite(price) || !Number.isFinite(vol) || price <= 0 || vol <= 0) continue;
+    const cls = mfSideClass(side);
+    if(cls === "none"){ stats.no_side++; continue; }
+    if(cls === "unk"){
+      const key = String(side).slice(0, 12);
+      stats.side_unknown[key] = (stats.side_unknown[key] || 0) + 1;
+      continue;
+    }
+    out.push({ ts, price, vol, side: cls });
+    stats.used++;
+  }
+  out.sort((a, b) => a.ts - b.ts);
+  return { ticks: out, stats };
+}
+
+/* JOIN thuan tuy: trades = loai tape (gia NGHIN dong, ts giay epoch nguyen),
+   ticks = mfSsiTicksForSymbol (gia nghin dong). So sanh gia doi dong (lam
+   tron) + KL nguyen + |dt| <= tol; chon tick gan nhat thoi diem. Tra ve
+   danh sach {ts, time, side} cho cac lenh KHOP duoc (frontend map theo ts). */
+export function mfJoinTapeSsi(trades, ticks, tolSec){
+  const out = [];
+  for(const t of trades || []){
+    const tts = Number(t.ts), tv = Number(t.v);
+    const tp = Math.round((t.p || 0) * MF_PRICE_TO_VND);
+    if(!Number.isFinite(tts) || tp <= 0 || !Number.isFinite(tv) || tv <= 0) continue;
+    let best = null;
+    for(const k of ticks){
+      const dt = Math.abs(k.ts - tts);
+      if(dt > tolSec) continue;
+      if(Math.round(k.price * MF_PRICE_TO_VND) !== tp || Number(k.vol) !== tv) continue;
+      if(best === null || dt < best.dt) best = { dt, side: k.side };
+    }
+    if(best) out.push({ ts: tts, time: t.time || null, side: best.side });
+  }
+  return { matched: out.length, trades: out };
+}
+
+/* GET /api/stock/money-flow-trades?symbol=X[&date=YYYY-MM-DD][&limit=300]
+   — cong khai. Khong loi khi thieu du lieu: tape khong co -> trades [] +
+   tape.present:false; chunk khong co -> matched 0. Frontend tu do giu
+   tick-rule va (a) hien "ngoai watchlist" khi money-flow-live khong co row. */
+export async function hStockMoneyFlowTrades(request, env){
+  const u = new URL(request.url);
+  const sym = (u.searchParams.get("symbol") || "").trim().toUpperCase();
+  if(!FLOW_SYM_RE.test(sym)) return jerr("Invalid symbol", 400);
+  let date = (u.searchParams.get("date") || "").trim();
+  if(date && !/^\d{4}-\d{2}-\d{2}$/.test(date)) return jerr("Invalid date", 400);
+  const limit = Math.max(10, Math.min(parseInt(u.searchParams.get("limit") || "300", 10) || 300, 1000));
+  const nowMs = Date.now();
+  const nowSec = Math.floor(nowMs / 1000);
+  const cutoff = nowSec - MF_WINDOW_SEC;
+  const ict = new Date(nowMs + 7 * 3600 * 1000); // field UTC = gio ICT
+  if(!date) date = ict.toISOString().slice(0, 10);
+  const isoOf = (sec) => new Date((sec + 7 * 3600) * 1000).toISOString().replace(/\.\d+Z$/, "").replace("Z", "") + "+07:00";
+
+  const d = await sGet(env, "market/tape/" + sym + ".json");
+  const tapeTrades = ((d && d.trades) || []).slice(-limit);
+
+  // Raw chunks cua MA do, chi thu muc ssi-mqtt (nguon duy nhat co side),
+  // 2 gio ICT + bo file ghi truoc cutoff ( nhu money-flow-live).
+  const dayPrefix = "stock/market/shadow_tick/raw/" + date + "/ssi-mqtt/";
+  const hhCur = String(ict.getUTCHours()).padStart(2, "0");
+  const hhPrev = String((ict.getUTCHours() + 23) % 24).padStart(2, "0");
+  const allKeys = await obListKeys(env, dayPrefix, 2000);
+  const fileKeys = [];
+  for(const k of allKeys){
+    const m = k.slice(dayPrefix.length).match(/^([0-9]{2})\/([0-9]+)\.jsonl\.gz$/);
+    if(!m) continue;
+    if(m[1] !== hhCur && m[1] !== hhPrev) continue;
+    if(Number(m[2]) < cutoff * 1000) continue;
+    fileKeys.push(k);
+  }
+  fileKeys.sort();
+  const lines = [];
+  let filesRead = 0, filesFailed = 0;
+  const GET_BATCH = 10;
+  for(let i = 0; i < fileKeys.length; i += GET_BATCH){
+    const batch = fileKeys.slice(i, i + GET_BATCH);
+    const got = await Promise.all(batch.map(async (k) => {
+      try{
+        const o = await env.DATA.get(k);
+        if(!o) return null;
+        const buf = await o.arrayBuffer();
+        return await obGunzipText(buf);
+      }catch(e){ return null; }
+    }));
+    for(const txt of got){
+      if(txt == null){ filesFailed++; continue; }
+      filesRead++;
+      for(const line of txt.split("\n")){
+        if(!line.trim()) continue;
+        try{ lines.push(JSON.parse(line)); }catch(e){}
+      }
+    }
+  }
+  const { ticks, stats } = mfSsiTicksForSymbol(lines, sym, cutoff, nowSec);
+  const join = mfJoinTapeSsi(tapeTrades, ticks, MF_JOIN_TOL_SEC);
+  return sJson({
+    available: true, symbol: sym, date,
+    source: "shadow_tick_raw_chunks+dnse_tape",
+    window: { minutes: MF_WINDOW_SEC / 60, from: isoOf(cutoff), to: isoOf(nowSec) },
+    updated: new Date(nowMs).toISOString().replace(/\.\d+Z$/, "Z"),
+    tape: { present: !!d, total: tapeTrades.length, side_method: (d && d.side_method) || null },
+    ssi_ticks: ticks.length,
+    tol_sec: MF_JOIN_TOL_SEC,
+    matched: join.matched,
+    trades: join.trades,
+    unit_note: "gia tape va raw deu quy doi dong khi so sanh (x1000)",
+    meta: { files_scanned: fileKeys.length, files_read: filesRead,
+      files_failed: filesFailed, hours: [hhPrev, hhCur], ...stats },
+  });
+}
+
 /* Phan ky CW-EW (Chot 11:12 28/10, khoi Tong quan thi truong 2 phan):
    snapshot divergence.json do publisher ghi; frontend hien phien moi
    nhat + as_of. Thieu file -> cachedMarket tra {updated:null, rows:[]},
