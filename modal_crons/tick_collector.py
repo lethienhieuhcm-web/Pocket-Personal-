@@ -139,6 +139,28 @@ CONFIG = {
     # 03/11 (Worker khong co guard theo ngay nen van tra 200 + du lieu
     # cu). Xem modal_crons/tests/test_tape_universe.py.
     "universe": sorted(UNIVERSE_BLUECHIP | UNIVERSE_B200),
+    # PA-4b B1 (Chot Henrry 15:50 03/11): nen chi so "theo bo thu".
+    # Day la ten chi so cua gate DNSE (envelope tag 42 MarketIndex),
+    # KHONG phai ma ping. Da do phien 03/11 tren chart-api cua hang:
+    # VNINDEX/VN30/HNX/UPCOM/VNXALLSHARE co O-H-L-C-V; 6 chi so
+    # NGANH (VNFIN/VNREAL/VNIT/VNIND/VNMAT/VNCONS) DNSE KHONG co.
+    # Thu o day van an toan: ban tin ve thieu truong -> fail-open
+    # (khong bucket, khong crash), thieu topic -> broker khong day.
+    "index_universe": ["VNINDEX", "VN30", "HNX", "UPCOM",
+                       "VNXALLSHARE"],
+    # Chan do schema ban tin index CHUA reverse-engineer xong
+    # (SSI i/*, KBS INDEX:*, VNDirect kind khac ST/SMA): ghi CAU
+    # TRUC vao status de phien ke tiep ket luan co OHLCV hay khong.
+    # TAT thi bo chan do (van khong dung nen bang schema chua ro).
+    "index_probe": True,
+    # foreign_flow (rebase dong v24, su co 04/11): collector ghi tiep
+    # market/foreign_flow.json de frontend doc (cachedMarket, 15 phut;
+    # endpoint money-flow). KHONG phai khoi dong lai tick_live:
+    # "live" van False, lane intraday live van DONG (H1 la nguon
+    # realtime). Day chi la khoi ngoai hop nhat — worker gop THEO MA
+    # vao file (stock.js nhanh tick_live.foreign), giu cac ma cua
+    # luong publish cham.
+    "foreign_flow": True,
 }
 
 
@@ -739,13 +761,81 @@ def ssi_config():
     return _SSI_CFG
 
 
+SSI_WATCHLIST_DEFAULT_R2_KEY = "flow/watchlist/latest.json"
+
+
+def ssi_watchlist_symbols(fallback_universe):
+    """Danh sach ma SSI subscribe/xu ly M/B (Chot Henrry 21:55 03/11:
+    chi ma bo loc dem chon — flow_watchlist.json, candidates[].symbol,
+    toi da 20 ma, for_date = phien ke tiep — KHONG phai 40 ma Modal,
+    KHONG phai 649 ma).
+
+    Nguon, theo uu tien (Chot 22:34 03/11: R2 LA DUONG CHOT — bo loc
+    dem POST len nhanh `watchlist` cua stock-publish, key co dinh):
+    1. SSI_WATCHLIST_R2_KEY -> fetch_tick_state(key) dung key do.
+    2. SSI_WATCHLIST_PATH   -> doc file JSON tai duong dan (giu lai de
+       rollback / van thuong tren VM, KHONG env la duong R2).
+    3. mac dinh             -> SSI_WATCHLIST_DEFAULT_R2_KEY
+       ("flow/watchlist/latest.json"). Route tick-state them prefix
+       market/shadow_tick/ (va sGet them stock/), nen key nay tro ve
+       DUNG file Worker ghi: stock/market/shadow_tick/flow/watchlist/
+       latest.json. Modal container khong co flow_watchlist.json cua
+       VM — mac dinh cu doc file local luon FALLBACK, do vay doi sang
+       R2.
+
+    Loi bat ky (thieu file/JSON hu/khong co symbol hop le/R2 khong
+    reachable) -> log ro FALLBACK ve universe hien tai — khong chay
+    mu. Tra (symbols, mo_ta_nguon)."""
+    def parse(data):
+        cands = data.get("candidates") if isinstance(data, dict) else None
+        if not isinstance(cands, list):
+            return None
+        syms, seen = [], set()
+        for c in cands:
+            s = c.get("symbol") if isinstance(c, dict) else None
+            s = (s or "").strip().upper()
+            if s and s not in seen:
+                seen.add(s)
+                syms.append(s)
+        return syms or None
+
+    r2_key = os.environ.get("SSI_WATCHLIST_R2_KEY")
+    path = os.environ.get("SSI_WATCHLIST_PATH")
+    try:
+        if r2_key or not path:
+            key = r2_key or SSI_WATCHLIST_DEFAULT_R2_KEY
+            data = fetch_tick_state(key)
+            desc = f"r2:{key}"
+        else:
+            with open(path, encoding="utf-8") as f:
+                data = json.load(f)
+            desc = f"file:{path}"
+        syms = parse(data)
+        if not syms:
+            raise ValueError("khong co candidates[].symbol hop le")
+        print(f"[ssi-watchlist] OK {desc}: {len(syms)} ma "
+              f"(screen_date={data.get('screen_date')} "
+              f"for_date={data.get('for_date')}): "
+              f"{','.join(syms)}", flush=True)
+        return syms, desc
+    except Exception as e:  # noqa: BLE001
+        print(f"[ssi-watchlist] FALLBACK -> universe Modal "
+              f"({len(fallback_universe)} ma), loi watchlist: "
+              f"{type(e).__name__}: {str(e)[:150]}", flush=True)
+        return list(fallback_universe), "fallback-universe"
+
+
 class SsiAdapter:
     name = "ssi-mqtt"
 
     def __init__(self, agg, universe):
         self.agg = agg
+        syms, self.watchlist_src = ssi_watchlist_symbols(universe)
+        self.symbols = set(syms)
+        self.mb_skipped = 0  # tick l/ ngoai watchlist (phong thu khi
+        # broker day qua scope) — dem de do, khong xu ly.
         topics = []
-        for s in universe:
+        for s in syms:
             topics += [f"s/{s}/MAIN", f"l/{s}/MAIN"]
         topics += ["pe", "i/VNINDEX", "i/VN30"]
         ep, user, pw = ssi_config()
@@ -802,6 +892,11 @@ class SsiAdapter:
                         }, self.agg.gate_stats))
             elif topic.startswith("l/"):
                 sym = topic.split("/")[1]
+                if sym not in self.symbols:
+                    # Ngoai watchlist dem (Chot 21:55 03/11): bo qua,
+                    # khong xu ly M/B.
+                    self.mb_skipped += 1
+                    return
                 d = pb_decode(payload, SSI_LE)
                 for it in d.get("items", []):
                     if it.get("price") and it.get("vol"):
@@ -809,7 +904,7 @@ class SsiAdapter:
                             self.name, sym,
                             session_epoch(now_ict(), it.get("time", "")),
                             it["price"] / 1000, it["vol"],
-                            it.get("accumulatedVol"))
+                            it.get("accumulatedVol"), it.get("side"))
             elif topic == "pe":
                 d = pb_decode(payload, SSI_PE)
                 for it in d.get("items", []):
@@ -818,9 +913,122 @@ class SsiAdapter:
                             self.name, it["stockSymbol"], it,
                             session_epoch(now_ict(),
                                           it.get("time", "")))
+            elif topic.startswith("i/"):
+                # PA-4b B1: truoc day discard thoat handler. SSI
+                # CHUA co schema cho i/* (khong co SSI_INDEX, chua
+                # lan nao duoc giai) -> do cau truc protobuf, chua
+                # dung nen.
+                self.agg.on_index_probe(self.name,
+                                        "i/" + topic.split("/")[1],
+                                        pb_decode(payload, {}))
         except Exception as e:  # noqa: BLE001
             print(f"[ssi] decode loi {topic}: {str(e)[:100]}",
                   flush=True)
+
+
+# ---------------- PA-4b B1: chi so trong envelope DNSE -------------
+# Schema trich truc tiep tu bo giai ma cua Chinh hang (bundle
+# banggia.dnse.com.vn -> socketWorker.<hash>.js, protobufjs + jspb).
+# Envelope tag: 41=StockInfo, 42=MarketIndex, 45=Tick (da doi chieu
+# voi code cu o day dung f41/f45). MarketIndex fields:
+#   1 marketID(enum)  2 tradingSessionId(enum) 3 marketIndexClass
+#   4 indexTypeCode(str)  5 currencyCode(str)  6 transactTime
+#     (google.protobuf.Timestamp: seconds=1, nanos=3)
+#   7 ValueIndexes(double)        <- gia tri chi so HIEN TAI
+#   8 TotalVolumeTraded(uint64)   <- TONG KL ca phien (CP)
+#   9 GrossTradeAmount(double)    <- TONG GT ca phien (dong)
+#  22 HighestValueIndexes(double) <- HIGH ca phien (tich luy)
+#  23 LowestValueIndexes(double)  <- LOW ca phien (tich luy)
+#  24 changedValue  25 changedRatio  26 PriorValueIndexes (ref
+#    = close phien truoc)  27 IndexName(str)
+# KHONG CO truong OPEN. Gia mo cua phien chi lay duoc = gia tri
+# dau tien bo thu nhan sau 09:00 (collector khoi dong 08:55 nen
+# bao phu duoc luc mo). Day la DIEM CHOT ky thuat cua B1.
+DNSE_INDEX = {6: ("transact_time", "n", {1: ("seconds", "i"),
+                                         2: ("nanos", "i")}),
+              7: ("value", "d"),
+              8: ("cum_volume", "i"),
+              9: ("cum_value", "d"),
+              22: ("day_high", "d"),
+              23: ("day_low", "d"),
+              24: ("changed", "d"),
+              25: ("changed_pct", "d"),
+              26: ("prior", "d"),
+              27: ("index_name", "s")}
+
+# ValueIndexes / Highest / Lowest / Prior = DIEM, khong nhan 1000.
+# Chung tu bundle cua hang (out/dnse_js): socketWorker doc
+# ValueIndexes = getFloatingPointFieldWithDefault (raw double), roi
+# BLLjB5s6.js JN() chuyen `indexValue -> valueIndexes` GIU NGUYEN,
+# C1x_oD07.js format S(valueIndexes, 2) = 2 so thap phan — KHONG co
+# phep chia nao. Khac Tick/StockInfo (double = nghin dong, nhan 1000
+# -> VND theo field_map dnse f5/f13). So voi chart-api that hom nay
+# (VNINDEX C 1699.62) -> don vi = DIEM, khop nen chi so 1D cua
+# market/ohlcv/* (VIET NAM: khong /1000 cho chi so).
+INDEX_PRICE_SCALE = 1.0
+
+
+def dnse_index_topic(name):
+    """marketIndex(e) trong bundle hang = quotes/krx/mdds/index/<e>."""
+    return f"quotes/krx/mdds/index/{name}"
+
+
+def _ts_from(node):
+    """Timestamp nested (pb_decode kind "n" -> list[dict]) -> epoch."""
+    try:
+        d = node[0] if isinstance(node, list) and node else node
+        if not isinstance(d, dict):
+            return None
+        s = d.get("seconds")
+        if not isinstance(s, (int, float)):
+            return None
+        n = d.get("nanos") or 0
+        return s + n / 1e9
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def dnse_index_fields(payload):
+    """Payload MQTT (bytes) cua topic index -> {value, cum_volume,
+    day_high, day_low, prior, index_name, ts} hoac None.
+
+    Giai tag 42 giu nguyen bytes (kind "b") ROI document bang
+    DNSE_INDEX: neu pb_decode(payload, {}) thi IndexName (bytes) bi
+    hieu nham la message long va mat gia tri.
+
+    Fail-open: ban tin khong co tag 42, giai loi, hoac thieu
+    ValueIndexes (>0) -> tra None — BO QUA message, khong crash bo
+    thu (TASK B1)."""
+    if not isinstance(payload, (bytes, bytearray)):
+        return None
+    try:
+        env = pb_decode(payload, {42: ("raw", "b")})
+        raw = env.get("raw") if isinstance(env, dict) else None
+        if not isinstance(raw, (bytes, bytearray)):
+            return None
+        node = pb_decode(raw, DNSE_INDEX)
+    except Exception:  # noqa: BLE001
+        return None
+    value = node.get("value")
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    if value <= 0:
+        return None
+    out = {"value": value / INDEX_PRICE_SCALE,
+           "ts": _ts_from(node.get("transact_time")),
+           "index_name": node.get("index_name")}
+    cv = node.get("cum_volume")
+    if isinstance(cv, int) and not isinstance(cv, bool):
+        out["cum_volume"] = cv
+    for k in ("day_high", "day_low", "prior"):
+        v = node.get(k)
+        if isinstance(v, bool) or not isinstance(v, (int, float)):
+            continue
+        out[k] = v / INDEX_PRICE_SCALE
+    cm = node.get("cum_value")
+    if isinstance(cm, (int, float)) and not isinstance(cm, bool):
+        out["cum_value"] = cm
+    return out
 
 
 # ---------------- DNSE (nguon chinh) ----------------
@@ -835,6 +1043,10 @@ class DnseAdapter:
             topics += [
                 f"quotes/krx/mdds/stockinfo/v1/roundlot/symbol/{s}",
                 f"quotes/krx/mdds/tick/v1/roundlot/symbol/{s}"]
+        # PA-4b B1: them topic chi so vao CHAN DNSE SAN CO (khong
+        # sinh gate moi — chi them topic tren MqttWs dang chay).
+        topics += [dnse_index_topic(x)
+                   for x in CONFIG.get("index_universe", [])]
         # entrade/entrade: tai khoan cong khai trong bundle DNSE
         self.client = MqttWs(
             "wss://datafeed-krx.dnse.com.vn/wss",
@@ -882,6 +1094,22 @@ class DnseAdapter:
     def _on_msg(self, topic, payload):
         try:
             d = pb_decode(payload, {})
+            if "/mdds/index/" in topic:
+                # PA-4b B1: truoc day discard (khong co nhanh nay).
+                f = dnse_index_fields(payload)
+                if f is None:
+                    self.agg.on_index_probe(
+                        self.name, "dnse_index_undecoded",
+                        {"topic": topic})
+                    return
+                sym = str(f.get("index_name")
+                          or topic.rsplit("/", 1)[-1]).upper()
+                self.agg.on_index(self.name, sym, f.get("ts"),
+                                  f.get("value"),
+                                  f.get("cum_volume"),
+                                  f.get("day_high"), f.get("day_low"),
+                                  f.get("prior"), f.get("cum_value"))
+                return
             if "stockinfo" in topic:
                 m = self._inner(d, "f41")
                 sym = self._num(m, "f4")
@@ -996,6 +1224,11 @@ class KbsAdapter:
                         self.name, sym,
                         session_epoch(now_ict(), d.get("FT", "")),
                         price / 1000, vol, _f(d.get("AVO")))
+            elif typ == "INDEX":
+                # PA-4b B1: KBS sub INDEX:VNINDEX+INDEX:VN30 tu
+                # truoc, payload JSON bi discard. Do khoa JSON xem
+                # co du O-H-L-V hay khong.
+                self.agg.on_index_probe(self.name, "INDEX", d)
         except Exception as e:  # noqa: BLE001
             print(f"[kbs] decode loi: {str(e)[:100]}", flush=True)
 
@@ -1214,6 +1447,13 @@ class VndirectAdapter:
                 "total_room": (_f(parts[14]) or 0) * 10
                 if _f(parts[14]) is not None else None,
                 }, self.agg.gate_stats))
+        else:
+            # PA-4b B1: moi kind KHAC ST/SMA (MI/10, wildcard 10/+
+            # 02/+ co the day ban tin chi so) truoc day bo im lang
+            # -> ghi cau truc tung slot vi tri, chua dung nen.
+            self.agg.on_index_probe(
+                self.name, "kind:" + (kind or "?"),
+                {f"slot{i}": v for i, v in enumerate(parts[:24])})
 
 
 # ---------------- VPS (chan bonus: 3250 ngoai + 3220 tick + tong hop) ----
@@ -1479,6 +1719,13 @@ class Aggregator:
         # sell, unk, levels, prev, last_side, dirty, started}
         self.tape = {}
         self.tape_started = time.time()
+        # PA-4b B1: nen chi so dung CHUNG self.candles (sym = ten
+        # chi so), so _merged_buckets/_resample/build_intraday/
+        # checkpoint/publish chay nhu voi ma ping — khong them
+        # duong xuat ra moi. Ba gia tri nay de cross-check + do:
+        self.index_stats = {}   # src -> sym -> counters
+        self.index_day = {}     # src -> sym -> cum/day high/low/prior
+        self.index_probe = {}   # src -> kind -> {count, fields, sample}
 
     def tape_rec(self, sym, ts, price, vol):
         t = self.tape.get(sym)
@@ -1542,11 +1789,14 @@ class Aggregator:
             }
         return out
 
-    def on_match(self, src, sym, ts, price, vol, acc):
-        # Raw (Dot 2): [src, sym, ts_event, ts_recv, price, vol, acc]
-        # — ghi truoc dedup de phat lai trung khop phien live.
+    def on_match(self, src, sym, ts, price, vol, acc, side=None):
+        # Raw (Dot 2): [src, sym, ts_event, ts_recv, price, vol, acc,
+        # side] — 7 field dau giu nguyen vi tri; side them vao CUOI
+        # (SDO SSI M/B 03/11: truyen it["side"] tu topic l/, nguon
+        # khong co side = None). Ghi truoc dedup de phat lai trung
+        # khop phien live.
         self.raw_buf.append([src, sym, ts, round(time.time(), 3),
-                             price, vol, acc])
+                             price, vol, acc, side])
         key = (src, sym)
         st = self.tick_stats.setdefault(
             src, {"dup_dropped": 0, "acc_regressed": 0, "late": 0,
@@ -1638,6 +1888,148 @@ class Aggregator:
                     continue
             cur[k] = v
         cur["src"] = src
+
+    def on_index(self, src, sym, ts, value, cum_volume=None,
+                 day_high=None, day_low=None, prior=None,
+                 cum_value=None):
+        """PA-4b B1: mot ban tin CHI SO -> bucket phut cua sym do.
+
+        Khac ping: day la gia tri day-so (cumulative), khong phai
+        khop lenh, nen
+          o = gia tri dau tien trong phut, h/l = max/min cac gia tri
+          trong phut, c = gia tri theo ts SU KIEN lon nhat,
+          v = LECH TotalVolumeTraded trong phut (truong nay la tong
+          ca phien, khong cong duoc truc tiep).
+        Cumulative high/low cua nha mang luu rieng de doi chieu,
+        KHONG dua vao bucket (neu cho vao thi day-high roi ngat
+        sang moi phut — sai nen). Fail-open: thieu gia tri -> dem
+        dropped, return, khong crash."""
+        st = self.index_stats.setdefault(src, {}).setdefault(sym, {
+            "msgs": 0, "dropped": 0, "vol_neg": 0, "buckets": 0,
+            "restated": 0, "ts_synthetic": 0, "hl_mismatch": 0,
+            "late": 0})
+        st["msgs"] += 1
+        if value is None:
+            st["dropped"] += 1
+            return
+        if not ts:
+            ts = time.time()
+            st["ts_synthetic"] += 1
+        minute = int(ts // 60 * 60)
+        day = self.index_day.setdefault(src, {}).setdefault(sym, {})
+        dv = 0
+        if cum_volume is not None:
+            prev = day.get("cum_volume")
+            if prev is None:
+                dv = 0
+            elif cum_volume >= prev:
+                dv = cum_volume - prev
+            else:
+                # cumulative giam = phien moi / restated / nguon doi
+                # -> khong cong so am, giu bucket cu, dem de do.
+                dv = 0
+                st["vol_neg"] += 1
+            day["cum_volume"] = cum_volume
+        per = self.candles.setdefault(src, {}).setdefault(sym, {})
+        b = per.get(minute)
+        if b is None:
+            per[minute] = [value, value, value, value, dv, ts, ts]
+            st["buckets"] += 1
+        else:
+            if ts < b[5]:
+                st["late"] += 1
+            b[1] = max(b[1], value)
+            b[2] = min(b[2], value)
+            if ts >= b[6]:
+                b[3] = value
+                b[6] = ts
+            if ts < b[5]:
+                b[0] = value
+                b[5] = ts
+            b[4] += dv
+        for k, v in (("day_high", day_high), ("day_low", day_low),
+                     ("prior", prior), ("cum_value", cum_value),
+                     ("last_value", value)):
+            if v is None:
+                continue
+            if k in ("day_high", "day_low") and day.get(k) is not None:
+                # chi so khong the "quay lui" trong phien (trunk
+                # restated) -> dem de phat hien thang do scale/field
+                hi_ok = (v >= day[k]) if k == "day_high" \
+                    else (v <= day[k])
+                if not hi_ok:
+                    st["hl_mismatch"] += 1
+                    st["restated"] += 1
+            day[k] = v
+        self.dirty.add(sym)
+
+    def on_index_probe(self, src, kind, obj):
+        """PA-4b B1: ban tin index CHUA co schema (SSI i/*, KBS
+        INDEX:*, VNDirect kind khac, DNSE index khong giai duoc) ->
+        ghi CAU TRUC (so field / ten khoa + kieu + dem lan). Khong
+        dung nen bang schema chua ro. Publish vao status phien ke
+        tiep ket luan co OHLCV hay chi gia tri + %."""
+        if not CONFIG.get("index_probe"):
+            return
+        try:
+            p = self.index_probe.setdefault(src, {}).setdefault(
+                kind, {"count": 0, "fields": {}, "sample": None})
+            p["count"] += 1
+            if isinstance(obj, dict):
+                items = list(obj.items())[:48]
+            else:
+                items = [("value", obj)]
+            flat = list(items)
+            for k, v in items:
+                # one cap long (dict / list[dict]) -> ghi ca khoa
+                # ben trong (kieu "f7.f1") de do schema SSI i/* hom
+                # sau ma khong can luu raw payload
+                if isinstance(v, dict):
+                    flat += [(f"{k}.{ik}", iv)
+                             for ik, iv in list(v.items())[:24]]
+                elif (isinstance(v, list) and v
+                        and isinstance(v[0], dict)):
+                    flat += [(f"{k}[0].{ik}", iv)
+                             for ik, iv in list(v[0].items())[:24]]
+            for k, v in flat[:120]:
+                t = ("null" if v is None else
+                     "bool" if isinstance(v, bool) else
+                     "num" if isinstance(v, (int, float)) else
+                     "list" if isinstance(v, list) else
+                     "dict" if isinstance(v, dict) else "str")
+                f = p["fields"].setdefault(str(k), {"n": 0,
+                                                    "types": {}})
+                f["n"] += 1
+                f["types"][t] = f["types"].get(t, 0) + 1
+            if not p["sample"]:
+                # giu 1 ban mau (cat container toan bo — schema
+                # nested do bang phien sau, status phai nho)
+                p["sample"] = {str(k): v for k, v in flat[:48]
+                               if not isinstance(v, (dict, list))}
+        except Exception:  # noqa: BLE001
+            pass
+
+    def build_index_status(self):
+        """Tom luoc cho status: buckets chi so theo nguon + schema
+        do duoc (field -> types), sample cat ngat de nho."""
+        out = {"stats": self.index_stats, "day": {}, "probe": {}}
+        for src, per in self.index_day.items():
+            out["day"][src] = {s: {k: v for k, v in d.items()
+                                   if k != "cum_volume"}
+                               for s, d in per.items()}
+        for src, per in self.index_probe.items():
+            out["probe"][src] = {
+                k: {"count": v["count"], "fields": v["fields"],
+                    "sample": v["sample"]}
+                for k, v in per.items()}
+        return out
+
+    def index_symbols(self):
+        """Ten chi so DANH CO bucket trong phien (kiem tra nhanh:
+        duoc may / may trong index_universe)."""
+        want = set(CONFIG.get("index_universe", ()))
+        return sorted({sym for per in self.candles.values()
+                       for sym in per if sym in want})
 
     def on_put(self, src, sym, it, ts=None):
         # ts = ts su kien cua deal (SSI pe co truong time); thieu
@@ -2190,6 +2582,8 @@ async def _collect(max_minutes=0):
                     "aggregateforeignmarket"),
                 "aggregateps": agg.aggregates.get("aggregateps"),
             },
+            "index": agg.build_index_status(),
+            "index_symbols": agg.index_symbols(),
             "publishes": publishes,
             "runtime_sec": round(time.time() - started),
             "closed": closed,
@@ -2259,11 +2653,22 @@ async def _collect(max_minutes=0):
                     if chunk:
                         live["tick_live"]["intraday"] = chunk
                     await asyncio.to_thread(publish, live, "multi")
-                elif CONFIG["chart_candles"] and chunk:
-                    # PA-1: chi gui NEN — body.intraday ->
-                    # market/intraday/<SYM>_<iv>.json (stock.js:1785).
-                    await asyncio.to_thread(
-                        publish, {"intraday": chunk}, "multi")
+                else:
+                    if CONFIG.get("foreign_flow") and flow:
+                        # Rebase dong v24 (04/11): khoi ngoai hop nhat goi
+                        # qua lane tick_live.foreign — CHI khoi ngoai, KHONG
+                        # nen live (H1 la nguon realtime, "live" van False).
+                        # Worker gop THEO MA vao market/foreign_flow.json,
+                        # giu cac ma cua luong publish cham (stock.js
+                        # nhanh tick_live).
+                        await asyncio.to_thread(
+                            publish, {"tick_live": {"foreign": flow}},
+                            "multi")
+                    if CONFIG["chart_candles"] and chunk:
+                        # PA-1: chi gui NEN — body.intraday ->
+                        # market/intraday/<SYM>_<iv>.json (stock.js:1785).
+                        await asyncio.to_thread(
+                            publish, {"intraday": chunk}, "multi")
             elif chunk:
                 await asyncio.to_thread(
                     publish, {"tick_shadow": {"intraday": chunk}},
