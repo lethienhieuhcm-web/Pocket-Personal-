@@ -926,6 +926,180 @@ export async function hStockFlowScreen(request, env){
     trial:true, count:rows.length, rows, updated:d.updated || null});
 }
 
+/* ================= LIVE M/B (Chot Henrry 08:11 04/11) =================
+   Duong (b): WS/Ably stream + tick_live KHONG chua `side`; side chi ton
+   tai trong R2 raw tick chunks (JSONL gzip, row =
+   [src, sym, ts_event, ts_recv, price, vol, acc, side] — side la cot 8,
+   nguon ssi-mqtt topic l/). Endpoint nay doc cac chunk cua 15 phut
+   cuoi, tong hop KL/GT mua, ban, net theo tung ma trong watchlist
+   sang loc dong tien ngay (fallback: B200 42 ma). Gia trong raw la
+   nghin dong (nhu intraday) -> value VND = price * 1000 * vol.
+   Nguong alert da chot (Henrry 21:46 03/11): net > 1 ty VND / 15 phut. */
+
+export const MF_WINDOW_SEC = 900;
+export const MF_THRESHOLD_VND = 1e9;
+const MF_PRICE_TO_VND = 1000; // raw gia = nghin dong -> dong
+const MF_B200_42 = [
+  "AAS", "ABB", "BFC", "BWE", "C69", "CDC", "CTF", "CTI",
+  "DCL", "DPG", "GMD", "HAG", "HDA", "HDB", "HHP", "HTN",
+  "HVH", "IDC", "KBC", "KSB", "MCH", "MSR", "MWG", "NAB",
+  "NAF", "ORS", "PDR", "PTB", "QNS", "SHB", "SSB", "TCX",
+  "TDP", "TIN", "TNG", "TOS", "TVN", "VEA", "VGR", "VGT",
+  "VJC", "VPL",
+];
+
+/* Phan loai gia tri `side` cua SSI (quy uoc VIE: M = mua, B = ban;
+   mock collector dung "M"/"B"). Gia tri la -> dem vao side_unknown
+   trong meta de probe live. */
+export function mfSideClass(side){
+  if(side == null) return "none";
+  const s = String(side).trim().toUpperCase();
+  if(!s) return "none";
+  if(s === "M" || s === "MUA" || s === "BUY") return "buy";
+  if(s === "B" || s === "BAN" || s === "SELL") return "sell";
+  return "unk";
+}
+
+/* Tong hop thuan tuy (test duoc khong R2): lines = JSONL row da parse.
+   rows = cac mang 8 cot cua nguon co match; dong PUT (6 cot) loai.
+   cutoff/nowSec = giay epoch. Dedup (src|sym|acc) vi raw ghi TRUOC
+   dedup cua collector (phat lai trung khi reconnect). */
+export function mfAggregateRows(lines, symbols, cutoff, nowSec){
+  const symSet = new Set(symbols);
+  const agg = new Map();
+  const seenAcc = new Set();
+  const stats = { lines: 0, used: 0, dedup_dropped: 0, out_of_window: 0,
+    no_side: 0, side_unknown: {}, other_symbol: 0 };
+  for(const ln of lines){
+    stats.lines++;
+    if(!Array.isArray(ln) || ln.length < 8) continue;
+    const src = ln[0], sym = String(ln[1] || "").toUpperCase();
+    const tsEv = ln[2], tsRecv = ln[3], price = Number(ln[4]),
+          vol = Number(ln[5]), acc = ln[6], side = ln[7];
+    if(!sym || !symSet.has(sym)){ stats.other_symbol++; continue; }
+    const ts = (Number.isFinite(tsEv) ? Number(tsEv) : Number(tsRecv));
+    if(!Number.isFinite(ts) || ts < cutoff || ts > nowSec + 120){
+      stats.out_of_window++; continue; }
+    if(acc != null){
+      const k = src + "|" + sym + "|" + acc;
+      if(seenAcc.has(k)){ stats.dedup_dropped++; continue; }
+      seenAcc.add(k);
+    }
+    if(!Number.isFinite(price) || !Number.isFinite(vol) || price <= 0 || vol <= 0) continue;
+    const cls = mfSideClass(side);
+    if(cls === "none"){ stats.no_side++; continue; }
+    if(cls === "unk"){
+      const key = String(side).slice(0, 12);
+      stats.side_unknown[key] = (stats.side_unknown[key] || 0) + 1;
+      continue;
+    }
+    let a = agg.get(sym);
+    if(!a){ a = { symbol: sym, buy_vol: 0, buy_val: 0, sell_vol: 0, sell_val: 0 };
+      agg.set(sym, a); }
+    const val = price * MF_PRICE_TO_VND * vol;
+    if(cls === "buy"){ a.buy_vol += vol; a.buy_val += val; }
+    else { a.sell_vol += vol; a.sell_val += val; }
+    stats.used++;
+  }
+  const rows = [];
+  for(const sym of symSet){
+    const a = agg.get(sym) || { symbol: sym, buy_vol: 0, buy_val: 0, sell_vol: 0, sell_val: 0 };
+    const net_val = a.buy_val - a.sell_val;
+    rows.push({ symbol: sym, buy_vol: a.buy_vol, buy_val: Math.round(a.buy_val),
+      sell_vol: a.sell_vol, sell_val: Math.round(a.sell_val),
+      net_vol: a.buy_vol - a.sell_vol, net_val: Math.round(net_val),
+      has_data: agg.has(sym),
+      flagged: net_val > MF_THRESHOLD_VND });
+  }
+  rows.sort((x, y) => y.net_val - x.net_val);
+  return { rows, stats };
+}
+
+/* GET /api/stock/money-flow-live[?date=YYYY-MM-DD] — cong khai. */
+export async function hStockMoneyFlowLive(request, env){
+  const u = new URL(request.url);
+  let date = (u.searchParams.get("date") || "").trim();
+  if(date && !/^\d{4}-\d{2}-\d{2}$/.test(date)) return jerr("Invalid date", 400);
+  const nowMs = Date.now();
+  const nowSec = Math.floor(nowMs / 1000);
+  const cutoff = nowSec - MF_WINDOW_SEC;
+  const ict = new Date(nowMs + 7 * 3600 * 1000); // field UTC = gio ICT
+  if(!date) date = ict.toISOString().slice(0, 10);
+  const isoOf = (sec) => new Date((sec + 7 * 3600) * 1000).toISOString().replace(/\.\d+Z$/, "").replace("Z", "") + "+07:00"; // +7h truoc khi format: isoOf tra gio ICT, khong phai UTC (fix Plan 04/11: ban goc quen +7h, nhan hien thi cham 7h)
+
+  // Danh sach ma: watchlist sang loc dong tien hom nay (file VM POST
+  // len, cung nguon collector SSI M/B dung), den flow_screen latest,
+  // cuoi cung B200 42 ma.
+  let symbols = null, wlSource = null;
+  const wl = await sGet(env, "market/shadow_tick/flow/watchlist/latest.json");
+  if(wl && String(wl.for_date || "") === date && Array.isArray(wl.candidates) && wl.candidates.length){
+    symbols = [...new Set(wl.candidates.map((c) => String((c && c.symbol) || "").trim().toUpperCase())
+      .filter((s) => FLOW_SYM_RE.test(s)))];
+    wlSource = "flow_watchlist";
+  }
+  if(!symbols || !symbols.length){
+    const fs = await sGet(env, "flow/flow_screen_latest.json");
+    if(fs && String(fs.for_date || "") === date && Array.isArray(fs.candidates) && fs.candidates.length){
+      symbols = [...new Set(fs.candidates.map((c) => String((c && c.symbol) || "").trim().toUpperCase())
+        .filter((s) => FLOW_SYM_RE.test(s)))];
+      if(symbols.length) wlSource = "flow_screen";
+    }
+  }
+  if(!symbols || !symbols.length){ symbols = MF_B200_42.slice(); wlSource = "b200_fallback"; }
+
+  // Raw chunks cua ngay, chi 2 gio ICT cua cua so 15 phut.
+  const dayPrefix = "stock/market/shadow_tick/raw/" + date + "/";
+  const hhCur = String(ict.getUTCHours()).padStart(2, "0");
+  const hhPrev = String((ict.getUTCHours() + 23) % 24).padStart(2, "0");
+  const allKeys = await obListKeys(env, dayPrefix, 2000);
+  const fileKeys = [];
+  for(const k of allKeys){
+    const m = k.slice(dayPrefix.length).match(/^(?:[a-z0-9-]+)\/([0-9]{2})\/([0-9]+)\.jsonl\.gz$/);
+    if(!m) continue;
+    if(m[1] !== hhCur && m[1] !== hhPrev) continue;
+    // Ten file = thoi diem ghi (ms) >= ts_recv >= ts_event cua moi dong
+    // trong no -> file ghi truoc cutoff khong the chua dong trong window.
+    if(Number(m[2]) < cutoff * 1000) continue;
+    fileKeys.push(k);
+  }
+  fileKeys.sort();
+  const lines = [];
+  let filesRead = 0, filesFailed = 0;
+  const GET_BATCH = 10;
+  for(let i = 0; i < fileKeys.length; i += GET_BATCH){
+    const batch = fileKeys.slice(i, i + GET_BATCH);
+    const got = await Promise.all(batch.map(async (k) => {
+      try{
+        const o = await env.DATA.get(k);
+        if(!o) return null;
+        const buf = await o.arrayBuffer();
+        return await obGunzipText(buf);
+      }catch(e){ return null; }
+    }));
+    for(const txt of got){
+      if(txt == null){ filesFailed++; continue; }
+      filesRead++;
+      for(const line of txt.split("\n")){
+        if(!line.trim()) continue;
+        try{ lines.push(JSON.parse(line)); }catch(e){}
+      }
+    }
+  }
+  const { rows, stats } = mfAggregateRows(lines, symbols, cutoff, nowSec);
+  return sJson({
+    available: true, date,
+    source: "shadow_tick_raw_chunks",
+    window: { minutes: MF_WINDOW_SEC / 60, from: isoOf(cutoff), to: isoOf(nowSec) },
+    updated: new Date(nowMs).toISOString().replace(/\.\d+Z$/, "Z"),
+    watchlist: { source: wlSource, count: symbols.length },
+    threshold_vnd: MF_THRESHOLD_VND,
+    unit_note: "KL = co phieu; GT = VND (gia raw nghin dong x1000 x KL)",
+    rows,
+    meta: { files_scanned: fileKeys.length, files_read: filesRead,
+      files_failed: filesFailed, hours: [hhPrev, hhCur], ...stats },
+  });
+}
+
 /* Phan ky CW-EW (Chot 11:12 28/10, khoi Tong quan thi truong 2 phan):
    snapshot divergence.json do publisher ghi; frontend hien phien moi
    nhat + as_of. Thieu file -> cachedMarket tra {updated:null, rows:[]},

@@ -363,6 +363,13 @@
 <div class="sec"><span id="flowTableT"></span><span class="trialbadge" id="flowTrial"></span></div>
 <div class="card"><div class="flowwrap"><table><thead id="flowTableHead"></thead><tbody id="flowTableBody"><tr><td colspan="10"><div class="hint">Đang tải…</div></td></tr></tbody></table></div></div>
 <div class="note" id="flowNote"></div>
+<!-- ===== M/B LIVE (Chot Henrry 08:11 04/11): mua/ban SSI 15 phut gan
+     nhat, doc raw tick chunks qua /api/stock/money-flow-live.
+     Section doc lap — dung poll 30s rieng, khong dong vao 60s poll. ===== -->
+<div class="sec"><span id="mbSecT">M/B live (15 phút)</span><span class="trialbadge" id="mbBadge"></span></div>
+<div class="src" id="mbHead" style="text-align:left;padding:0 16px 2px"></div>
+<div class="card"><div class="flowwrap"><table><thead id="mbTableHead"></thead><tbody id="mbTableBody"><tr><td colspan="7"><div class="hint">Đang tải…</div></td></tr></tbody></table></div></div>
+<div class="note" id="mbNote"></div>
 </div>
 <script>
 const $=id=>document.getElementById(id);
@@ -1393,6 +1400,74 @@ window.onIngestTick = function(frame){
 <script src="/english/js/features/stock-chart.js?v=__BUILD__"></script>
 <script src="https://cdn.ably.com/lib/ably.min-1.js"></script>
 <script src="/english/js/features/unified-ingest.js?v=__BUILD__"></script>
+<script>
+/* ================= M/B LIVE section (Chot Henrry 08:11 04/11) =================
+   Doc lap hoan toan: poll /api/stock/money-flow-live 30s khi tab "Dòng
+   tiền" dang mo. KHONG cham vao 60s poll, chart, sig comparison. */
+(function(){
+  var POLL_MS=30000, THRESH=1e9;
+  function $id(i){ return document.getElementById(i); }
+  function mbEsc(s){ return String(s==null?"":s).replace(/[&<>"]/g,function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]; }); }
+  function mbVol(n){ if(n==null||!isFinite(+n)||+n===0) return "—"; return Math.round(+n).toLocaleString("vi-VN"); }
+  function mbTy(vnd){ if(vnd==null||!isFinite(+vnd)) return "—"; var t=+vnd/1e9; if(t>0&&t<0.0005) return "+0.000"; if(t<0&&t>-0.0005) return "-0.000"; return (t>0?"+":"")+t.toFixed(3); }
+  function mbCls(v){ return v>0?"up":(v<0?"down":""); }
+  function mbRender(j){
+    var th=$id("mbTableHead"), body=$id("mbTableBody"), head=$id("mbHead"), note=$id("mbNote"), badge=$id("mbBadge");
+    if(!th||!body) return;
+    if(!j||!j.available){ body.innerHTML='<tr><td colspan="7"><div class="hint">Chưa có dữ liệu M/B live</div></td></tr>'; return; }
+    if(badge) badge.textContent="[THỬ M/B LIVE]";
+    var w=j.window||{};
+    if(head) head.textContent="Cửa sổ 15 phút: "+mbEsc((w.from||"").slice(11,16))+"–"+mbEsc((w.to||"").slice(11,16))
+      +" · nguồn: "+mbEsc(j.source||"")+" · watchlist: "+mbEsc(j.watchlist&&j.watchlist.source)+" ("+(j.watchlist&&j.watchlist.count)+")";
+    var cols=["Mã","Mua KL","Mua GT (tỷ)","Bán KL","Bán GT (tỷ)","Net (tỷ)","Cờ >1 tỷ/15p"];
+    th.innerHTML="<tr>"+cols.map(function(c,i){ return "<th"+(i>0?' style="text-align:right"':"")+">"+mbEsc(c)+"</th>"; }).join("")+"</tr>";
+    var rows=j.rows||[];
+    var withData=rows.filter(function(r){ return r.has_data; });
+    if(!withData.length){
+      body.innerHTML='<tr><td colspan="7"><div class="hint">Chưa có tick M/B (side) trong 15 phút gần nhất</div></td></tr>';
+    }else{
+      body.innerHTML=withData.map(function(r){
+        var net=Number(r.net_val)||0;
+        var flag=r.flagged?'<span class="up"><b>&#9873; MUA RÒNG &gt;1 tỷ</b></span>':(net<-THRESH?'<span class="down"><b>BÁN RÒNG &gt;1 tỷ</b></span>':"");
+        return '<tr><td><a href="#" onclick="openSym(\''+mbEsc(r.symbol)+'\');return false"><b>'+mbEsc(r.symbol)+'</b></a></td>'
+          +'<td style="text-align:right">'+mbVol(r.buy_vol)+'</td>'
+          +'<td style="text-align:right" class="'+mbCls(r.buy_val)+'">'+mbTy(r.buy_val)+'</td>'
+          +'<td style="text-align:right">'+mbVol(r.sell_vol)+'</td>'
+          +'<td style="text-align:right" class="'+mbCls(-Number(r.sell_val||0))+'">'+mbTy(-Number(r.sell_val||0))+'</td>'
+          +'<td style="text-align:right" class="'+mbCls(net)+'"><b>'+mbTy(net)+'</b></td>'
+          +'<td style="text-align:right">'+flag+'</td></tr>';
+      }).join("");
+    }
+    var meta=j.meta||{};
+    if(note){
+      var sv=Object.keys(meta.side_unknown||{});
+      var unkN=0; for(var k in (meta.side_unknown||{})){ unkN+=meta.side_unknown[k]; }
+      note.textContent="KL = cổ phiếu; GT = tỷ đồng (giá raw ×1000 × KL). Net = mua − bán; cờ khi net > 1 tỷ/15 phút. "
+        +(j.updated?("Cập nhật "+mbEsc(String(j.updated).slice(0,19).replace("T"," "))+" UTC. "):"")
+        +"files="+mbEsc(meta.files_read!=null?meta.files_read:"—")
+        +(unkN?(" · side lạ="+unkN+(sv.length?(" ["+sv.slice(0,4).join(", ")+"]"):"")):"");
+    }
+  }
+  async function mbTick(){
+    var view=$id("v-flow");
+    if(!view||!view.classList.contains("on")) return; // tab dong -> khong poll
+    try{
+      var r=await fetch("/api/stock/money-flow-live",{cache:"no-store"});
+      if(!r.ok) throw new Error("HTTP "+r.status);
+      mbRender(await r.json());
+    }catch(e){
+      var body=$id("mbTableBody");
+      if(body) body.innerHTML='<tr><td colspan="7"><div class="hint">Không tải được dữ liệu M/B live</div></td></tr>';
+    }
+  }
+  setInterval(mbTick,POLL_MS);
+  // tick dau khi mo tab (go() la ham toan cuc cua page; khong ghi de)
+  var _goOld=window.go;
+  if(typeof _goOld==="function"){
+    window.go=function(v){ var out=_goOld.apply(this,arguments); if(v==="v-flow"){ mbTick(); } return out; };
+  }
+})();
+</script>
 
 <button id="aiFab" onclick="openChat()" style="position:fixed;right:16px;bottom:24px;width:52px;height:52px;border-radius:50%;background:var(--pp-accent);color:#fff;border:none;font-size:20px;box-shadow:0 4px 16px rgba(0,0,0,.5);cursor:pointer;z-index:200"><svg class="tic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></button>
 </body>
