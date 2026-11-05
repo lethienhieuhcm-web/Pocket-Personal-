@@ -29,7 +29,17 @@ Trang thai chuoi (sau Dot 0 parity, 20/10):
   giao dich co dong lon/noi bo giu vnstock — xem events()).
   profile/statements: van vnstock (BCTC KBS lan cot ky — Dot 4
   ket luan am tinh; ho so da lat 2/5 phan o publish_snapshot).
+
+Trang thai Dot 6 (05/11) — flag DROP_VNSTOCK_MAINPATH (xem duoi CHAINS):
+- =1 (mac dinh): vnstock RUT khoi chuoi chinh cua loai du lieu CO nguon
+  khac trong chuoi — ohlcv, intraday, index, market_status, listing,
+  sectors. Chuoi con lai (profile, statements — chi co vnstock) va lop
+  events (hybrid, van giu nhom giao dich co dong/noi bo tu vnstock)
+  KHONG doi. Adapter vnstock + import truc tiep o noi khac van giu
+  nguyen; rollback = dao 1 co (DAT DROP_VNSTOCK_MAINPATH=0) — khong sua
+  chuoi, khong xoa adapter.
 """
+import os
 import time
 from datetime import date, datetime, timedelta, timezone
 
@@ -49,12 +59,34 @@ CHAINS = {
     "proprietary_day": ["finfo", "vietstock", "pdf"],
 }
 
+# Dot 6 (05/11): co so bat/tat viec rut vnstock khoi chuoi chinh. Co doc
+# luc nap module, nen rollback la dao DUY NHAT 1 co — khong can sua
+# CHAINS, khong can xoa adapter vnstock ben duoi:
+#   (a) cron/tien trinh moi: DAT DROP_VNSTOCK_MAINPATH=0 trong moi truong,
+#   (b) tien trinh dang song: source_router.DROP_VNSTOCK_MAINPATH = False
+#       (ap dung tu lan goi ke tiep, khong restart).
+# Chi ap dung cho loai du lieu CO it nhat 1 nguon khac vnstock trong chuoi
+# (ohlcv, intraday, index, market_status, listing, sectors). Loai chi co
+# vnstock (profile, statements) giu nguyen: that doi thanh chuoi rong se
+# chet ca lane thay vi chi bo fallback.
+DROP_VNSTOCK_MAINPATH = os.environ.get("DROP_VNSTOCK_MAINPATH", "1") == "1"
+
+
+def _chain_for(kind):
+    """Chuoi nguon dung thuc te cho 1 loai du lieu (sau co
+    DROP_VNSTOCK_MAINPATH)."""
+    src = CHAINS[kind]
+    if not DROP_VNSTOCK_MAINPATH:
+        return src
+    kept = [s for s in src if s != "vnstock"]
+    return kept or src
+
 
 def _run_chain(kind, adapters):
-    """Chay theo CHAINS[kind], tra (data, source). Nguon loi/rong thi
+    """Chay theo _chain_for(kind), tra (data, source). Nguon loi/rong thi
     thu nguon ke. Het chuoi van loi -> raise loi cuoi."""
     last_err = None
-    for name in CHAINS[kind]:
+    for name in _chain_for(kind):
         fn = adapters.get(name)
         if fn is None:
             continue
@@ -298,7 +330,8 @@ def price_board(symbols, prefer=None):
         "vci": lambda: _board_vci(symbols),
     }
     if prefer and prefer in adapters:
-        order = [prefer] + [s for s in CHAINS["price_board"] if s != prefer]
+        order = [prefer] + [s for s in _chain_for("price_board")
+                            if s != prefer]
         last_err = None
         for name in order:
             try:
