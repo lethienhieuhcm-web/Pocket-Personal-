@@ -958,6 +958,65 @@ async function obListKeys(env, prefix, cap){
   return keys;
 }
 
+/* Quet theo TUNG THU MUC GIO, khong theo cap "N key dau ngay".
+   R2 list() tra toi da 1000 key/lan, thu tu tu dien, khong co startAfter;
+   quet nguyen prefix ngay bang cap co dinh (2000) thi file gio sang choang
+   het so lan goi va file gio hien tai rot ra khoi danh sach — sau 13h ICT
+   handler van tra 200 nhung `rows` rong (loc 2026-11-04 chieu).
+   Huong dung: dung delimiter liet ke thu muc con xuong den thu muc gio, roi
+   quet tung thu muc gio. So lan list = (thuc x gio), khong phu thuoc so file
+   ca ngay; filter gio + ms ghi cua ngan cat van o choi nhu cu.
+   Return null khi binding/mock khong tra delimitedPrefixes -> duong lui. */
+const OB_WINDOW_DIR_MAX_KEYS = 4000; // giu N key MOI NHAT neu 1 gio vo han file
+const OB_WINDOW_DIR_MAX_PAGES = 8;   // 8 x 1000 key — chan vong lap khi lo goi
+
+async function obListSubPrefixes(env, prefix){
+  const out = [];
+  let cursor = undefined;
+  for(let page = 0; page < OB_WINDOW_DIR_MAX_PAGES; page++){
+    const res = await env.DATA.list(cursor ? {prefix, delimiter: "/", cursor}
+                                           : {prefix, delimiter: "/"});
+    const subs = res && (res.delimitedPrefixes || res.prefixes);
+    if(!Array.isArray(subs)) return null;
+    for(const p of subs) out.push(p.endsWith("/") ? p : p + "/");
+    if(!res.truncated || !res.cursor) return out;
+    cursor = res.cursor;
+  }
+  return out;
+}
+
+async function obListWindowKeys(env, basePrefix, hourDirs, levels){
+  let prefixes = [basePrefix];
+  for(let d = 0; d < levels; d++){
+    const next = [];
+    for(const p of prefixes){
+      const subs = await obListSubPrefixes(env, p);
+      if(subs === null) return null;
+      for(const s of subs) next.push(s);
+    }
+    prefixes = next;
+  }
+  const keys = [];
+  for(const p of prefixes){
+    for(const hh of hourDirs){
+      const dir = p + hh + "/";
+      const dirKeys = [];
+      let cursor = undefined;
+      for(let page = 0; page < OB_WINDOW_DIR_MAX_PAGES; page++){
+        const res = await env.DATA.list(cursor ? {prefix: dir, cursor} : {prefix: dir});
+        for(const o of (res.objects || [])) dirKeys.push(o.key);
+        if(!res.truncated || !res.cursor) break;
+        cursor = res.cursor;
+      }
+      // Key trong mot thu muc gio den theo ms tang dan: vuot chan thi giu phan
+      // MOI NHAT, vi cua so 15 phut nam o cuoi gio.
+      if(dirKeys.length > OB_WINDOW_DIR_MAX_KEYS) dirKeys.splice(0, dirKeys.length - OB_WINDOW_DIR_MAX_KEYS);
+      for(const k of dirKeys) keys.push(k);
+    }
+  }
+  return keys;
+}
+
 /* Gio ICT hien tai (VM thieu tzdata nen khong dung TZ): UTC+7 bang so hoc. */
 function obTodayIct(){
   return new Date(Date.now() + 7 * 3600 * 1000).toISOString().slice(0, 10);
@@ -1290,7 +1349,11 @@ export async function hStockMoneyFlowLive(request, env){
   const dayPrefix = "stock/market/shadow_tick/raw/" + date + "/";
   const hhCur = String(ict.getUTCHours()).padStart(2, "0");
   const hhPrev = String((ict.getUTCHours() + 23) % 24).padStart(2, "0");
-  const allKeys = await obListKeys(env, dayPrefix, 2000);
+  // layout duoi dayPrefix: <source>/<HH>/<ms>.jsonl.gz -> 1 cap thu muc
+  const winKeys = await obListWindowKeys(env, dayPrefix, [hhPrev, hhCur], 1);
+  const allKeys = winKeys === null
+    ? await obListKeys(env, dayPrefix, 2000) // duong lui: khong co delimiter
+    : winKeys;
   const fileKeys = [];
   for(const k of allKeys){
     const m = k.slice(dayPrefix.length).match(/^(?:[a-z0-9-]+)\/([0-9]{2})\/([0-9]+)\.jsonl\.gz$/);
@@ -1435,7 +1498,9 @@ export async function hStockMoneyFlowTrades(request, env){
   const dayPrefix = "stock/market/shadow_tick/raw/" + date + "/ssi-mqtt/";
   const hhCur = String(ict.getUTCHours()).padStart(2, "0");
   const hhPrev = String((ict.getUTCHours() + 23) % 24).padStart(2, "0");
-  const allKeys = await obListKeys(env, dayPrefix, 2000);
+  // prefix da den <source> -> thu muc gio nam ngay duoi (0 cap trung gian),
+  // khong can delimiter nen khong co duong lui.
+  const allKeys = await obListWindowKeys(env, dayPrefix, [hhPrev, hhCur], 0);
   const fileKeys = [];
   for(const k of allKeys){
     const m = k.slice(dayPrefix.length).match(/^([0-9]{2})\/([0-9]+)\.jsonl\.gz$/);

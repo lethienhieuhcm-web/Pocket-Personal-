@@ -1265,9 +1265,28 @@ async function ensureDacSearchSchema(env) {
  * tag đọc từ trong file — rỗng nếu file nằm ở root Drive.
  * Idempotent, chạy sau mỗi lần sync (full + incremental).
  */
+/**
+ * FTS5 tu dong cap nhat qua trigger. Index chi hieu luc tim la cac row khong
+ * phai folder (search loc `d.is_folder = 0`), nen chi dem dung population do:
+ * lech = index bo sot mot track -> ket qua tim thieu. Day la truong hop duy nhat
+ * can ghi lai toan bo de "tu chua" (hanh vi cua ban cu truoc patch).
+ */
+async function dacFtsDrifted(env, email) {
+  try {
+    const n = await env.DB.prepare(
+      'SELECT (SELECT COUNT(*) FROM dac_index WHERE email=? AND is_folder=0) AS idx, ' +
+      '(SELECT COUNT(*) FROM dac_index_fts WHERE email=? ' +
+      ' AND rowid IN (SELECT rowid FROM dac_index WHERE email=? AND is_folder=0)) AS fts'
+    ).bind(email, email, email).first();
+    if (!n) return true;
+    return Number(n.idx) !== Number(n.fts);
+  } catch (e) { return true; } // khong dem duoc -> coi nhu lech
+}
+
 async function refreshDacMetadata(env, email) {
+  const drift = await dacFtsDrifted(env, email);
   const rows = await env.DB.prepare(
-    `SELECT d.rowid AS rid, d.name, d.artist, d.title, p.name AS pname
+    `SELECT d.rowid AS rid, d.name, d.artist, d.title, d.album, d.search_text, p.name AS pname
      FROM dac_index d LEFT JOIN dac_index p
        ON p.email = d.email AND p.file_id = d.parent_id AND p.is_folder = 1
      WHERE d.email = ? AND d.is_folder = 0`
@@ -1275,13 +1294,23 @@ async function refreshDacMetadata(env, email) {
   const list = rows.results || [];
   for (let i = 0; i < list.length; i += 50) {
     const chunk = list.slice(i, i + 50);
-    await env.DB.batch(chunk.map(r => {
+    const stmts = [];
+    for (const r of chunk) {
       const album = r.pname || '';
       const st = dacSearchText(r.name || '', r.artist || '', r.title || '', album);
-      return env.DB.prepare(
-        'UPDATE dac_index SET album=?, search_text=? WHERE rowid=?'
-      ).bind(album, st, r.rid);
-    }));
+      // Auto-sync 15 phút gọi lại đây trên TOÀN BỘ table; metadata thường không
+      // đổi. Mỗi UPDATE kích trg_dac_fts_upd (delete + insert FTS) cho mọi row
+      // → ~19k row ghi/ngày chỉ để viết lại giá trị giống hệt.
+      if (!drift && r.album === album && r.search_text === st) continue;
+      stmts.push(drift
+        ? env.DB.prepare('UPDATE dac_index SET album=?, search_text=? WHERE rowid=?')
+            .bind(album, st, r.rid)
+        : env.DB.prepare(
+            `UPDATE dac_index SET album=?, search_text=?
+             WHERE rowid=? AND (album IS NOT ? OR search_text IS NOT ?)`
+          ).bind(album, st, r.rid, album, st));
+    }
+    if (stmts.length) await env.DB.batch(stmts);
   }
 }
 

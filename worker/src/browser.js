@@ -7,7 +7,7 @@
 // Nếu site chặn bot/trả captcha -> trả nguyên trạng thái về cho user, không bypass.
 
 import { drizzle } from "drizzle-orm/d1";
-import { eq, and, sql } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { browserCookies } from "./schema.js";
 import { getUser, canUseFeature } from "./auth.js";
 import { dbGetSession } from "./db.js";
@@ -269,12 +269,6 @@ async function loadCookies(env, email, targetUrl) {
     const host = targetUrl.hostname.toLowerCase();
     const path = targetUrl.pathname || "/";
     const https = targetUrl.protocol === "https:";
-    // Dọn cookie hết hạn (xác suất 10% mỗi request để nhẹ DB)
-    if (Math.random() < 0.1) {
-      await db
-        .delete(browserCookies)
-        .where(sql`${browserCookies.email} = ${email} AND ${browserCookies.expiresAt} != 0 AND ${browserCookies.expiresAt} < ${now}`);
-    }
     const rows = await db.select().from(browserCookies).where(eq(browserCookies.email, email));
     const out = [];
     for (const r of rows) {
@@ -317,6 +311,23 @@ function parseSetCookieLine(line) {
   return c;
 }
 
+const jarKey = (host, path, name) => String(host) + "\u0000" + (path || "/") + "\u0000" + String(name);
+
+// Set-Cookie thường lặp lại y hệt cookie đang có (đặc biệt khi site gửi lại
+// jar trên mọi request). Ghi lại row không đổi là D1 write thừa; expiry chỉ
+// đáng ghi khi đổi rõ rệt (ngưỡng này giữ sliding-renewal của session cookie).
+const COOKIE_TOUCH_TOLERANCE_MS = 15 * 60 * 1000;
+
+function cookieRowUnchanged(prev, value, exp, secure) {
+  if (!prev) return false;
+  if (String(prev.value || "") !== value) return false;
+  if ((Number(prev.secure || 0) ? 1 : 0) !== secure) return false;
+  const pe = Number(prev.expiresAt || 0);
+  if (pe === exp) return true;
+  if (pe === 0 || exp === 0) return false; // session <-> persistent: đổi thật
+  return Math.abs(pe - exp) <= COOKIE_TOUCH_TOLERANCE_MS;
+}
+
 async function storeCookies(env, email, targetUrl, headers) {
   let lines = [];
   try {
@@ -332,6 +343,8 @@ async function storeCookies(env, email, targetUrl, headers) {
   const now = Date.now();
   try {
     const db = drizzle(env.DB);
+    const jarRows = await db.select().from(browserCookies).where(eq(browserCookies.email, email));
+    const jar = new Map(jarRows.map((r) => [jarKey(r.host, r.path, r.name), r]));
     for (const line of lines) {
       const c = parseSetCookieLine(line);
       if (!c) continue;
@@ -345,26 +358,33 @@ async function storeCookies(env, email, targetUrl, headers) {
       let exp = 0;
       if (c.maxAge !== null) exp = c.maxAge <= 0 ? 1 : now + c.maxAge * 1000;
       else if (c.expires) exp = c.expires;
+      const key = jarKey(ch, path, c.name);
       if (exp !== 0 && exp <= now) {
-        await db
-          .delete(browserCookies)
-          .where(
-            and(
-              eq(browserCookies.email, email),
-              eq(browserCookies.host, ch),
-              eq(browserCookies.path, path),
-              eq(browserCookies.name, c.name)
-            )
-          );
+        if (jar.has(key)) {
+          await db
+            .delete(browserCookies)
+            .where(
+              and(
+                eq(browserCookies.email, email),
+                eq(browserCookies.host, ch),
+                eq(browserCookies.path, path),
+                eq(browserCookies.name, c.name)
+              )
+            );
+          jar.delete(key);
+        }
         continue;
       }
+      if (cookieRowUnchanged(jar.get(key), c.value, exp, c.secure ? 1 : 0)) continue;
+      const secure = c.secure ? 1 : 0;
       await db
         .insert(browserCookies)
-        .values({ email, host: ch, name: c.name, value: c.value, path, expiresAt: exp, secure: c.secure ? 1 : 0 })
+        .values({ email, host: ch, name: c.name, value: c.value, path, expiresAt: exp, secure })
         .onConflictDoUpdate({
           target: [browserCookies.email, browserCookies.host, browserCookies.path, browserCookies.name],
-          set: { value: c.value, expiresAt: exp, secure: c.secure ? 1 : 0 },
+          set: { value: c.value, expiresAt: exp, secure },
         });
+      jar.set(key, { value: c.value, expiresAt: exp, secure });
     }
   } catch (e) { /* jar lỗi thì bỏ qua, không chặn browse */ }
 }

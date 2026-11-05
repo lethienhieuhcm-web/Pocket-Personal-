@@ -367,6 +367,9 @@ const ENGINE_MAX_PENDING = 3;
 const ENGINE_PENDING_TTL_MS = 30 * 60 * 1000;
 const ENGINE_RUNNING_TTL_MS = 10 * 60 * 1000;
 const ENGINE_HEARTBEAT_FRESH_MS = 900 * 1000;
+// Runner gửi mỗi 30-60s nhưng probe chỉ cần độ tươi 900s -> ghi 1 lần/300s là đủ
+// (lag phát hiện runner chết tối đa 360s, đã chấp nhận).
+const ENGINE_HEARTBEAT_WRITE_MIN_MS = 300 * 1000;
 const ENGINE_TAB_BLOCK_MS = 30 * 60 * 1000;
 const ENGINE_JOB_RETENTION_MS = 7 * 24 * 3600 * 1000;
 async function ensureEngineTables(env) {
@@ -610,8 +613,9 @@ export async function hAiEngineHeartbeat(request, env) {
     await ensureEngineTables(env);
     const now = Date.now();
     await env.DB.prepare(
-      'UPDATE engine_runner_state SET last_heartbeat_ms = ? WHERE id = 1')
-      .bind(now).run();
+      'UPDATE engine_runner_state SET last_heartbeat_ms = ? WHERE id = 1 ' +
+      'AND (last_heartbeat_ms IS NULL OR ? - last_heartbeat_ms >= ?)')
+      .bind(now, now, ENGINE_HEARTBEAT_WRITE_MIN_MS).run();
     return json({ heartbeat_at: now });
   } catch (e) {
     return json({ error: 'engine_error' }, 500);
