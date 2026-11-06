@@ -2615,6 +2615,21 @@ async def _collect(max_minutes=0):
                 raw_payload[src_r][hour] = base64.b64encode(
                     gzip.compress(lines.encode())).decode()
         src_state = agg.export_src_state()
+        # PATCH-1 (Do 1): snapshot dirty TRUOC khi build/await POST —
+        # mau tick_collector_shadow_b.py:2157 (Chot 21:58 27/10). Ban
+        # main doc `agg.dirty` den sau chot POST roi `.clear()` (2717),
+        # nen tick toi TRONG luc phat bi xoa ma khong tung duoc gui.
+        dirty_snap = set(agg.dirty)
+        dirty_pt_snap = set(agg.dirty_pt)
+        if closed:
+            # Hoa giai cuoi phien: gui LAI TOAN BO buckets (mau
+            # shadow_b:2159-2165). Khong co buoc nay, ma rung nhu DGC
+            # mat ca phien neu luot publish duy nhat roi vao window.
+            for _part in src_state.values():
+                for _s in (_part.get("buckets") or {}):
+                    dirty_snap.add(_s)
+                for _s in (_part.get("buckets_pt") or {}):
+                    dirty_pt_snap.add(_s)
         artifacts = {}
         for name in CONFIG["sources"]:
             part = src_state.get(name) or {}
@@ -2623,16 +2638,16 @@ async def _collect(max_minutes=0):
             artifacts[name] = {
                 "snapshot": {"by_symbol": part.get("snapshot") or {}},
                 "health": build_health(name),
-                "buckets_dirty": {s: bk[s] for s in agg.dirty
+                "buckets_dirty": {s: bk[s] for s in dirty_snap
                                   if s in bk},
                 "buckets_pt_dirty": {s: bkpt[s]
-                                     for s in agg.dirty_pt
+                                     for s in dirty_pt_snap
                                      if s in bkpt},
             }
         for name in CONFIG["sources"]:
             _prev_msgs[name] = adapters[name].msgs
         _prev_t[0] = time.time()
-        intra = agg.build_intraday(sorted(agg.dirty))
+        intra = agg.build_intraday(sorted(dirty_snap))
         foreign = agg.build_foreign()
         flow = agg.build_foreign_flow()
         keys = list(intra.keys())
@@ -2714,8 +2729,10 @@ async def _collect(max_minutes=0):
         # intraday ghi de theo ma). Xoa truoc POST se lam mat
         # artifact cua ma ngung giao dich sau chu ky loi — vuot
         # nguong mat <= 1 chu ky cua kill-test.
-        agg.dirty.clear()
-        agg.dirty_pt.clear()
+        # PATCH-1: chi tru cac ma da goi trong chu ky nay; ma toi
+        # trong window van con dirty -> chu ky ke tiep gui lai.
+        agg.dirty -= dirty_snap
+        agg.dirty_pt -= dirty_pt_snap
         publishes += 1
 
     while not session_over():
