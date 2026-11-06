@@ -2452,6 +2452,18 @@ def publish(payload, source):
         return json.loads(r.read().decode())
 
 
+def publish_checked(payload, source):
+    """Publish + kiem tra tra loi Worker: {ok:false} hoac non-2xx
+    (HTTPError) deu raise de dirty duoc giu lai chu ky sau (mau
+    tick_collector_shadow_b.py:1950, Chot 21:58 27/10). Tra loi
+    lang `publish` khong duoc coi la thanh cong."""
+    resp = publish(payload, source)
+    if not isinstance(resp, dict) or not resp.get("ok"):
+        raise RuntimeError(
+            f"stock-publish tra ve khong ok: {str(resp)[:120]}")
+    return resp
+
+
 def fetch_tick_state(key=None):
     """Doc artifact shadow_tick tu Worker (route noi bo, secret) —
     phuc vu resume Dot 2. key=None -> status.json; key dang
@@ -2653,6 +2665,29 @@ async def _collect(max_minutes=0):
         keys = list(intra.keys())
         chunks = [keys[i:i + 10]
                   for i in range(0, len(keys), 10)] or [[]]
+        # PATCH-2: key nao cua chunk POST that bai (non-2xx hoac
+        # ok:false) bi ghi danh -> khong duoc tru dirty cuoi chu ky.
+        # pt_checked = luot POST dau (mang status + buckets_pt_dirty)
+        # da CHECKED ok.
+        bad_keys = set()
+        pt_checked = True
+
+        async def publish_chunk(payload, ckeys, pt_lane=False):
+            """POST nen qua publish_checked; loi -> ALERT + ghi danh
+            ckeys va khong chan cac chunk con lai (mau tape chunk
+            duoi day: lenh loi -> ma do duoc gui lai chu ky sau)."""
+            nonlocal pt_checked
+            try:
+                await asyncio.to_thread(publish_checked, payload, "multi")
+                return True
+            except Exception as e:  # noqa: BLE001
+                print(f"[tick-multi] ALERT chunk publish loi "
+                      f"({len(ckeys)} key): {str(e)[:150]}", flush=True)
+                bad_keys.update(ckeys)
+                if pt_lane:
+                    pt_checked = False
+                return False
+
         for ci, ckeys in enumerate(chunks):
             chunk = {k: intra[k] for k in ckeys}
             if ci == 0:
@@ -2662,12 +2697,12 @@ async def _collect(max_minutes=0):
                                      "src_artifacts": artifacts}}
                 if chunk:
                     p["tick_shadow"]["intraday"] = chunk
-                await asyncio.to_thread(publish, p, "multi")
+                await publish_chunk(p, ckeys, pt_lane=True)
                 if CONFIG["live"]:
                     live = {"tick_live": {"foreign": flow}}
                     if chunk:
                         live["tick_live"]["intraday"] = chunk
-                    await asyncio.to_thread(publish, live, "multi")
+                    await publish_chunk(live, ckeys)
                 else:
                     if CONFIG.get("foreign_flow") and flow:
                         # Rebase dong v24 (04/11): khoi ngoai hop nhat goi
@@ -2682,19 +2717,15 @@ async def _collect(max_minutes=0):
                     if CONFIG["chart_candles"] and chunk:
                         # PA-1: chi gui NEN — body.intraday ->
                         # market/intraday/<SYM>_<iv>.json (stock.js:1785).
-                        await asyncio.to_thread(
-                            publish, {"intraday": chunk}, "multi")
+                        await publish_chunk({"intraday": chunk}, ckeys)
             elif chunk:
-                await asyncio.to_thread(
-                    publish, {"tick_shadow": {"intraday": chunk}},
-                    "multi")
+                await publish_chunk(
+                    {"tick_shadow": {"intraday": chunk}}, ckeys)
                 if CONFIG["live"]:
-                    await asyncio.to_thread(
-                        publish, {"tick_live": {"intraday": chunk}},
-                        "multi")
+                    await publish_chunk(
+                        {"tick_live": {"intraday": chunk}}, ckeys)
                 elif CONFIG["chart_candles"]:
-                    await asyncio.to_thread(
-                        publish, {"intraday": chunk}, "multi")
+                    await publish_chunk({"intraday": chunk}, ckeys)
         # Bang khop lenh chi tiet (tape): publish kem chu ky nay,
         # loi thi chu ky sau gui lai (build_tape chi danh dau dirty
         # lai khi co tick moi — neu POST loi o day, lan publish ke
@@ -2731,8 +2762,13 @@ async def _collect(max_minutes=0):
         # nguong mat <= 1 chu ky cua kill-test.
         # PATCH-1: chi tru cac ma da goi trong chu ky nay; ma toi
         # trong window van con dirty -> chu ky ke tiep gui lai.
-        agg.dirty -= dirty_snap
-        agg.dirty_pt -= dirty_pt_snap
+        # PATCH-2: trong so do chi tinh ma co POST nen duoc CHECKED
+        # ok; chunk loi (non-2xx hoac ok:false) -> ma o lai dirty.
+        checked_syms = {k.rsplit("_", 1)[0]
+                        for k in keys if k not in bad_keys}
+        agg.dirty -= dirty_snap & checked_syms
+        if pt_checked:
+            agg.dirty_pt -= dirty_pt_snap
         publishes += 1
 
     while not session_over():
