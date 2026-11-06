@@ -27,6 +27,7 @@
 //   khoa tach bach chat / trich xuat dong thuan.
 
 import { chatToolRun, resolveCaller } from './mcp.js';
+import { gatewayEnabled, gatewayGeminiCall } from './ai_gateway.js';
 
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models/';
 const DEFAULT_MODEL = 'gemini-3.5-flash';
@@ -253,6 +254,26 @@ async function geminiCall(env, keys, state, body, deadlineMs, perAttemptMs) {
   e.detail = state.errDetail || null;
   e.cause = lastErr;
   throw e;
+}
+
+/* ---------------- AI Gateway (16:00 06/11 Chot: AI Chat qua gateway) ----------------
+   AI_GATEWAY_ENABLED=1 + AI_GATEWAY_ACCOUNT_ID → luot goi LLM di qua
+   gateway compat (legs: cerebras/gpt-oss-120b → google-ai-studio/gemini-*
+   → workers-ai/@cf/openai/gpt-oss-120b; geminiCall tra dang Gemini nen
+   geminiText/geminiFunctionCall giu nguyen). Gateway loi (thieu key,
+   4xx/5xx het leg, timeout, network) → roi ve duong truc tiep cu, hanh
+   vi khong doi (xoay key GEMINI_API_KEYS nhu geminiCall ben tren). */
+async function chatCall(env, keys, state, body, deadlineMs, perAttemptMs) {
+  if (gatewayEnabled(env)) {
+    try {
+      return await gatewayGeminiCall(env, keys, state, body, deadlineMs, perAttemptMs);
+    } catch (e) {
+      state.gatewayErrors = (state.gatewayErrors || 0) + 1;
+      state.gatewayLast = String((e && (e.detail || e.reason)) || e).slice(0, 80);
+      // Rơi về đường trực tiếp cũ — không ném.
+    }
+  }
+  return geminiCall(env, keys, state, body, deadlineMs, perAttemptMs);
 }
 
 function geminiText(j) {
@@ -723,7 +744,7 @@ export async function hAiChat(request, env) {
         fe.reason = 'gemini_down'; fe.detail = 'forced_test';
         throw fe;
       }
-      j1 = await geminiCall(env, keys, state, pass1Body, 10000, 3000);
+      j1 = await chatCall(env, keys, state, pass1Body, 10000, 3000);
     } catch (e) {
       // (Chan du phong thu 2 da ngat 26/10: luot key chet di thang
       // engine (b) / fallback nhu cu, khong qua chan du phong nua.)
@@ -762,14 +783,15 @@ export async function hAiChat(request, env) {
     if (text && _numericGuard(text, null) && !_bannedLead(text)) {
       return finish({ ok: true, tool: null, text },
         'ok',
-        { keys_tried: state.keysTried, via: null });
+        { keys_tried: state.keysTried,
+          via: j1 && j1.gw_model ? 'gateway:' + j1.gw_model : null });
     }
     // Van xuoi khong kiem chung duoc (hoac rong): ep model CHON
     // TOOL 1 luot (mode ANY) truoc khi roi du phong. Ca loi
     // 23/10: cau khoan nganh sau the dong tien bi tra van xuoi
     // chua so -> fallback:no_tool lap 2 lan du prompt da co luat.
     try {
-      const j1b = await geminiCall(env, keys, state, {
+      const j1b = await chatCall(env, keys, state, {
         systemInstruction: { parts: [{ text: SYSTEM_PROMPT + '\n13. Tra loi bang ngon ngu: ' + lang + '.' }] },
         contents,
         tools: [{ functionDeclarations: _buildDecls() }],
@@ -818,7 +840,7 @@ export async function hAiChat(request, env) {
     'CAU HOI: ' + lastUser.text + '\nDU LIEU: ' + dataJson;
   try {
     if (Date.now() - t0 < 10000) {
-    const j2 = await geminiCall(env, keys, state, {
+    const j2 = await chatCall(env, keys, state, {
       contents: [{ role: 'user', parts: [{ text: leadPrompt }] }],
       generationConfig: { temperature: 0.3, maxOutputTokens: 1024 },
     }, 4000, 2000);
@@ -833,7 +855,8 @@ export async function hAiChat(request, env) {
   return finish(
     { ok: true, tool: fc.name, args: fc.args, envelope, lead },
     'ok',
-    { keys_tried: state.keysTried, lead_kept: lead ? 1 : 0, via: null });
+    { keys_tried: state.keysTried, lead_kept: lead ? 1 : 0,
+      via: j1 && j1.gw_model ? 'gateway:' + j1.gw_model : null });
 }
 
 export { _buildDecls };

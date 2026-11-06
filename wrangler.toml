@@ -42,6 +42,11 @@ bucket_name = "english-lab-auth"
 binding = "DB"
 database_id = "e856db4d-1ee1-42fd-9c1d-1807ca31afb5"
 
+# Workers AI binding — chan $0 du phong (10k Neuron/ngay free), env.AI.run
+# trong worker/src/ai_gateway.js.
+[ai]
+binding = "AI"
+
 # H1 pha DO (chi tai lieu — deploy that qua cf_deploy_main.py + co CF_DO_MARKET_ROOM=1)
 [[durable_objects.bindings]]
 name = "MARKET_ROOM"
