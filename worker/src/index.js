@@ -20,7 +20,7 @@ import {getSession, getUser, OWNER_EMAIL} from './auth.js';
 import {jerr} from './utils.js';
 export { MarketRoom } from "./market-room.js";
 // lop du lieu bo sung tu Finhay (BAN NHAP - work/finhay-integration-20261103/REPORT.md)
-import {hStockFinhay, hFinhayPut} from './stock_finhay.js';
+import {hStockFinhay, hFinhayPut, hFinhayOhlcv, hFinhayCompare} from './stock_finhay.js';
 import {hStockVersion, hStockIndices, hStockSectorIndices, hStockMarketAlert, hStockRegime, hStockSignals, hStockQuote, hStockOhlcv, hStockTrades, hStockScreener, hStockFundamentals, hStockStatements, hStockNews, hStockMarketNews, hStockForeignFlow, hStockForeignHistory, hStockProprietaryFlow, hStockProprietaryHistory, hStockFlowScreen, hStockMoneyFlowLive, hStockMoneyFlowTrades, hStockOrderbook, hStockOrderbookDates, hStockFlowHistory, hStockDivergence, hStockLiveOverview, hStockMarketTotals, hStockMacro, hStockMacroHistory, hStockConsensus, hStockConsensusDetail, hStockHolders, hStockHoldersShard, hStockHoldersSymbol, hStockSectors, hStockSectorsDetail, hStockListing, hStockEvents, hStockCompanyProfile, hStockCompare, hWatchlistGet, hWatchlistAdd, hWatchlistDel, hPortfolio, hTxnAdd, hCostHistory, hTargetsGet, hTargetsSet, hTargetsDel, hStockPublish, hModalAlert, hStockReportData, hStockAlertDone, hStockTargetDone, hStockRisk, hStockStrategyReview, hRuleAlertsGet, hRuleAlertsAdd, hRuleAlertsDel, hRuleAlertsInternal, hTickStateGet, hInternalUniverse, hCorporateActions, hAblyToken, hStockStream, hDoTestPublish} from './stock.js';
 
 // Build ID - replaced with timestamp on every deploy (see cf_deploy.py)
@@ -202,6 +202,10 @@ const ROUTES = [
   ['GET',    '/api/stock/compare',   hStockCompare,          'public'],
   // Finhay bo sung (NHAP): doc JSON public duoi market/finhay/ (macro, vang, quy, bao cao, 1D, crosscheck)
   ['GET',    '/api/stock/finhay/*',  hStockFinhay,           'public'],
+  // Finhay nen 1D (duy nhat co THAT trong R2, 1517 ma): shape giong /api/stock/ohlcv
+  // + doi chieu gia vs nen chinh. Chi doc, khong ghi, khong doi lane cua.
+  ['GET',    '/api/stock/finhay-ohlcv',   hFinhayOhlcv,      'public'],
+  ['GET',    '/api/stock/finhay-compare', hFinhayCompare,    'public'],
   ['GET',    '/api/stock/watchlist', hWatchlistGet,          'user'],
   ['GET',    '/api/stock/risk',      hStockRisk,             'user'],
   ['GET',    '/api/stock/strategy_review', hStockStrategyReview, 'user'],
