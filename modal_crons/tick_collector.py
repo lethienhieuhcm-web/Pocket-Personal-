@@ -1679,7 +1679,18 @@ class Aggregator:
       chua quy chuan (kbs/vci/ssi-mqtt) khong tham gia merge.
     - Doi chieu cheo: so sanh snapshot cac cong voi cong chinh."""
 
-    def __init__(self):
+    def __init__(self, session_date=None):
+        # Loc theo ngay phien (PATCH-3, hop dong 1): None = giu het
+        # bucket (hanh vi cu); 'YYYY-MM-DD' = build chi lay phut trong
+        # [lo, hi) cua ngay ICT do, de nen phien truoc (vi du 28/10)
+        # khong roi vao payload phien moi.
+        self.session_date = session_date
+        self._day_win = None
+        if session_date:
+            d0 = datetime.strptime(session_date, "%Y-%m-%d").replace(
+                tzinfo=ICT)
+            self._day_win = (int(d0.timestamp()),
+                             int((d0 + timedelta(days=1)).timestamp()))
         self.candles = {}       # src -> sym -> {minute: [o,h,l,c,v,
                                 #  first_ts, last_ts]}
         # Lop volume THOA THUAN theo phut (thiet ke 3.4 — bucket
@@ -2102,9 +2113,12 @@ class Aggregator:
         """{minute: bucket} — moi phut lay tu cong uu tien cao nhat
         co phut do (failover muc phut)."""
         merged = {}
+        win = self._day_win
         for src in reversed(SRC_PRIORITY):
             for minute, b in self.candles.get(src, {}).get(
                     sym, {}).items():
+                if win is not None and not (win[0] <= minute < win[1]):
+                    continue
                 merged[minute] = b
         return merged
 
@@ -2490,9 +2504,9 @@ ADAPTERS = {"dnse": DnseAdapter, "kbs": KbsAdapter,
 
 async def _collect(max_minutes=0):
     universe = CONFIG["universe"]
-    agg = Aggregator()
-    started = time.time()
     start_dt = now_ict()
+    agg = Aggregator(session_date=start_dt.strftime("%Y-%m-%d"))
+    started = time.time()
     if CONFIG.get("resume"):
         # Resume Dot 2: nap checkpoint + artifact theo nguon cua
         # CHINH phien hom nay; bat ky loi nao -> bat dau trang.
@@ -2634,14 +2648,18 @@ async def _collect(max_minutes=0):
         dirty_snap = set(agg.dirty)
         dirty_pt_snap = set(agg.dirty_pt)
         if closed:
-            # Hoa giai cuoi phien: gui LAI TOAN BO buckets (mau
-            # shadow_b:2159-2165). Khong co buoc nay, ma rung nhu DGC
-            # mat ca phien neu luot publish duy nhat roi vao window.
+            # Hoa giai cuoi phien: gui THEO UNIVERSE (hanh vi goc cua
+            # ban fix 29/10 — PATCH-3 hop dong 2), KHONG theo bucket
+            # tich luy: ma ngoai universe (ZZZ) bi scope out khoi
+            # payload dong phien, con moi ma trong universe van duoc
+            # gui du bucket (ma rung nhu DGC khong mat ca phien). Row
+            # ngay cu bi session_date loc o _merged_buckets.
+            uni = set(universe)
+            dirty_snap = uni
             for _part in src_state.values():
-                for _s in (_part.get("buckets") or {}):
-                    dirty_snap.add(_s)
                 for _s in (_part.get("buckets_pt") or {}):
-                    dirty_pt_snap.add(_s)
+                    if _s in uni:
+                        dirty_pt_snap.add(_s)
         artifacts = {}
         for name in CONFIG["sources"]:
             part = src_state.get(name) or {}
