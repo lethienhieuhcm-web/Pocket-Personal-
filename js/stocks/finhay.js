@@ -9,12 +9,23 @@
  * (PA-3b/3c/4a), không đụng bộ thu. MIỄN PHÍ cho mọi người — không nằm trong
  * GATED flags, không premium-check, không cần token (endpoint public).
  *
- * Phạm vi hiển thị (theo TASK 03/11):
+ * Phạm vi hiển thị:
+ *   - NẾN 1D Finhay + đối chiếu giá với nến chính (TASK 06/11) — 2 route mới
+ *     `GET /api/stock/finhay-ohlcv?symbol=X` (envelope giống hệt /api/stock/ohlcv
+ *     interval 1D: rows[{t,o,h,l,c,v}] + unit NGHIN_VND + stale_days) và
+ *     `GET /api/stock/finhay-compare?symbol=X&days=N` (so sánh primary vs finhay
+ *     theo từng phiên). Route trả `empty:true` / `partial` thay vì 404/500 khi
+ *     mã không có dữ liệu -> khối này TỰ ẨN, không ever làm vỡ trang chi tiết.
+ *     Số `stale_days` BẮT BUỘC hiện cho người dùng thấy: lane nến Finhay ĐÓNG
+ *     BĂNG từ 03/11 (chưa có writer), chỉ dùng để đối chiếu + lịch sử sâu.
+ *     MIỄN PHÍ — route public, không nằm trong GATED, không premium-check.
  *   - Vĩ mô VN Chuỗi MỚI: CPI, PMI, IIP, INTERBANK_RATE, 10Y TPCP  (mục 2)
  *   - Vàng SJC + tỷ giá USD/VND  (mục 3, Finhay = đối chiếu — hệ thống đã có thẻ
  *     riêng từ nguồn NHNN/SJC; khối này là ô Finhay cạnh đó, không thay nguồn cũ)
  *   - Khuyến nghị theo mã: nhãn MUA/BÁN + giá mục tiêu + nguồn + ngày  (mục 5)
  *   KHÔNG hiển thị (ghi rõ lý do):
+ *   - Nến 15 PHÚT từ Finhay: KHÔNG TỒN TẠI trong R2 (lane chỉ có resolution
+ *     "1D", schema finhay.ohlcv_1d.v1) — không vẽ khung 15m bằng nến ngày.
  *   - 3 chuỗi XNK (TOTAL_EXPORT/FDI_EXPORT/DOMESTIC_EXPORT): đơn vị CHƯA CHẮC
  *     (API không trả unit, hint chỉ là suy luận) — chờ xác nhận (REPORT §9.5).
  *   - Quỹ (DCDS/DCBC/VESAF/VEOF): dữ liệu đóng băng 2023-07 — đề xuất BỎ hẳn
@@ -126,9 +137,116 @@ function renderFinhayRec(doc){
   return h;
 }
 
+// ---------- Nến 1D Finhay + đối chiếu giá (2 route mới, TASK 06/11) ----------
+// Hai route trả giá theo NGHIN_VND (50.4 = 50.400 đ). Đổi ra đ đúng cách biểu
+// đồ nến chính đang làm (detail.js chartSvg: fmtN(c*1000)) để hai ô cạnh nhau
+// so được bằng mắt.
+function fhPrice(v){ if(v==null||!isFinite(v)) return "—"; return num(v*1000,0); }
+function fhDay(s){ s=String(s||"").slice(0,10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s.slice(8,10)+"/"+s.slice(5,7)+"/"+s.slice(0,4) : ""; }
+
+// Nhãn ĐÓNG BĂNG — lý do block này tồn tại: lane nến Finhay chưa có writer, dữ
+// liệu dừng ở phiên 03/11. stale_days lấy THẲNG từ route (không tự tính bằng
+// Date.now của máy client — múi giờ/dồng hồ lệch sẽ nhãn sai).
+function fhStaleLabel(staleDays,last){
+  if(staleDays==null||!isFinite(staleDays)||staleDays<1) return "";
+  var d=fhDay(last);
+  return "<div class=\"fhstale\">⚠ Dữ liệu Finhay đóng băng"+(d?" từ phiên "+d:"")+
+    " — cũ "+Math.round(staleDays)+" ngày, chưa có writer tự động. Chỉ dùng để đối chiếu, không phải giá trực tiếp.</div>";
+}
+
+// Sọc nến thu nhỏ (mặc định 40 phiên cuối). SVG thuần string — node test được.
+function fhCandles(rows,n){
+  var r=rows.slice(-(n||40)); if(r.length<2) return "";
+  var W=320,H=80,hi=-1e18,lo=1e18,i;
+  var top=function(b){ return (b.h!=null&&isFinite(b.h))?b.h:Math.max(b.o==null?-1e18:b.o,b.c==null?-1e18:b.c); };
+  var bot=function(b){ return (b.l!=null&&isFinite(b.l))?b.l:Math.min(b.o==null?1e18:b.o,b.c==null?1e18:b.c); };
+  for(i=0;i<r.length;i++){ var h=top(r[i]),l=bot(r[i]); if(h>hi)hi=h; if(l<lo)lo=l; }
+  if(!(isFinite(hi)&&isFinite(lo))||!(hi>lo)) return "";
+  var pad=(hi-lo)*0.06; hi+=pad; lo-=pad;
+  var xw=W/r.length, Y=function(v){ return H-(v-lo)/(hi-lo)*H; };
+  var s="<svg class=\"fhspark\" viewBox=\"0 0 "+W+" "+H+"\" style=\"width:100%;height:80px;display:block;margin-top:6px\">";
+  r.forEach(function(b,idx){
+    var o=(b.o==null?b.c:b.o), c=(b.c==null?b.o:b.c);
+    if(o==null||c==null||!isFinite(o)||!isFinite(c)) return;
+    var x=(idx*xw+xw/2).toFixed(1), col=(c>=o)?"#16a34a":"#dc2626";
+    s+="<line x1=\""+x+"\" y1=\""+Y(top(b)).toFixed(1)+"\" x2=\""+x+"\" y2=\""+Y(bot(b)).toFixed(1)+"\" stroke=\""+col+"\" stroke-width=\"1\"/>";
+    var yO=Y(o),yC=Y(c);
+    s+="<rect x=\""+(idx*xw+1).toFixed(1)+"\" y=\""+Math.min(yO,yC).toFixed(1)+
+       "\" width=\""+Math.max(1.5,xw-2).toFixed(1)+"\" height=\""+Math.max(0.8,Math.abs(yC-yO)).toFixed(1)+"\" fill=\""+col+"\"/>";
+  });
+  return s+"</svg>";
+}
+
+// Doc /api/stock/finhay-ohlcv -> ô "nền 1D Finhay". empty/rows=[] -> placeholder.
+function renderFinhayOhlcv(doc){
+  if(!doc||doc.empty||!Array.isArray(doc.rows)||!doc.rows.length)
+    return "<div class=\"hint\" style=\"padding:8px 0\">Finhay chưa có nến ngày cho mã này</div>";
+  var rows=doc.rows, last=rows[rows.length-1]||{}, prev=rows.length>1?rows[rows.length-2]:null;
+  var c=(last.c!=null)?last.c:null, pc=(prev&&prev.c!=null)?prev.c:null;
+  var diff=(c!=null&&pc!=null)?c-pc:null;
+  var pct=(diff!=null&&pc)?diff/Math.abs(pc)*100:null;
+  var chg="";
+  if(diff!=null&&diff!==0){
+    var cls=diff>0?"up":"down";
+    chg=" <span class=\""+cls+"\">"+(diff>0?"▲ +":"▼ −")+fhPrice(Math.abs(diff))+(pct!=null?" ("+(pct>0?"+":"")+pct.toFixed(2)+"%)":"")+"</span>";
+  } else if(diff===0) chg=" <span>=</span>";
+  var h="<div class=\"fhgrid\"><div class=\"fhcard\">"
+    +"<div class=\"fhk\">Đóng cửa phiên cuối · Finhay</div>"
+    +"<div class=\"fhv\"><span class=\"mv\">"+fhPrice(c)+"</span> <span class=\"mu\">₫</span></div>"
+    +"<div class=\"fhd\">phiên "+esc(last.t||"")+chg+"</div>"
+    +"<div class=\"fhd\">Nền 1D "+num(doc.total!=null?doc.total:rows.length,0)+" phiên · "
+      +esc(fhDay(doc.first)||String(doc.first||""))+" → "+esc(fhDay(doc.last)||String(doc.last||""))+"</div>"
+    +"</div></div>";
+  h+=fhCandles(rows,40);
+  h+=fhStaleLabel(doc.stale_days,doc.last);
+  if(!doc.stale_days) h+="<div class=\"fhnote\">Nguồn: Finhay · nến ngày, độ sâu ~5 năm (sâu hơn nến chính)</div>";
+  return h;
+}
+
+// Doc /api/stock/finhay-compare -> ô đối chiếu giá đóng cửa vs nến chính.
+function renderFinhayCompare(doc){
+  if(!doc||typeof doc!=="object")
+    return "<div class=\"hint\" style=\"padding:8px 0\">Chưa đối chiếu được với nến chính</div>";
+  if(doc.partial==="no_finhay_candles")
+    return "<div class=\"hint\" style=\"padding:8px 0\">Finhay chưa có nến ngày cho mã này</div>";
+  if(doc.partial==="no_primary_ohlcv")
+    return "<div class=\"hint\" style=\"padding:8px 0\">Nến chính chưa có dữ liệu để đối chiếu mã này</div>";
+  var cmp=doc.compared||0, ok=doc.within_tol||0, bad=cmp-ok;
+  var h="";
+  if(!cmp){
+    h+="<div class=\"fhd\">Không có phiên trùng nhau giữa hai nguồn trong "+num(doc.days||60,0)+" phiên gần nhất.</div>";
+  } else {
+    h+="<div class=\"fhgrid\"><div class=\"fhcard\">"
+      +"<div class=\"fhk\">Phiên khớp nhau · Finhay vs nến chính</div>"
+      +"<div class=\"fhv\"><span class=\"mv\">"+ok+"/"+cmp+"</span> <span class=\"mu\">("+(ok/cmp*100).toFixed(1)+"%)</span></div>"
+      +"<div class=\"fhd\">giá đóng cửa "+num(doc.days||60,0)+" phiên · lệch tối đa "+
+        (doc.max_abs_diff==null?"—":fhPrice(Math.abs(doc.max_abs_diff))+" ₫")+
+        " · ngưỡng "+fhPrice(doc.tick_tolerance)+" ₫ (1/2 bước nhảy)</div>"
+      +"</div></div>";
+    if(bad>0) h+="<div class=\"fhstale\">⚠ "+bad+" phiên lệch quá ngưỡng.</div>";
+    else h+="<div class=\"fhnote\">✓ Hai nguồn khớp nhau trong phạm vi bước nhảy giá.</div>";
+  }
+  if(Array.isArray(doc.mismatches)&&doc.mismatches.length){
+    h+="<div class=\"fhcmp\"><table><tr><th>Phiên</th><th>Nến chính</th><th>Finhay</th><th>Lệch</th><th>%</th></tr>";
+    doc.mismatches.slice(0,20).forEach(function(m){
+      var d=(m.diff==null||!isFinite(m.diff))?null:m.diff;
+      h+="<tr><td>"+esc(m.t||"")+"</td><td>"+fhPrice(m.primary)+"</td><td>"+fhPrice(m.finhay)+"</td>"
+        +"<td class=\""+(d==null?"":d>0?"up":d<0?"down":"")+"\">"+(d==null?"—":(d>0?"+":"−")+fhPrice(Math.abs(d)))+"</td>"
+        +"<td>"+(m.diff_pct==null||!isFinite(m.diff_pct)?"—":(m.diff_pct>0?"+":"")+Number(m.diff_pct).toFixed(2)+"%")+"</td></tr>";
+    });
+    h+="</table></div>";
+  }
+  if(doc.missing_in_finhay) h+="<div class=\"fhd\">+ "+num(doc.missing_in_finhay,0)+" phiên nến chính có mà Finhay chưa có (lane đóng băng).</div>";
+  if(doc.finhay) h+=fhStaleLabel(doc.finhay.stale_days,doc.finhay.last);
+  return h;
+}
+
 var api_={renderFinhayMacro:renderFinhayMacro,renderFinhayRec:renderFinhayRec,
   macroCard:macroCard,recColor:recColor,num:num,trillions:trillions,
-  VN_MACRO:VN_MACRO,VN_XNK_HOLD:VN_XNK_HOLD};
+  VN_MACRO:VN_MACRO,VN_XNK_HOLD:VN_XNK_HOLD,
+  renderFinhayOhlcv:renderFinhayOhlcv,renderFinhayCompare:renderFinhayCompare,
+  fhPrice:fhPrice,fhDay:fhDay,fhStaleLabel:fhStaleLabel,fhCandles:fhCandles};
 if(typeof module!=="undefined"&&module.exports){ module.exports=api_; }
 if(typeof root==="undefined"||!root) return;
 
@@ -168,5 +286,49 @@ function loadFinhayRec(sym){
       return false;
     });
 }
+// ---------- Nền 1D + đối chiếu giá: 2 route MỚI (TASK 06/11) ----------
+// Fail-open tuyệt đối: mã không có nến (index, mã ngoài 1517 mã), route trả
+// empty/partial, hay mạng lỗi -> xoá nội dung + ẨN cả khối. Không throw ra
+// ngoài, nên trang chi tiết mã vẫn chạy y như trước khi có khối này.
+var FH_COUNT=250, FH_DAYS=60;
+var _fhParts={o:false,c:false};
+function fhSym(sym){ return encodeURIComponent(String(sym||"").toUpperCase()); }
+function fhSync(){
+  var any=_fhParts.o||_fhParts.c, c=$("dFinhay"), s=$("dFinhaySec");
+  if(c) c.style.display=any?"":"none";
+  if(s) s.style.display=any?"":"none";
+}
+function fhHide(key,flag){ _fhParts[flag]=false; var e=$(key); if(e) e.innerHTML=""; fhSync(); return false; }
+// GET /api/stock/finhay-ohlcv?symbol=X&count=250 — đếm rows, có mới vẽ.
+function loadFinhayOhlcv(sym){
+  var el=$("dFinhayOhlcv"); if(!el) return Promise.resolve(false);
+  if(!sym||!sym.trim()) return Promise.resolve(fhHide("dFinhayOhlcv","o"));
+  _fhParts.o=false;
+  return finApi("/finhay-ohlcv?symbol="+fhSym(sym)+"&count="+FH_COUNT).then(function(doc){
+    var rows=(doc&&Array.isArray(doc.rows))?doc.rows:[];
+    if(!rows.length) return fhHide("dFinhayOhlcv","o");
+    el.innerHTML=api_.renderFinhayOhlcv(doc); _fhParts.o=true; fhSync(); return true;
+  }).catch(function(){ return fhHide("dFinhayOhlcv","o"); });
+}
+// GET /api/stock/finhay-compare?symbol=X&days=60 — partial (thiếu một nguồn) -> ẩn.
+function loadFinhayCompare(sym){
+  var el=$("dFinhayCmp"); if(!el) return Promise.resolve(false);
+  if(!sym||!sym.trim()) return Promise.resolve(fhHide("dFinhayCmp","c"));
+  _fhParts.c=false;
+  return finApi("/finhay-compare?symbol="+fhSym(sym)+"&days="+FH_DAYS).then(function(doc){
+    if(!doc||doc.partial) return fhHide("dFinhayCmp","c");
+    el.innerHTML=api_.renderFinhayCompare(doc); _fhParts.c=true; fhSync(); return true;
+  }).catch(function(){ return fhHide("dFinhayCmp","c"); });
+}
+// Điểm vào duy nhất từ detail.js (gọi song song, mỗi bên tự fail-open).
+function loadFinhayCross(sym){
+  _fhParts.o=false; _fhParts.c=false;
+  return Promise.all([loadFinhayOhlcv(sym),loadFinhayCompare(sym)])
+    .then(function(a){ return !!(a[0]||a[1]); })
+    .catch(function(){ return false; });
+}
 root.loadFinhay=loadFinhay; root.loadFinhayRec=loadFinhayRec;
+root.loadFinhayOhlcv=loadFinhayOhlcv; root.loadFinhayCompare=loadFinhayCompare;
+root.loadFinhayCross=loadFinhayCross;
+root.__fhTest=api_;
 })(typeof window!=="undefined"?window:undefined);

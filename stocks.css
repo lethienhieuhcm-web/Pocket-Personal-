@@ -208,4 +208,11 @@ html.no-tab-prop .navcard[onclick*="v-prop"],html.no-tab-prop #v-prop{display:no
 .fhrec .fhrow{display:inline-flex;gap:6px;align-items:baseline;font-size:13px}
 .fhrec .fhrow .k{color:var(--pp-mut);font-size:11.5px}
 .fhrec .fhrow .v{font-weight:600}
+/* Nền 1D + đối chiếu Finhay (TASK 06/11) */
+.fhspark{margin-top:6px}
+.fhcmp{padding:6px 16px 2px;overflow-x:auto}
+.fhcmp table{width:100%;border-collapse:collapse;font-size:12px}
+.fhcmp th,.fhcmp td{text-align:right;padding:3px 6px;border-bottom:1px solid var(--pp-line);white-space:nowrap}
+.fhcmp th{color:var(--pp-mut);font-weight:500;font-size:11px}
+.fhcmp td:first-child,.fhcmp th:first-child{text-align:left}
 @media (max-width:359px){ .fhgrid{grid-template-columns:1fr} .fhv{font-size:15px} }

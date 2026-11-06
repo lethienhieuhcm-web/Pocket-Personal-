@@ -1,0 +1,23 @@
+{
+ "symbol": "FPT",
+ "primary": {
+  "updated": "2026-11-06T10:15:31.274Z",
+  "first": "2026-08-12",
+  "last": "2026-11-06",
+  "count": 60
+ },
+ "finhay": {
+  "updated": "2026-11-03T16:09:27.004Z",
+  "first": "2021-11-05",
+  "last": "2026-11-03",
+  "count": 1244,
+  "stale_days": 3
+ },
+ "compared": 57,
+ "within_tol": 57,
+ "mismatches": [],
+ "max_abs_diff": -0.005,
+ "missing_in_finhay": 3,
+ "tick_tolerance": 0.05,
+ "days": 60
+}

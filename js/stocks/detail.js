@@ -148,6 +148,9 @@ async function loadDetail(sym, chartIv){
   loadStockMod("/english/js/stocks/profile.js?v=__BUILD__",function(){ return typeof window.loadProfile==="function"; },function(){ window.loadProfile(sym); window.loadEvents(sym); window.loadTarget(sym); window.loadCost(sym); window.loadFund(sym); });
   loadStockMod("/english/js/stocks/consensus.js?v=__BUILD__",function(){ return typeof window.loadConsDetail==="function"; },function(){ window.loadConsDetail(sym); });
   try{ const rc=$("dRec"); if(rc) rc.style.display="none"; if(typeof window.loadFinhayRec==="function") window.loadFinhayRec(sym); }catch(e){}
+  // Nền 1D + đối chiếu giá Finhay (2 route mới). fail-open trong finhay.js:
+  // mã không có dữ liệu -> khối tự ẩn, không ảnh hưởng biểu đồ nến chính.
+  try{ if(typeof window.loadFinhayCross==="function") window.loadFinhayCross(sym); }catch(e){}
   wlLoad().then(paintWatchBtn);
 }
 // ===== Trang con chi tiet ma: muc luc the lien ket thay thanh tab

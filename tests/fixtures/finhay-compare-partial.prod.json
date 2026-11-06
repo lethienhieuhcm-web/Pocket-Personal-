@@ -1,0 +1,13 @@
+{
+ "symbol": "ZZZ",
+ "primary": null,
+ "finhay": null,
+ "compared": 0,
+ "within_tol": 0,
+ "mismatches": [],
+ "max_abs_diff": null,
+ "missing_in_finhay": 0,
+ "tick_tolerance": 0.05,
+ "days": 60,
+ "partial": "no_finhay_candles"
+}
