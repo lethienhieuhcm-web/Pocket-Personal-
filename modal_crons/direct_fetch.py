@@ -9,6 +9,8 @@ from __future__ import annotations
 import http.client
 import json
 import os
+import random
+import threading
 import time
 import urllib.parse
 import urllib.request
@@ -424,48 +426,143 @@ def _kbs_depth(r: dict, pk: str, vk: str):
     return steps or None
 
 
-def kbs_price_board(symbols: list[str]) -> dict[str, dict]:
+# ------------------------------------------------------------------ KBS board
+# Fix 06/11 (chunk roi bang gia KBS). Ba thay doi o tang van chuan, KHONG
+# doi phep dich field SB/FO/FR... ben duoi:
+#   (1) giu KET NOI TLS (keep-alive) thay mo moi chunk — probe 06/11:
+#       lenh dau 1,32s, cac lenh tai dung 0,45s. Truoc day 16 chunk = 16
+#       lan bat tay TLS lạnh qua egress proxy, nen moi lan retry deu nam
+#       trong cung cua so proxy dang chet.
+#   (2) backoff CAP SO NHAN + jitter (truoc: co dinh 2s, 3 lan = ~6s
+#       horizon, khong duot nuot mot con stall proxy >30s).
+#   (3) THAN BỊ CAT = THAT BAI. `except IncompleteRead: raw = e.partial`
+#       cu coi nua chan request da nhan duoc la duoc — voi body gzip
+#       (Content-Length = None, chunked) dieu do dua toi JSON hoac
+#       gzip loi, hoac TE duoc 1 phan ma khong ai biet.
+# Connection duoc giu trong threading.local: `tick_collector` goi
+# `asyncio.to_thread`, nen module-global se hai long chia se giua thread.
+_KBS_BOARD_PATH = urllib.parse.urlparse(_KBS_IIS).path + "/stock/iss"
+_KBS_BOARD_HOST = urllib.parse.urlparse(_KBS_IIS).netloc
+
+KBS_BOARD_TIMEOUT = int(os.environ.get("KBS_BOARD_TIMEOUT", "25"))
+KBS_BOARD_ATTEMPTS = int(os.environ.get("KBS_BOARD_ATTEMPTS", "4"))
+# Sau so lan nay thi chuyen sang Accept-Encoding: identity (proxy cat
+# stream gzip giua chung — tien le _get(identity=) va _get_curl).
+KBS_BOARD_IDENTITY_AFTER = int(os.environ.get("KBS_BOARD_IDENTITY_AFTER", "2"))
+
+_KBS_CONN = threading.local()
+
+
+class KbsTransportError(RuntimeError):
+    """KBS bang gia THAT BAI o tang van chuan (khac voi "KBS tra ve
+    rong"). Caller phan biet duoc "chua lay duoc data" voi "khong co
+    data" — dung la ly do ghi de phong nguyen khi con thieu chunk."""
+
+    def __init__(self, url: str, attempts: int, last_err, requested: int):
+        self.url = url
+        self.attempts = attempts
+        self.last_err = last_err
+        self.requested = requested
+        super().__init__(
+            f"kbs_price_board failed after {attempts} tries "
+            f"({requested} ma): {url}: {last_err}")
+
+
+def _kbs_conn(timeout: int):
+    conn = getattr(_KBS_CONN, "conn", None)
+    if conn is not None and conn.timeout != timeout:
+        _kbs_conn_drop()          # doi timeout -> phai mo lai, khong doi duoc
+        conn = None
+    if conn is None:
+        conn = _KBS_CONN.conn = http.client.HTTPSConnection(
+            _KBS_BOARD_HOST, timeout=timeout)
+    return conn
+
+
+def _kbs_conn_drop():
+    conn = getattr(_KBS_CONN, "conn", None)
+    _KBS_CONN.conn = None
+    if conn is not None:
+        try:
+            conn.close()
+        except Exception:  # noqa: BLE001
+            pass
+
+
+def _kbs_board_backoff(attempt: int) -> float:
+    """2s, 4s, 8s, 16s (chan 30s) + toi da 25% jitter — de cac luot
+    song song khong cung nhay mot luc."""
+    base = min(30.0, 2.0 * (2 ** attempt))
+    return base + random.uniform(0, base * 0.25)
+
+
+def _kbs_post_iss(codes: list[str], identity: bool, timeout: int) -> list:
+    """MOT POST /stock/iss tren ket noi dang am. Raise neu co bat ky
+    van de van chuan/parse nao (KHONG lap loi partial)."""
+    import gzip
+
+    body = json.dumps({"code": ",".join(c.upper() for c in codes)}).encode()
+    headers = {
+        "User-Agent": UA,
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "Accept-Encoding": "identity" if identity else "gzip, deflate",
+        "Content-Length": str(len(body)),
+        "x-lang": "vi",
+        "Connection": "keep-alive",
+    }
+    conn = _kbs_conn(timeout)
+    conn.request("POST", _KBS_BOARD_PATH, body=body, headers=headers)
+    resp = conn.getresponse()
+    raw = resp.read()          # body bi cat -> IncompleteRead -> lan goi nay FAIL
+    if resp.status != 200:
+        raise RuntimeError(f"HTTP {resp.status}")
+    enc = resp.getheader("Content-Encoding") or ""
+    if raw[:2] == b"\x1f\x8b":       # gzip do do mau, khong tin header may moc
+        raw = gzip.decompress(raw)
+    elif "gzip" in enc:
+        pass                          # proxy da goi nen: body plain, header con gzip
+    rows = json.loads(raw.decode("utf-8"))
+    if not isinstance(rows, list):
+        raise ValueError(f"KBS iss tra ve {type(rows).__name__}, khong phai list")
+    return rows
+
+
+def kbs_price_board(symbols: list[str], timeout: int | None = None,
+                    attempts: int | None = None) -> dict[str, dict]:
     """Bang gia realtime tu KBS (POST /stock/iss).
 
     Tuong duong route: market.equity.quote (+ foreign_flow qua FB/FS)
     Tra ve dict {symbol: quote}, quote gom cac field chuan.
+
+    TUC NGU HOI (fix 06/11): `KBS_BOARD_ATTEMPTS` lan (mac dinh 4) tren
+    MOT ket noi giu am, backoff cap so nhan + jitter; `timeout`/`attempts`
+    cho phep noi goi dung hon (vd sub-chunk sau khi chunk lon rot).
+    That bai het cac lan -> `KbsTransportError` (co `requested`), KHONG
+    phai RuntimeError chung — de phan biet "chua fetch duoc" voi "KBS
+    khong co ma do".
     """
-    import urllib.request as _urlreq
-
-    url = f"{_KBS_IIS}/stock/iss"
-    body = json.dumps({"code": ",".join(s.upper() for s in symbols)}).encode()
-    req = _urlreq.Request(
-        url,
-        data=body,
-        headers={
-            "User-Agent": UA,
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-            "Accept-Encoding": "gzip, deflate",
-            "x-lang": "vi",
-        },
-    )
-    last_err = None
+    codes = [s for s in symbols if s]
+    if not codes:
+        return {}
+    tmo = KBS_BOARD_TIMEOUT if timeout is None else max(1, int(timeout))
+    tries = KBS_BOARD_ATTEMPTS if attempts is None else max(1, int(attempts))
+    last_err: Exception | None = None
     rows: list = []
-    for _ in range(3):
+    for attempt in range(tries):
         try:
-            with _urlreq.urlopen(req, timeout=TIMEOUT) as resp:
-                try:
-                    raw = resp.read()
-                except http.client.IncompleteRead as e:
-                    raw = e.partial  # proxy cat connection — lay phan da nhan
-                if "gzip" in resp.headers.get("Content-Encoding", ""):
-                    import gzip
-
-                    raw = gzip.decompress(raw)
-                rows = json.loads(raw.decode("utf-8"))
+            rows = _kbs_post_iss(codes,
+                                 attempt >= KBS_BOARD_IDENTITY_AFTER, tmo)
             last_err = None
             break
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:  # noqa: BLE001 - retry moi thu
             last_err = e
-            time.sleep(2)
+            _kbs_conn_drop()          # ket noi da ban -> bo, mo cai moi
+            if attempt < tries - 1:
+                time.sleep(_kbs_board_backoff(attempt))
     if last_err is not None:
-        raise RuntimeError(f"kbs_price_board failed: {last_err}")
+        raise KbsTransportError(f"{_KBS_IIS}/stock/iss", tries, last_err,
+                                len(codes))
     out: dict[str, dict] = {}
     for r in rows or []:
         sym = r.get("SB")

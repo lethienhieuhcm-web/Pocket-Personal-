@@ -250,22 +250,79 @@ def index_snapshot(symbols):
 
 
 # ---------------------------------------------------------------- price board
+# Chia nho goi KBS + doi loi TUNG CHUNK (fix 06/11). Chunk 10 la do
+# nghiem song: "goi lon hay dut ket noi". Truoc fix nay, mot chunk loi
+# bay exception ra ngoai _board_kbs -> _run_chain bo sang VCI cho TOAN
+# BO bang, va nguoc lai neu chunk chi tra thieu ma (khong noi loi) thì
+# bang ve lech thinh linh duoc coi la thanh cong.
+KBS_BOARD_CHUNK = int(os.environ.get("KBS_BOARD_CHUNK", "10"))
+# Lan 2 dung chunk nho hon cho chinh ma con thieu (idempotent: goi lai
+# khong thay doi du lieu da co).
+KBS_BOARD_RETRY_CHUNK = int(os.environ.get("KBS_BOARD_RETRY_CHUNK", "5"))
+# Coverage toi thieu de duoi ca bang xuong VCI (giong cua tung da chon
+# trong publish_snapshot.py: 0.8 * len(syms)).
+KBS_BOARD_MIN_COVERAGE = float(os.environ.get("KBS_BOARD_MIN_COVERAGE", "0.8"))
+
+
+def _kbs_board_chunks(symbols, chunk, tag):
+    """Fetch `symbols` bang chunk `chunk`, TRA VE (got, missing). Khong
+    bao gio de mot chunk loi lam hong cac chunk khac: loi thi ghi
+    `missing` va tiep tuc. Ma KBS khong tra ve cung la missing."""
+    from direct_fetch import kbs_price_board
+    got: dict[str, dict] = {}
+    missing: list[str] = []
+    chunk = max(1, chunk)
+    for i in range(0, len(symbols), chunk):
+        part = symbols[i:i + chunk]
+        try:
+            q = kbs_price_board(part) or {}
+        except Exception as e:  # noqa: BLE001
+            missing.extend(part)
+            print(f"[router:kbs_board] {tag} chunk {i // chunk + 1} loi "
+                  f"({len(part)} ma): {str(e)[:90]}", flush=True)
+            continue
+        got.update(q)
+        have = {s.upper() for s in q}
+        short = [s for s in part if str(s).upper() not in have]
+        if short:
+            # KBS tra le hon yeu cau -> coi la thieu, khong phai "du".
+            missing.extend(short)
+            print(f"[router:kbs_board] {tag} chunk {i // chunk + 1} tra "
+                  f"thieu {len(short)}/{len(part)} ma", flush=True)
+    return got, missing
+
+
 def _board_kbs(symbols):
-    from direct_fetch import kbs_price_board, vci_symbols
-    out = {}
-    for i in range(0, len(symbols), 10):  # chunk 10: goi lon hay dut ket noi
-        out.update(kbs_price_board(symbols[i:i + 10]))
+    from direct_fetch import vci_symbols
+    out, missing = _kbs_board_chunks(symbols, KBS_BOARD_CHUNK, "lan 1")
+    if missing:
+        # Lan 2 idempotent, chunk nho hon, chi cho ma con thieu.
+        got2, still = _kbs_board_chunks(missing, KBS_BOARD_RETRY_CHUNK,
+                                        "lan 2")
+        out.update(got2)
+        if still:
+            print(f"[router:kbs_board] ALERT con thieu {len(still)}/"
+                  f"{len(symbols)} ma sau 2 lan: "
+                  f"{','.join(still[:10])}{'...' if len(still) > 10 else ''}",
+                  flush=True)
+    if symbols and len(out) < KBS_BOARD_MIN_COVERAGE * len(symbols):
+        # Du le de nghi van chuyen qua VCI: _run_chain se nhan exception
+        # nay va roi xuong adapter vci cho CA bang, thay vi tra ve mot
+        # bang khuyet duoc coi la OK.
+        raise RuntimeError(
+            f"kbs: bao phu {len(out)}/{len(symbols)} ma < "
+            f"{KBS_BOARD_MIN_COVERAGE:.0%}")
     # Bang gia KBS khong co gia tri mua/ban NN (FO/FR la han muc/room tinh
     # bang CP — xem kbs_price_board) -> dien 2 truong gia tri tu VCI
     # (foreignBuyValue/SellValue that cua phien). VCI chet thi giu None:
     # thieu trung thuc, khong bia so.
-    missing = [s for s, q in out.items()
-               if q.get("foreign_buy_value") is None
-               or q.get("foreign_sell_value") is None]
-    if missing:
+    missing_val = [s for s, q in out.items()
+                   if q.get("foreign_buy_value") is None
+                   or q.get("foreign_sell_value") is None]
+    if missing_val:
         try:
-            for i in range(0, len(missing), 100):  # VCI nhan lo 100 ma/lan
-                raw = vci_symbols(missing[i:i + 100]) or {}
+            for i in range(0, len(missing_val), 100):  # VCI nhan lo 100 ma/lan
+                raw = vci_symbols(missing_val[i:i + 100]) or {}
                 for sym, vq in raw.items():
                     if sym not in out:
                         continue
