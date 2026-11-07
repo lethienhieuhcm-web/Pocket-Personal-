@@ -15,6 +15,7 @@ const FIX = (n) => path.join(here, "fixtures", n);
 const SRC = fs.readFileSync(path.join(here, "..", "js", "stocks", "finhay.js"), "utf8");
 const HTML = fs.readFileSync(path.join(here, "..", "stocks.html"), "utf8");
 const DETAIL = fs.readFileSync(path.join(here, "..", "js", "stocks", "detail.js"), "utf8");
+const CSS = fs.readFileSync(path.join(here, "..", "stocks.css"), "utf8");
 
 const O_FPT   = JSON.parse(fs.readFileSync(FIX("finhay-ohlcv-FPT.prod.json"), "utf8"));
 const O_EMPTY = JSON.parse(fs.readFileSync(FIX("finhay-ohlcv-empty.prod.json"), "utf8"));
@@ -32,7 +33,7 @@ class El{
   constructor(){ this.innerHTML = ""; this.style = { display: "" }; this.textContent = ""; }
 }
 function boot(resolver){
-  const ids = ["finhayWrap", "dRec", "dRecSec", "dFinhaySec", "dFinhay", "dFinhayOhlcv", "dFinhayCmp"];
+  const ids = ["finhayWrap", "dRec", "dRecSec", "dFinhaySec", "dFinhay", "dFinhayOhlcv", "dFinhayCmp", "dFinhayNote"];
   const els = new Map(ids.map(id => [id, new El()]));
   const calls = [];
   const sandbox = {
@@ -73,16 +74,19 @@ const shown = (m, id) => m.byId(id).style.display !== "none";
   const m = boot(p => (p.startsWith("/finhay-ohlcv") ? O_FPT : C_FPT));
   const ok = await m.win.loadFinhayCross("FPT");
   const o = m.byId("dFinhayOhlcv").innerHTML, c = m.byId("dFinhayCmp").innerHTML;
+  const n = m.byId("dFinhayNote").innerHTML;   // 1 dòng ghi chú chung của cả section
   check("cross render du 2 phan (resolve true)", ok === true, ok);
   check("ong o nen 1D: gia dong cua phien cuoi = 50.400 đ (NGHIN_VND x1000)",
     /50\.400/.test(o), o.slice(0, 160));
   check("ong o nen 1D: do sau 1.244 phien tu envelope.that",
     /1\.244 phi\xEAn/.test(o) && /05\/11\/2021/.test(o) && /03\/11\/2026/.test(o), o.slice(0, 300));
-  check("nhans stale_days: 'đóng băng' + 3 ngày + phiên 03/11/2026 (ca 2 ô)",
-    /đóng băng từ phiên 03\/11\/2026 — cũ 3 ngày/.test(o) &&
-    /đóng băng từ phiên 03\/11\/2026 — cũ 3 ngày/.test(c), {o: o.slice(-220), c: c.slice(-220)});
+  check("nhans stale_days: 'đóng băng' + 3 ngày + phiên 03/11/2026 — 1 dòng DUY NHẤT cho cả section",
+    /đóng băng từ phiên 03\/11\/2026 — cũ 3 ngày/.test(n) &&
+    (n.match(/Dữ liệu Finhay đóng băng/g) || []).length === 1 &&
+    !/Dữ liệu Finhay đóng băng/.test(o) && !/Dữ liệu Finhay đóng băng/.test(c),
+    {n: n.slice(0, 200), oTail: o.slice(-160), cTail: c.slice(-160)});
   check("nhan stale noi ro 'chưa có writer' + khong phai gia truc tiep",
-    /chưa có writer/.test(o) && /không phải giá trực tiếp/.test(o));
+    /chưa có writer/.test(n) && /không phải giá trực tiếp/.test(n), n);
   check("sọc nến 1D duoc ve (svg co >2 nến = line+rect)",
     /<svg class="fhspark"/.test(o) && (o.match(/<rect/g) || []).length >= 20,
     (o.match(/<rect/g) || []).length);
@@ -90,6 +94,36 @@ const shown = (m, id) => m.byId(id).style.display !== "none";
     /57\/57/.test(c) && /100\.0%/.test(c) && /ngưỡng 50 ₫/.test(c) && /3 phiên nến chính có mà Finhay chưa có/.test(c),
     c.slice(0, 260));
   check("card + section hien khi co du lieu", shown(m, "dFinhay") && shown(m, "dFinhaySec"));
+  // ---- layout phone-first (TASK 06/11): khong con ô grid 2 cột trong card ----
+  check("2 khoi khong dung fhgrid/fhcard nua (nguyen nhan ô bi bep ~55% + padding kep)",
+    !/fhgrid|fhcard/.test(o + c), (o + c).slice(0, 120));
+  check("markup moi kieu the Finhay: fhq (gia lon) + fhchart (nen full-bleed) + fhr (hang doi chieu)",
+    /class="fhq"/.test(o) && /class="fhbig"/.test(o) && /class="fhchart"/.test(o) && /class="fhr"/.test(c));
+  check("tieu de nguyen ven trong markup (khong con bi cat nua)",
+    /Đóng cửa phiên cuối · Finhay/.test(o) && /Phiên khớp nhau · Finhay vs nến chính/.test(c));
+  check("soc nen co thang gia (fhaxis) de doc duoc, khong con 80px trong ô hep",
+    /class="fhaxis"/.test(o) && /cao .*₫/.test(o) && /thấp .*₫/.test(o), o.slice(-260));
+  check("CSS: nhan trong section duoc xuong dong (white-space:normal), khong ellipsis",
+    /\.fhq \.fhk,\.fhr \.fhk\{white-space:normal;overflow:visible;text-overflow:clip/.test(CSS), "thieu rule .fhk");
+  check("CSS: soc nen full-bleed (margin am sat mép card) + cao 132px",
+    /\.fhchart\{margin:[^;]*-14px/.test(CSS) && /\.fhspark\{display:block;width:100%;height:132px\}/.test(CSS));
+  check("CSS: ghi chú/cảnh báo trong card bo padding 16px kep (le chan voi card ben canh)",
+    /#dFinhay \.fhnote,#dFinhay \.fhstale\{padding:8px 0 0/.test(CSS));
+}
+
+// ---- 3b. chi 1 trong 2 khoi co du lieu -> van co DUNG 1 dong canh bao ----------
+{
+  const t = boot(() => null).win.__fhTest;
+  const BOTH = t.fhSectionNote(O_FPT, C_FPT), ONLY_C = t.fhSectionNote(null, C_FPT), ONLY_O = t.fhSectionNote(O_FPT, null);
+  check("co ca 2 khoi -> 1 dong 'đóng băng' duy nhat (khong lap lan 2)",
+    (BOTH.match(/Dữ liệu Finhay đóng băng/g) || []).length === 1, BOTH);
+  check("an khoi nen (chi con doi chieu) -> canh bao van hien, lay stale tu doc finhay.*",
+    /đóng băng từ phiên 03\/11\/2026 — cũ 3 ngày/.test(ONLY_C), ONLY_C);
+  check("an khoi doi chieu (chi con nen) -> canh bao van hien", /đóng băng/.test(ONLY_O), ONLY_O);
+  check("khong stale -> dong nguon, khong phai canh bao",
+    /fhnote/.test(t.fhSectionNote({stale_days:0,last:"2026-11-06",rows:[{c:1}]}, {})) &&
+    /Nguồn: Finhay/.test(t.fhSectionNote({stale_days:0,last:"2026-11-06",rows:[{c:1}]}, {})));
+  check("khong co doc nao -> chu rong (khong hien 'undefined')", t.fhSectionNote(null, null) === "");
 }
 
 // ---- 4. fail-open: empty (ZZZ) -> an khoi, khong placeholder chui, khong loi
@@ -101,6 +135,8 @@ const shown = (m, id) => m.byId(id).style.display !== "none";
     m.byId("dFinhayOhlcv").innerHTML === "" && m.byId("dFinhayCmp").innerHTML === "");
   check("ZZZ -> card + section AN (display:none)",
     m.byId("dFinhay").style.display === "none" && m.byId("dFinhaySec").style.display === "none");
+  check("ZZZ -> dong ghi chu chung CUNG bi xoa (khong de canh bao treo)",
+    m.byId("dFinhayNote").innerHTML === "");
 }
 
 // ---- 5. fail-open: mang loi / 401 -> an, trang van chay ---------------------
@@ -162,6 +198,8 @@ const shown = (m, id) => m.byId(id).style.display !== "none";
   check("stocks.html: co section + card + 2 ô con",
     /id="dFinhaySec"/.test(HTML) && /id="dFinhay"/.test(HTML) &&
     /id="dFinhayOhlcv"/.test(HTML) && /id="dFinhayCmp"/.test(HTML));
+  check("stocks.html: 1 o ghi chu chung cho ca section (dFinhayNote, nam cuoi card)",
+    /id="dFinhayOhlcv"><\/div><div id="dFinhayCmp"><\/div><div id="dFinhayNote"><\/div><\/div>/.test(HTML));
   check("stocks.html: khong them khoi Finhay vao GATED (block free)",
     /GATED=\["margin","foreign","prop"\]/.test(HTML) && !/GATED=\[[^\]]*finhay/i.test(HTML));
   check("detail.js: goi window.loadFinhayCross(sym) trong try/catch (khong lam vo loadDetail)",
