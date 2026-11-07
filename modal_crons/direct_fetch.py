@@ -474,8 +474,28 @@ def _kbs_conn(timeout: int):
         _kbs_conn_drop()          # doi timeout -> phai mo lai, khong doi duoc
         conn = None
     if conn is None:
-        conn = _KBS_CONN.conn = http.client.HTTPSConnection(
-            _KBS_BOARD_HOST, timeout=timeout)
+        # VM chay qua egress proxy (https_proxy): http.client KHONG tu
+        # doc env nhu urllib — phai mo CONNECT tunnel thu cong, kem
+        # Proxy-Authorization neu URL co userinfo. Tren Modal khong co
+        # https_proxy nen noi truc tiep nhu cu. (Gap 07/11: ban direct
+        # chet WRONG_VERSION_NUMBER tren VM vi bypass proxy.)
+        proxy = (os.environ.get("https_proxy")
+                 or os.environ.get("HTTPS_PROXY") or "")
+        if proxy:
+            p = urllib.parse.urlparse(proxy)
+            conn = http.client.HTTPSConnection(
+                p.hostname, p.port or 3128, timeout=timeout)
+            headers = None
+            if p.username:
+                import base64
+                cred = f"{p.username}:{p.password or ''}".encode()
+                headers = {"Proxy-Authorization":
+                           "Basic " + base64.b64encode(cred).decode()}
+            conn.set_tunnel(_KBS_BOARD_HOST, 443, headers=headers)
+        else:
+            conn = http.client.HTTPSConnection(
+                _KBS_BOARD_HOST, timeout=timeout)
+        _KBS_CONN.conn = conn
     return conn
 
 
