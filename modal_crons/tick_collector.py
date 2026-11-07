@@ -50,6 +50,12 @@ ts SU KIEN (tick som/muon nhat trong phut), khong theo thu tu den.
 (4) Luot publish dong phien kem khoi "diag" (snapshot theo nguon,
 tick totals, volume phut theo nguon, tong thoa thuan) cho
 reconcile dinh danh truong. Van chay bong, live=False.
+
+KBS board transport (fix 06/11, 3e2a63e + 68e38d8): kbs_price_board
+giua keep-alive + backoff mu + khong lay partial; _kbs_conn mo CONNECT
+tunnel qua https_proxy khi co (VM) va noi truc tiep khi khong co (Modal).
+Ghi chu nay chi de ep Modal deploy lai khi chi module doi (deploy bo qua
+thay doi chi nam o module import).
 """
 import modal
 
