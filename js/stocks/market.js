@@ -3,7 +3,7 @@
 try{
 (function(){
 // ---- Màn 1 ----
-// i18n banner regime: backend tra CODE (TANG_NONG/TICH_LUY/GIAM/PHAN_PHOI) + desc
+// i18n regime: backend tra CODE (TANG_NONG/TICH_LUY/GIAM/PHAN_PHOI) + desc
 // tieng Viet lam fallback; frontend dich theo bang nay (chuoi dong nen translateDOM
 // khong bat duoc — phai render rieng va render lai moi khi doi ngon ngu).
 const REGIME_I18N = {
@@ -12,7 +12,6 @@ const REGIME_I18N = {
   GIAM:{vi:["Giảm","dưới MA50, số mã giảm áp đảo"],en:["Downtrend","below MA50, decliners dominate"],zh:["下跌","在 MA50 下方，下跌股占优"],ko:["하락","MA50 아래, 하락 종목 우세"]},
   PHAN_PHOI:{vi:["Phân phối","giằng co, cần thận trọng"],en:["Distribution","choppy, stay cautious"],zh:["派发","震荡，谨慎操作"],ko:["분배","횡보 중, 신중히 대응"]}
 };
-const BREADTH_I18N = {vi:["tăng","giảm","trên","dưới"],en:["up","down","above","below"],zh:["涨","跌","上方","下方"],ko:["상승","하락","위","아래"]};
 // i18n chi bao trang thai kenh day H1 (chu thuong, khong ten ky thuat).
 const PUSH_I18N = {
   live:{vi:"Đang cập nhật theo giây",en:"Updating every second",zh:"每秒更新中",ko:"매초 업데이트 중"},
@@ -31,18 +30,6 @@ const PUSH_I18N = {
   // day la loi hien thi / du lieu, khong phai loi duong truyen.
   norender:{vi:"Đã nhận realtime — bảng giá chưa có dòng nào để hiển thị",en:"Realtime received — price table has no rows to render",zh:"已收到实时数据 — 价格表暂无可显示的行",ko:"실시간 수신 — 표시할 가격 행이 없습니다"}
 };
-let _regime = null;
-function renderRegime(){
-  if(!_regime) return;
-  const j = _regime, b = j.breadth || {};
-  const r = REGIME_I18N[j.regime];
-  const pair = r ? (r[curLang] || r.vi) : null;
-  const nm = pair ? pair[0] : j.regime;
-  const ds = pair ? pair[1] : (j.desc || "");
-  const w = BREADTH_I18N[curLang] || BREADTH_I18N.vi;
-  $("regimeT").textContent = `${j.emoji || ""} ${nm} — ${ds}`;
-  $("regimeD").textContent = `Breadth: ${b.up || 0} ${w[0]} / ${b.down || 0} ${w[1]} · VNINDEX ${j.above_ma50 ? w[2] : w[3]} MA50`;
-}
 
 /* poll-stale (hàng đợi #17d): gộp giá /screener vào SS_PX.
  * screener.json là snapshot EOD toàn thị trường; khi đường poll (reloadCurrentView
@@ -160,14 +147,6 @@ async function loadMarket(){
     $("idxSecRow").innerHTML=rows.map(r=>{const pc=r.pct_change,cls=pc>0?"up":pc<0?"down":"";
       return `<div class="idxcard" style="cursor:pointer" onclick="openIndex('${esc(r.symbol)}')" title="${esc(r.symbol)}"><div class="s">${esc(r.symbol)}</div><div class="p">${fmtN(r.close)}</div><div class="c ${cls}">${r.stale?'<span class="stale">— · số liệu cũ</span>':((pc>0?"▲":pc<0?"▼":"")+" "+fmtPct(pc))}</div></div>`;}).join("")||'<div class="hint">Chưa có dữ liệu</div>';
   }catch(e){$("idxSecRow").innerHTML='<div class="hint">Lỗi tải chỉ số</div>';}
-  try{
-    const j=await api("/regime");
-    if(j.regime){const box=$("regimeBox");box.style.display="";
-      if(j.regime==="PHAN_PHOI"||j.regime==="GIAM")box.classList.add("danger");
-      else if(j.regime==="TANG_NONG")box.classList.add("warn");
-      const b=j.breadth||{};
-      _regime=j; renderRegime();}
-  }catch(e){}
   try{
     const j=await api("/screener?sort=pct_change&order=desc&exchange=HOSE&min_value=1000000000");
     mergeScreenerPx(j.rows, window.SS_PX);
@@ -759,14 +738,14 @@ function insBox(insight, srcText, asOf){
   return `<div class="insight"><div class="ins-t">${L.t}</div><div class="ins-b">${esc(txt)}</div>${f?`<div class="ins-f">${f}</div>`:""}</div>`;
 }
   if(typeof window!=="undefined"){
-    window.REGIME_I18N=REGIME_I18N; window.BREADTH_I18N=BREADTH_I18N; window.PUSH_I18N=PUSH_I18N; window.CAL_I18N=CAL_I18N; window.FF_I18N=FF_I18N; window.PF_I18N=PF_I18N; window.MT_I18N=MT_I18N; window.MOV_I18N=MOV_I18N; window.MAC_I18N=MAC_I18N; window.MAC_SRC=MAC_SRC; window.INS_I18N=INS_I18N; window.INS_SRC=INS_SRC;
+    window.REGIME_I18N=REGIME_I18N; window.PUSH_I18N=PUSH_I18N; window.CAL_I18N=CAL_I18N; window.FF_I18N=FF_I18N; window.PF_I18N=PF_I18N; window.MT_I18N=MT_I18N; window.MOV_I18N=MOV_I18N; window.MAC_I18N=MAC_I18N; window.MAC_SRC=MAC_SRC; window.INS_I18N=INS_I18N; window.INS_SRC=INS_SRC;
     Object.defineProperty(window,"_caData",{get:function(){ return _caData; },configurable:true});
-    window.loadMarket=loadMarket; window.refreshMoversFromLive=refreshMoversFromLive; window.loadMarketTotals=loadMarketTotals; window.renderMarketTotals=renderMarketTotals; window.renderRegime=renderRegime;
+    window.loadMarket=loadMarket; window.refreshMoversFromLive=refreshMoversFromLive; window.loadMarketTotals=loadMarketTotals; window.renderMarketTotals=renderMarketTotals;
     window.loadFF=loadFF; window.renderFF=renderFF; window.fmtTyF=fmtTyF; window.loadPF=loadPF; window.renderPF=renderPF; window.loadMN=loadMN; window.renderMN=renderMN;
     window.loadCA=loadCA; window.renderCA=renderCA; window.loadMarketOverview=loadMarketOverview; window.renderMarketOverview=renderMarketOverview; window.pollMarketOverview=pollMarketOverview;
     window.loadMacro=loadMacro; window.renderMacro=renderMacro; window.insBox=insBox; window.movToggle=movToggle; window.movRenderIdx=movRenderIdx;
     window.mergeIdxWithLive=mergeIdxWithLive; window.idxDocMs=idxDocMs;
-    window.__mkTest={i18n:MT_I18N,load:loadMarket,totals:loadMarketTotals,renderTotals:renderMarketTotals,regime:renderRegime,ca:renderCA,overview:loadMarketOverview,renderOverview:renderMarketOverview,macro:loadMacro,insBox:insBox,fmtTyF:fmtTyF}; }
+    window.__mkTest={i18n:MT_I18N,load:loadMarket,totals:loadMarketTotals,renderTotals:renderMarketTotals,ca:renderCA,overview:loadMarketOverview,renderOverview:renderMarketOverview,macro:loadMacro,insBox:insBox,fmtTyF:fmtTyF}; }
   if(typeof module!=="undefined" && module.exports){ module.exports = { mergeScreenerPx: mergeScreenerPx, livePx: livePx, withLivePx: withLivePx, moversFromLivePx: moversFromLivePx, mergeIdxWithLive: mergeIdxWithLive, idxDocMs: idxDocMs }; }
   if(typeof document!=="undefined") loadMarket();
 })();
