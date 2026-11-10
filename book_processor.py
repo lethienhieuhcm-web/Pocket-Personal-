@@ -26,7 +26,7 @@ import urllib.request
 
 API = "https://api.cloudflare.com/client/v4"
 ACCOUNT = "25b2327e932d26e5487c2ba8ad058932"
-BUCKET = "english-lab-data"
+BUCKET = os.environ.get("CF_R2_BUCKET", "english-lab-data")
 ALLOWED = ["api.cloudflare.com"]
 
 def api_req(method, path, data=None, raw=False):

@@ -406,7 +406,7 @@ def book_processor():
     CF_TOKEN = os.environ["CF_API_TOKEN"]
     API = "https://api.cloudflare.com/client/v4"
     ACCOUNT = "25b2327e932d26e5487c2ba8ad058932"
-    BUCKET = "english-lab-data"
+    BUCKET = os.environ.get("CF_R2_BUCKET", "english-lab-data")
     # Cloudflare chan UA mac dinh cua urllib (error 1010) mot cach gian
     # doan theo IP egress cua Modal -> 403 vai lan/ngay tu 22/10.
     # Gan UA trinh duyet + retry voi backoff cho 403/429/5xx.

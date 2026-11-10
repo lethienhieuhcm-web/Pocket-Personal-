@@ -109,6 +109,15 @@ ACCOUNT = "25b2327e932d26e5487c2ba8ad058932"
 WORKER = os.environ.get("CF_WORKER_NAME", "fancy-wood-2b3c")
 D1_ID = os.environ.get("CF_D1_ID", "e856db4d-1ee1-42fd-9c1d-1807ca31afb5")
 VERIFY_HOST = os.environ.get("CF_VERIFY_HOST", "lethanhdong.one")
+R2_BUCKET = os.environ.get(
+    "CF_R2_BUCKET",
+    "english-lab-data-staging" if WORKER == "fancy-wood-2b3c-staging" else "english-lab-data",
+)
+if WORKER == "fancy-wood-2b3c-staging" and R2_BUCKET == "english-lab-data":
+    raise SystemExit(
+        "Refusing staging deploy with production R2 bucket english-lab-data; "
+        "set CF_R2_BUCKET=english-lab-data-staging"
+    )
 def _detect_src():
     """Find the english-lab checkout: CF_DEPLOY_SRC (CI) -> scripts/.. (repo)
     -> /home/hatch/workspace/english-lab (VM). With --ref/CF_DEPLOY_REF,
@@ -589,7 +598,7 @@ def main():
         "assets": {"jwt": completion_jwt},
         "bindings": [
             {"type": "assets", "name": "ASSETS"},
-            {"type": "r2_bucket", "name": "DATA", "bucket_name": "english-lab-data"},
+            {"type": "r2_bucket", "name": "DATA", "bucket_name": R2_BUCKET},
             {"type": "r2_bucket", "name": "AUTHDB", "bucket_name": "english-lab-auth"},
             {"type": "r2_bucket", "name": "DACMUSIC", "bucket_name": "dac-music"},
             {"type": "d1", "name": "DB", "id": D1_ID},

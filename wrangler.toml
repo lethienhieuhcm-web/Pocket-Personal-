@@ -34,6 +34,19 @@ exclude = [
 binding = "DATA"
 bucket_name = "english-lab-data"
 
+[env.staging]
+name = "fancy-wood-2b3c-staging"
+
+[[env.staging.r2_buckets]]
+binding = "DATA"
+bucket_name = "english-lab-data-staging"
+
+# NB: env arrays REPLACE the top-level array (Wrangler inheritance), so
+# staging must re-declare AUTHDB here or auth routes lose env.AUTHDB.
+[[env.staging.r2_buckets]]
+binding = "AUTHDB"
+bucket_name = "english-lab-auth"
+
 [[r2_buckets]]
 binding = "AUTHDB"
 bucket_name = "english-lab-auth"
