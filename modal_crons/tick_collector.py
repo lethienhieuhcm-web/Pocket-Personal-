@@ -84,7 +84,7 @@ def main(max_minutes: int = 0):
 # =====================================================================
 import asyncio, base64, gzip, json, os, random, struct, time
 import urllib.parse, urllib.request
-from collections import OrderedDict
+from collections import OrderedDict, deque
 from datetime import datetime, timedelta, timezone
 
 ICT = timezone(timedelta(hours=7))
@@ -125,6 +125,7 @@ CONFIG = {
     # H1 (DO realtime) moi la nguon live; KHONG bat lai tick_live.
     # tick_shadow van chay lam doi chieu.
     "live": False,
+    "vndirect_capture_enabled": False,
     # CHART_CANDLE (PA-1, 02/11): lang nen 1m/5m/15m/1H cho
     # /api/stock/ohlcv (RC1). Worker ghi body.intraday ->
     # market/intraday/ (stock.js:1785), KHONG ke foreign_flow,
@@ -535,6 +536,9 @@ class MqttWs:
         self.proxy = proxy
         self.backoff_seq = backoff_seq
         self.silent_watchdog_sec = silent_watchdog_sec
+        self.transport_diag = {"attempts": 0, "phase": "idle",
+                               "last_failure": None, "last_msg_at": None,
+                               "alarm": "source unavailable"}
         self.last_msg = 0.0
         self.msgs = 0
         self.connected = False
@@ -548,27 +552,43 @@ class MqttWs:
 
     async def run(self):
         from websockets.asyncio.client import connect
+        import socket
+        from urllib.parse import urlsplit
         backoff_idx = 0
         headers = {"User-Agent": "Mozilla/5.0"}
         if self.origin:
             headers["Origin"] = self.origin
         while not self._stop:
+            self.transport_diag.update(attempts=self.transport_diag["attempts"] + 1,
+                                       phase="dns", started_at=time.time(), peer=None)
             try:
+                endpoint = urlsplit(self.url)
+                addresses = await asyncio.wait_for(
+                    asyncio.get_running_loop().getaddrinfo(
+                        endpoint.hostname, endpoint.port or 443,
+                        type=socket.SOCK_STREAM), 20)
+                self.transport_diag["resolved_addresses"] = sorted(
+                    {str(row[4][0]) for row in addresses})
+                self.transport_diag["phase"] = "connect"
                 cid = "tick-" + "".join(
                     random.choices("abcdef0123456789", k=8))
                 kw = {}
                 if self.proxy:
                     kw["proxy"] = self.proxy
+                self.transport_diag["phase"] = "tls_http_upgrade"
                 async with connect(
                         self.url, subprotocols=[self.subprotocol],
                         open_timeout=20, ping_interval=None,
                         additional_headers=headers,
                         max_size=8 * 1024 * 1024, **kw) as ws:
+                    self.transport_diag.update(phase="mqtt_connack",
+                                               peer=str(ws.remote_address))
                     await ws.send(_mqtt_connect(cid, self.user, self.pw))
                     msg = await asyncio.wait_for(ws.recv(), 20)
                     if not (isinstance(msg, bytes) and msg[0] >> 4 == 2
                             and msg[3] == 0):
                         raise ConnectionError(f"CONNACK rc={msg!r:.40}")
+                    self.transport_diag["phase"] = "subscription_sent"
                     await ws.send(_mqtt_subscribe(1, self.topics))
                     self.connected = True
                     backoff_idx = 0
@@ -600,11 +620,20 @@ class MqttWs:
                         if msg[0] >> 4 == 3:
                             topic, payload = _mqtt_parse_publish(msg)
                             self.last_msg = time.time()
+                            self.transport_diag["last_msg_at"] = self.last_msg
+                            self.transport_diag["alarm"] = None
                             self.msgs += 1
                             self.on_msg(topic, payload)
             except Exception as e:  # noqa: BLE001
                 self.connected = False
-                self.last_error = f"{type(e).__name__}: {str(e)[:120]}"
+                self.last_error = type(e).__name__
+                self.transport_diag["alarm"] = "source unavailable"
+                response = getattr(e, "response", None)
+                self.transport_diag["last_failure"] = {
+                    "phase": self.transport_diag["phase"],
+                    "finished_at": time.time(), "error_type": type(e).__name__,
+                    "http_status": getattr(response, "status_code", None)}
+                print(json.dumps(self.transport_diag, sort_keys=True), flush=True)
                 print(f"[mqtt {self.url.split('/')[2]}] loi: "
                       f"{self.last_error}", flush=True)
                 if self._stop:
@@ -1125,6 +1154,7 @@ class DnseAdapter:
                     gate_snap_fields(self.name, {
                     "day_low": self._num(m, "f13"),
                     "atc_volume": self._num(m, "f22", 10),
+                    "_field_contract": {"atc_volume": "stockinfo.f22; scale=10; session-total=false"},
                     "total_value": self._num(m, "f25", 10**9),
                     "buy_volume": self._num(m, "f17", 10),
                     "buy_value_matched": self._num(m, "f58", 10**9),
@@ -1339,16 +1369,27 @@ class VndirectAdapter:
         self.connected = False
         self.last_error = ""
         self._stop = False
-        self._seen_ticks = OrderedDict()  # dedupe ST (khong co
-        # accumulated): khoa dinh danh tick cua nguon nay la
-        # (sym, gio, gia, KL, truong phu); LRU 65536 nhu Aggregator
-        # de khong phinh vo han giua phien dai.
+        self._seen_ticks = OrderedDict()
+        self.st_stats = {"received": 0, "parsed": 0, "key_collisions": 0,
+                         "dropped_capacity": 0, "sma_received": 0,
+                         "parse_errors": 0, "reconnects": 0,
+                         "subscription_attempts": 0}
+        self._st_samples = deque(maxlen=256) if CONFIG.get("vndirect_capture_enabled") is True else None
 
     async def run(self):
         from websockets.asyncio.client import connect
+        import socket
         backoff = 2
         while not self._stop:
+            phase = "dns"
+            attempt_started = time.time()
+            peer = None
             try:
+                host = self.URL.split("//", 1)[1].split("/", 1)[0].split(":", 1)[0]
+                await asyncio.wait_for(
+                    asyncio.get_running_loop().getaddrinfo(
+                        host, 443, type=socket.SOCK_STREAM), 20)
+                phase = "connect_tls_http_upgrade"
                 cid = "free-user-" + "".join(
                     random.choices("abcdef0123456789", k=8))
                 async with connect(
@@ -1357,6 +1398,8 @@ class VndirectAdapter:
                         origin="https://banggia.vndirect.com.vn",
                         additional_headers={"User-Agent": "Mozilla/5.0"},
                         max_size=16 * 1024 * 1024) as ws:
+                    peer = str(ws.remote_address)
+                    phase = "mqtt_connect"
                     await ws.send(_mqtt5_connect(cid, vndirect_key()))
                     msg = await asyncio.wait_for(ws.recv(), 20)
                     if not (isinstance(msg, bytes) and msg[0] >> 4 == 2):
@@ -1365,6 +1408,8 @@ class VndirectAdapter:
                     if msg[p + 1] != 0:
                         raise ConnectionError(
                             f"CONNACK reason={msg[p + 1]}")
+                    phase = "subscribe"
+                    self.st_stats["subscription_attempts"] += 1
                     await ws.send(_mqtt5_subscribe(1, self.topics))
                     self.connected = True
                     backoff = 2
@@ -1388,7 +1433,14 @@ class VndirectAdapter:
                             self._on_payload(topic, payload)
             except Exception as e:  # noqa: BLE001
                 self.connected = False
-                self.last_error = f"{type(e).__name__}: {str(e)[:120]}"
+                if phase != "dns":
+                    self.st_stats["reconnects"] += 1
+                self.last_error = type(e).__name__
+                print(json.dumps({"source": self.name, "phase": phase,
+                                  "attempt_started": attempt_started,
+                                  "attempt_finished": time.time(),
+                                  "peer": peer, "error_type": type(e).__name__}, sort_keys=True),
+                      flush=True)
                 print(f"[vndirect] loi: {self.last_error}", flush=True)
                 if self._stop:
                     break
@@ -1410,32 +1462,45 @@ class VndirectAdapter:
             _, _, body = text[2:].partition(":")
             msgs = json.loads(body)
         except Exception:  # noqa: BLE001
+            self.st_stats["parse_errors"] += 1
             return
         for raw in msgs if isinstance(msgs, list) else []:
             try:
                 self._on_msg(self._decode(raw))
             except Exception:  # noqa: BLE001
+                self.st_stats["parse_errors"] += 1
                 continue
 
     def _on_msg(self, text):
         parts = text.split("|")
         kind = parts[0]
         if kind == "ST" and len(parts) >= 6:
+            self.st_stats["received"] += 1
+            if self._st_samples is not None and len(self._st_samples) < self._st_samples.maxlen:
+                self._st_samples.append({"kind": kind, "field_count": len(parts),
+                                         "field_lengths": [len(p) for p in parts[:32]]})
             sym = parts[1]
             price, vol = _f(parts[4]), _f(parts[5])
             if not price or not vol:
                 return
+            self.st_stats["parsed"] += 1
             key = (sym, parts[2], price, vol,
                    parts[6] if len(parts) > 6 else "")
             if key in self._seen_ticks:
+                self.st_stats["key_collisions"] += 1
                 return
             self._seen_ticks[key] = None
             if len(self._seen_ticks) > 65536:
                 self._seen_ticks.popitem(last=False)
+                self.st_stats["dropped_capacity"] += 1
             self.agg.on_match(
                 self.name, sym, session_epoch(now_ict(), parts[2]),
                 price, vol * 10, None)
         elif kind == "SMA" and len(parts) >= 16:
+            self.st_stats["sma_received"] += 1
+            if self._st_samples is not None and len(self._st_samples) < self._st_samples.maxlen:
+                self._st_samples.append({"kind": kind, "field_count": len(parts),
+                                         "field_lengths": [len(p) for p in parts[:32]]})
             sym = parts[1]
             tv = _f(parts[8])
             self.agg.on_snapshot(self.name, sym,
@@ -2588,6 +2653,14 @@ async def _collect(max_minutes=0):
             per_src[name] = {
                 "connected": bool(ad.connected),
                 "msgs": ad.msgs,
+                "diagnostics": getattr(ad, "st_stats", None),
+                "full_matched_volume_parity_eligible": False if name == "vndirect" else None,
+                "parity_eligibility_reason": "ST identity/completeness unverified" if name == "vndirect" else None,
+                "sample_count_local_only": len(getattr(ad, "_st_samples", None) or []),
+                "transport": getattr(getattr(ad, "client", ad), "transport_diag", None),
+                "unavailable_alarm": bool(_in_trading_window(now_ict()) and
+                    (not ad.connected or not ad.last_msg or
+                     time.time() - ad.last_msg > 120)), 
                 "matches": agg.matches_by_src.get(name, 0),
                 "last_msg_ago_sec": round(time.time() - ad.last_msg)
                 if ad.last_msg else None,
@@ -2595,6 +2668,9 @@ async def _collect(max_minutes=0):
                 "symbols_foreign": len(agg.foreign.get(name, {})),
             }
         status = {
+            "artifact_identity": {"collector_revision": "draft-parity-finhay-fix",
+                                  "source_revision": "beff545f2f378fa1614b78814f338bc66137cdfc",
+                                  "live": CONFIG["live"]},
             "session_date": start_dt.strftime("%Y-%m-%d"),
             "mode": "multi",
             "live": CONFIG["live"],
