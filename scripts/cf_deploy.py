@@ -118,6 +118,34 @@ if WORKER == "fancy-wood-2b3c-staging" and R2_BUCKET == "english-lab-data":
         "Refusing staging deploy with production R2 bucket english-lab-data; "
         "set CF_R2_BUCKET=english-lab-data-staging"
     )
+
+# --- Durable Object binding MARKET_ROOM (fix 02/11/2026, port tu Qoder acct1) ---
+# PUT /accounts/{a}/workers/scripts/{w} gui DANH SACH bindings cua ban moi,
+# khong phai ban va: binding khong co trong metadata la KHONG TON TAI o ban vua
+# deploy. Ban VM cu chi them binding khi CF_DO_MARKET_ROOM=1 va KHONG gui
+# migrations/exports (chi khi CF_DO_MIGRATE=1) -> namespace chua duoc khai bao
+# trong cung PUT -> binding rot lan deploy dau, deploy lai cung commit moi vao
+# (4 lan trong ngay 02/11: VCI-live, P0, P1, (b)).
+DO_BINDING_NAME = os.environ.get("CF_DO_BINDING_NAME", "MARKET_ROOM")
+DO_CLASS_NAME = os.environ.get("CF_DO_CLASS_NAME", "MarketRoom")
+DO_MIGRATION_TAG = os.environ.get("CF_DO_MIGRATION_TAG", "v1")
+# Mac dinh BAT: wrangler.toml luon khai bao binding + migrations v1, deploy API
+# phai gui dung cau hinh do thi moi khong mat binding. CF_DO_MARKET_ROOM=0 = bo
+# ca khai bao binding lan buoc verify (chi dung cho worker test khong co DO).
+DO_ENABLED = os.environ.get("CF_DO_MARKET_ROOM", "1") != "0"
+# Cach cap phat namespace, chon 1 (tai lieu Cloudflare: hai cach loai tru nhau):
+#   "migrations" = dung thu `wrangler deploy` gui tu wrangler.toml (tag v1 +
+#       new_sqlite_classes); tag da ap roi thi nen tang bo qua -> idempotent.
+#   "exports"    = khai bao kieu moi, "no namespace changes" o deploy lap lai.
+#       Chuyen sang khi account bao loi vi gui lai tag cu.
+# MAC DINH VM = "exports" (02/11): gui lai migrations tag v1 bi API 400 code
+# 10074 ("Cannot apply new-sqlite-class migration to class 'MarketRoom' that
+# is already depended on by existing Durable Objects") — Qoder noi idempotent
+# la SAI cho truong hop nay. Exports deploy staging OK ngay lan 1 (build
+# 20261102090553). Giu "migrations" lam du phong qua CF_DO_CLASS_MODE.
+DO_CLASS_MODE = os.environ.get("CF_DO_CLASS_MODE", "exports")
+
+
 def _detect_src():
     """Find the english-lab checkout: CF_DEPLOY_SRC (CI) -> scripts/.. (repo)
     -> /home/hatch/workspace/english-lab (VM). With --ref/CF_DEPLOY_REF,
@@ -161,6 +189,10 @@ FILES = [
 FILES += sorted(_glob.glob("icons/*.png", root_dir=SRC, recursive=True))
 # ES module files (Phase 4 refactor) added below
 FILES += sorted(_glob.glob("js/**/*.js", root_dir=SRC, recursive=True))
+# Static JSON data files fetched at runtime (Plan 2026-11-04: ctg-banks.json
+# la file JSON dau tien duoi js/ — glob js/**/*.js KHONG lay .json, khong
+# them dong nay thi fetch /english/js/stocks/ctg-banks.json 404 sau deploy)
+FILES += ["js/stocks/ctg-banks.json"]
 ALLOWED = ["api.cloudflare.com"]
 
 
@@ -195,6 +227,30 @@ def hashed_filename(path: str, content_hash: str) -> str:
     """Convert 'js/foo.js' -> 'js/foo.a1b2c3d4.js' using content hash."""
     base, ext = os.path.splitext(path)
     return f"{base}.{content_hash}{ext}"
+
+
+def _rewrite_js_build_urls(data: bytes, asset_hash_map: dict) -> bytes:
+    """Rewrite ?v=__BUILD__ asset URLs inside a JS file to hashed filenames.
+    e.g. loadStockMod("/english/js/stocks/consensus.js?v=__BUILD__")
+      -> loadStockMod("/english/js/stocks/consensus.02e83e66.js")
+    Only rewrites when the path matches an asset in the map (longest match
+    wins); leaves anything else untouched. (P5 fix (f) 2026-10-31: the build
+    rewrote ?v=__BUILD__ only in HTML, so a lazy-load URL that moved from
+    inline HTML into a JS asset kept the placeholder and 404'd.)
+    """
+    def _rep(m):
+        quote = m.group(1)
+        full_path = m.group(2).decode()
+        best = None
+        for orig, hashed in asset_hash_map.items():
+            if full_path.endswith(orig) and (best is None or len(orig) > len(best[0])):
+                best = (orig, hashed)
+        if best is None:
+            return m.group(0)
+        orig, hashed = best
+        prefix = full_path[:len(full_path) - len(orig)]
+        return quote + prefix.encode() + hashed.encode() + quote
+    return re.sub(rb"([\'\"])([^\'\"]+\.js)\?v=__BUILD__\1", _rep, data)
 
 
 def build_asset_hash_map(src_dir: str, files: list) -> dict:
@@ -247,6 +303,10 @@ def build_asset_hash_map(src_dir: str, files: list) -> dict:
                     old_import = m.group(0)
                     new_import = b"from " + m.group(1) + hashed_rel.encode() + m.group(3)
                     new_data = new_data.replace(old_import, new_import)
+            # P5 fix (f): rewrite ?v=__BUILD__ asset URLs (e.g. loadStockMod
+            # URLs) to hashed filenames, so a lazy-load URL that moved from
+            # inline HTML into a JS asset still resolves.
+            new_data = _rewrite_js_build_urls(new_data, hash_map)
             # Compute new hash
             new_h = content_hash(new_data)
             new_hashed = hashed_filename(f, new_h)
@@ -391,6 +451,9 @@ def main():
                         return b"import(" + quote + hashed_rel.encode() + quote + b")"
                     return m.group(0)
                 data = re.sub(rb"import\((['\"])(\.\./[^'\"?]+\.js)(['\"])\)", _replace_dyn_import, data)
+                # P5 fix (f): rewrite ?v=__BUILD__ asset URLs (e.g. loadStockMod
+                # URLs) to hashed filenames, matching build_asset_hash_map.
+                data = _rewrite_js_build_urls(data, asset_hash_map)
         # HTML: replace asset references with content-hashed filenames
         # (big-tech style, replaces ?v= query string cache busting)
         if f.endswith(".html"):
@@ -604,6 +667,13 @@ def main():
             {"type": "d1", "name": "DB", "id": D1_ID},
         ],
     }
+    # H1 pha DO: binding + migration DO (fix 02/11/2026, port tu Qoder acct1).
+    # apply_do_binding() khai bao binding MARKET_ROOM + migrations/exports
+    # NGAY TRONG PUT (khong dung namespace_id/script_name) -> co binding tu
+    # lan deploy dau, idempotent. Ban cu chi them binding khi CF_DO_MARKET_ROOM=1
+    # va khong gui migrations (chi khi CF_DO_MIGRATE=1) -> rot lan dau.
+    # (CF_DO_MIGRATE cu khong con dung; che do chon bang CF_DO_CLASS_MODE.)
+    apply_do_binding(metadata)
     b2 = "----cfdeploy5678"
     body = (
         f"--{b2}\r\n"
@@ -620,8 +690,14 @@ def main():
         data=body, method="PUT")
     req.add_header("Content-Type", f"multipart/form-data; boundary={b2}")
     _auth_request(req)
-    with urllib.request.urlopen(req, timeout=60) as resp:
-        dep = read_json_response(resp)
+    try:
+        with urllib.request.urlopen(req, timeout=60) as resp:
+            dep = read_json_response(resp)
+    except urllib.error.HTTPError as _e:
+        try: _body = _e.read().decode()[:800]
+        except Exception: _body = ""
+        print(f"WORKER PUT FAILED: HTTP {_e.code}: {_body}")
+        raise
     # 8b: log chi tiết response để debug silent failure (2026-10-11)
     _dep_result = dep.get("result", {})
     print(f"Worker deploy response: id={_dep_result.get('id', '?')[:20]}, "
@@ -643,6 +719,11 @@ def main():
             print("DEPLOY FAILED: live worker did not update to build " + build_id)
             sys.exit(1)
         print("LIVE VERIFIED: build " + build_id + " serving")
+        # Cong DO (fix 02/11/2026, port tu Qoder acct1): "DEPLOY OK" + build live
+        # KHONG chung minh binding con. Kiem binding that, thieu thi fail am len
+        # tai day (exit 1), khong im lang ship worker cut binding.
+        if not verify_do_binding():
+            sys.exit(1)
         # Rung 2 fix #5 (15/10/2026, thay branch protection — xem AGENTS.md):
         # branch protection chỉ chặn code ĐÃ push; họ lỗi #5 là drift chiều
         # VM->GitHub (sửa local, deploy, quên upload) mà rule không thấy được.
@@ -826,5 +907,139 @@ def purge_cache():
         print(f"Cache purge API error: {json.dumps(result)[:200]}")
 
 
+DO_OK, DO_MISSING, DO_UNKNOWN = "ok", "missing", "unknown"
+
+
+def apply_do_binding(metadata):
+    """Khai bao binding MARKET_ROOM + class vao metadata PUT. Idempotent: da co
+    roi thi khong doi gi. Khong gui namespace_id lan script_name — binding tu tro
+    chinh script nay va namespace do nen tang cap phat TRONG CUNG PUT. Buoc phai
+    co namespace ton tai truoc roi moi gan binding (kieu "tra namespace -> dan
+    namespace_id") chinh la ly do lan deploy dau rot, deploy lai cung commit vao:
+    lan dau namespace chua ton tai nen binding bi bo qua, lan hai no da co."""
+    if not DO_ENABLED:
+        print(f"DO: CF_DO_MARKET_ROOM=0 -> deploy KHONG khai bao {DO_BINDING_NAME}")
+        return metadata
+    bindings = metadata.setdefault("bindings", [])
+    if any(b.get("type") == "durable_object_namespace"
+           and b.get("name") == DO_BINDING_NAME for b in bindings):
+        print(f"DO: {DO_BINDING_NAME} da co trong metadata -> giu nguyen")
+        return metadata
+    bindings.append({"type": "durable_object_namespace",
+                     "name": DO_BINDING_NAME,
+                     "class_name": DO_CLASS_NAME})
+    if DO_CLASS_MODE == "exports":
+        metadata["exports"] = dict(metadata.get("exports") or {})
+        metadata["exports"][DO_CLASS_NAME] = {"type": "durable-object",
+                                              "storage": "sqlite"}
+        metadata.pop("migrations", None)
+    else:
+        # API yeu cau `migrations` la OBJECT (ActorMigrations), KHONG phai
+        # array — gui list se 400 code 10021 ("cannot unmarshal array into
+        # Go struct field Metadata.migrations"). Ban goc cua Qoder dung list
+        # (sai dinh dang); ban VM cu dung dict (dung). Ghi de bang dict.
+        metadata["migrations"] = {"tag": DO_MIGRATION_TAG,
+                                  "new_sqlite_classes": [DO_CLASS_NAME]}
+    print(f"DO: khai bao {DO_BINDING_NAME} -> {DO_CLASS_NAME} "
+          f"(mode={DO_CLASS_MODE}, tag={DO_MIGRATION_TAG})")
+    return metadata
+
+
+def check_do_binding():
+    """Doc cau hinh worker dang live de xac nhan binding. CHI GET, khong ghi gi,
+    khong dung secret. Tra (status, bang chung): DO_OK / DO_MISSING / DO_UNKNOWN."""
+    evidence, status = [], DO_UNKNOWN
+    try:
+        r = cf_request("GET", f"{API}/accounts/{ACCOUNT}/workers/scripts/{WORKER}/settings")
+        live = (r.get("result") or {}).get("bindings")
+        if isinstance(live, list):
+            hit = [b for b in live if b.get("type") == "durable_object_namespace"
+                   and b.get("name") == DO_BINDING_NAME]
+            evidence.append(f"settings: binding {DO_BINDING_NAME} "
+                            f"{'CO' if hit else 'THIEU'} "
+                            f"({len(live)} binding live)")
+            if hit:
+                return DO_OK, evidence
+            status = DO_MISSING
+        else:
+            evidence.append("settings: response khong co danh sach bindings")
+    except Exception as e:
+        evidence.append(f"settings: loi {type(e).__name__}: {str(e)[:160]}")
+    try:
+        r = cf_request(
+            "GET",
+            f"{API}/accounts/{ACCOUNT}/workers/durable_objects/namespaces"
+            "?page=1&per_page=100")
+        items = r.get("result") or []
+        mine = [i for i in items if i.get("script") == WORKER
+                and i.get("class") == DO_CLASS_NAME]
+        evidence.append(f"namespaces: {len(mine)} namespace "
+                        f"{WORKER}/{DO_CLASS_NAME} (tong {len(items)} namespace)")
+        if mine:
+            return DO_OK, evidence
+        if status != DO_MISSING:
+            status = DO_MISSING
+    except Exception as e:
+        evidence.append(f"namespaces: loi {type(e).__name__}: {str(e)[:160]}")
+    return status, evidence
+
+
+def verify_do_binding(timeout=None):
+    """Cong sau deploy: binding phai THUC SU live. Thieu binding (hoac khong doc
+    duoc cau hinh de xac nhan) => fail tai day, khong im lang ship worker cut
+    binding roi moi phat hien qua do-test-publish. Tra True/False."""
+    if not DO_ENABLED:
+        print("DO verify: bo qua (CF_DO_MARKET_ROOM=0)")
+        return True
+    import time
+    if timeout is None:
+        timeout = int(os.environ.get("CF_DO_VERIFY_TIMEOUT", "60"))
+    deadline = time.time() + timeout
+    status, evidence = DO_UNKNOWN, []
+    while True:
+        status, evidence = check_do_binding()
+        if status == DO_OK or time.time() >= deadline:
+            break
+        print(f"DO verify: binding chua live, cho 5s "
+              f"({DO_CLASS_NAME} moi cap phat co the tre)")
+        time.sleep(5)
+    for line in evidence:
+        print("  DO check:", line)
+    if status == DO_OK:
+        print(f"DO VERIFIED: {DO_BINDING_NAME} live tren {WORKER}")
+        return True
+    print("=" * 60)
+    if status == DO_MISSING:
+        print(f"DO FAILED: worker {WORKER} da live NHUNG KHONG co binding "
+              f"{DO_BINDING_NAME}")
+    else:
+        print(f"DO FAILED: khong doc duoc cau hinh {WORKER} de xac minh binding "
+              f"{DO_BINDING_NAME}")
+    print("Code + assets van deploy thanh cong (build da LIVE VERIFIED) — chi thieu")
+    print(f"binding, nen env.{DO_BINDING_NAME} undefined va "
+          f"/api/internal/do-test-publish se tra 'DO not configured'.")
+    print("KHONG deploy lai cung commit de 'danh thuc' binding — do la trieu chung")
+    print("cu, khong phai cach sua. Kiem tra:")
+    print(f"  - GET .../workers/durable_objects/namespaces: co namespace "
+          f"script={WORKER} class={DO_CLASS_NAME} khong?")
+    print(f"  - PUT metadata co gui bindings + {DO_CLASS_MODE} "
+          f"(tag {DO_MIGRATION_TAG}) khong?")
+    print("  - Chay lai rieng buoc kiem (khong deploy): "
+          "python3 scripts/cf_deploy.py --verify-do")
+    print("  - Cong chuc nang: POST /api/internal/do-test-publish tren "
+          f"https://{VERIFY_HOST} (endpoint can secret noi bo nen script "
+          "khong tu goi)")
+    print("Bo qua cong kiem nay (khuyen nghi KHONG): CF_DO_VERIFY=0")
+    print("=" * 60)
+    if os.environ.get("CF_DO_VERIFY", "1") == "0":
+        print("DO verify: FAIL nhung CF_DO_VERIFY=0 -> tiep tuc (da nhan trach nhiem)")
+        return True
+    return False
+
+
 if __name__ == "__main__":
+    if "--verify-do" in sys.argv[1:]:
+        # Chi kiem binding tren worker dang live — khong build, khong upload,
+        # khong deploy. Dung khi deploy truoc do fail o cong DO.
+        sys.exit(0 if verify_do_binding() else 1)
     main()
