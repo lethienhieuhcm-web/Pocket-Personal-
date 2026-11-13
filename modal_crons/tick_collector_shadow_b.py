@@ -2212,8 +2212,10 @@ async def _collect(max_minutes=0):
               f"mem_mb={_mem_s} cpu_s={_cpu_s}", flush=True)
         _t_pub0 = time.monotonic()
         keys = list(intra.keys())
-        chunks = [keys[i:i + 10]
-                  for i in range(0, len(keys), 10)] or [[]]
+        # 13/11 (1102): 5 key/POST nhu lane chinh (tick_collector.py).
+        INTRA_CHUNK = 5
+        chunks = [keys[i:i + INTRA_CHUNK]
+                  for i in range(0, len(keys), INTRA_CHUNK)] or [[]]
         for ci, ckeys in enumerate(chunks):
             chunk = {k: intra[k] for k in ckeys}
             if ci == 0:
@@ -2243,9 +2245,31 @@ async def _collect(max_minutes=0):
         # tiep se khong co dirty cho ma khong phat sinh tick moi;
         # chap nhan duoc vi tape la du lieu hien thi, khong phai
         # artifact kiem toan).
+        # 13/11 (1102): MOT POST chua tape_b ca universe = hang chuc R2
+        # PUT + JSON vai MB trong cung request -> vuot tran CPU. Chia 5
+        # ma/POST nhu lane chinh (tick_collector.py). Chunk loi: dat dirty
+        # lai cho ma cua chunk do, chay tiep chunk con lai, roi nem loi dau
+        # tien de luong ngoai giu nguyen nhu cu (khong tru dirty intraday).
         tape = agg.build_tape()
-        if tape:
-            await asyncio.to_thread(publish, {"tape_b": tape}, "shadow-b")
+        TAPE_CHUNK = 5
+        tkeys = sorted(tape.keys())
+        tape_err = None
+        for i in range(0, len(tkeys), TAPE_CHUNK):
+            ck = tkeys[i:i + TAPE_CHUNK]
+            try:
+                await asyncio.to_thread(
+                    publish, {"tape_b": {k: tape[k] for k in ck}}, "shadow-b")
+            except Exception as e:  # noqa: BLE001
+                print(f"[tick-shadow-b] tape_b chunk loi ({len(ck)} ma): "
+                      f"{str(e)[:150]}", flush=True)
+                for k in ck:
+                    rec = agg.tape.get(k)
+                    if rec is not None:
+                        rec["dirty"] = True
+                if tape_err is None:
+                    tape_err = e
+        if tape_err is not None:
+            raise tape_err
         _dt_pub = (time.monotonic() - _t_pub0) * 1000
         _pub_lat["n"] += 1
         _pub_lat["total_ms"] += _dt_pub

@@ -241,7 +241,7 @@ class ChartCandleLaneTests(unittest.TestCase):
     (session_date=...)`), ca hai da doi o HEAD nay.
     """
 
-    # 3 ma x 4 khung (1m/5m/15m/1H) = 12 key -> 2 chunk (10 + 2),
+    # 3 ma x 4 khung (1m/5m/15m/1H) = 12 key -> 3 chunk (5 + 5 + 2),
     # vat ly ca nhanh ci==0 (shadow day du) lan ci>0 (shadow nen tran).
     SYMS = ["CTG", "DGC", "FRT"]
 
@@ -363,6 +363,21 @@ class ChartCandleLaneTests(unittest.TestCase):
                     self.assertIn(field, heads[0], chart_candles)
                 self.assertTrue(any("tape" in p for p, _ in self.calls),
                                 chart_candles)
+
+    def test_batch_toi_da_5_key_moi_post_va_du_du_lieu(self):
+        """1102 (13/11): moi POST mang toi da 5 key intraday / 5 ma tape,
+        nhung tong du lieu gui di khong doi (du 12 nen, du 3 ma tape)."""
+        self._run(live=True, chart_candles=True)
+        tape_syms = set()
+        for payload, _ in self.calls:
+            for branch in ("tick_shadow", "tick_live"):
+                intra = (payload.get(branch) or {}).get("intraday") or {}
+                self.assertLessEqual(len(intra), 5, list(intra))
+            tape = payload.get("tape") or {}
+            self.assertLessEqual(len(tape), 5, list(tape))
+            tape_syms.update(tape)
+        self.assertEqual(len(self._shadow_candles()), 12)
+        self.assertEqual(tape_syms, set(self.SYMS))
 
 
 if __name__ == "__main__":
