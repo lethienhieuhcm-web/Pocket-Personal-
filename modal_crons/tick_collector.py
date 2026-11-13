@@ -121,10 +121,10 @@ CONFIG = {
     # bong, vao parity nhu cong thu 5). VCI = chan Botkeep relay-4
     # (adapter con trong code, khong chay trong loi).
     "sources": ["dnse", "kbs", "vndirect", "vps", "ssi-mqtt"],
-    # LAT PRODUCTION: False — tick_live DA XOA theo lenh Henrry 02/11:
-    # H1 (DO realtime) moi la nguon live; KHONG bat lai tick_live.
-    # tick_shadow van chay lam doi chieu.
-    "live": False,
+    # LAT PRODUCTION: True — lat live theo lenh Henrry 17:26 13/11:
+    # tick_live.intraday ghi thang production (Chot 21/10); tick_shadow
+    # van chay song song lam doi chieu (parity).
+    "live": True,
     "vndirect_capture_enabled": False,
     # CHART_CANDLE (PA-1, 02/11): lang nen 1m/5m/15m/1H cho
     # /api/stock/ohlcv (RC1). Worker ghi body.intraday ->
@@ -162,11 +162,10 @@ CONFIG = {
     "index_probe": True,
     # foreign_flow (rebase dong v24, su co 04/11): collector ghi tiep
     # market/foreign_flow.json de frontend doc (cachedMarket, 15 phut;
-    # endpoint money-flow). KHONG phai khoi dong lai tick_live:
-    # "live" van False, lane intraday live van DONG (H1 la nguon
-    # realtime). Day chi la khoi ngoai hop nhat — worker gop THEO MA
-    # vao file (stock.js nhanh tick_live.foreign), giu cac ma cua
-    # luong publish cham.
+    # endpoint money-flow). Tu 13/11 "live" = True: khoi ngoai van qua
+    # lane tick_live.foreign nhu cu, them nen live qua tick_live.intraday.
+    # Worker gop THEO MA vao file (stock.js nhanh tick_live.foreign),
+    # giu cac ma cua luong publish cham.
     "foreign_flow": True,
 }
 
@@ -2806,8 +2805,10 @@ async def _collect(max_minutes=0):
                 else:
                     if CONFIG.get("foreign_flow") and flow:
                         # Rebase dong v24 (04/11): khoi ngoai hop nhat goi
-                        # qua lane tick_live.foreign — CHI khoi ngoai, KHONG
-                        # nen live (H1 la nguon realtime, "live" van False).
+                        # qua lane tick_live.foreign — nhanh du phong khi
+                        # "live" = False (tu 13/11 "live" = True, nhanh
+                        # nay khong chay; giu lai de rollback chi can
+                        # doi co).
                         # Worker gop THEO MA vao market/foreign_flow.json,
                         # giu cac ma cua luong publish cham (stock.js
                         # nhanh tick_live).
