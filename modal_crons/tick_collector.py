@@ -2762,8 +2762,12 @@ async def _collect(max_minutes=0):
         foreign = agg.build_foreign()
         flow = agg.build_foreign_flow()
         keys = list(intra.keys())
-        chunks = [keys[i:i + 10]
-                  for i in range(0, len(keys), 10)] or [[]]
+        # 13/11 (1102): 5 key/POST thay vi 10 — moi chunk di 2 lan
+        # (tick_shadow + tick_live) va chunk 0 con mang status/raw/
+        # artifacts; cung du lieu, cung chu ky 30s.
+        INTRA_CHUNK = 5
+        chunks = [keys[i:i + INTRA_CHUNK]
+                  for i in range(0, len(keys), INTRA_CHUNK)] or [[]]
         # PATCH-2: key nao cua chunk POST that bai (non-2xx hoac
         # ok:false) bi ghi danh -> khong duoc tru dirty cuoi chu ky.
         # pt_checked = luot POST dau (mang status + buckets_pt_dirty)
@@ -2841,8 +2845,10 @@ async def _collect(max_minutes=0):
         # phien 04/11). Chunk 10 ma/POST (bang nguong intraday): mot lan
         # 1102 chi blackout toi da 10 ma, cac chunk con van vao R2, va ma
         # bi loi duoc dat dirty lai → chu ky 30s sau gui lai.
+        # 13/11: 10 ma (~350 KB JSON) van sat tran 10 ms CPU cua goi
+        # free -> 5 ma/POST; cung du lieu, cung chu ky 30s, chi them POST.
         tape = agg.build_tape()
-        TAPE_CHUNK = 10
+        TAPE_CHUNK = 5
         tkeys = sorted(tape.keys())
         for i in range(0, len(tkeys), TAPE_CHUNK):
             ck = tkeys[i:i + TAPE_CHUNK]

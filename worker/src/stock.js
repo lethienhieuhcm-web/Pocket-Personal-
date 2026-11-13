@@ -110,6 +110,16 @@ export async function sPutIfMatch(env, key, val, etag){
 
 const SKEY = e => "users/"+e+"/";
 
+// Giai base64 -> bytes bang vong lap thuong: Uint8Array.from(str, cb) goi
+// callback cho TUNG byte, ton CPU nhieu lan tren raw chunk lon (1102).
+export function b64ToBytes(b64){
+  const bin = atob(b64);
+  const n = bin.length;
+  const out = new Uint8Array(n);
+  for(let i = 0; i < n; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
 
 /* ---------- tinh toan (port tu FastAPI) ---------- */
 export function sCalcPositions(txns){
@@ -139,6 +149,26 @@ export function sPctRank(vals, v, higherBetter){
   return Math.round(below/(xs.length-1)*1000)/10;
 }
 
+// sScoreRows goi sPctRank 6 lan cho moi row -> sort lai ca cot moi lan
+// (O(n^2 log n), phan nang cua rebuild screener view). Sort MOT lan/cot va
+// dem bang tim nhi phan; chi dung khi cot toan so huu han (khong NaN/chuoi),
+// con lai ve sPctRank cu de ket qua giu y het.
+function _pctRanker(vals){
+  const xs = vals.filter(x=>x!=null);
+  if(!xs.every(x=>typeof x === "number" && Number.isFinite(x)))
+    return (v, hb)=> sPctRank(vals, v, hb);
+  xs.sort((a,b)=>a-b);
+  const n = xs.length;
+  const lower = (v)=>{ let lo=0, hi=n; while(lo<hi){ const m=(lo+hi)>>1; if(xs[m]<v) lo=m+1; else hi=m; } return lo; };
+  const upper = (v)=>{ let lo=0, hi=n; while(lo<hi){ const m=(lo+hi)>>1; if(xs[m]<=v) lo=m+1; else hi=m; } return lo; };
+  return (v, hb)=>{
+    if(!n || v==null || n<2) return null;
+    if(typeof v !== "number" || !Number.isFinite(v)) return sPctRank(vals, v, hb);
+    const below = hb ? lower(v) : n - upper(v);
+    return Math.round(below/(n-1)*1000)/10;
+  };
+}
+
 const SCORE_W = {value:0.35, quality:0.35, momentum:0.20, liquidity:0.10};
 
 export function sScoreRows(rows, funds, closes){
@@ -153,17 +183,19 @@ export function sScoreRows(rows, funds, closes){
     pes.push(pe); pbs.push(pb); roes.push(f.roe); nms.push(f.net_margin);
     pcs.push(r.pct_change); liqs.push(r.value_vnd);
   }
+  const rkPe = _pctRanker(pes), rkPb = _pctRanker(pbs), rkRoe = _pctRanker(roes),
+        rkNm = _pctRanker(nms), rkPc = _pctRanker(pcs), rkLiq = _pctRanker(liqs);
   for(const [r,pe,pb,roe,nm,pc,liq] of tmp){
     const parts = {};
-    const vpe = sPctRank(pes,pe,false), vpb = sPctRank(pbs,pb,false);
+    const vpe = rkPe(pe,false), vpb = rkPb(pb,false);
     const vv = [vpe,vpb].filter(x=>x!=null);
     if(vv.length) parts.value = vv.reduce((a,b)=>a+b,0)/vv.length;
-    const qroe = sPctRank(roes,roe,true), qnm = sPctRank(nms,nm,true);
+    const qroe = rkRoe(roe,true), qnm = rkNm(nm,true);
     const qq = [qroe,qnm].filter(x=>x!=null);
     if(qq.length) parts.quality = qq.reduce((a,b)=>a+b,0)/qq.length;
-    const qpc = sPctRank(pcs,pc,true);
+    const qpc = rkPc(pc,true);
     if(qpc!=null) parts.momentum = qpc;
-    const qlq = sPctRank(liqs,liq,true);
+    const qlq = rkLiq(liq,true);
     if(qlq!=null) parts.liquidity = qlq;
     const wsum = Object.keys(parts).reduce((a,k)=>a+SCORE_W[k],0);
     r.score = wsum ? Math.round(Object.keys(parts).reduce((a,k)=>a+parts[k]*SCORE_W[k],0)/wsum*10)/10 : null;
@@ -2540,7 +2572,7 @@ export async function hStockPublish(request, env, url, ctx){
           if(!/^[0-9]{2}$/.test(hour)) continue;
           const b64 = ts.raw_chunks[src][hour];
           if(typeof b64 !== "string" || !b64) continue;
-          const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+          const bytes = b64ToBytes(b64);
           await env.DATA.put("stock/market/shadow_tick/raw/"+day+"/"+src+"/"+hour+"/"+Date.now()+".jsonl.gz",
             bytes, {httpMetadata:{contentType:"application/gzip"}});
           bump("ts_raw", src);
@@ -2621,7 +2653,7 @@ export async function hStockPublish(request, env, url, ctx){
           if(!/^[0-9]{2}$/.test(hour)) continue;
           const b64 = ts.raw_chunks[src][hour];
           if(typeof b64 !== "string" || !b64) continue;
-          const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+          const bytes = b64ToBytes(b64);
           await env.DATA.put("stock/market/shadow_tick_b/raw/"+day+"/"+src+"/"+hour+"/"+Date.now()+".jsonl.gz",
             bytes, {httpMetadata:{contentType:"application/gzip"}});
           bump("tsb_raw", src);
